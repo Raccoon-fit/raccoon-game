@@ -1,0 +1,1782 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小浣熊科幻冒险 - 终极关卡</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* 深色科幻主题 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Exo 2', sans-serif;
+            background: #0a0a0a;
+            color: #00ff88;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .sci-fi-container {
+            background: radial-gradient(ellipse at center, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+            min-height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 动态星空背景 */
+        .stars-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .star {
+            position: absolute;
+            background: #00ff88;
+            border-radius: 50%;
+            animation: twinkle 2s infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        /* 标题区域 - 科幻风格 */
+        .header {
+            text-align: center;
+            padding: 40px 20px;
+            position: relative;
+        }
+
+        .main-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 3.5rem;
+            font-weight: 900;
+            background: linear-gradient(45deg, #00ff88, #00bfff, #ff00ff, #ffff00);
+            background-size: 400% 400%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradientShift 3s ease-in-out infinite;
+            text-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #00bfff;
+            font-weight: 300;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            opacity: 0.8;
+        }
+
+        /* 关卡卡片网格 - 6边形设计 */
+        .levels-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 30px;
+            padding: 40px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .level-card {
+            background: linear-gradient(145deg, rgba(0, 255, 136, 0.1), rgba(0, 191, 255, 0.1));
+            border: 2px solid transparent;
+            border-radius: 20px;
+            padding: 30px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+
+        .level-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, #00ff88, #00bfff, #ff00ff);
+            background-size: 200% 200%;
+            border-radius: 20px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
+
+        .level-card:hover::before {
+            opacity: 1;
+            animation: borderGlow 2s ease-in-out infinite;
+        }
+
+        .level-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0, 255, 136, 0.3);
+        }
+
+        @keyframes borderGlow {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        @keyframes warningBlink {
+            0%, 50%, 100% { text-shadow: 0 0 10px #ff0000; }
+            25%, 75% { text-shadow: 0 0 20px #ff0000, 0 0 30px #ff0000; }
+        }
+
+        .level-card.locked {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .level-card.unlocked {
+            border-color: #00ff88;
+        }
+
+        .level-card.completed {
+            border-color: #ffff00;
+            box-shadow: 0 0 20px rgba(255, 255, 0, 0.5);
+        }
+
+        .level-number {
+            font-family: 'Orbitron', monospace;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #00ff88;
+            margin-bottom: 15px;
+            text-align: center;
+            position: relative;
+        }
+
+        .level-name {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .difficulty-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+        }
+
+        .difficulty-expert {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: #fff;
+            box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+        }
+
+        .difficulty-nightmare {
+            background: linear-gradient(45deg, #9b59b6, #be4bdb);
+            color: #fff;
+            box-shadow: 0 0 10px rgba(155, 89, 182, 0.5);
+        }
+
+        .difficulty-insane {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: #fff;
+            box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+        }
+
+        .level-info {
+            text-align: center;
+            color: #00bfff;
+            font-size: 0.95rem;
+            margin-bottom: 15px;
+        }
+
+        .stars-display {
+            text-align: center;
+            font-size: 1.2rem;
+        }
+
+        .star-icon {
+            color: #ffff00;
+            text-shadow: 0 0 10px rgba(255, 255, 0, 0.8);
+            margin: 0 2px;
+        }
+
+        .star-empty {
+            color: #444;
+            margin: 0 2px;
+        }
+
+        /* 游戏画布容器 */
+        #gameScreen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 1000;
+        }
+
+        #gameCanvas {
+            display: block;
+            margin: 0 auto;
+            background: #1a1a2e;
+            border: 2px solid #00ff88;
+            border-radius: 10px;
+            max-width: 95vw;
+            max-height: 80vh;
+            width: auto;
+            height: auto;
+        }
+
+        .game-ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            color: #00ff88;
+            font-family: 'Orbitron', monospace;
+            z-index: 1001;
+            pointer-events: none; /* 不阻挡点击 */
+        }
+
+        .game-info {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 15px;
+            border-radius: 8px;
+            border: 1px solid #00ff88;
+            pointer-events: auto; /* 允许点击 */
+        }
+        
+        .controls-hint {
+            margin-top: 4px;
+            font-size: 0.7rem;
+            color: #00ff88;
+            opacity: 0.8;
+            font-family: 'Orbitron', monospace;
+        }
+        
+        .input-status {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff88;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.6rem;
+            font-family: 'Orbitron', monospace;
+            z-index: 1002;
+            display: none;
+        }
+
+        .back-btn {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: 'Orbitron', monospace;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            pointer-events: auto; /* 允许点击 */
+        }
+
+        .back-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(231, 76, 60, 0.5);
+        }
+
+        /* 虚拟控制 - 科幻风格 - 分离布局 */
+        .direction-controls {
+            position: absolute;
+            bottom: 60px;
+            left: 20px;
+            display: flex;
+            gap: 15px;
+            z-index: 1001;
+            align-items: center;
+        }
+        
+        .jump-controls {
+            position: absolute;
+            bottom: 60px;
+            right: 20px;
+            z-index: 1001;
+            align-items: center;
+        }
+
+        .control-btn {
+            background: rgba(0, 255, 136, 0.3);
+            border: 3px solid #00ff88;
+            color: #00ff88;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            touch-action: manipulation;
+            box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
+            text-shadow: 0 0 8px #00ff88;
+        }
+        
+        .control-btn:hover, .control-btn:active {
+            background: rgba(0, 255, 136, 0.5);
+            border-color: #00ff88;
+            box-shadow: 0 6px 20px rgba(0, 255, 136, 0.5);
+            transform: scale(1.05);
+        }
+        
+        .jump-btn {
+            width: 80px;
+            height: 80px;
+            font-size: 1.8rem;
+            background: rgba(255, 107, 107, 0.3);
+            border-color: #ff6b6b;
+            color: #ff6b6b;
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+        }
+        
+        .jump-btn:hover, .jump-btn:active {
+            background: rgba(255, 107, 107, 0.5);
+            border-color: #ff6b6b;
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.5);
+            transform: scale(1.05);
+        }
+
+        .control-btn:hover {
+            background: rgba(0, 255, 136, 0.4);
+            transform: scale(1.1);
+        }
+
+        .control-btn:active {
+            transform: scale(0.9);
+        }
+
+        /* 胜利/失败界面 */
+        .result-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .result-content {
+            background: linear-gradient(145deg, rgba(0, 255, 136, 0.1), rgba(0, 191, 255, 0.1));
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            border: 2px solid #00ff88;
+            backdrop-filter: blur(20px);
+        }
+
+        .result-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 2.5rem;
+            color: #00ff88;
+            margin-bottom: 20px;
+        }
+
+        .stars-earned {
+            font-size: 3rem;
+            margin: 20px 0;
+        }
+
+        .result-buttons {
+            margin-top: 30px;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .result-btn {
+            background: linear-gradient(45deg, #00ff88, #00bfff);
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-family: 'Orbitron', monospace;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .result-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+        }
+
+        /* 进度显示 */
+        .progress-section {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 15px;
+            margin: 20px 40px;
+            border: 1px solid #00ff88;
+        }
+
+        .progress-title {
+            font-family: 'Orbitron', monospace;
+            color: #00ff88;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar {
+            background: #333;
+            border-radius: 10px;
+            height: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #00ff88, #00bfff);
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .main-title {
+                font-size: 2.5rem;
+            }
+            
+            .levels-grid {
+                grid-template-columns: 1fr;
+                padding: 20px;
+                gap: 20px;
+            }
+            
+            .level-card {
+                padding: 20px;
+            }
+            
+            .game-ui {
+                top: 5px;
+                left: 5px;
+                right: 5px;
+            }
+
+            .game-info {
+                padding: 6px 12px;
+                font-size: 0.8rem;
+            }
+
+            .back-btn {
+                padding: 6px 12px;
+                font-size: 0.8rem;
+            }
+
+            .direction-controls {
+                bottom: 50px;
+                left: 15px;
+                gap: 15px;
+            }
+            
+            .jump-controls {
+                bottom: 50px;
+                right: 15px;
+            }
+            
+            .control-btn {
+                width: 65px;
+                height: 65px;
+                font-size: 1.4rem;
+            }
+            
+            .jump-btn {
+                width: 75px;
+                height: 75px;
+                font-size: 1.6rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .main-title {
+                font-size: 2rem;
+            }
+            
+            .subtitle {
+                font-size: 1rem;
+                letter-spacing: 2px;
+            }
+
+            .game-ui {
+                top: 3px;
+                left: 3px;
+                right: 3px;
+            }
+
+            .game-info {
+                padding: 4px 8px;
+                font-size: 0.75rem;
+            }
+
+            .back-btn {
+                padding: 5px 10px;
+                font-size: 0.75rem;
+            }
+
+            .direction-controls {
+                bottom: 45px;
+                left: 10px;
+                gap: 12px;
+            }
+            
+            .jump-controls {
+                bottom: 45px;
+                right: 10px;
+            }
+            
+            .control-btn {
+                width: 60px;
+                height: 60px;
+                font-size: 1.2rem;
+            }
+            
+            .jump-btn {
+                width: 70px;
+                height: 70px;
+                font-size: 1.4rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="stars-bg" id="starsBg"></div>
+    
+    <div class="sci-fi-container">
+        <div class="header">
+            <h1 class="main-title">浣熊终极试炼</h1>
+            <p class="subtitle">LEVEL 11-15 • SCI-FI MODE</p>
+        </div>
+
+        <div class="progress-section">
+            <h3 class="progress-title">进度总览</h3>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-title">
+                <span id="progressText">0/15 关卡已完成 • 0/45 星星</span>
+            </div>
+        </div>
+
+        <div class="levels-grid" id="levelGrid">
+            <!-- 关卡卡片将通过JavaScript生成 -->
+        </div>
+        
+                <button class="next-page-btn" onclick="goToPage()">关卡编辑器</button>
+                <script> function goToPage() { 
+                    // 跳转关卡编辑器
+                window.location.href = "level_editor.html"; } 
+                </script>
+    </div>
+
+    <!-- 游戏界面 -->
+    <div id="gameScreen">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div class="game-ui">
+            <div class="game-info">
+                <div class="level-name-display"></div>
+                <div class="difficulty-display"></div>
+                <div class="controls-hint">
+                    <small>键盘: WASD移动, 空格跳跃 | 触屏: 点击大按钮</small>
+                </div>
+            </div>
+                <div class="stars-display"></div>
+            </div>
+            <button class="back-btn" onclick="game.backToLevelSelect()">返回</button>
+        </div>
+
+        <!-- 方向控制区域 -->
+        <div class="direction-controls">
+            <button class="control-btn" data-key="ArrowLeft">◀</button>
+            <button class="control-btn" data-key="ArrowRight">▶</button>
+        </div>
+        
+        <!-- 跳跃控制区域 -->
+        <div class="jump-controls">
+            <button class="control-btn jump-btn" data-key="ArrowUp">⤴</button>
+        </div>
+        
+        <!-- 输入状态指示器 -->
+        <div class="input-status" id="inputStatus">
+            控制器连接正常
+        </div>
+    </div>
+
+    <!-- 结果界面 -->
+    <div class="result-screen" id="resultScreen">
+        <div class="result-content">
+            <h2 class="result-title" id="resultTitle">关卡完成!</h2>
+            <div class="stars-earned" id="starsEarned">⭐⭐⭐</div>
+            <div class="result-buttons">
+                <button class="result-btn" onclick="game.restartLevel()">重新挑战</button>
+                <button class="result-btn" onclick="game.backToLevelSelect()">返回选关</button>
+                <button class="result-btn" onclick="game.nextLevel()" id="nextLevelBtn" style="display: none;">下一关</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 第15关警告弹窗 -->
+    <div id="horrorWarning" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 10000; justify-content: center; align-items: center;">
+        <div style="background: linear-gradient(135deg, #1a1a1a, #000); border: 3px solid #ff0000; border-radius: 20px; padding: 40px; max-width: 500px; text-align: center; box-shadow: 0 0 50px rgba(255, 0, 0, 0.5);">
+            <h2 style="color: #ff0000; font-size: 24px; margin-bottom: 20px; text-shadow: 0 0 10px #ff0000; animation: warningBlink 1s infinite;">⚠️ 恐怖警告 ⚠️</h2>
+            <div style="color: #ffffff; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
+                <p style="margin-bottom: 15px;">警告: 本关含有血腥、恐怖等元素</p>
+                <p style="margin-bottom: 15px;">你有心脏疾病或身体不适或心理障碍等人员，请勿进入</p>
+                <p style="margin-bottom: 15px; color: #ff0000; font-weight: bold;">癫痫患者请勿进入</p>
+                <p style="color: #ff0000; font-weight: bold;">18岁以下儿童请勿进入</p>
+            </div>
+            <div style="display: flex; gap: 20px; justify-content: center;">
+                <button onclick="game.confirmHorrorEntry()" style="background: #ff0000; color: white; border: none; padding: 12px 25px; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);" 
+                        onmouseover="this.style.background='#cc0000'" onmouseout="this.style.background='#ff0000'">
+                    我已了解风险，继续
+                </button>
+                <button onclick="game.cancelHorrorEntry()" style="background: #333; color: white; border: 2px solid #666; padding: 12px 25px; border-radius: 8px; font-size: 16px; cursor: pointer;" 
+                        onmouseover="this.style.background='#555'" onmouseout="this.style.background='#333'">
+                    返回
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class SciFiRaccoonGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.currentScreen = 'levelSelect';
+                this.currentLevel = null;
+                this.keys = {};
+                this.inputSources = {}; // 追踪输入来源
+                this.maxUnlockedLevel = 11;
+                this.levelStars = {};
+                this.isHorrorMode = false; // 恐怖模式标志
+                this.pendingLevel = null; // 待进入的关卡
+                
+                // 关卡配置 - 只包含11-15关
+                this.levelConfig = {
+                    11: {
+                        name: '速度试炼',
+                        difficulty: 'expert',
+                        color: '#00d2d3',
+                        timeLimit: 25,
+                        maxStars: 3,
+                        description: '高速移动，考验反应速度'
+                    },
+                    12: {
+                        name: '精准操作',
+                        difficulty: 'expert', 
+                        color: '#ff9966',
+                        timeLimit: 50,
+                        maxStars: 3,
+                        description: '精确跳跃，无失误通过'
+                    },
+                    13: {
+                        name: '梦幻空间',
+                        difficulty: 'nightmare',
+                        color: '#ff6ec7',
+                        timeLimit: 75,
+                        maxStars: 3,
+                        description: '重力异常，虚拟现实挑战'
+                    },
+                    14: {
+                        name: '黑暗试炼',
+                        difficulty: 'insane',
+                        color: '#4b0082',
+                        timeLimit: 90,
+                        maxStars: 3,
+                        description: '能见度极低，仅凭感觉前进'
+                    },
+                    15: {
+                        name: '终极奥秘',
+                        difficulty: 'insane',
+                        color: '#c0c0c0',
+                        timeLimit: 60,
+                        maxStars: 3,
+                        description: '终极恐怖挑战，平台随机消失！'
+                    }
+                };
+                
+                this.loadProgress();
+                this.init();
+            }
+
+            // 创建星空背景
+            createStars() {
+                const starsBg = document.getElementById('starsBg');
+                for (let i = 0; i < 100; i++) {
+                    const star = document.createElement('div');
+                    star.className = 'star';
+                    star.style.left = Math.random() * 100 + '%';
+                    star.style.top = Math.random() * 100 + '%';
+                    star.style.width = star.style.height = Math.random() * 3 + 1 + 'px';
+                    star.style.animationDelay = Math.random() * 2 + 's';
+                    starsBg.appendChild(star);
+                }
+            }
+
+            loadProgress() {
+                const saved = localStorage.getItem('sciFiRaccoonProgress');
+                if (saved) {
+                    const progress = JSON.parse(saved);
+                    this.maxUnlockedLevel = progress.maxUnlockedLevel || 11;
+                    this.levelStars = progress.levelStars || {};
+                }
+            }
+
+            saveProgress() {
+                const progress = {
+                    maxUnlockedLevel: this.maxUnlockedLevel,
+                    levelStars: this.levelStars
+                };
+                localStorage.setItem('sciFiRaccoonProgress', JSON.stringify(progress));
+            }
+
+            updateLevelDisplay() {
+                const grid = document.getElementById('levelGrid');
+                grid.innerHTML = '';
+
+                for (let level = 11; level <= 15; level++) {
+                    const config = this.levelConfig[level];
+                    const stars = this.levelStars[level] || 0;
+                    const isUnlocked = level <= this.maxUnlockedLevel;
+                    const isCompleted = stars > 0;
+
+                    const card = document.createElement('div');
+                    card.className = `level-card ${isUnlocked ? 'unlocked' : 'locked'} ${isCompleted ? 'completed' : ''}`;
+                    card.dataset.level = level;
+
+                    card.innerHTML = `
+                        <div class="level-number">LEVEL ${level}</div>
+                        <div class="level-name">${config.name}</div>
+                        <div class="difficulty-badge difficulty-${config.difficulty}">${config.difficulty.toUpperCase()}</div>
+                        <div class="level-info">
+                            <div>⏱️ ${config.timeLimit}秒</div>
+                            <div>🎯 ${config.description}</div>
+                        </div>
+                        <div class="stars-display">
+                            ${Array.from({length: 3}, (_, i) => 
+                                `<span class="${i < stars ? 'star-icon' : 'star-empty'}">★</span>`
+                            ).join('')}
+                        </div>
+                    `;
+
+                    if (isUnlocked) {
+                        card.addEventListener('click', () => this.startLevel(level));
+                    }
+
+                    grid.appendChild(card);
+                }
+
+                this.updateProgressDisplay();
+            }
+
+            updateProgressDisplay() {
+                let completedLevels = 0;
+                let totalStars = 0;
+                const maxStars = 15; // 5关 × 3星
+
+                for (let level = 11; level <= 15; level++) {
+                    if (this.levelStars[level] > 0) {
+                        completedLevels++;
+                    }
+                    totalStars += this.levelStars[level] || 0;
+                }
+
+                const progressPercent = (totalStars / maxStars) * 100;
+                document.getElementById('progressFill').style.width = progressPercent + '%';
+                document.getElementById('progressText').textContent = 
+                    `${completedLevels}/5 关卡已完成 • ${totalStars}/15 星星`;
+            }
+
+            startLevel(level) {
+                // 第15关特殊警告检查
+                if (level === 15) {
+                    this.pendingLevel = level;
+                    this.showHorrorWarning();
+                    return;
+                }
+                
+                this.currentLevel = level;
+                this.currentScreen = 'game';
+                
+                document.querySelector('.sci-fi-container').style.display = 'none';
+                document.getElementById('gameScreen').style.display = 'block';
+
+                this.initLevel(level);
+                this.gameLoop();
+            }
+
+            // 显示第15关警告弹窗
+            showHorrorWarning() {
+                document.getElementById('horrorWarning').style.display = 'flex';
+            }
+
+            // 确认进入第15关
+            confirmHorrorEntry() {
+                document.getElementById('horrorWarning').style.display = 'none';
+                
+                if (this.pendingLevel) {
+                    this.currentLevel = this.pendingLevel;
+                    this.currentScreen = 'game';
+                    this.pendingLevel = null;
+                    
+                    document.querySelector('.sci-fi-container').style.display = 'none';
+                    document.getElementById('gameScreen').style.display = 'block';
+
+                    this.initLevel(this.currentLevel);
+                    this.gameLoop();
+                }
+            }
+
+            // 取消进入第15关
+            cancelHorrorEntry() {
+                document.getElementById('horrorWarning').style.display = 'none';
+                this.pendingLevel = null;
+            }
+
+            initLevel(level) {
+                const config = this.levelConfig[level];
+                
+                this.player = {
+                    x: 50,
+                    y: 500,
+                    width: 40,
+                    height: 40,
+                    vx: 0,
+                    vy: 0,
+                    speed: 4,
+                    jumpPower: -14, // 轻微增强跳跃力
+                    onGround: false,
+                    color: '#ff6b6b', // 保持红色小浣熊
+                    animationTime: 0,
+                    direction: 1
+                };
+
+                // 为每个关卡创建独特的布局
+                this.setupLevelLayout(level, config);
+
+                this.time = 0;
+                this.timeRemaining = config.timeLimit;
+                this.gameRunning = true;
+            }
+
+            setupLevelLayout(level, config) {
+                switch (level) {
+                    case 11: // 速度试炼 - 高速移动关卡
+                        this.platforms = [
+                            {x: 100, y: 550, width: 80, height: 20},  // 起始平台
+                            {x: 250, y: 500, width: 60, height: 20},  // 快速跳跃
+                            {x: 400, y: 450, width: 80, height: 20},  
+                            {x: 550, y: 400, width: 60, height: 20},  // 窄平台
+                            {x: 680, y: 350, width: 100, height: 20}  // 终点平台
+                        ];
+                        this.stars = [
+                            {x: 180, y: 470, collected: false},  // 第一颗星
+                            {x: 330, y: 420, collected: false},  // 第二颗星
+                            {x: 480, y: 370, collected: false}   // 第三颗星
+                        ];
+                        this.goal = {
+                            x: 720,
+                            y: 300,
+                            width: 40,
+                            height: 50,
+                            color: config.color
+                        };
+                        this.player.speed = 6;
+                        this.isDarkMode = false;
+                        break;
+                        
+                    case 12: // 精准操作 - 精确跳跃关卡
+                        this.platforms = [
+                            {x: 80, y: 580, width: 100, height: 20},  // 起始平台
+                            {x: 220, y: 520, width: 50, height: 20},  // 极窄平台
+                            {x: 300, y: 480, width: 40, height: 20},  // 更窄
+                            {x: 380, y: 440, width: 35, height: 20},  // 最窄
+                            {x: 480, y: 400, width: 40, height: 20},  // 恢复
+                            {x: 600, y: 350, width: 50, height: 20},
+                            {x: 720, y: 300, width: 80, height: 20}  // 终点
+                        ];
+                        this.stars = [
+                            {x: 250, y: 490, collected: false},  // 在窄平台上
+                            {x: 400, y: 410, collected: false},  // 最窄平台
+                            {x: 640, y: 320, collected: false}   // 终点前
+                        ];
+                        this.goal = {
+                            x: 740,
+                            y: 250,
+                            width: 40,
+                            height: 50,
+                            color: config.color
+                        };
+                        this.player.speed = 4; // 正常速度
+                        this.isDarkMode = false;
+                        break;
+                        
+                    case 13: // 梦幻空间 - 重力异常关卡
+                        this.platforms = [
+                            {x: 50, y: 560, width: 100, height: 20},   // 底部平台1
+                            {x: 200, y: 520, width: 80, height: 20},   // 底部平台2
+                            {x: 100, y: 480, width: 120, height: 20},  // 起始平台（上）
+                            {x: 300, y: 420, width: 100, height: 20},  // 中层
+                            {x: 150, y: 360, width: 80, height: 20},   // 上层
+                            {x: 400, y: 300, width: 60, height: 20},   // 顶层
+                            {x: 500, y: 380, width: 100, height: 20},  // 下降
+                            {x: 650, y: 450, width: 120, height: 20}  // 终点
+                        ];
+                        this.stars = [
+                            {x: 140, y: 450, collected: false},  // 起始平台附近
+                            {x: 180, y: 330, collected: false},  // 上层星星
+                            {x: 430, y: 270, collected: false},  // 顶层星星
+                            {x: 550, y: 350, collected: false}   // 下降阶段星星
+                        ];
+                        this.goal = {
+                            x: 680,
+                            y: 300,
+                            width: 50,
+                            height: 50,
+                            color: config.color
+                        };
+                        this.player.speed = 4;
+                        this.isDarkMode = false;
+                        break;
+                        
+                    case 14: // 黑暗试炼 - 能见度极低关卡
+                        this.platforms = [
+                            {x: 100, y: 580, width: 80, height: 20},   // 起始平台
+                            {x: 250, y: 540, width: 60, height: 20},   // 第二个平台
+                            {x: 400, y: 500, width: 50, height: 20},   // 第三个平台
+                            {x: 500, y: 460, width: 60, height: 20},   // 第四个平台
+                            {x: 600, y: 420, width: 80, height: 20},   // 第五个平台
+                            {x: 700, y: 380, width: 100, height: 20}  // 终点平台
+                        ];
+                        this.stars = [
+                            {x: 280, y: 510, collected: false},  // 第二平台附近
+                            {x: 450, y: 470, collected: false},  // 第三平台附近
+                            {x: 620, y: 390, collected: false}   // 终点前
+                        ];
+                        this.goal = {
+                            x: 720,
+                            y: 330,
+                            width: 50,
+                            height: 50,
+                            color: config.color
+                        };
+                        this.player.speed = 4;
+                        this.isDarkMode = true; // 启用黑暗模式
+                        this.timeRemaining = 90; // 黑暗模式时间限制
+                        break;
+                        
+                    case 15: // 终极奥秘 - 最终挑战关卡（恐怖升级版）
+                        this.platforms = [
+                            {x: 100, y: 580, width: 60, height: 15},   // 起始平台（极窄）
+                            {x: 280, y: 520, width: 30, height: 15},   // 恐怖窄平台1
+                            {x: 50, y: 450, width: 40, height: 15},    // 反向跳跃平台
+                            {x: 350, y: 400, width: 25, height: 15},   // 恐怖窄平台2
+                            {x: 600, y: 350, width: 35, height: 15},   // 中间隔断平台
+                            {x: 200, y: 300, width: 30, height: 15},   // 偏移恐怖平台
+                            {x: 500, y: 250, width: 20, height: 15},   // 终极窄平台
+                            {x: 680, y: 200, width: 50, height: 15},   // 终点前平台
+                            {x: 750, y: 150, width: 80, height: 15}    // 终点平台
+                        ];
+                        this.stars = [
+                            {x: 295, y: 490, collected: false},  // 恐怖窄平台1上方
+                            {x: 80, y: 420, collected: false},   // 反向跳跃平台附近
+                            {x: 365, y: 370, collected: false},  // 恐怖窄平台2附近
+                            {x: 230, y: 270, collected: false},  // 偏移平台附近
+                            {x: 510, y: 220, collected: false}   // 终极窄平台附近
+                        ];
+                        this.goal = {
+                            x: 770,
+                            y: 100,
+                            width: 40,
+                            height: 50,
+                            color: '#ff0000' // 血红色终点
+                        };
+                        this.player.speed = 4.5; // 增强移动速度，增加流畅感
+                        this.player.jumpPower = -16; // 增强跳跃力
+                        this.isHorrorMode = true; // 启用恐怖模式
+                        this.isDarkMode = false;
+                        this.timeRemaining = 60; // 60秒时间限制，超级紧张
+                        break;
+                }
+            }
+
+            update() {
+                if (this.currentScreen !== 'game') return;
+
+                this.time += 1/60;
+                this.timeRemaining -= 1/60;
+                
+                // 更新玩家动画时间
+                this.player.animationTime = this.time;
+
+                if (this.timeRemaining <= 0) {
+                    this.gameOver();
+                    return;
+                }
+
+                this.updatePlayer();
+                this.checkCollisions();
+                this.checkWinCondition();
+                this.updateGameUI();
+            }
+
+            updatePlayer() {
+                // 恐怖模式下的控制困难效果
+                if (this.isHorrorMode) {
+                    // 添加随机滑移效果
+                    const slipEffect = (Math.random() - 0.5) * 0.5;
+                    
+                    if (this.keys['ArrowLeft'] || this.keys['a'] || this.keys['A']) {
+                        this.player.x -= this.player.speed + slipEffect;
+                        this.player.direction = -1;
+                    }
+                    if (this.keys['ArrowRight'] || this.keys['d'] || this.keys['D']) {
+                        this.player.x += this.player.speed + slipEffect;
+                        this.player.direction = 1;
+                    }
+                    
+                    // 恐怖模式下的跳跃困难
+                    if ((this.keys['ArrowUp'] || this.keys['w'] || this.keys['W'] || this.keys[' ']) && this.player.onGround) {
+                        // 跳跃力随机减少，增加难度
+                        const jumpReduction = Math.random() * 0.2 + 0.8; // 80%-100%的跳跃力，减少削弱
+                        this.player.vy = this.player.jumpPower * jumpReduction;
+                        this.player.onGround = false;
+                    }
+                } else {
+                    // 正常模式
+                    if (this.keys['ArrowLeft'] || this.keys['a'] || this.keys['A']) {
+                        this.player.x -= this.player.speed;
+                        this.player.direction = -1;
+                    }
+                    if (this.keys['ArrowRight'] || this.keys['d'] || this.keys['D']) {
+                        this.player.x += this.player.speed;
+                        this.player.direction = 1;
+                    }
+                    
+                    if ((this.keys['ArrowUp'] || this.keys['w'] || this.keys['W'] || this.keys[' ']) && this.player.onGround) {
+                        this.player.vy = this.player.jumpPower;
+                        this.player.onGround = false;
+                    }
+                }
+                
+                if ((this.keys['ArrowUp'] || this.keys['w'] || this.keys['W'] || this.keys[' ']) && this.player.onGround) {
+                    this.player.vy = this.player.jumpPower;
+                    this.player.onGround = false;
+                }
+                
+                this.player.vy += 0.8;
+                this.player.y += this.player.vy;
+
+                // 重置地面状态，先假设在空中
+                let onGround = false;
+
+                // 地面碰撞 - 只有在地面上且向下运动时才设置onGround
+                if (this.player.y > 560 && this.player.vy >= 0) {
+                    this.player.y = 560;
+                    this.player.vy = 0;
+                    onGround = true;
+                }
+
+                // 平台碰撞 - 检查所有平台，找到最高的那个
+                this.platforms.forEach(platform => {
+                    if (this.player.x < platform.x + platform.width &&
+                        this.player.x + this.player.width > platform.x &&
+                        this.player.y < platform.y + platform.height &&
+                        this.player.y + this.player.height > platform.y &&
+                        this.player.vy >= 0) {
+                        this.player.y = platform.y - this.player.height;
+                        this.player.vy = 0;
+                        onGround = true;
+                    }
+                });
+
+                // 最后设置onGround状态
+                this.player.onGround = onGround;
+
+                // 边界检查
+                this.player.x = Math.max(0, Math.min(this.canvas.width - this.player.width, this.player.x));
+            }
+
+            checkCollisions() {
+                // 星星收集
+                this.stars.forEach(star => {
+                    if (!star.collected &&
+                        this.player.x < star.x + 20 &&
+                        this.player.x + this.player.width > star.x &&
+                        this.player.y < star.y + 20 &&
+                        this.player.y + this.player.height > star.y) {
+                        star.collected = true;
+                    }
+                });
+
+                // 目标检查
+                if (this.player.x < this.goal.x + this.goal.width &&
+                    this.player.x + this.player.width > this.goal.x &&
+                    this.player.y < this.goal.y + this.goal.height &&
+                    this.player.y + this.player.height > this.goal.y) {
+                    this.completeLevel();
+                }
+            }
+
+            checkWinCondition() {
+                // 检查是否到达目标
+                return this.player.x < this.goal.x + this.goal.width &&
+                       this.player.x + this.player.width > this.goal.x &&
+                       this.player.y < this.goal.y + this.goal.height &&
+                       this.player.y + this.player.height > this.goal.y;
+            }
+
+            completeLevel() {
+                this.gameRunning = false;
+                
+                const collectedStars = this.stars.filter(s => s.collected).length;
+                const earnedStars = Math.min(collectedStars, 3);
+                
+                this.levelStars[this.currentLevel] = Math.max(this.levelStars[this.currentLevel] || 0, earnedStars);
+                
+                if (this.currentLevel < 15) {
+                    this.maxUnlockedLevel = Math.max(this.maxUnlockedLevel, this.currentLevel + 1);
+                }
+                
+                this.saveProgress();
+                this.showResultScreen(true, earnedStars);
+            }
+
+            gameOver() {
+                this.gameRunning = false;
+                this.showResultScreen(false, 0);
+            }
+
+            showResultScreen(victory, stars) {
+                const resultScreen = document.getElementById('resultScreen');
+                const resultTitle = document.getElementById('resultTitle');
+                const starsEarned = document.getElementById('starsEarned');
+                const nextLevelBtn = document.getElementById('nextLevelBtn');
+
+                resultTitle.textContent = victory ? '任务完成!' : '任务失败!';
+                starsEarned.innerHTML = Array.from({length: stars}, () => '⭐').join('');
+                
+                if (this.currentLevel < 15 && victory) {
+                    nextLevelBtn.style.display = 'inline-block';
+                } else {
+                    nextLevelBtn.style.display = 'none';
+                }
+
+                resultScreen.style.display = 'flex';
+            }
+
+            updateGameUI() {
+                const config = this.levelConfig[this.currentLevel];
+                document.querySelector('.level-name-display').textContent = 
+                    `第 ${this.currentLevel} 关 - ${config.name}`;
+                document.querySelector('.difficulty-display').textContent = 
+                    `难度: ${config.difficulty.toUpperCase()}`;
+                document.querySelector('.stars-display').textContent = 
+                    `⭐ ${this.stars.filter(s => s.collected).length}/3`;
+            }
+
+            draw() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                const config = this.levelConfig[this.currentLevel];
+                
+                // 背景 - 科幻风格
+                const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+                gradient.addColorStop(0, '#0a0a0a');
+                gradient.addColorStop(0.5, config.color + '20');
+                gradient.addColorStop(1, '#1a1a2e');
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // 绘制平台
+                this.ctx.fillStyle = '#00ff88';
+                this.platforms.forEach(platform => {
+                    this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                    
+                    // 科幻发光效果
+                    this.ctx.shadowColor = '#00ff88';
+                    this.ctx.shadowBlur = 10;
+                    this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                    this.ctx.shadowBlur = 0;
+                });
+
+                // 绘制星星
+                this.stars.forEach(star => {
+                    if (!star.collected) {
+                        this.ctx.fillStyle = '#ffff00';
+                        this.ctx.beginPath();
+                        this.drawStar(star.x, star.y, 10, 5, 5);
+                        this.ctx.fill();
+                        
+                        // 发光效果
+                        this.ctx.shadowColor = '#ffff00';
+                        this.ctx.shadowBlur = 15;
+                        this.ctx.fill();
+                        this.ctx.shadowBlur = 0;
+                    }
+                });
+
+                // 绘制目标
+                this.ctx.fillStyle = config.color;
+                this.ctx.beginPath();
+                this.ctx.arc(this.goal.x + this.goal.width/2, this.goal.y + this.goal.height/2, 25, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                this.ctx.shadowColor = config.color;
+                this.ctx.shadowBlur = 20;
+                this.ctx.fill();
+                this.ctx.shadowBlur = 0;
+
+                // 绘制玩家 - 详细的小浣熊形象
+                this.drawRaccoon(this.ctx, this.player.x + this.player.width/2, this.player.y + this.player.height, this.player.animationTime, this.player.direction);
+                
+                // 科幻风格发光效果
+                this.ctx.shadowColor = '#ff6b6b';
+                this.ctx.shadowBlur = 15;
+                this.drawRaccoon(this.ctx, this.player.x + this.player.width/2, this.player.y + this.player.height, this.player.animationTime, this.player.direction);
+                this.ctx.shadowBlur = 0;
+
+                // 黑暗模式效果（关卡14）
+                if (this.isDarkMode) {
+                    // 先画一层半透明黑色
+                    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+                    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                    
+                    // 在玩家周围挖一个洞，露出游戏内容
+                    this.ctx.globalCompositeOperation = 'destination-out';
+                    this.ctx.beginPath();
+                    
+                    // 玩家周围的可见区域（圆形光圈）
+                    const centerX = this.player.x + this.player.width/2;
+                    const centerY = this.player.y + this.player.height/2;
+                    const radius = 120; // 可见光圈半径
+                    
+                    this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // 还原绘制模式
+                    this.ctx.globalCompositeOperation = 'source-over';
+                    
+                    // 在光圈边缘添加柔和的过渡效果
+                    const gradient = this.ctx.createRadialGradient(
+                        centerX, centerY, radius * 0.8,
+                        centerX, centerY, radius
+                    );
+                    gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+                    gradient.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
+                    
+                    this.ctx.fillStyle = gradient;
+                    this.ctx.beginPath();
+                    this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // 绘制黑暗模式提示
+                    this.ctx.fillStyle = '#ff6b6b';
+                    this.ctx.font = 'bold 16px Orbitron';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText('黑暗试炼 - 只能看到光圈内的内容!', this.canvas.width / 2, 30);
+                }
+
+                // 恐怖模式效果（关卡15）
+                if (this.isHorrorMode) {
+                    // 血红色覆盖层 - 更强的恐怖效果
+                    const horrorOpacity = 0.2 + Math.random() * 0.4;
+                    this.ctx.fillStyle = `rgba(255, 0, 0, ${horrorOpacity})`;
+                    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                    
+                    // 添加黑暗血雾效果
+                    this.ctx.fillStyle = `rgba(139, 0, 0, 0.1)`;
+                    for (let i = 0; i < 5; i++) {
+                        const x = (i * 150 + Math.sin(this.time * 2 + i) * 50) % this.canvas.width;
+                        const y = (i * 80 + Math.cos(this.time * 3 + i) * 30) % this.canvas.height;
+                        this.ctx.beginPath();
+                        this.ctx.arc(x, y, 100 + Math.sin(this.time * 4 + i) * 30, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    }
+                    
+                    // 玩家移动摇摆效果
+                    const shakeX = Math.sin(this.time * 15) * 2;
+                    const shakeY = Math.cos(this.time * 12) * 1;
+                    
+                    // 平台消失恐怖效果
+                    this.platforms.forEach((platform, index) => {
+                        const flickerIntensity = Math.sin(this.time * 8 + index) * 0.5 + 0.5;
+                        
+                        // 随机平台消失效果（30%概率）
+                        const shouldDisappear = Math.random() < 0.3 && Math.sin(this.time * 3 + index) > 0.8;
+                        
+                        if (!shouldDisappear) {
+                            this.ctx.fillStyle = `rgba(255, 0, 0, ${0.8 + flickerIntensity * 0.2})`;
+                            this.ctx.fillRect(platform.x + shakeX, platform.y + shakeY, platform.width, platform.height);
+                            
+                            // 添加恐怖裂纹效果
+                            this.ctx.strokeStyle = `rgba(139, 0, 0, ${0.6 + flickerIntensity * 0.4})`;
+                            this.ctx.lineWidth = 1;
+                            this.ctx.beginPath();
+                            const crackCount = 2 + Math.floor(Math.random() * 3);
+                            for (let crack = 0; crack < crackCount; crack++) {
+                                const startX = platform.x + shakeX + Math.random() * platform.width;
+                                const startY = platform.y + shakeY;
+                                this.ctx.moveTo(startX, startY);
+                                for (let segment = 0; segment < 4; segment++) {
+                                    const nextX = startX + (Math.random() - 0.5) * 20;
+                                    const nextY = startY + (segment + 1) * (platform.height / 4);
+                                    this.ctx.lineTo(nextX, nextY);
+                                }
+                            }
+                            this.ctx.stroke();
+                        } else {
+                            // 消失的平台用虚线轮廓表示
+                            this.ctx.strokeStyle = `rgba(255, 100, 100, ${0.5 + flickerIntensity * 0.5})`;
+                            this.ctx.lineWidth = 2;
+                            this.ctx.setLineDash([5, 5]);
+                            this.ctx.strokeRect(platform.x + shakeX, platform.y + shakeY, platform.width, platform.height);
+                            this.ctx.setLineDash([]); // 重置虚线
+                        }
+                    });
+                    
+                    // 星星闪烁效果
+                    this.stars.forEach(star => {
+                        if (!star.collected) {
+                            const flickerIntensity = Math.sin(this.time * 12) * 0.3 + 0.7;
+                            this.ctx.fillStyle = `rgba(255, 255, 0, ${flickerIntensity})`;
+                            this.ctx.beginPath();
+                            this.drawStar(star.x + shakeX, star.y + shakeY, 10, 5, 5);
+                            this.ctx.fill();
+                            
+                            // 星星周围恐怖光环
+                            this.ctx.strokeStyle = `rgba(255, 0, 0, ${0.3 + flickerIntensity * 0.3})`;
+                            this.ctx.lineWidth = 2;
+                            this.ctx.beginPath();
+                            this.ctx.arc(star.x + shakeX, star.y + shakeY, 15, 0, Math.PI * 2);
+                            this.ctx.stroke();
+                        }
+                    });
+                    
+                    // 目标血红色闪烁
+                    const goalFlicker = Math.sin(this.time * 6) * 0.2 + 0.8;
+                    this.ctx.fillStyle = `rgba(255, 0, 0, ${goalFlicker})`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(this.goal.x + this.goal.width/2 + shakeX, this.goal.y + this.goal.height/2 + shakeY, 25, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // 目标周围血滴效果
+                    if (Math.sin(this.time * 8) > 0.9) {
+                        for (let i = 0; i < 3; i++) {
+                            const dropX = this.goal.x + this.goal.width/2 + shakeX + (Math.random() - 0.5) * 40;
+                            const dropY = this.goal.y + this.goal.height/2 + shakeY + 20 + Math.random() * 30;
+                            this.ctx.fillStyle = `rgba(255, 0, 0, 0.6)`;
+                            this.ctx.beginPath();
+                            this.ctx.arc(dropX, dropY, 3 + Math.random() * 4, 0, Math.PI * 2);
+                            this.ctx.fill();
+                        }
+                    }
+                    
+                    // 玩家摇摆效果
+                    this.drawRaccoon(this.ctx, this.player.x + this.player.width/2 + shakeX, this.player.y + this.player.height + shakeY, this.player.animationTime, this.player.direction);
+                    
+                    // 玩家周围恐怖光环
+                    this.ctx.strokeStyle = `rgba(255, 0, 0, 0.4)`;
+                    this.ctx.lineWidth = 2;
+                    this.ctx.shadowColor = '#ff0000';
+                    this.ctx.shadowBlur = 5;
+                    this.ctx.beginPath();
+                    this.ctx.arc(this.player.x + this.player.width/2 + shakeX, this.player.y + this.player.height/2 + shakeY, 30, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                    this.ctx.shadowBlur = 0;
+                    
+                    // 恐怖文字效果 - 移至右下角并缩小
+                    this.ctx.fillStyle = '#ff0000';
+                    this.ctx.font = 'bold 14px Orbitron';
+                    this.ctx.textAlign = 'right';
+                    this.ctx.shadowColor = '#ff0000';
+                    this.ctx.shadowBlur = 8;
+                    this.ctx.fillText('⚠️ 终极挑战 ⚠️', this.canvas.width - 10, 20);
+                    this.ctx.fillText(`时间: ${Math.ceil(this.timeRemaining)}秒`, this.canvas.width - 10, 40);
+                    this.ctx.fillText('平台随机消失!', this.canvas.width - 10, 60);
+                    
+                    // 添加恐怖背景噪音点
+                    for (let i = 0; i < 20; i++) {
+                        const noiseX = (i * 50 + Math.sin(this.time * 10 + i) * 25) % this.canvas.width;
+                        const noiseY = (i * 30 + Math.cos(this.time * 8 + i) * 20) % this.canvas.height;
+                        this.ctx.fillStyle = `rgba(255, ${Math.floor(Math.random() * 50)}, ${Math.floor(Math.random() * 50)}, 0.3)`;
+                        this.ctx.fillRect(noiseX, noiseY, 1, 1);
+                    }
+                    
+                    this.ctx.shadowBlur = 0;
+                    
+                    // 警告边界
+                    this.ctx.strokeStyle = '#ff0000';
+                    this.ctx.lineWidth = 3;
+                    this.ctx.shadowColor = '#ff0000';
+                    this.ctx.shadowBlur = 15;
+                    this.ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
+                    this.ctx.shadowBlur = 0;
+                }
+            }
+
+            drawStar(x, y, outerRadius, innerRadius, points) {
+                const step = Math.PI / points;
+                this.ctx.beginPath();
+                for (let i = 0; i < 2 * points; i++) {
+                    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                    const angle = i * step - Math.PI / 2;
+                    const xPos = x + Math.cos(angle) * radius;
+                    const yPos = y + Math.sin(angle) * radius;
+                    if (i === 0) this.ctx.moveTo(xPos, yPos);
+                    else this.ctx.lineTo(xPos, yPos);
+                }
+                this.ctx.closePath();
+            }
+
+            drawRaccoon(ctx, x, y, time, direction = 1) {
+                const bodyColor = '#4A3F35';      // 深灰色主体
+                const grayColor = '#A89C93';      // 浅灰色斑纹
+                const blackColor = '#000000';     // 纯黑色
+                const whiteColor = '#FFFFFF';     // 纯白色
+                
+                // 腿部动画偏移
+                const legOffset = Math.sin(time * 5) * 2;
+                
+                // 根据方向翻转浣熊（direction = -1表示向左）
+                const flipScale = direction;
+                
+                ctx.save();
+                // 先移动到绘制位置，再应用翻转
+                ctx.translate(x, 0);
+                ctx.scale(flipScale, 1);
+                // 在原点绘制浣熊
+                const drawX = 0;
+                const drawY = y;
+                
+                // 绘制浣熊的标志性长尾巴
+                ctx.fillStyle = grayColor;
+                ctx.beginPath();
+                ctx.ellipse(drawX - 25, drawY - 35, 10, 30, 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 尾巴的黑色条纹（浣熊特征）
+                ctx.fillStyle = blackColor;
+                for (let i = 0; i < 4; i++) {
+                    const tailY = drawY - 50 + i * 12;
+                    ctx.beginPath();
+                    ctx.ellipse(drawX - 25, tailY, 8, 6, 0.2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // 绘制更圆胖的身体
+                ctx.fillStyle = bodyColor;
+                ctx.beginPath();
+                ctx.ellipse(drawX, drawY - 20, 22, 18, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 绘制浅色的腹部
+                ctx.fillStyle = grayColor;
+                ctx.beginPath();
+                ctx.ellipse(drawX, drawY - 15, 16, 12, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 绘制更圆的头部
+                ctx.fillStyle = bodyColor;
+                ctx.beginPath();
+                ctx.ellipse(drawX + 12, drawY - 35, 14, 12, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 浣熊的标志性"眼罩"（黑色区域）
+                ctx.fillStyle = blackColor;
+                ctx.beginPath();
+                ctx.ellipse(drawX + 6, drawY - 35, 8, 6, 0, 0, Math.PI * 2);
+                ctx.ellipse(drawX + 18, drawY - 35, 8, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 眼罩内的白色小眼睛
+                ctx.fillStyle = whiteColor;
+                ctx.beginPath();
+                ctx.ellipse(drawX + 6, drawY - 35, 3, 2, 0, 0, Math.PI * 2);
+                ctx.ellipse(drawX + 18, drawY - 35, 3, 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 眼珠（黑色小点）
+                ctx.fillStyle = blackColor;
+                ctx.beginPath();
+                ctx.arc(drawX + 6, drawY - 35, 1, 0, Math.PI * 2);
+                ctx.arc(drawX + 18, drawY - 35, 1, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 浣熊的黑白相间脸部
+                ctx.fillStyle = whiteColor;
+                ctx.beginPath();
+                ctx.ellipse(drawX + 12, drawY - 28, 8, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 黑色鼻子
+                ctx.fillStyle = blackColor;
+                ctx.beginPath();
+                ctx.arc(drawX + 12, drawY - 28, 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 嘴巴线条
+                ctx.strokeStyle = blackColor;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(drawX + 12, drawY - 26);
+                ctx.lineTo(drawX + 12, drawY - 24);
+                ctx.stroke();
+                
+                // 小耳朵（比猫更圆）
+                ctx.fillStyle = bodyColor;
+                ctx.beginPath();
+                ctx.arc(drawX + 6, drawY - 42, 5, 0, Math.PI * 2);
+                ctx.arc(drawX + 18, drawY - 42, 5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 耳朵内侧
+                ctx.fillStyle = grayColor;
+                ctx.beginPath();
+                ctx.arc(drawX + 6, drawY - 42, 3, 0, Math.PI * 2);
+                ctx.arc(drawX + 18, drawY - 42, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 较粗的腿部
+                ctx.fillStyle = bodyColor;
+                
+                // 后腿（更粗壮）
+                ctx.beginPath();
+                ctx.ellipse(drawX - 10, drawY - 7 + legOffset, 5, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 前腿
+                ctx.beginPath();
+                ctx.ellipse(drawX + 10, drawY - 7 - legOffset, 5, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 小爪子
+                ctx.fillStyle = blackColor;
+                for (let i = -1; i <= 1; i++) {
+                    ctx.beginPath();
+                    ctx.arc(drawX - 10 + i * 2, drawY + 2 + legOffset, 1, 0, Math.PI * 2);
+                    ctx.arc(drawX + 10 + i * 2, drawY + 2 - legOffset, 1, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            }
+
+            gameLoop() {
+                this.update();
+                this.draw();
+                if (this.gameRunning) {
+                    requestAnimationFrame(() => this.gameLoop());
+                }
+            }
+
+            backToLevelSelect() {
+                this.currentScreen = 'levelSelect';
+                document.querySelector('.sci-fi-container').style.display = 'block';
+                document.getElementById('gameScreen').style.display = 'none';
+                document.getElementById('resultScreen').style.display = 'none';
+                this.updateLevelDisplay();
+            }
+
+            restartLevel() {
+                document.getElementById('resultScreen').style.display = 'none';
+                this.initLevel(this.currentLevel);
+                this.gameLoop();
+            }
+
+            nextLevel() {
+                document.getElementById('resultScreen').style.display = 'none';
+                this.startLevel(this.currentLevel + 1);
+            }
+
+            setupEventListeners() {
+                // 添加事件源追踪
+                this.inputSources = {}; // 追踪每个键的输入来源
+                
+                // 控制状态指示器
+                const statusElement = document.getElementById('inputStatus');
+                let statusTimeout;
+                
+                const showStatus = (message, color = '#00ff88') => {
+                    if (statusElement) {
+                        statusElement.textContent = message;
+                        statusElement.style.color = color;
+                        statusElement.style.display = 'block';
+                        clearTimeout(statusTimeout);
+                        statusTimeout = setTimeout(() => {
+                            statusElement.style.display = 'none';
+                        }, 1000);
+                    }
+                };
+                
+                // 键盘控制 - 支持方向键和WASD
+                document.addEventListener('keydown', (e) => {
+                    // 将WASD映射到对应的方向键
+                    const keyMap = {
+                        'a': 'ArrowLeft',
+                        'd': 'ArrowRight', 
+                        'w': 'ArrowUp',
+                        's': 'ArrowDown',
+                        ' ': 'ArrowUp',  // 空格键也用于跳跃
+                        'Escape': 'Escape'
+                    };
+                    
+                    const key = keyMap[e.key.toLowerCase()] || e.key;
+                    
+                    // 只有在没有其他来源占用时才设置键盘状态
+                    if (!this.inputSources[key] || this.inputSources[key] === 'keyboard') {
+                        this.keys[key] = true;
+                        this.inputSources[key] = 'keyboard';
+                    }
+                    
+                    if (e.key === 'Escape') {
+                        this.backToLevelSelect();
+                    }
+                    
+                    // 防止方向键滚动页面
+                    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' '].includes(e.key)) {
+                        e.preventDefault();
+                    }
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    const keyMap = {
+                        'a': 'ArrowLeft',
+                        'd': 'ArrowRight', 
+                        'w': 'ArrowUp',
+                        's': 'ArrowDown',
+                        ' ': 'ArrowUp'
+                    };
+                    
+                    const key = keyMap[e.key.toLowerCase()] || e.key;
+                    
+                    // 只有键盘源释放时才清除状态
+                    if (this.inputSources[key] === 'keyboard') {
+                        this.keys[key] = false;
+                        this.inputSources[key] = null;
+                    }
+                });
+                
+                // 虚拟控制 - 改进版
+                document.querySelectorAll('.control-btn').forEach(btn => {
+                    const key = btn.dataset.key;
+                    if (!key) return;
+                    
+                    // 清理任何现有的事件监听器
+                    btn.removeEventListener('touchstart', this.touchStartHandler);
+                    btn.removeEventListener('touchend', this.touchEndHandler);
+                    
+                    // 创建事件处理器
+                    this.touchStartHandler = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // 虚拟按钮输入（优先级较低）
+                        this.keys[key] = true;
+                        this.inputSources[key] = 'touch';
+                        btn.style.transform = 'scale(0.9)';
+                        
+                        // 显示状态反馈
+                        showStatus('触屏控制: ' + key, '#ff6b6b');
+                    };
+                    
+                    this.touchEndHandler = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // 只有是虚拟按钮源时才清除状态
+                        if (this.inputSources[key] === 'touch') {
+                            this.keys[key] = false;
+                            this.inputSources[key] = null;
+                        }
+                        btn.style.transform = '';
+                    };
+                    
+                    btn.addEventListener('touchstart', this.touchStartHandler, { passive: false });
+                    btn.addEventListener('touchend', this.touchEndHandler, { passive: false });
+                    btn.addEventListener('touchcancel', this.touchEndHandler, { passive: false });
+                });
+                
+                // 添加窗口焦点事件，清理所有状态
+                window.addEventListener('blur', () => {
+                    // 失去焦点时清理所有键盘状态
+                    Object.keys(this.keys).forEach(key => {
+                        this.keys[key] = false;
+                        this.inputSources[key] = null;
+                    });
+                });
+                
+                // 监听键盘事件，提供反馈
+                document.addEventListener('keydown', (e) => {
+                    const keyMap = {
+                        'a': 'ArrowLeft', 'd': 'ArrowRight', 'w': 'ArrowUp', 's': 'ArrowDown', ' ': 'ArrowUp'
+                    };
+                    const displayKey = keyMap[e.key.toLowerCase()] || e.key;
+                    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' '].includes(e.key)) {
+                        showStatus('键盘控制: ' + displayKey);
+                    }
+                });
+            }
+
+            init() {
+                this.createStars();
+                this.setupEventListeners();
+                this.updateLevelDisplay();
+                console.log('🚀 科幻浣熊游戏初始化完成 - 关卡11-15');
+            }
+        }
+
+        // 启动游戏
+        const game = new SciFiRaccoonGame();
+    </script>
+</body>
+</html>

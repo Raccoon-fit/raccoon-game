@@ -1,0 +1,1918 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小浣熊冒险记 - 高级关卡</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Baloo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* 高级关卡专用样式 - 移动端优化 */
+        .advanced-levels {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            max-width: 100vw;
+            overflow-x: hidden;
+        }
+        
+        /* 选关界面悬浮显示 - 遮挡背景 */
+        #levelSelect .container {
+            position: relative;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 20px auto;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            max-width: 95vw;
+        }
+        
+        /* 选关界面标题悬浮效果 */
+        #levelSelect .advanced-title {
+            position: relative;
+            z-index: 101;
+            text-shadow: 0 3px 6px rgba(0,0,0,0.3);
+        }
+        
+        #levelSelect .subtitle {
+            position: relative;
+            z-index: 101;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .advanced-title {
+            background: linear-gradient(45deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 2em;
+            text-align: center;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .difficulty-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 3px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .difficulty-easy { background: #2ecc71; }
+        .difficulty-normal { background: #f39c12; }
+        .difficulty-hard { background: #e74c3c; }
+        .difficulty-expert { background: #8e44ad; }
+        .difficulty-nightmare { background: #2c3e50; }
+        
+        .level-card {
+            position: relative;
+            background: linear-gradient(145deg, rgba(255,255,255,0.98), rgba(240,240,240,0.95));
+            border-radius: 15px;
+            padding: 15px;
+            margin: 10px;
+            min-height: 120px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid transparent;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            backdrop-filter: blur(15px);
+            overflow: hidden;
+            /* 悬浮效果增强 */
+            z-index: 10;
+            transform: translateZ(0);
+        }
+        
+        .level-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+        
+        .level-card:hover::before {
+            transform: translateX(100%);
+        }
+        
+        .level-card:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+        }
+        
+        .level-card.unlocked {
+            border: 2px solid #3498db;
+            animation: pulse-glow 2s infinite;
+        }
+        
+        .level-card.completed {
+            border: 2px solid #2ecc71;
+            background: linear-gradient(145deg, rgba(46, 204, 113, 0.1), rgba(255,255,255,0.95));
+        }
+        
+        .level-card.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 6px 20px rgba(52, 152, 219, 0.3); }
+            50% { box-shadow: 0 6px 20px rgba(52, 152, 219, 0.6); }
+        }
+        
+        .level-card .color-indicator {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 6px;
+            height: 100%;
+            border-radius: 15px 0 0 15px;
+        }
+        
+        .color-purple { background: linear-gradient(45deg, #9b59b6, #8e44ad); }
+        .color-blue { background: linear-gradient(45deg, #3498db, #2980b9); }
+        .color-green { background: linear-gradient(45deg, #2ecc71, #27ae60); }
+        .color-red { background: linear-gradient(45deg, #e74c3c, #c0392b); }
+        .color-gold { background: linear-gradient(45deg, #f1c40f, #f39c12); }
+        
+        /* 屏幕控制样式 */
+        .screen {
+            display: none;
+        }
+        
+        .screen.active {
+            display: block;
+        }
+        
+        .back-button {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 101;
+            background: linear-gradient(145deg, rgba(0,0,0,0.8), rgba(50,50,50,0.8));
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .back-button:hover {
+            background: linear-gradient(145deg, rgba(0,0,0,0.9), rgba(50,50,50,0.9));
+            transform: scale(1.05);
+        }
+        
+        .game-stats {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 101;
+            background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(250,250,250,0.9));
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .stat-item {
+            margin: 3px 0;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        /* 游戏界面布局 */
+        .game-screen {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        }
+        
+        .game-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            position: relative;
+        }
+        
+        #maxGameCanvas {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+        }
+        
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .level-info {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(145deg, rgba(0,0,0,0.8), rgba(30,30,30,0.8));
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            gap: 15px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        /* 虚拟按键 - 创新设计 */
+        .virtual-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            justify-content: space-between;
+            width: 90%;
+            max-width: 400px;
+            z-index: 1000;
+            pointer-events: all;
+        }
+        
+        .control-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .virtual-button {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(200,200,200,0.9));
+            border: 3px solid rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .virtual-button:active {
+            transform: scale(0.9);
+            background: linear-gradient(145deg, rgba(100,255,100,0.9), rgba(150,200,150,0.9));
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        
+        .direction-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            gap: 5px;
+            width: 120px;
+            height: 120px;
+        }
+        
+        .direction-btn {
+            width: 35px;
+            height: 35px;
+            background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(200,200,200,0.9));
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(10px);
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .direction-btn:active {
+            transform: scale(0.9);
+            background: linear-gradient(145deg, rgba(100,255,100,0.9), rgba(150,200,150,0.9));
+        }
+        
+        .action-btn {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(145deg, rgba(255,100,100,0.9), rgba(200,100,100,0.9));
+            border: 3px solid rgba(255,100,100,0.3);
+            border-radius: 50%;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .jump-btn {
+            background: linear-gradient(145deg, rgba(100,100,255,0.9), rgba(100,100,200,0.9));
+            border: 3px solid rgba(100,100,255,0.3);
+        }
+        
+        /* 胜利界面悬浮显示 - 遮挡游戏画面 */
+        .win-content {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            background: linear-gradient(145deg, rgba(255,255,255,0.98), rgba(250,250,250,0.95));
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            backdrop-filter: blur(25px);
+            border: 2px solid rgba(255,255,255,0.3);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+            /* 添加视口居中优化 */
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            margin: 0 auto;
+        }
+        
+        .stars-earned {
+            font-size: 2em;
+            margin: 20px 0;
+        }
+        
+        .win-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .win-buttons button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .win-buttons button:first-child {
+            background: linear-gradient(145deg, #3498db, #2980b9);
+            color: white;
+        }
+        
+        .win-buttons button:nth-child(2) {
+            background: linear-gradient(145deg, #2ecc71, #27ae60);
+            color: white;
+        }
+        
+        .win-buttons button:last-child {
+            background: linear-gradient(145deg, #95a5a6, #7f8c8d);
+            color: white;
+        }
+        
+        .win-buttons button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .level-card {
+                margin: 8px;
+                padding: 12px;
+                min-height: 100px;
+            }
+            
+            .advanced-title {
+                font-size: 1.8em;
+            }
+            
+            .virtual-button {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+            
+            .action-btn {
+                width: 70px;
+                height: 70px;
+                font-size: 16px;
+            }
+            
+            .direction-btn {
+                width: 30px;
+                height: 30px;
+                font-size: 14px;
+            }
+            
+            .level-info {
+                font-size: 12px;
+                padding: 8px 16px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .level-card {
+                margin: 5px;
+                padding: 10px;
+                min-height: 90px;
+            }
+            
+            .advanced-title {
+                font-size: 1.5em;
+            }
+            
+            .game-stats {
+                top: 10px;
+                right: 10px;
+                padding: 8px;
+            }
+            
+            .back-button {
+                top: 10px;
+                left: 10px;
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body class="advanced-levels">
+    <!-- 返回按钮 -->
+    <a href="index.html" class="back-button">← 返回主页面</a>
+    
+    <!-- 游戏统计 -->
+    <div class="game-stats">
+        <div class="stat-item">⭐ 总星星: <span id="totalStars">0</span>/15</div>
+        <div class="stat-item">✅ 完成关卡: <span id="completedLevels">0</span>/5</div>
+        <div class="stat-item">🏆 最高难度: <span id="maxDifficulty">-</span></div>
+    </div>
+    
+    <!-- 选关界面 -->
+    <div id="levelSelect" class="screen active">
+        <div class="container">
+            <h1 class="advanced-title">小浣熊冒险记 - 高级关卡</h1>
+            <p class="subtitle">终极挑战等待着你！</p>
+            
+            <!-- 调试和重置按钮 -->
+            <div style="text-align: center; margin: 20px 0;">
+                <button onclick="simpleReset()" style="background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin: 0 10px;">
+                    🔄 简单重置
+                </button>
+                <button onclick="clearAllData()" style="background: #e67e22; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin: 0 10px;">
+                    🗑️ 清除所有
+                </button>
+                <button onclick="showStatus()" style="background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin: 0 10px;">
+                    ℹ️ 状态信息
+                </button>
+            </div>
+            
+            <div class="level-grid">
+                <!-- 第6关：紫色 - 终极挑战 -->
+                <div class="level-card unlocked" data-level="6" data-difficulty="normal">
+                    <div class="color-indicator color-purple"></div>
+                    <div class="difficulty-badge difficulty-normal">NORMAL</div>
+                    <div class="level-icon">💜</div>
+                    <div class="level-number">第 6 关</div>
+                    <div class="level-name">终极挑战</div>
+                    <div class="level-stars"></div>
+                    <div class="level-status">可游玩</div>
+                </div>
+                
+                <!-- 第7关：蓝色 - 多人合作 -->
+                <div class="level-card locked" data-level="7" data-difficulty="hard">
+                    <div class="color-indicator color-blue"></div>
+                    <div class="difficulty-badge difficulty-hard">HARD</div>
+                    <div class="level-icon">💙</div>
+                    <div class="level-number">第 7 关</div>
+                    <div class="level-name">多人合作</div>
+                    <div class="level-stars"></div>
+                    <div class="level-status">需要完成第6关</div>
+                </div>
+                
+                <!-- 第8关：绿色 - 时间挑战 -->
+                <div class="level-card locked" data-level="8" data-difficulty="hard">
+                    <div class="color-indicator color-green"></div>
+                    <div class="difficulty-badge difficulty-hard">HARD</div>
+                    <div class="level-icon">💚</div>
+                    <div class="level-number">第 8 关</div>
+                    <div class="level-name">时间挑战</div>
+                    <div class="level-stars"></div>
+                    <div class="level-status">需要完成第7关</div>
+                </div>
+                
+                <!-- 第9关：红色 - 解谜关卡 -->
+                <div class="level-card locked" data-level="9" data-difficulty="expert">
+                    <div class="color-indicator color-red"></div>
+                    <div class="difficulty-badge difficulty-expert">EXPERT</div>
+                    <div class="level-icon">💛</div>
+                    <div class="level-number">第 9 关</div>
+                    <div class="level-name">解谜关卡</div>
+                    <div class="level-stars"></div>
+                    <div class="level-status">需要完成第8关</div>
+                </div>
+                
+                <!-- 第10关：金色 - 最终boss (通关后显示) -->
+                <div class="level-card locked" data-level="10" data-difficulty="nightmare" style="display: none;">
+                    <div class="color-indicator color-gold"></div>
+                    <div class="difficulty-badge difficulty-nightmare">NIGHTMARE</div>
+                    <div class="level-icon">👑</div>
+                    <div class="level-number">第 10 关</div>
+                    <div class="level-name">最终Boss</div>
+                    <div class="level-stars"></div>
+                    <div class="level-status">需要完成第9关</div>
+                </div>
+                
+            <!-- Boss关卡提示 (通关前显示) -->
+            <div class="boss-hint-box" style="text-align: center; margin: 20px auto; padding: 20px; background: linear-gradient(135deg, #f1c40f 0%, #e67e22 100%); border-radius: 15px; color: #2c3e50; max-width: 500px;">
+                <div style="font-size: 2em; margin-bottom: 10px;">🏆</div>
+                <div style="font-size: 1.2em; font-weight: bold;">最终Boss关卡 - 完成第9关后解锁</div>
+                <div style="font-size: 0.9em; opacity: 0.8; margin-top: 5px;">完成前9关后，Boss关卡将自动出现在这里</div>
+            </div>
+                <button class="next-page-btn" onclick="goToNextPage()">下一页</button> 
+                <script> function goToNextPage() { 
+                    // 跳转到下一页 
+                window.location.href = "sci-fi-levels.html"; } 
+                </script>
+                <button class="next-page-btn" onclick="goToPage()">关卡编辑器</button>
+                <script> function goToPage() { 
+                    // 跳转关卡编辑器
+                window.location.href = "level_editor.html"; } 
+                </script>
+            </div>
+            
+        </div>
+    </div>
+    
+    <!-- 游戏界面 -->
+    <div id="gameScreen" class="screen game-screen">
+        <div class="game-container">
+            <canvas id="maxGameCanvas" width="800" height="600" style="max-width: 100%; max-height: 100%;"></canvas>
+            <div class="ui-overlay">
+                <div class="level-info">
+                    <span class="level-name-display">第 6 关 - 终极挑战</span>
+                    <span class="difficulty-display">难度: NORMAL</span>
+                    <span class="stars-display">⭐ 0/3</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 虚拟控制按钮 - 移动端优化 -->
+        <div class="virtual-controls">
+            <!-- 方向控制区 -->
+            <div class="control-group">
+                <div class="direction-controls">
+                    <div class="direction-btn" style="grid-area: 1 / 2;">↑</div>
+                    <div class="direction-btn" style="grid-area: 2 / 1;" data-key="ArrowLeft">←</div>
+                    <div class="direction-btn" style="grid-area: 2 / 2;" data-key="down">↓</div>
+                    <div class="direction-btn" style="grid-area: 2 / 3;" data-key="ArrowRight">→</div>
+                    <div class="direction-btn" style="grid-area: 3 / 2;">↓</div>
+                </div>
+            </div>
+            
+            <!-- 动作控制区 -->
+            <div class="control-group">
+                <div class="virtual-button jump-btn" data-key="ArrowUp">
+                    跳跃
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 胜利界面 -->
+    <div id="winScreen" class="screen">
+        <div class="win-content">
+            <h2>🎉 恭喜通过关卡！</h2>
+            <div class="stars-earned">⭐⭐⭐</div>
+            <p>你获得了 X 颗星星！</p>
+            <div class="win-buttons">
+                <button onclick="restartCurrentLevel()">重新开始</button>
+                <button onclick="goToNextLevel()">下一关</button>
+                <button onclick="backToLevelSelect()">返回选关</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 高级关卡游戏类
+        class AdvancedRaccoonAdventure {
+            constructor() {
+                this.canvas = document.getElementById('maxGameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.currentScreen = 'levelSelect';
+                this.currentLevel = 6;
+                this.gameState = 'playing';
+                this.keys = {};
+                this.time = 0;
+                this.gameSpeed = 1;
+                
+                // 初始化屏幕显示
+                this.switchScreen();
+                
+                // 进度管理
+                this.maxUnlockedLevel = 6;
+                this.levelStars = {6: 0, 7: 0, 8: 0, 9: 0, 10: 0};
+                this.initLevelProgress();
+                
+                // 关卡配置
+                this.levelConfig = {
+                    6: {
+                        name: '终极挑战',
+                        difficulty: 'normal',
+                        color: '#9b59b6',
+                        timeLimit: 45,
+                        maxStars: 3,
+                        description: '需要收集所有星星，避开障碍物'
+                    },
+                    7: {
+                        name: '多人合作',
+                        difficulty: 'hard',
+                        color: '#3498db',
+                        timeLimit: 60,
+                        maxStars: 3,
+                        description: '需要与多个角色配合完成任务'
+                    },
+                    8: {
+                        name: '时间挑战',
+                        difficulty: 'hard',
+                        color: '#2ecc71',
+                        timeLimit: 30,
+                        maxStars: 3,
+                        description: '在限定时间内完成所有目标'
+                    },
+                    9: {
+                        name: '解谜关卡',
+                        difficulty: 'expert',
+                        color: '#e74c3c',
+                        timeLimit: 90,
+                        maxStars: 3,
+                        description: '解开所有谜题才能通过'
+                    },
+                    10: {
+                        name: '最终boss',
+                        difficulty: 'nightmare',
+                        color: '#f1c40f',
+                        timeLimit: 120,
+                        maxStars: 3,
+                        description: '挑战最终boss，完成史诗般的冒险'
+                    }
+                };
+                
+                this.init();
+            }
+            
+            initLevelProgress() {
+                const savedProgress = localStorage.getItem('raccoon_adventure_advanced_progress');
+                if (savedProgress) {
+                    try {
+                        const progress = JSON.parse(savedProgress);
+                        this.maxUnlockedLevel = progress.maxUnlockedLevel || 6;
+                        this.levelStars = progress.levelStars || {6: 0, 7: 0, 8: 0, 9: 0, 10: 0};
+                        console.log('✅ 高级关卡进度恢复:', this.maxUnlockedLevel, '关已解锁');
+                    } catch (e) {
+                        console.log('⚠️ 进度数据损坏，使用默认进度');
+                        this.resetProgress();
+                    }
+                }
+                this.updateLevelDisplay();
+            }
+            
+            saveProgress() {
+                const progress = {
+                    maxUnlockedLevel: this.maxUnlockedLevel,
+                    levelStars: this.levelStars,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem('raccoon_adventure_advanced_progress', JSON.stringify(progress));
+            }
+            
+            resetProgress() {
+                this.maxUnlockedLevel = 6;
+                this.levelStars = {6: 0, 7: 0, 8: 0, 9: 0, 10: 0};
+                this.saveProgress();
+                this.updateLevelDisplay();
+            }
+            
+            updateLevelDisplay() {
+                // 更新关卡卡片状态
+                document.querySelectorAll('.level-card').forEach(card => {
+                    const level = parseInt(card.dataset.level);
+                    const stars = this.levelStars[level] || 0;
+                    const statusElement = card.querySelector('.level-status');
+                    const starsElement = card.querySelector('.level-stars');
+                    
+                    // 重置所有类
+                    card.classList.remove('unlocked', 'locked', 'completed');
+                    
+                    if (level <= this.maxUnlockedLevel) {
+                        card.classList.add('unlocked');
+                        if (stars > 0) {
+                            card.classList.add('completed');
+                        }
+                        statusElement.textContent = stars > 0 ? `已通过 (${stars}⭐)` : '可游玩';
+                    } else {
+                        card.classList.add('locked');
+                        statusElement.textContent = '需要完成前一关';
+                    }
+                    
+                    // 更新星星显示
+                    starsElement.innerHTML = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+                });
+                
+                // 特殊处理：第10关卡片的显示/隐藏逻辑
+                this.updateBossLevelDisplay();
+                
+                // 更新统计信息
+                const totalStars = Object.values(this.levelStars).reduce((sum, stars) => sum + stars, 0);
+                const completedLevels = Object.values(this.levelStars).filter(stars => stars > 0).length;
+                const maxDifficulty = this.getMaxDifficulty();
+                
+                document.getElementById('totalStars').textContent = totalStars;
+                document.getElementById('completedLevels').textContent = completedLevels;
+                document.getElementById('maxDifficulty').textContent = maxDifficulty;
+            }
+            
+            updateBossLevelDisplay() {
+                // 检查第9关是否完成
+                const level9Completed = this.levelStars[9] > 0;
+                const level10Card = document.querySelector('[data-level="10"]');
+                const bossHintBox = document.querySelector('.boss-hint-box');
+                
+                if (level10Card && bossHintBox) {
+                    if (level9Completed) {
+                        // 第9关已完成：显示第10关卡片，隐藏提示框
+                        level10Card.style.display = 'block';
+                        bossHintBox.style.display = 'none';
+                        
+                        // 更新第10关卡片的解锁状态
+                        if (this.maxUnlockedLevel >= 10) {
+                            level10Card.classList.remove('locked');
+                            level10Card.classList.add('unlocked');
+                            if (this.levelStars[10] > 0) {
+                                level10Card.classList.add('completed');
+                            }
+                        }
+                    } else {
+                        // 第9关未完成：隐藏第10关卡片，显示提示框
+                        level10Card.style.display = 'none';
+                        bossHintBox.style.display = 'block';
+                    }
+                }
+            }
+            
+            getMaxDifficulty() {
+                let max = '-';
+                for (let level = 6; level <= 10; level++) {
+                    if (this.levelStars[level] > 0) {
+                        const config = this.levelConfig[level];
+                        max = config.difficulty.toUpperCase();
+                    }
+                }
+                return max;
+            }
+            
+            init() {
+                console.log('🚀 初始化高级关卡游戏...');
+                
+                // 事件监听
+                this.setupEventListeners();
+                
+                // 初始显示
+                this.updateLevelDisplay();
+                
+                // 调试信息
+                console.log(`🎯 初始化完成 - 最大解锁关卡: ${this.maxUnlockedLevel}`);
+                console.log(`⭐ 关卡星星:`, this.levelStars);
+                
+                // 开始游戏循环
+                this.gameLoop();
+                
+                console.log('✅ 高级关卡游戏初始化完成');
+            }
+            
+            setupEventListeners() {
+                // 键盘控制
+                document.addEventListener('keydown', (e) => {
+                    this.keys[e.key] = true;
+                    if (e.key === 'Escape') {
+                        this.backToLevelSelect();
+                    }
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    this.keys[e.key] = false;
+                });
+                
+                // 关卡点击
+                document.querySelectorAll('.level-card').forEach(card => {
+                    card.addEventListener('click', () => {
+                        const level = parseInt(card.dataset.level);
+                        const config = this.levelConfig[level];
+                        
+                        console.log(`🖱️ 点击关卡: ${level}关, 最大解锁关卡: ${this.maxUnlockedLevel}`);
+                        console.log(`🔍 卡片状态: unlocked=${card.classList.contains('unlocked')}, locked=${card.classList.contains('locked')}, completed=${card.classList.contains('completed')}`);
+                        
+                        if (level <= this.maxUnlockedLevel) {
+                            console.log(`✅ 启动第${level}关: ${config.name}`);
+                            this.startLevel(level);
+                        } else {
+                            alert(`需要先完成第${level-1}关才能解锁此关卡！`);
+                        }
+                    });
+                });
+                
+                // 虚拟控制按钮
+                this.setupVirtualControls();
+            }
+            
+            setupVirtualControls() {
+                // 方向控制按钮
+                document.querySelectorAll('.direction-btn').forEach(btn => {
+                    const key = btn.dataset.key;
+                    if (!key) return;
+                    
+                    // 触摸开始
+                    btn.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        this.keys[key] = true;
+                        btn.style.transform = 'scale(0.9)';
+                    });
+                    
+                    // 触摸结束
+                    btn.addEventListener('touchend', (e) => {
+                        e.preventDefault();
+                        this.keys[key] = false;
+                        btn.style.transform = '';
+                    });
+                    
+                    // 鼠标事件（PC端）
+                    btn.addEventListener('mousedown', () => {
+                        this.keys[key] = true;
+                        btn.style.transform = 'scale(0.9)';
+                    });
+                    
+                    btn.addEventListener('mouseup', () => {
+                        this.keys[key] = false;
+                        btn.style.transform = '';
+                    });
+                    
+                    btn.addEventListener('mouseleave', () => {
+                        this.keys[key] = false;
+                        btn.style.transform = '';
+                    });
+                });
+                
+                // 跳跃按钮
+                document.querySelectorAll('.jump-btn').forEach(btn => {
+                    // 触摸事件
+                    btn.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        this.keys['ArrowUp'] = true;
+                        btn.style.transform = 'scale(0.9)';
+                    });
+                    
+                    btn.addEventListener('touchend', (e) => {
+                        e.preventDefault();
+                        this.keys['ArrowUp'] = false;
+                        btn.style.transform = '';
+                    });
+                    
+                    // 鼠标事件
+                    btn.addEventListener('mousedown', () => {
+                        this.keys['ArrowUp'] = true;
+                        btn.style.transform = 'scale(0.9)';
+                    });
+                    
+                    btn.addEventListener('mouseup', () => {
+                        this.keys['ArrowUp'] = false;
+                        btn.style.transform = '';
+                    });
+                    
+                    btn.addEventListener('mouseleave', () => {
+                        this.keys['ArrowUp'] = false;
+                        btn.style.transform = '';
+                    });
+                });
+                
+                // 防止触摸事件冲突
+                document.querySelectorAll('.virtual-button, .direction-btn').forEach(btn => {
+                    btn.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                    }, { passive: false });
+                });
+            }
+            
+            startLevel(level) {
+                this.currentLevel = level;
+                this.currentScreen = 'game';
+                this.gameState = 'playing';
+                this.time = 0;
+                
+                // 初始化关卡
+                this.initLevel(level);
+                
+                // 更新UI
+                this.updateGameUI();
+                
+                // 切换屏幕
+                this.switchScreen();
+            }
+            
+            initLevel(level) {
+                const config = this.levelConfig[level];
+                console.log(`🎯 初始化第${level}关: ${config.name}`);
+                
+                // 基础游戏对象
+                this.player = {
+                    x: 50,
+                    y: 500,
+                    width: 40,
+                    height: 40,
+                    vx: 0,
+                    vy: 0,
+                    speed: 4,
+                    jumpPower: -12,
+                    onGround: false,
+                    color: '#ff6b6b',
+                    animationTime: 0,
+                    direction: 1  // 1: 右, -1: 左
+                };
+                
+                this.goal = {
+                    x: 700,
+                    y: 500,
+                    width: 50,
+                    height: 50,
+                    color: '#2ecc71'
+                };
+                
+                // 收集物品（星星）
+                this.stars = [
+                    {x: 200, y: 450, collected: false},
+                    {x: 400, y: 350, collected: false},
+                    {x: 600, y: 450, collected: false}
+                ];
+                
+                // 平台
+                this.platforms = [
+                    {x: 150, y: 550, width: 120, height: 20},
+                    {x: 350, y: 450, width: 120, height: 20},
+                    {x: 550, y: 550, width: 120, height: 20}
+                ];
+                
+                // 特殊道具和障碍物
+                this.specialItems = [];
+                this.obstacles = [];
+                
+                // 关卡特定设置
+                this.setupLevelSpecific(level);
+            }
+            
+            setupLevelSpecific(level) {
+                switch (level) {
+                    case 6: // 终极挑战 - 移动平台
+                        this.platforms.push({
+                            x: 400, y: 350, width: 120, height: 15,
+                            moveSpeed: 3, moveDirection: 1, isMoving: true, minX: 300, maxX: 600
+                        });
+                        break;
+                        
+                    case 7: // 多人合作 - 多个目标
+                        this.goal = {x: 700, y: 450, width: 40, height: 40, color: '#3498db'};
+                        this.specialItems = [
+                            {x: 300, y: 500, type: 'key', collected: false},
+                            {x: 500, y: 400, type: 'door', collected: false, required: true}
+                        ];
+                        break;
+                        
+                    case 8: // 时间挑战 - 倒计时
+                        this.timeLimit = 30;
+                        this.timeRemaining = this.timeLimit;
+                        this.obstacles = [
+                            {x: 300, y: 500, width: 40, height: 100, type: 'spike'},
+                            {x: 500, y: 500, width: 40, height: 100, type: 'spike'}
+                        ];
+                        break;
+                        
+                    case 9: // 解谜关卡 - 密码门
+                        this.puzzle = {
+                            code: 'RAC',
+                            input: '',
+                            active: false
+                        };
+                        this.specialItems = [
+                            {x: 200, y: 500, type: 'clue', collected: false, text: 'R'},
+                            {x: 400, y: 400, type: 'clue', collected: false, text: 'A'},
+                            {x: 600, y: 500, type: 'clue', collected: false, text: 'C'}
+                        ];
+                        this.obstacles = [
+                            {x: 650, y: 450, width: 100, height: 100, type: 'puzzle_door', locked: true}
+                        ];
+                        break;
+                        
+                    case 10: // 最终boss - 复杂挑战
+                        this.boss = {
+                            x: 650, y: 300, width: 80, height: 80,
+                            health: 3, maxHealth: 3, color: '#8e44ad',
+                            attackCooldown: 0, pattern: 0
+                        };
+                        this.projectiles = [];
+                        this.timeLimit = 120;
+                        break;
+                }
+            }
+            
+            updateGameUI() {
+                const config = this.levelConfig[this.currentLevel];
+                document.querySelector('.level-name-display').textContent = 
+                    `第 ${this.currentLevel} 关 - ${config.name}`;
+                document.querySelector('.difficulty-display').textContent = 
+                    `难度: ${config.difficulty.toUpperCase()}`;
+                document.querySelector('.stars-display').textContent = 
+                    `⭐ ${this.stars.filter(s => s.collected).length}/3`;
+            }
+            
+            update() {
+                if (this.currentScreen !== 'game') return;
+                
+                this.time += 1/60; // 假设60FPS
+                
+                // 玩家物理
+                this.updatePlayer();
+                
+                // 碰撞检测
+                this.checkCollisions();
+                
+                // 特殊关卡逻辑
+                this.updateLevelSpecific();
+                
+                // 胜利检查
+                this.checkWinCondition();
+                
+                // 更新UI
+                this.updateGameUI();
+            }
+            
+            updatePlayer() {
+                // 水平移动
+                if (this.keys['ArrowLeft'] || this.keys['a'] || this.keys['A']) {
+                    this.player.x -= this.player.speed;
+                    this.player.direction = -1; // 向左转向
+                }
+                if (this.keys['ArrowRight'] || this.keys['d'] || this.keys['D']) {
+                    this.player.x += this.player.speed;
+                    this.player.direction = 1; // 向右转向
+                }
+                
+                // 跳跃
+                if ((this.keys['ArrowUp'] || this.keys['w'] || this.keys['W'] || this.keys[' ']) && this.player.onGround) {
+                    this.player.vy = this.player.jumpPower;
+                    this.player.onGround = false;
+                }
+                
+                // 重力
+                this.player.vy += 0.8;
+                this.player.y += this.player.vy;
+                
+                // 更新动画时间
+                this.player.animationTime += 0.1;
+                
+                // 边界检测
+                this.player.x = Math.max(0, Math.min(this.canvas.width - this.player.width, this.player.x));
+                
+                // 地面碰撞
+                this.player.onGround = false;
+                this.platforms.forEach(platform => {
+                    if (this.player.x < platform.x + platform.width &&
+                        this.player.x + this.player.width > platform.x &&
+                        this.player.y < platform.y + platform.height &&
+                        this.player.y + this.player.height > platform.y) {
+                        
+                        if (this.player.vy > 0) { // 下落
+                            this.player.y = platform.y - this.player.height;
+                            this.player.vy = 0;
+                            this.player.onGround = true;
+                        }
+                    }
+                });
+                
+                // 地面
+                if (this.player.y + this.player.height >= this.canvas.height) {
+                    this.player.y = this.canvas.height - this.player.height;
+                    this.player.vy = 0;
+                    this.player.onGround = true;
+                }
+                
+                // 移动平台
+                this.platforms.forEach(platform => {
+                    if (platform.isMoving) {
+                        platform.x += platform.moveSpeed * platform.moveDirection;
+                        if (platform.x <= 250 || platform.x >= 400) {
+                            platform.moveDirection *= -1;
+                        }
+                    }
+                });
+            }
+            
+            checkCollisions() {
+                // 星星收集
+                this.stars.forEach(star => {
+                    if (!star.collected &&
+                        this.player.x < star.x + 20 &&
+                        this.player.x + this.player.width > star.x &&
+                        this.player.y < star.y + 20 &&
+                        this.player.y + this.player.height > star.y) {
+                        star.collected = true;
+                        console.log('⭐ 收集星星!');
+                    }
+                });
+                
+                // 特殊物品收集
+                this.specialItems?.forEach(item => {
+                    if (!item.collected) {
+                        const itemSize = item.type === 'key' ? 30 : (item.type === 'door' ? 30 : 20);
+                        if (this.player.x < item.x + itemSize &&
+                            this.player.x + this.player.width > item.x &&
+                            this.player.y < item.y + itemSize &&
+                            this.player.y + this.player.height > item.y) {
+                            
+                            item.collected = true;
+                            if (item.type === 'key') {
+                                console.log('🔑 收集钥匙!');
+                            } else if (item.type === 'clue') {
+                                console.log(`🧩 收集线索: ${item.text}`);
+                            }
+                        }
+                    }
+                });
+                
+                // 目标检查
+                if (this.player.x < this.goal.x + this.goal.width &&
+                    this.player.x + this.player.width > this.goal.x &&
+                    this.player.y < this.goal.y + this.goal.height &&
+                    this.player.y + this.player.height > this.goal.y) {
+                    
+                    this.reachGoal();
+                }
+                
+                // 障碍物碰撞
+                this.obstacles?.forEach(obstacle => {
+                    if (this.player.x < obstacle.x + obstacle.width &&
+                        this.player.x + this.player.width > obstacle.x &&
+                        this.player.y < obstacle.y + obstacle.height &&
+                        this.player.y + this.player.height > obstacle.y) {
+                        
+                        this.hitObstacle(obstacle);
+                    }
+                });
+            }
+            
+            updateLevelSpecific() {
+                switch (this.currentLevel) {
+                    case 7: // 多人合作 - 钥匙门逻辑
+                        const keyItem = this.specialItems?.find(item => item.type === 'key');
+                        const doorItem = this.specialItems?.find(item => item.type === 'door');
+                        
+                        if (keyItem?.collected && doorItem) {
+                            doorItem.collected = true; // 门打开
+                        }
+                        break;
+                        
+                    case 8: // 时间挑战 - 倒计时
+                        if (this.timeLimit) {
+                            this.timeRemaining -= 1/60;
+                            if (this.timeRemaining <= 0) {
+                                this.loseLevel();
+                            }
+                        }
+                        break;
+                        
+                    case 9: // 解谜关卡 - 密码逻辑
+                        if (this.puzzle) {
+                            const collectedClues = this.specialItems?.filter(item => 
+                                item.type === 'clue' && item.collected).map(item => item.text) || [];
+                            
+                            if (collectedClues.length === 3) {
+                                this.puzzle.code = collectedClues.join('');
+                                this.puzzle.active = true;
+                                
+                                // 解锁谜题门
+                                const puzzleDoor = this.obstacles?.find(obs => obs.type === 'puzzle_door');
+                                if (puzzleDoor) {
+                                    puzzleDoor.locked = false;
+                                }
+                            }
+                        }
+                        break;
+                        
+                    case 10: // 最终boss
+                        this.updateBoss();
+                        this.updateProjectiles();
+                        break;
+                }
+            }
+            
+            updateBoss() {
+                if (!this.boss) return;
+                
+                this.boss.attackCooldown -= 1/60;
+                
+                // Boss移动模式
+                if (this.boss.attackCooldown <= 0) {
+                    this.bossPattern();
+                }
+                
+                // 玩家与Boss碰撞
+                if (this.player.x < this.boss.x + this.boss.width &&
+                    this.player.x + this.player.width > this.boss.x &&
+                    this.player.y < this.boss.y + this.boss.height &&
+                    this.player.y + this.player.height > this.boss.y) {
+                    
+                    this.playerTakeDamage();
+                }
+            }
+            
+            bossPattern() {
+                const pattern = this.boss.pattern % 3;
+                
+                switch (pattern) {
+                    case 0: // 射击模式 - 增加子弹数量和频率
+                        // 发射多颗子弹
+                        this.spawnProjectile(this.boss.x, this.boss.y + this.boss.height/2);
+                        this.spawnProjectile(this.boss.x, this.boss.y + this.boss.height/2 - 20);
+                        this.spawnProjectile(this.boss.x, this.boss.y + this.boss.height/2 + 20);
+                        this.spawnProjectile(this.boss.x, this.boss.y + this.boss.height/2 - 40);
+                        this.spawnProjectile(this.boss.x, this.boss.y + this.boss.height/2 + 40);
+                        this.boss.attackCooldown = 0.8; // 减少冷却时间
+                        break;
+                    case 1: // 跳跃攻击
+                        this.boss.y = Math.max(200, this.boss.y - 100);
+                        this.boss.attackCooldown = 1.2; // 减少冷却时间
+                        break;
+                    case 2: // 冲刺攻击
+                        this.boss.x += 150;
+                        this.boss.attackCooldown = 1.5; // 减少冷却时间
+                        break;
+                }
+                
+                this.boss.pattern++;
+            }
+            
+            spawnProjectile(x, y) {
+                this.projectiles.push({
+                    x: x,
+                    y: y,
+                    vx: -3,
+                    vy: 0,
+                    width: 10,
+                    height: 10,
+                    color: '#e74c3c'
+                });
+            }
+            
+            updateProjectiles() {
+                this.projectiles = this.projectiles.filter(projectile => {
+                    projectile.x += projectile.vx;
+                    projectile.y += projectile.vy;
+                    
+                    // 移除超出屏幕的弹幕
+                    return projectile.x > -50 && 
+                           projectile.x < this.canvas.width + 50 &&
+                           projectile.y > -50 && 
+                           projectile.y < this.canvas.height + 50;
+                });
+                
+                // 检查弹幕与玩家碰撞
+                this.projectiles.forEach(projectile => {
+                    if (this.player.x < projectile.x + projectile.width &&
+                        this.player.x + this.player.width > projectile.x &&
+                        this.player.y < projectile.y + projectile.height &&
+                        this.player.y + this.player.height > projectile.y) {
+                        this.playerTakeDamage();
+                    }
+                });
+            }
+            
+            playerTakeDamage() {
+                console.log('💥 玩家受伤!');
+                this.player.x = 50;
+                this.player.y = 500;
+                this.player.vx = 0;
+                this.player.vy = 0;
+            }
+            
+            hitObstacle(obstacle) {
+                if (obstacle.type === 'spike') {
+                    this.playerTakeDamage();
+                } else if (obstacle.type === 'puzzle_door' && obstacle.locked) {
+                    alert('门是锁着的！需要解开密码。');
+                }
+            }
+            
+            reachGoal() {
+                if (this.currentLevel === 6) {
+                    this.completeLevel();
+                } else {
+                    // 检查特殊关卡要求
+                    let canComplete = true;
+                    
+                    if (this.currentLevel === 7) {
+                        const doorItem = this.specialItems?.find(item => item.type === 'door');
+                        canComplete = doorItem?.collected || false;
+                    } else if (this.currentLevel === 9) {
+                        canComplete = this.puzzle?.active || false;
+                    } else if (this.currentLevel === 10) {
+                        // Boss关卡：需要收集所有星星或击败boss
+                        const collectedStars = this.stars.filter(s => s.collected).length;
+                        const totalStars = this.stars.length;
+                        canComplete = (this.boss?.health <= 0) || (collectedStars === totalStars);
+                    }
+                    
+                    if (canComplete) {
+                        this.completeLevel();
+                    } else {
+                        alert('还没完成所有要求！继续努力吧！');
+                    }
+                }
+            }
+            
+            checkWinCondition() {
+                if (this.currentLevel === 10) {
+                    const collectedStars = this.stars.filter(s => s.collected).length;
+                    const totalStars = this.stars.length;
+                    // Boss关卡：击败boss或收集所有星星都可以通关
+                    if (this.boss?.health <= 0 || collectedStars === totalStars) {
+                        this.completeLevel();
+                    }
+                }
+            }
+            
+            completeLevel() {
+                this.gameState = 'won';
+                console.log(`🎉 第${this.currentLevel}关完成!`);
+                
+                // 计算星星
+                const config = this.levelConfig[this.currentLevel];
+                const collectedStars = this.stars.filter(s => s.collected).length;
+                let earnedStars = 0;
+                
+                // 星星计算逻辑
+                if (this.currentLevel === 6) {
+                    earnedStars = collectedStars; // 简单收集
+                } else if (this.currentLevel === 7) {
+                    const keyCollected = this.specialItems?.find(item => item.type === 'key')?.collected || false;
+                    earnedStars = keyCollected ? 3 : Math.min(collectedStars, 2);
+                } else if (this.currentLevel === 8) {
+                    earnedStars = this.timeRemaining > 10 ? 3 : this.timeRemaining > 5 ? 2 : 1;
+                } else if (this.currentLevel === 9) {
+                    earnedStars = this.puzzle?.active ? 3 : Math.min(collectedStars, 2);
+                } else if (this.currentLevel === 10) {
+                    earnedStars = this.boss?.health === 0 ? 3 : 2;
+                }
+                
+                // 更新进度
+                this.levelStars[this.currentLevel] = Math.max(this.levelStars[this.currentLevel], earnedStars);
+                
+                // 解锁下一关
+                if (this.currentLevel < 10) {
+                    this.maxUnlockedLevel = Math.max(this.maxUnlockedLevel, this.currentLevel + 1);
+                }
+                
+                // 特殊处理：完成第9关时，解锁第10关
+                if (this.currentLevel === 9) {
+                    this.maxUnlockedLevel = Math.max(this.maxUnlockedLevel, 10);
+                }
+                
+                // 保存进度
+                this.saveProgress();
+                this.updateLevelDisplay();
+                
+                // 显示胜利界面
+                this.showWinScreen(earnedStars);
+            }
+            
+            showWinScreen(stars) {
+                // 第一步：立即清除游戏UI和画布
+                this.gameState = 'clearing';
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 停止游戏循环但保持对象状态
+                const savedCanvas = this.canvas;
+                const savedContext = this.ctx;
+                
+                // 第二步：延迟显示胜利界面，给用户一个清晰的视觉过渡
+                setTimeout(() => {
+                    this.currentScreen = 'win';
+                    const starsDisplay = document.querySelector('.stars-earned');
+                    if (starsDisplay) {
+                        starsDisplay.innerHTML = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+                    }
+                    const contentP = document.querySelector('.win-content p');
+                    if (contentP) {
+                        contentP.textContent = `你获得了 ${stars} 颗星星！`;
+                    }
+                    this.switchScreen();
+                }, 300); // 300ms的过渡时间
+            }
+            
+            loseLevel() {
+                this.gameState = 'lost';
+                alert('时间用完了！重新开始吧！');
+                this.startLevel(this.currentLevel);
+            }
+            
+            render() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 只在游戏状态为"playing"时渲染游戏内容
+                if (this.currentScreen === 'game' && this.gameState === 'playing') {
+                    this.renderGame();
+                }
+                // 如果是clearing状态，只清除画布不渲染内容
+            }
+            
+            renderGame() {
+                // 背景
+                const config = this.levelConfig[this.currentLevel];
+                this.ctx.fillStyle = this.hexToRgba(config.color, 0.1);
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 绘制平台
+                this.ctx.fillStyle = '#34495e';
+                this.platforms.forEach(platform => {
+                    this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                    
+                    // 移动平台指示器
+                    if (platform.isMoving) {
+                        this.ctx.fillStyle = '#e74c3c';
+                        this.ctx.fillRect(platform.x + 10, platform.y + 5, platform.width - 20, platform.height - 10);
+                        this.ctx.fillStyle = '#34495e';
+                    }
+                });
+                
+                // 绘制星星
+                this.ctx.fillStyle = '#f39c12';
+                this.stars.forEach(star => {
+                    if (!star.collected) {
+                        this.drawStar(star.x, star.y, 10, 5, 5);
+                    }
+                });
+                
+                // 绘制特殊物品
+                this.specialItems?.forEach(item => {
+                    if (!item.collected) {
+                        if (item.type === 'key') {
+                            this.ctx.fillStyle = '#f1c40f';
+                            this.ctx.beginPath();
+                            this.ctx.arc(item.x, item.y, 15, 0, Math.PI * 2);
+                            this.ctx.fill();
+                        } else if (item.type === 'door') {
+                            this.ctx.fillStyle = item.collected ? '#2ecc71' : '#e74c3c';
+                            this.ctx.fillRect(item.x, item.y, 30, 40);
+                        } else if (item.type === 'clue') {
+                            this.ctx.fillStyle = '#9b59b6';
+                            this.ctx.fillText(item.text, item.x, item.y);
+                        }
+                    }
+                });
+                
+                // 绘制障碍物
+                this.obstacles?.forEach(obstacle => {
+                    if (obstacle.type === 'spike') {
+                        this.ctx.fillStyle = '#e74c3c';
+                        for (let i = 0; i < obstacle.width; i += 10) {
+                            this.drawSpike(obstacle.x + i, obstacle.y, 10, obstacle.height);
+                        }
+                    } else if (obstacle.type === 'puzzle_door') {
+                        this.ctx.fillStyle = obstacle.locked ? '#8e44ad' : '#2ecc71';
+                        this.ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                    }
+                });
+                
+                // 绘制Boss
+                if (this.boss) {
+                    this.ctx.fillStyle = this.boss.color;
+                    this.ctx.fillRect(this.boss.x, this.boss.y, this.boss.width, this.boss.height);
+                    
+                    // Boss血条
+                    this.ctx.fillStyle = '#e74c3c';
+                    this.ctx.fillRect(this.boss.x, this.boss.y - 20, 
+                        (this.boss.health / this.boss.maxHealth) * this.boss.width, 10);
+                    this.ctx.strokeStyle = '#2c3e50';
+                    this.ctx.strokeRect(this.boss.x, this.boss.y - 20, this.boss.width, 10);
+                }
+                
+                // 绘制弹幕
+                this.projectiles?.forEach(projectile => {
+                    this.ctx.fillStyle = projectile.color;
+                    this.ctx.fillRect(projectile.x, projectile.y, projectile.width, projectile.height);
+                });
+                
+                // 绘制目标（树）
+                this.drawTree(this.ctx, this.goal.x, this.goal.y, this.goal.width, this.goal.height);
+                
+                // 绘制小浣熊主角
+                this.drawRaccoon(this.ctx, this.player.x + this.player.width/2, this.player.y + this.player.height, this.player.animationTime || 0, this.player.direction);
+                
+                // UI信息
+                this.renderUI();
+            }
+            
+            renderUI() {
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                this.ctx.fillRect(10, 10, 200, this.currentLevel === 10 ? 100 : 80);
+                
+                this.ctx.fillStyle = 'white';
+                this.ctx.font = '16px Arial';
+                this.ctx.fillText(`关卡: ${this.currentLevel}`, 20, 30);
+                this.ctx.fillText(`星星: ${this.stars.filter(s => s.collected).length}/3`, 20, 50);
+                
+                if (this.currentLevel === 8 && this.timeLimit) {
+                    this.ctx.fillText(`时间: ${Math.ceil(this.timeRemaining)}s`, 20, 70);
+                } else if (this.currentLevel === 10 && this.boss) {
+                    this.ctx.fillText(`Boss血量: ${this.boss.health}`, 20, 70);
+                    this.ctx.fillText(`收集星星或击败Boss通关`, 20, 90);
+                }
+            }
+            
+            drawStar(x, y, outerRadius, innerRadius, points) {
+                this.ctx.beginPath();
+                for (let i = 0; i < points * 2; i++) {
+                    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                    const angle = (Math.PI / points) * i;
+                    const xPos = x + Math.cos(angle) * radius;
+                    const yPos = y + Math.sin(angle) * radius;
+                    
+                    if (i === 0) {
+                        this.ctx.moveTo(xPos, yPos);
+                    } else {
+                        this.ctx.lineTo(xPos, yPos);
+                    }
+                }
+                this.ctx.closePath();
+                this.ctx.fill();
+            }
+            
+            drawSpike(x, y, width, height) {
+                this.ctx.beginPath();
+                this.ctx.moveTo(x, y + height);
+                this.ctx.lineTo(x + width/2, y);
+                this.ctx.lineTo(x + width, y + height);
+                this.ctx.closePath();
+                this.ctx.fill();
+            }
+            
+            drawRaccoon(ctx, x, y, time, direction = 1) {
+                const bodyColor = '#4A3F35';      // 深灰色主体
+                const grayColor = '#A89C93';      // 浅灰色斑纹
+                const blackColor = '#000000';     // 纯黑色
+                const whiteColor = '#FFFFFF';     // 纯白色
+                
+                // 腿部动画偏移
+                const legOffset = Math.sin(time * 5) * 2;
+                
+                // 根据方向翻转浣熊（direction = -1表示向左）
+                const flipScale = direction;
+                
+                ctx.save();
+                // 先移动到绘制位置，再应用翻转
+                ctx.translate(x, 0);
+                ctx.scale(flipScale, 1);
+                // 在原点绘制浣熊
+                const drawX = 0;
+                const drawY = y;
+                
+                // 绘制浣熊的标志性长尾巴
+                ctx.fillStyle = grayColor;
+                ctx.beginPath();
+                ctx.ellipse(drawX - 25, drawY - 35, 10, 30, 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 尾巴的黑色条纹（浣熊特征）
+                ctx.fillStyle = blackColor;
+                for (let i = 0; i < 4; i++) {
+                    const tailY = drawY - 50 + i * 12;
+                    ctx.beginPath();
+                    ctx.ellipse(drawX - 25, tailY, 8, 6, 0.2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // 绘制更圆胖的身体
+                ctx.fillStyle = bodyColor;
+                ctx.beginPath();
+                ctx.ellipse(drawX, drawY - 20, 22, 18, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 绘制浅色的腹部
+                ctx.fillStyle = grayColor;
+                ctx.beginPath();
+                ctx.ellipse(drawX, drawY - 15, 16, 12, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 绘制更圆的头部
+                ctx.fillStyle = bodyColor;
+                ctx.beginPath();
+                ctx.ellipse(drawX + 12, drawY - 35, 14, 12, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 浣熊的标志性"眼罩"（黑色区域）
+                ctx.fillStyle = blackColor;
+                ctx.beginPath();
+                ctx.ellipse(drawX + 6, drawY - 35, 8, 6, 0, 0, Math.PI * 2);
+                ctx.ellipse(drawX + 18, drawY - 35, 8, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 眼罩内的白色小眼睛
+                ctx.fillStyle = whiteColor;
+                ctx.beginPath();
+                ctx.ellipse(drawX + 6, drawY - 35, 3, 2, 0, 0, Math.PI * 2);
+                ctx.ellipse(drawX + 18, drawY - 35, 3, 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 眼珠（黑色小点）
+                ctx.fillStyle = blackColor;
+                ctx.beginPath();
+                ctx.arc(drawX + 6, drawY - 35, 1, 0, Math.PI * 2);
+                ctx.arc(drawX + 18, drawY - 35, 1, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 浣熊的黑白相间脸部
+                ctx.fillStyle = whiteColor;
+                ctx.beginPath();
+                ctx.ellipse(drawX + 12, drawY - 28, 8, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 黑色鼻子
+                ctx.fillStyle = blackColor;
+                ctx.beginPath();
+                ctx.arc(drawX + 12, drawY - 28, 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 嘴巴线条
+                ctx.strokeStyle = blackColor;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(drawX + 12, drawY - 26);
+                ctx.lineTo(drawX + 12, drawY - 24);
+                ctx.stroke();
+                
+                // 小耳朵（比猫更圆）
+                ctx.fillStyle = bodyColor;
+                ctx.beginPath();
+                ctx.arc(drawX + 6, drawY - 42, 5, 0, Math.PI * 2);
+                ctx.arc(drawX + 18, drawY - 42, 5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 耳朵内侧
+                ctx.fillStyle = grayColor;
+                ctx.beginPath();
+                ctx.arc(drawX + 6, drawY - 42, 3, 0, Math.PI * 2);
+                ctx.arc(drawX + 18, drawY - 42, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 较粗的腿部
+                ctx.fillStyle = bodyColor;
+                
+                // 后腿（更粗壮）
+                ctx.beginPath();
+                ctx.ellipse(drawX - 10, drawY - 7 + legOffset, 5, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 前腿
+                ctx.beginPath();
+                ctx.ellipse(drawX + 10, drawY - 7 - legOffset, 5, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 小爪子
+                ctx.fillStyle = blackColor;
+                for (let i = -1; i <= 1; i++) {
+                    ctx.beginPath();
+                    ctx.arc(drawX - 10 + i * 2, drawY + 2 + legOffset, 1, 0, Math.PI * 2);
+                    ctx.arc(drawX + 10 + i * 2, drawY + 2 - legOffset, 1, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            }
+            
+            drawTree(ctx, x, y, width, height) {
+                // 绘制树的树干
+                ctx.fillStyle = '#8B4513'; // 棕色树干
+                ctx.beginPath();
+                ctx.rect(x + width/2 - 8, y + height - 20, 16, 20);
+                ctx.fill();
+                
+                // 绘制树的叶子（绿色三角形）
+                const leafColor = '#228B22'; // 森林绿
+                
+                // 下层叶子
+                ctx.fillStyle = leafColor;
+                ctx.beginPath();
+                ctx.moveTo(x + width/2, y + 10);
+                ctx.lineTo(x + 5, y + height - 30);
+                ctx.lineTo(x + width - 5, y + height - 30);
+                ctx.closePath();
+                ctx.fill();
+                
+                // 中层叶子
+                ctx.beginPath();
+                ctx.moveTo(x + width/2, y + 5);
+                ctx.lineTo(x + 10, y + height - 40);
+                ctx.lineTo(x + width - 10, y + height - 40);
+                ctx.closePath();
+                ctx.fill();
+                
+                // 上层叶子
+                ctx.beginPath();
+                ctx.moveTo(x + width/2, y);
+                ctx.lineTo(x + 15, y + height - 50);
+                ctx.lineTo(x + width - 15, y + height - 50);
+                ctx.closePath();
+                ctx.fill();
+                
+                // 叶子高光效果
+                ctx.fillStyle = '#32CD32'; // 亮绿色高光
+                ctx.beginPath();
+                ctx.ellipse(x + width/2 - 5, y + height/2 - 10, 8, 15, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 树上的一些小装饰（小红果）
+                ctx.fillStyle = '#FF6347'; // 番茄红
+                for (let i = 0; i < 3; i++) {
+                    const fruitX = x + 20 + i * 15;
+                    const fruitY = y + 20 + (i % 2) * 10;
+                    ctx.beginPath();
+                    ctx.arc(fruitX, fruitY, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            
+            hexToRgba(hex, alpha) {
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+                return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            }
+            
+            switchScreen() {
+                document.querySelectorAll('.screen').forEach(screen => {
+                    screen.classList.remove('active');
+                });
+                
+                // 根据currentScreen的值选择正确的元素ID
+                let targetId;
+                if (this.currentScreen === 'levelSelect') {
+                    targetId = 'levelSelect';
+                } else if (this.currentScreen === 'game') {
+                    targetId = 'gameScreen';
+                } else if (this.currentScreen === 'win') {
+                    targetId = 'winScreen';
+                } else {
+                    targetId = 'levelSelect'; // 默认返回关卡选择
+                }
+                
+                const targetScreen = document.getElementById(targetId);
+                if (targetScreen) {
+                    targetScreen.classList.add('active');
+                }
+            }
+            
+            gameLoop() {
+                this.update();
+                this.render();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+            
+            // 公共方法
+            backToLevelSelect() {
+                this.currentScreen = 'levelSelect';
+                this.switchScreen();
+            }
+            
+            restartCurrentLevel() {
+                this.startLevel(this.currentLevel);
+            }
+            
+            goToNextLevel() {
+                if (this.currentLevel < 10) {
+                    this.startLevel(this.currentLevel + 1);
+                } else {
+                    alert('恭喜完成所有高级关卡！');
+                    this.backToLevelSelect();
+                }
+            }
+        }
+        
+        // 全局变量
+        let game;
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🎮 高级关卡页面加载完成');
+            game = new AdvancedRaccoonAdventure();
+        });
+        
+        // 简单的重置函数
+        function simpleReset() {
+            console.log('🔄 执行简单重置...');
+            
+            // 清除高级关卡数据
+            localStorage.removeItem('raccoon_adventure_advanced_progress');
+            
+            alert('重置完成！页面将重新加载以应用更改。');
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
+        }
+        
+        // 清除所有数据
+        function clearAllData() {
+            console.log('🗑️ 清除所有数据...');
+            
+            if (confirm('确定要清除所有游戏数据吗？这将删除所有进度和设置！')) {
+                // 清除所有可能的数据
+                localStorage.removeItem('raccoon_adventure_advanced_progress');
+                localStorage.removeItem('raccoon_adventure_progress');
+                localStorage.removeItem('raccoon_adventure_advanced_best_time');
+                
+                alert('所有数据已清除！页面将重新加载。');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            }
+        }
+        
+        // 显示状态信息
+        function showStatus() {
+            const data = localStorage.getItem('raccoon_adventure_advanced_progress');
+            if (data) {
+                try {
+                    const progress = JSON.parse(data);
+                    const info = `当前进度：
+- 最大解锁关卡: ${progress.maxUnlockedLevel || 6}
+- 第6关星星: ${progress.levelStars?.['6'] || 0}
+- 第7关星星: ${progress.levelStars?.['7'] || 0}
+- 第8关星星: ${progress.levelStars?.['8'] || 0}
+- 第9关星星: ${progress.levelStars?.['9'] || 0}
+- 第10关星星: ${progress.levelStars?.['10'] || 0}
+- 保存时间: ${progress.timestamp ? new Date(progress.timestamp).toLocaleString() : '未知'}`;
+                    alert(info);
+                } catch (e) {
+                    alert('数据格式错误或已损坏。');
+                }
+            } else {
+                alert('没有找到保存的进度数据。');
+            }
+            
+            console.log('🔍 localStorage数据:', data);
+        }
+        
+        // 保留原有的restartCurrentLevel函数
+        function restartCurrentLevel() {
+            if (game) {
+                game.restartCurrentLevel();
+            }
+        }
+        
+        function goToNextLevel() {
+            game.goToNextLevel();
+        }
+        
+        function backToLevelSelect() {
+            game.backToLevelSelect();
+        }
+    </script>
+</body>
+</html>

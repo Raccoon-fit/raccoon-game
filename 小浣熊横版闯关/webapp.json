@@ -1,0 +1,16 @@
+{
+   "图标": "favicon.png",
+   "名称": "小浣熊冒险记",
+   "包名": "com.xiaohuanxiong.adventure",
+   "版名": "1.0.6",
+   "版号": "10006",
+   "内容": "index.html",
+   "全屏": false,
+   "横屏": false,
+   "端口": "",
+   "脚本": "window.webapp.renew(false);",
+   "标识": "",
+   "协议": "",
+   "拦截": "",
+   "加密": ""
+}

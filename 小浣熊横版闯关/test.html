@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>游戏测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .start-btn {
+            background: #4CAF50;
+            color: white;
+        }
+        .start-btn:hover {
+            background: #45a049;
+        }
+        .console {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-top: 20px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>小浣熊冒险记 - 测试页面</h1>
+        <p>点击按钮启动游戏进行测试：</p>
+        <button class="start-btn" onclick="startGame()">🚀 启动游戏</button>
+        <button onclick="checkConsole()">📋 查看控制台</button>
+        <button onclick="clearConsole()">🗑️ 清空控制台</button>
+        
+        <div id="console" class="console"></div>
+    </div>
+
+    <script>
+        let gameWindow = null;
+        let consoleDiv = null;
+        
+        function log(message) {
+            if (!consoleDiv) {
+                consoleDiv = document.getElementById('console');
+            }
+            const time = new Date().toLocaleTimeString();
+            consoleDiv.innerHTML += `[${time}] ${message}\n`;
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+        
+        function startGame() {
+            log('🚀 正在启动游戏...');
+            
+            if (gameWindow && !gameWindow.closed) {
+                gameWindow.focus();
+                log('⚠️ 游戏窗口已存在，已聚焦到现有窗口');
+                return;
+            }
+            
+            try {
+                gameWindow = window.open('index.html', 'raccoon_game', 
+                    'width=1024,height=768,scrollbars=yes,resizable=yes');
+                
+                if (gameWindow) {
+                    log('✅ 游戏窗口已打开');
+                    log('📱 如果是移动设备，请使用虚拟按键');
+                    log('⌨️ 如果是桌面设备，请使用箭头键移动，空格键跳跃');
+                    log('🎮 如果连接了游戏手柄，将自动检测');
+                } else {
+                    log('❌ 无法打开游戏窗口，请检查浏览器弹窗设置');
+                }
+            } catch (error) {
+                log(`❌ 启动游戏时出错: ${error.message}`);
+            }
+        }
+        
+        function checkConsole() {
+            log('📋 控制台信息已更新');
+            console.log('当前时间:', new Date().toISOString());
+            console.log('User Agent:', navigator.userAgent);
+            console.log('屏幕尺寸:', window.innerWidth + 'x' + window.innerHeight);
+        }
+        
+        function clearConsole() {
+            if (consoleDiv) {
+                consoleDiv.innerHTML = '';
+            }
+        }
+        
+        // 页面加载完成后的初始化
+        window.addEventListener('load', () => {
+            log('🎮 小浣熊冒险记测试页面已加载');
+            log('🔧 当前浏览器:', navigator.userAgent);
+            log('📏 屏幕分辨率:', window.innerWidth + 'x' + window.innerHeight);
+        });
+        
+        // 监听窗口关闭事件
+        window.addEventListener('beforeunload', () => {
+            if (gameWindow && !gameWindow.closed) {
+                gameWindow.close();
+            }
+        });
+    </script>
+</body>
+</html>

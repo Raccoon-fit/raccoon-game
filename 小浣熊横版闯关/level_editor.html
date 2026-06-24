@@ -1,0 +1,1650 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>科技骑关卡编辑器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0a0a, #1a1a2e);
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .editor-main {
+                flex-direction: column;
+            }
+            
+            .toolbar {
+                width: 100%;
+                height: 200px;
+                border-right: none;
+                border-bottom: 2px solid #00ff00;
+                order: 2;
+            }
+            
+            .canvas-area {
+                order: 1;
+                flex: 1;
+            }
+            
+            .properties-panel {
+                width: 100%;
+                height: 200px;
+                border-left: none;
+                border-top: 2px solid #00ff00;
+                order: 3;
+            }
+            
+            .editor-header {
+                flex-direction: column;
+                gap: 10px;
+                padding: 5px 10px;
+            }
+            
+            .editor-title {
+                font-size: 18px;
+            }
+            
+            .editor-controls {
+                flex-wrap: wrap;
+                gap: 5px;
+            }
+            
+            .btn {
+                padding: 6px 12px;
+                font-size: 10px;
+            }
+            
+            #editorCanvas {
+                max-width: 100%;
+                max-height: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .toolbar, .properties-panel {
+                height: 150px;
+                padding: 10px;
+            }
+            
+            .tool-group h3, .property-group h3 {
+                font-size: 14px;
+            }
+            
+            .form-group {
+                margin-bottom: 8px;
+            }
+            
+            .form-group label {
+                font-size: 10px;
+            }
+            
+            .form-group input, .form-group select, .form-group textarea {
+                padding: 4px;
+                font-size: 12px;
+            }
+        }
+
+        .editor-header {
+            background: rgba(0, 0, 0, 0.8);
+            border-bottom: 2px solid #00ff00;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .editor-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ff00;
+        }
+
+        .editor-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            background: #00cc00;
+            transform: translateY(-2px);
+        }
+
+        .btn.danger {
+            background: #ff0000;
+            color: #fff;
+        }
+
+        .btn.danger:hover {
+            background: #cc0000;
+        }
+
+        .btn.secondary {
+            background: #333;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+        }
+
+        .btn.secondary:hover {
+            background: #444;
+        }
+
+        .editor-main {
+            flex: 1;
+            display: flex;
+        }
+
+        .toolbar {
+            width: 250px;
+            background: rgba(0, 0, 0, 0.9);
+            border-right: 2px solid #00ff00;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .tool-group {
+            margin-bottom: 20px;
+        }
+
+        .tool-group h3 {
+            color: #00ff00;
+            margin-bottom: 10px;
+            font-size: 16px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+
+        .tool-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            margin: 5px 0;
+            background: rgba(0, 255, 0, 0.1);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tool-item:hover {
+            background: rgba(0, 255, 0, 0.2);
+        }
+
+        .tool-item.active {
+            background: rgba(0, 255, 0, 0.3);
+            border: 1px solid #00ff00;
+        }
+
+        /* 移动端工具栏优化 */
+        @media (max-width: 768px) {
+            .tool-item {
+                padding: 6px;
+                font-size: 12px;
+            }
+            
+            .tool-group {
+                margin-bottom: 15px;
+            }
+            
+            .tool-group h3 {
+                font-size: 14px;
+            }
+        }
+
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #editorCanvas {
+            border: 2px solid #00ff00;
+            background: #1a1a1a;
+            cursor: crosshair;
+        }
+
+        .properties-panel {
+            width: 300px;
+            background: rgba(0, 0, 0, 0.9);
+            border-left: 2px solid #00ff00;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .property-group {
+            margin-bottom: 20px;
+        }
+
+        .property-group h3 {
+            color: #00ff00;
+            margin-bottom: 10px;
+            font-size: 16px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #00ff00;
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            background: #222;
+            color: #00ff00;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 8px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: #00ff00;
+            outline: none;
+        }
+
+        /* 移动端优化 */
+        @media (max-width: 768px) {
+            .form-group textarea {
+                min-height: 60px;
+            }
+            
+            .platform-list {
+                max-height: 100px;
+            }
+            
+            .shortcut-info {
+                display: none;
+            }
+        }
+
+        .color-input {
+            height: 40px;
+        }
+
+        .grid-toggle {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+
+        .grid-toggle input {
+            margin-right: 8px;
+        }
+
+        .level-info {
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #00ff00;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .level-info h4 {
+            color: #00ff00;
+            margin-bottom: 10px;
+        }
+
+        .export-import-section {
+            border-top: 2px solid #333;
+            margin-top: 20px;
+            padding-top: 20px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: #1a1a1a;
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        /* 移动端模态框优化 */
+        @media (max-width: 768px) {
+            .modal-content {
+                padding: 15px;
+                max-width: 95%;
+            }
+            
+            .modal-content textarea {
+                font-size: 12px;
+                rows: 8;
+            }
+        }
+
+        .modal h2 {
+            color: #00ff00;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .info-text {
+            color: #666;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .selected-indicator {
+            color: #ffff00;
+            font-weight: bold;
+        }
+
+        .platform-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            border-radius: 4px;
+        }
+
+        .platform-item {
+            padding: 8px;
+            border-bottom: 1px solid #333;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .platform-item:hover {
+            background: rgba(0, 255, 0, 0.1);
+        }
+
+        .platform-item.selected {
+            background: rgba(0, 255, 0, 0.2);
+            border-left: 3px solid #00ff00;
+        }
+
+        .shortcut-info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="editor-header">
+        <div class="editor-title">🦝 科技骑关卡编辑器</div>
+        <div class="editor-controls">
+            <button class="btn secondary" onclick="toggleGrid()">网格</button>
+            <button class="btn secondary" onclick="clearLevel()">清空</button>
+            <button class="btn" onclick="exportLevel()">导出</button>
+            <button class="btn secondary" onclick="exportAsCode()">代码</button>
+            <button class="btn" onclick="importFromCode()">粘贴代码</button>
+            <button class="btn" onclick="document.getElementById('importFile').click()">文件导入</button>
+            <input type="file" id="importFile" class="file-input" accept=".raccoon,.json" onchange="importLevel(event)">
+        </div>
+    </div>
+
+    <div class="editor-main">
+        <!-- 工具栏 -->
+        <div class="toolbar">
+            <div class="tool-group">
+                <h3>🛠️ 绘制工具</h3>
+                <div class="tool-item active" onclick="selectTool('select')" data-tool="select">
+                    📋 选择工具 (V)
+                </div>
+                <div class="tool-item" onclick="selectTool('platform')" data-tool="platform">
+                    📏 绘制平台 (P)
+                </div>
+                <div class="tool-item" onclick="selectTool('player')" data-tool="player">
+                    🦝 设置玩家 (R)
+                </div>
+                <div class="tool-item" onclick="selectTool('goal')" data-tool="goal">
+                    ⭐ 设置目标 (G)
+                </div>
+                <div class="tool-item" onclick="selectTool('eraser')" data-tool="eraser">
+                    🗑️ 橡皮擦 (E)
+                </div>
+            </div>
+
+            <div class="tool-group">
+                <h3>🎨 默认属性</h3>
+                <div class="form-group">
+                    <label>平台宽度</label>
+                    <input type="number" id="defaultWidth" value="80" min="10" max="500">
+                </div>
+                <div class="form-group">
+                    <label>平台高度</label>
+                    <input type="number" id="defaultHeight" value="20" min="10" max="100">
+                </div>
+                <div class="form-group">
+                    <label>平台颜色</label>
+                    <input type="color" id="defaultColor" class="color-input" value="#00ff00">
+                </div>
+            </div>
+
+            <div class="tool-group">
+                <h3>🎮 关卡信息</h3>
+                <div class="form-group">
+                    <label>关卡名称</label>
+                    <input type="text" id="levelName" value="自定义关卡" placeholder="输入关卡名称">
+                </div>
+                <div class="form-group">
+                    <label>关卡难度</label>
+                    <select id="levelDifficulty">
+                        <option value="1">简单</option>
+                        <option value="2">普通</option>
+                        <option value="3">困难</option>
+                        <option value="4">专家</option>
+                        <option value="5">大师</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>关卡描述</label>
+                    <textarea id="levelDescription" rows="3" placeholder="输入关卡描述"></textarea>
+                </div>
+            </div>
+
+            <div class="export-import-section">
+                <h3>📁 文件操作</h3>
+                <div class="form-group">
+                    <button class="btn" onclick="newLevel()">新建关卡</button>
+                </div>
+                <div class="form-group">
+                    <button class="btn" onclick="saveAs()">另存为</button>
+                </div>
+                <div class="info-text">
+                    导出文件格式：.raccoon<br>
+                    支持导入：.raccoon, .json
+                </div>
+            </div>
+        </div>
+
+        <!-- 画布区域 -->
+        <div class="canvas-area">
+            <canvas id="editorCanvas" width="800" height="600"></canvas>
+            <div class="shortcut-info">
+                快捷键：V-选择 P-平台 R-玩家 G-目标 E-橡皮<br>
+                Ctrl+Z-撤销 Ctrl+Y-重做 Delete-删除
+            </div>
+        </div>
+
+        <!-- 属性面板 -->
+        <div class="properties-panel">
+            <div class="property-group">
+                <h3>🏷️ 选中对象</h3>
+                <div id="selectedInfo">
+                    <div class="info-text">未选中任何对象</div>
+                </div>
+            </div>
+
+            <div class="property-group" id="platformProperties" style="display: none;">
+                <h3>📏 平台属性</h3>
+                <div class="form-group">
+                    <label>X坐标</label>
+                    <input type="number" id="platformX" onchange="updateSelectedPlatform()">
+                </div>
+                <div class="form-group">
+                    <label>Y坐标</label>
+                    <input type="number" id="platformY" onchange="updateSelectedPlatform()">
+                </div>
+                <div class="form-group">
+                    <label>宽度</label>
+                    <input type="number" id="platformWidth" min="10" max="500" onchange="updateSelectedPlatform()">
+                </div>
+                <div class="form-group">
+                    <label>高度</label>
+                    <input type="number" id="platformHeight" min="10" max="100" onchange="updateSelectedPlatform()">
+                </div>
+                <div class="form-group">
+                    <label>颜色</label>
+                    <input type="color" id="platformColor" class="color-input" onchange="updateSelectedPlatform()">
+                </div>
+                <button class="btn danger" onclick="deleteSelected()">删除平台</button>
+            </div>
+
+            <div class="property-group" id="playerProperties" style="display: none;">
+                <h3>🦝 玩家属性</h3>
+                <div class="form-group">
+                    <label>X坐标</label>
+                    <input type="number" id="playerX" min="0" max="750" onchange="updatePlayer()">
+                </div>
+                <div class="form-group">
+                    <label>Y坐标</label>
+                    <input type="number" id="playerY" min="0" max="550" onchange="updatePlayer()">
+                </div>
+            </div>
+
+            <div class="property-group" id="goalProperties" style="display: none;">
+                <h3>⭐ 目标属性</h3>
+                <div class="form-group">
+                    <label>X坐标</label>
+                    <input type="number" id="goalX" min="0" max="750" onchange="updateGoal()">
+                </div>
+                <div class="form-group">
+                    <label>Y坐标</label>
+                    <input type="number" id="goalY" min="0" max="550" onchange="updateGoal()">
+                </div>
+                <div class="form-group">
+                    <label>大小</label>
+                    <input type="number" id="goalSize" min="10" max="50" value="30" onchange="updateGoal()">
+                </div>
+            </div>
+
+            <div class="property-group">
+                <h3>📊 关卡统计</h3>
+                <div class="level-info">
+                    <h4>当前关卡信息</h4>
+                    <div>平台数量: <span id="platformCount">0</span></div>
+                    <div>画布大小: 800x600</div>
+                    <div>网格大小: 20x20</div>
+                </div>
+            </div>
+
+            <div class="property-group">
+                <h3>📋 平台列表</h3>
+                <div class="platform-list" id="platformList">
+                    <div class="info-text">暂无平台，点击"绘制平台"开始创建</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导出模态框 -->
+    <div id="exportModal" class="modal">
+        <div class="modal-content">
+            <h2>📤 导出关卡</h2>
+            <div class="form-group">
+                <label>关卡名称</label>
+                <input type="text" id="exportName" value="自定义关卡">
+            </div>
+            <div class="form-group">
+                <label>作者</label>
+                <input type="text" id="exportAuthor" value="anonymous">
+            </div>
+            <div class="form-group">
+                <label>版本</label>
+                <input type="text" id="exportVersion" value="1.0.0">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="confirmExport()">确认导出</button>
+                <button class="btn secondary" onclick="closeModal('exportModal')">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 代码导出模态框 -->
+    <div id="codeExportModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <h2>💻 导出代码</h2>
+            <div class="form-group">
+                <label>选择导出格式</label>
+                <select id="codeFormat" onchange="updateCodePreview()">
+                    <option value="javascript">JavaScript对象</option>
+                    <option value="json">JSON格式</option>
+                    <option value="python">Python字典</option>
+                    <option value="config">配置文件</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>代码预览</label>
+                <textarea id="codePreview" rows="15" style="font-family: 'Courier New', monospace; font-size: 12px;" readonly></textarea>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="copyCode()">📋 复制代码</button>
+                <button class="btn" onclick="downloadCode()">💾 下载代码</button>
+                <button class="btn secondary" onclick="closeModal('codeExportModal')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 代码导入模态框 -->
+    <div id="codeImportModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <h2>📋 粘贴代码</h2>
+            <div class="form-group">
+                <label>支持格式</label>
+                <div class="info-text">
+                    • JavaScript对象 (const level = { ... })<br>
+                    • JSON格式 ({ "metadata": { ... }, "level": { ... } })<br>
+                    • Python字典<br>
+                    • 配置文件格式
+                </div>
+            </div>
+            <div class="form-group">
+                <label>粘贴关卡代码</label>
+                <textarea id="codeInput" rows="15" placeholder="请粘贴关卡代码..." style="font-family: 'Courier New', monospace; font-size: 12px;"></textarea>
+            </div>
+            <div id="codeParseResult" class="form-group" style="display: none;">
+                <div class="success" id="parseResultText">解析成功！</div>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="parseAndImportCode()">解析并导入</button>
+                <button class="btn" onclick="clearCodeInput()">清空</button>
+                <button class="btn secondary" onclick="closeModal('codeImportModal')">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class LevelEditor {
+            constructor() {
+                this.canvas = document.getElementById('editorCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.currentTool = 'select';
+                this.showGrid = true;
+                this.platforms = [];
+                this.selectedPlatform = null;
+                this.playerStart = { x: 50, y: 50 };
+                this.goal = { x: 700, y: 500, size: 30 };
+                this.dragging = false;
+                this.dragOffset = { x: 0, y: 0 };
+                this.history = [];
+                this.historyIndex = -1;
+                
+                this.levelInfo = {
+                    name: '自定义关卡',
+                    difficulty: 1,
+                    description: '',
+                    author: 'anonymous',
+                    version: '1.0.0'
+                };
+
+                this.setupEventListeners();
+                this.draw();
+                this.saveState();
+            }
+
+            setupEventListeners() {
+                this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
+                this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
+                this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
+                
+                // 移动端触摸支持
+                this.canvas.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
+                this.canvas.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
+                this.canvas.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: false });
+                
+                document.addEventListener('keydown', this.handleKeyDown.bind(this));
+                
+                // 工具栏事件
+                document.querySelectorAll('.tool-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        document.querySelectorAll('.tool-item').forEach(t => t.classList.remove('active'));
+                        e.target.classList.add('active');
+                    });
+                });
+
+                // 关卡信息事件
+                document.getElementById('levelName').addEventListener('input', (e) => {
+                    this.levelInfo.name = e.target.value;
+                });
+                document.getElementById('levelDifficulty').addEventListener('change', (e) => {
+                    this.levelInfo.difficulty = parseInt(e.target.value);
+                });
+                document.getElementById('levelDescription').addEventListener('input', (e) => {
+                    this.levelInfo.description = e.target.value;
+                });
+            }
+
+            handleMouseDown(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                if (this.currentTool === 'platform') {
+                    this.createPlatform(x, y);
+                } else if (this.currentTool === 'player') {
+                    this.playerStart = { x, y };
+                    this.saveState();
+                } else if (this.currentTool === 'goal') {
+                    this.goal = { x, y, size: this.goal.size };
+                    this.saveState();
+                } else if (this.currentTool === 'select') {
+                    this.selectPlatform(x, y);
+                } else if (this.currentTool === 'eraser') {
+                    this.deletePlatformAt(x, y);
+                }
+                
+                this.draw();
+            }
+
+            handleMouseMove(e) {
+                if (!this.dragging) return;
+                
+                const rect = this.canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                if (this.currentTool === 'select' && this.selectedPlatform) {
+                    this.selectedPlatform.x = x - this.dragOffset.x;
+                    this.selectedPlatform.y = y - this.dragOffset.y;
+                    this.updatePlatformProperties();
+                }
+                
+                this.draw();
+            }
+
+            handleMouseUp(e) {
+                if (this.dragging) {
+                    this.dragging = false;
+                    this.saveState();
+                }
+            }
+
+            handleKeyDown(e) {
+                if (e.ctrlKey) {
+                    if (e.key === 'z' && !e.shiftKey) {
+                        this.undo();
+                    } else if (e.key === 'z' && e.shiftKey || e.key === 'y') {
+                        this.redo();
+                    }
+                } else if (e.key === 'Delete' && this.selectedPlatform) {
+                    this.deleteSelected();
+                } else {
+                    // 工具快捷键
+                    const toolMap = {
+                        'v': 'select',
+                        'p': 'platform',
+                        'r': 'player',
+                        'g': 'goal',
+                        'e': 'eraser'
+                    };
+                    
+                    if (toolMap[e.key.toLowerCase()]) {
+                        this.selectTool(toolMap[e.key.toLowerCase()]);
+                    }
+                }
+            }
+
+            handleTouchStart(e) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousedown', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                this.handleMouseDown(mouseEvent);
+            }
+
+            handleTouchMove(e) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousemove', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                this.handleMouseMove(mouseEvent);
+            }
+
+            handleTouchEnd(e) {
+                e.preventDefault();
+                const mouseEvent = new MouseEvent('mouseup', {
+                    clientX: 0,
+                    clientY: 0
+                });
+                this.handleMouseUp(mouseEvent);
+            }
+
+            createPlatform(x, y) {
+                const width = parseInt(document.getElementById('defaultWidth').value) || 80;
+                const height = parseInt(document.getElementById('defaultHeight').value) || 20;
+                const color = document.getElementById('defaultColor').value || '#00ff00';
+
+                const platform = {
+                    id: Date.now(),
+                    x: x - width / 2,
+                    y: y - height / 2,
+                    width: width,
+                    height: height,
+                    color: color
+                };
+
+                this.platforms.push(platform);
+                this.selectedPlatform = platform;
+                this.updatePlatformList();
+                this.updatePlatformProperties();
+                this.saveState();
+            }
+
+            selectPlatform(x, y) {
+                this.selectedPlatform = null;
+                
+                for (let i = this.platforms.length - 1; i >= 0; i--) {
+                    const platform = this.platforms[i];
+                    if (x >= platform.x && x <= platform.x + platform.width &&
+                        y >= platform.y && y <= platform.y + platform.height) {
+                        this.selectedPlatform = platform;
+                        this.dragging = true;
+                        this.dragOffset.x = x - platform.x;
+                        this.dragOffset.y = y - platform.y;
+                        this.updatePlatformProperties();
+                        break;
+                    }
+                }
+            }
+
+            deletePlatformAt(x, y) {
+                for (let i = this.platforms.length - 1; i >= 0; i--) {
+                    const platform = this.platforms[i];
+                    if (x >= platform.x && x <= platform.x + platform.width &&
+                        y >= platform.y && y <= platform.y + platform.height) {
+                        this.platforms.splice(i, 1);
+                        if (this.selectedPlatform === platform) {
+                            this.selectedPlatform = null;
+                        }
+                        this.updatePlatformList();
+                        this.updatePlatformProperties();
+                        this.saveState();
+                        break;
+                    }
+                }
+            }
+
+            updateSelectedPlatform() {
+                if (!this.selectedPlatform) return;
+
+                this.selectedPlatform.x = parseInt(document.getElementById('platformX').value);
+                this.selectedPlatform.y = parseInt(document.getElementById('platformY').value);
+                this.selectedPlatform.width = parseInt(document.getElementById('platformWidth').value);
+                this.selectedPlatform.height = parseInt(document.getElementById('platformHeight').value);
+                this.selectedPlatform.color = document.getElementById('platformColor').value;
+                
+                this.updatePlatformList();
+                this.draw();
+            }
+
+            updatePlayer() {
+                this.playerStart.x = parseInt(document.getElementById('playerX').value);
+                this.playerStart.y = parseInt(document.getElementById('playerY').value);
+                this.saveState();
+            }
+
+            updateGoal() {
+                this.goal.x = parseInt(document.getElementById('goalX').value);
+                this.goal.y = parseInt(document.getElementById('goalY').value);
+                this.goal.size = parseInt(document.getElementById('goalSize').value);
+                this.saveState();
+            }
+
+            updatePlatformProperties() {
+                if (this.selectedPlatform) {
+                    document.getElementById('platformX').value = Math.round(this.selectedPlatform.x);
+                    document.getElementById('platformY').value = Math.round(this.selectedPlatform.y);
+                    document.getElementById('platformWidth').value = this.selectedPlatform.width;
+                    document.getElementById('platformHeight').value = this.selectedPlatform.height;
+                    document.getElementById('platformColor').value = this.selectedPlatform.color;
+                }
+            }
+
+            updatePlatformList() {
+                const list = document.getElementById('platformList');
+                list.innerHTML = '';
+
+                this.platforms.forEach((platform, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'platform-item' + (this.selectedPlatform === platform ? ' selected' : '');
+                    item.onclick = () => {
+                        this.selectedPlatform = platform;
+                        this.updatePlatformProperties();
+                        this.updatePlatformList();
+                        this.draw();
+                    };
+                    item.innerHTML = `
+                        <div>平台 ${index + 1}</div>
+                        <div style="font-size: 10px; color: #666;">
+                            ${Math.round(platform.x)},${Math.round(platform.y)} 
+                            ${platform.width}x${platform.height}
+                        </div>
+                    `;
+                    list.appendChild(item);
+                });
+
+                document.getElementById('platformCount').textContent = this.platforms.length;
+            }
+
+            saveState() {
+                const state = {
+                    platforms: JSON.parse(JSON.stringify(this.platforms)),
+                    playerStart: { ...this.playerStart },
+                    goal: { ...this.goal },
+                    levelInfo: { ...this.levelInfo }
+                };
+
+                // 移除未来的历史
+                this.history = this.history.slice(0, this.historyIndex + 1);
+                this.history.push(state);
+                this.historyIndex = this.history.length - 1;
+
+                // 限制历史记录数量
+                if (this.history.length > 50) {
+                    this.history.shift();
+                    this.historyIndex--;
+                }
+            }
+
+            undo() {
+                if (this.historyIndex > 0) {
+                    this.historyIndex--;
+                    this.loadState(this.history[this.historyIndex]);
+                }
+            }
+
+            redo() {
+                if (this.historyIndex < this.history.length - 1) {
+                    this.historyIndex++;
+                    this.loadState(this.history[this.historyIndex]);
+                }
+            }
+
+            loadState(state) {
+                this.platforms = state.platforms;
+                this.playerStart = state.playerStart;
+                this.goal = state.goal;
+                this.levelInfo = state.levelInfo;
+                
+                this.selectedPlatform = null;
+                this.updatePlatformList();
+                this.updatePlatformProperties();
+                this.draw();
+            }
+
+            draw() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 绘制背景
+                this.ctx.fillStyle = '#1a1a1a';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 绘制网格
+                if (this.showGrid) {
+                    this.drawGrid();
+                }
+                
+                // 绘制平台
+                this.platforms.forEach(platform => {
+                    this.drawPlatform(platform);
+                });
+                
+                // 绘制玩家起始位置
+                this.drawPlayer();
+                
+                // 绘制目标
+                this.drawGoal();
+                
+                // 更新选中信息
+                this.updateSelectedInfo();
+            }
+
+            drawGrid() {
+                this.ctx.strokeStyle = '#333';
+                this.ctx.lineWidth = 0.5;
+                
+                for (let x = 0; x <= this.canvas.width; x += 20) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, 0);
+                    this.ctx.lineTo(x, this.canvas.height);
+                    this.ctx.stroke();
+                }
+                
+                for (let y = 0; y <= this.canvas.height; y += 20) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, y);
+                    this.ctx.lineTo(this.canvas.width, y);
+                    this.ctx.stroke();
+                }
+            }
+
+            drawPlatform(platform) {
+                this.ctx.fillStyle = platform.color;
+                this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                
+                if (this.selectedPlatform === platform) {
+                    this.ctx.strokeStyle = '#ffff00';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+                    
+                    // 绘制控制点
+                    const size = 4;
+                    this.ctx.fillStyle = '#ffff00';
+                    this.ctx.fillRect(platform.x - size, platform.y - size, size, size);
+                    this.ctx.fillRect(platform.x + platform.width, platform.y - size, size, size);
+                    this.ctx.fillRect(platform.x - size, platform.y + platform.height, size, size);
+                    this.ctx.fillRect(platform.x + platform.width, platform.y + platform.height, size, size);
+                }
+            }
+
+            drawPlayer() {
+                // 绘制玩家起始位置
+                this.ctx.fillStyle = '#ff6600';
+                this.ctx.beginPath();
+                this.ctx.arc(this.playerStart.x, this.playerStart.y, 8, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                this.ctx.fillStyle = '#fff';
+                this.ctx.font = '12px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('🦝', this.playerStart.x, this.playerStart.y + 4);
+            }
+
+            drawGoal() {
+                // 绘制目标
+                this.ctx.fillStyle = '#ffff00';
+                this.drawStar(this.goal.x, this.goal.y, this.goal.size, this.goal.size / 2, 5);
+                this.ctx.fill();
+                
+                this.ctx.fillStyle = '#fff';
+                this.ctx.font = '12px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('⭐', this.goal.x, this.goal.y + 4);
+            }
+
+            drawStar(x, y, outerRadius, innerRadius, points) {
+                const step = Math.PI / points;
+                this.ctx.beginPath();
+                for (let i = 0; i < 2 * points; i++) {
+                    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                    const angle = i * step - Math.PI / 2;
+                    const xPos = x + Math.cos(angle) * radius;
+                    const yPos = y + Math.sin(angle) * radius;
+                    if (i === 0) this.ctx.moveTo(xPos, yPos);
+                    else this.ctx.lineTo(xPos, yPos);
+                }
+                this.ctx.closePath();
+            }
+
+            updateSelectedInfo() {
+                const info = document.getElementById('selectedInfo');
+                const platformProps = document.getElementById('platformProperties');
+                const playerProps = document.getElementById('playerProperties');
+                const goalProps = document.getElementById('goalProperties');
+                
+                if (this.selectedPlatform) {
+                    info.innerHTML = `<div class="selected-indicator">📏 选中了平台</div>`;
+                    platformProps.style.display = 'block';
+                    playerProps.style.display = 'none';
+                    goalProps.style.display = 'none';
+                } else {
+                    // 检查鼠标悬停的是哪个对象
+                    const rect = this.canvas.getBoundingClientRect();
+                    // 这里可以添加悬停检测逻辑
+                    
+                    info.innerHTML = `<div class="info-text">未选中任何对象<br>使用工具栏选择工具或右键点击</div>`;
+                    platformProps.style.display = 'none';
+                    playerProps.style.display = 'block';
+                    goalProps.style.display = 'block';
+                }
+            }
+
+            exportLevel() {
+                document.getElementById('exportModal').style.display = 'flex';
+            }
+
+            confirmExport() {
+                const name = document.getElementById('exportName').value;
+                const author = document.getElementById('exportAuthor').value;
+                const version = document.getElementById('exportVersion').value;
+
+                const levelData = {
+                    metadata: {
+                        name: name,
+                        author: author,
+                        version: version,
+                        created: new Date().toISOString(),
+                        format: 'raccoon-level-v1'
+                    },
+                    level: {
+                        name: this.levelInfo.name,
+                        difficulty: this.levelInfo.difficulty,
+                        description: this.levelInfo.description,
+                        canvasSize: { width: 800, height: 600 },
+                        gridSize: 20,
+                        playerStart: this.playerStart,
+                        goal: this.goal,
+                        platforms: this.platforms
+                    }
+                };
+
+                const dataStr = JSON.stringify(levelData, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(dataBlob);
+                link.download = `${name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.raccoon`;
+                link.click();
+
+                this.closeModal('exportModal');
+            }
+
+            exportAsCode() {
+                document.getElementById('codeExportModal').style.display = 'flex';
+                this.updateCodePreview();
+            }
+
+            updateCodePreview() {
+                const format = document.getElementById('codeFormat').value;
+                const name = document.getElementById('exportName').value || '自定义关卡';
+                const author = document.getElementById('exportAuthor').value || 'anonymous';
+                const version = document.getElementById('exportVersion').value || '1.0.0';
+
+                const levelData = {
+                    metadata: {
+                        name: name,
+                        author: author,
+                        version: version,
+                        created: new Date().toISOString(),
+                        format: 'raccoon-level-v1'
+                    },
+                    level: {
+                        name: this.levelInfo.name,
+                        difficulty: this.levelInfo.difficulty,
+                        description: this.levelInfo.description,
+                        canvasSize: { width: 800, height: 600 },
+                        gridSize: 20,
+                        playerStart: this.playerStart,
+                        goal: this.goal,
+                        platforms: this.platforms
+                    }
+                };
+
+                let code = '';
+                switch (format) {
+                    case 'javascript':
+                        code = `// 科技骑关卡数据
+const level_${name.replace(/[^a-zA-Z0-9]/g, '_')} = ${JSON.stringify(levelData, null, 4)};
+
+// 使用方法：
+// const game = new SciFiRaccoonGame();
+// game.loadCustomLevel(level_${name.replace(/[^a-zA-Z0-9]/g, '_')});`;
+                        break;
+                    case 'json':
+                        code = JSON.stringify(levelData, null, 2);
+                        break;
+                    case 'python':
+                        code = `# 科技骑关卡数据 (Python格式)
+level_data = ${JSON.stringify(levelData, null, 4).replace(/"(\w+)":/g, '"$1":').replace(/"(\d+)":/g, '$1:').replace(/"([^"]+)"/g, '"$1"')}
+
+# 转换到字典
+level_dict = {
+    'metadata': {
+        'name': '${levelData.metadata.name}',
+        'author': '${levelData.metadata.author}',
+        'version': '${levelData.metadata.version}',
+        'created': '${levelData.metadata.created}',
+        'format': '${levelData.metadata.format}'
+    },
+    'level': {
+        'name': '${levelData.level.name}',
+        'difficulty': ${levelData.level.difficulty},
+        'description': '${levelData.level.description}',
+        'canvasSize': ${JSON.stringify(levelData.level.canvasSize)},
+        'gridSize': ${levelData.level.gridSize},
+        'playerStart': ${JSON.stringify(levelData.level.playerStart)},
+        'goal': ${JSON.stringify(levelData.level.goal)},
+        'platforms': ${JSON.stringify(levelData.level.platforms)}
+    }
+}`;
+                        break;
+                    case 'config':
+                        code = `# 科技骑关卡配置文件
+[Level]
+name=${levelData.level.name}
+difficulty=${levelData.level.difficulty}
+description=${levelData.level.description.replace(/\n/g, ' ')}
+canvas_width=${levelData.level.canvasSize.width}
+canvas_height=${levelData.level.canvasSize.height}
+grid_size=${levelData.level.gridSize}
+
+[Player]
+start_x=${levelData.level.playerStart.x}
+start_y=${levelData.level.playerStart.y}
+
+[Goal]
+x=${levelData.level.goal.x}
+y=${levelData.level.goal.y}
+size=${levelData.level.goal.size}
+
+[Platforms]
+platform_count=${levelData.level.platforms.length}
+${levelData.level.platforms.map((p, i) => 
+    `# Platform ${i+1}
+platform_${i+1}_x=${p.x}
+platform_${i+1}_y=${p.y}
+platform_${i+1}_width=${p.width}
+platform_${i+1}_height=${p.height}
+platform_${i+1}_color=${p.color}`
+).join('\n\n')}`;
+                        break;
+                }
+                
+                document.getElementById('codePreview').value = code;
+            }
+
+            copyCode() {
+                const codeText = document.getElementById('codePreview').value;
+                navigator.clipboard.writeText(codeText).then(() => {
+                    alert('代码已复制到剪贴板！');
+                }).catch(() => {
+                    // 备用复制方法
+                    const textArea = document.createElement('textarea');
+                    textArea.value = codeText;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    alert('代码已复制到剪贴板！');
+                });
+            }
+
+            downloadCode() {
+                const format = document.getElementById('codeFormat').value;
+                const name = (document.getElementById('exportName').value || '自定义关卡').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                const codeText = document.getElementById('codePreview').value;
+                
+                let extension = '';
+                let mimeType = 'text/plain';
+                
+                switch (format) {
+                    case 'javascript':
+                        extension = '.js';
+                        mimeType = 'application/javascript';
+                        break;
+                    case 'json':
+                        extension = '.json';
+                        mimeType = 'application/json';
+                        break;
+                    case 'python':
+                        extension = '.py';
+                        mimeType = 'text/x-python';
+                        break;
+                    case 'config':
+                        extension = '.cfg';
+                        mimeType = 'text/plain';
+                        break;
+                }
+                
+                const blob = new Blob([codeText], { type: mimeType });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `${name}${extension}`;
+                link.click();
+            }
+
+            importFromCode() {
+                document.getElementById('codeImportModal').style.display = 'flex';
+            }
+
+            parseAndImportCode() {
+                const codeInput = document.getElementById('codeInput').value.trim();
+                if (!codeInput) {
+                    alert('请先粘贴代码！');
+                    return;
+                }
+
+                try {
+                    let levelData = null;
+                    
+                    // 尝试解析不同的格式
+                    if (codeInput.startsWith('{') || codeInput.startsWith('[')) {
+                        // JSON格式
+                        levelData = JSON.parse(codeInput);
+                    } else if (codeInput.includes('const ') || codeInput.includes('let ') || codeInput.includes('var ')) {
+                        // JavaScript对象格式 - 提取JSON部分
+                        const jsonMatch = codeInput.match(/=([\s\S]*?);/);
+                        if (jsonMatch) {
+                            levelData = JSON.parse(jsonMatch[1]);
+                        }
+                    } else if (codeInput.includes('level_data =')) {
+                        // Python字典格式 - 简化的解析
+                        const jsonMatch = codeInput.match(/=([\s\S]*?)$/);
+                        if (jsonMatch) {
+                            levelData = JSON.parse(jsonMatch[1].replace(/'/g, '"'));
+                        }
+                    } else if (codeInput.includes('[Level]')) {
+                        // 配置文件格式 - 需要特殊处理
+                        levelData = this.parseConfigFormat(codeInput);
+                    }
+                    
+                    if (levelData) {
+                        this.importLevelData(levelData);
+                        this.closeModal('codeImportModal');
+                        document.getElementById('codeInput').value = '';
+                        document.getElementById('codeParseResult').style.display = 'none';
+                        alert('代码导入成功！');
+                    } else {
+                        throw new Error('无法解析代码格式');
+                    }
+                } catch (error) {
+                    document.getElementById('parseResultText').innerHTML = `<span style="color: #ff0000;">解析失败: ${error.message}</span>`;
+                    document.getElementById('codeParseResult').style.display = 'block';
+                }
+            }
+
+            parseConfigFormat(configText) {
+                // 简单的配置文件解析器
+                const levelData = {
+                    metadata: {
+                        name: '从配置导入的关卡',
+                        author: 'unknown',
+                        version: '1.0.0',
+                        created: new Date().toISOString(),
+                        format: 'raccoon-level-v1'
+                    },
+                    level: {
+                        name: '从配置导入的关卡',
+                        difficulty: 1,
+                        description: '',
+                        canvasSize: { width: 800, height: 600 },
+                        gridSize: 20,
+                        playerStart: { x: 50, y: 50 },
+                        goal: { x: 700, y: 100, size: 30 },
+                        platforms: []
+                    }
+                };
+
+                const lines = configText.split('\n');
+                let platforms = [];
+                let platformCount = 0;
+                let currentPlatform = {};
+
+                for (let line of lines) {
+                    line = line.trim();
+                    if (!line || line.startsWith('#')) continue;
+
+                    const [key, value] = line.split('=');
+                    if (!value) continue;
+
+                    if (key === 'name') levelData.level.name = value;
+                    else if (key === 'difficulty') levelData.level.difficulty = parseInt(value);
+                    else if (key === 'description') levelData.level.description = value;
+                    else if (key === 'start_x') levelData.level.playerStart.x = parseInt(value);
+                    else if (key === 'start_y') levelData.level.playerStart.y = parseInt(value);
+                    else if (key === 'x' && currentPlatform.id !== undefined) currentPlatform.x = parseInt(value);
+                    else if (key === 'y' && currentPlatform.id !== undefined) currentPlatform.y = parseInt(value);
+                    else if (key === 'width' && currentPlatform.id !== undefined) currentPlatform.width = parseInt(value);
+                    else if (key === 'height' && currentPlatform.id !== undefined) currentPlatform.height = parseInt(value);
+                    else if (key === 'color' && currentPlatform.id !== undefined) currentPlatform.color = value;
+                    else if (key === 'platform_count') platformCount = parseInt(value);
+                    else if (key.startsWith('platform_') && key.endsWith('_x')) {
+                        // 保存前一个平台
+                        if (currentPlatform.id !== undefined && Object.keys(currentPlatform).length > 1) {
+                            platforms.push({ ...currentPlatform });
+                        }
+                        // 开始新平台
+                        currentPlatform = { id: Date.now() + Math.random() };
+                    }
+                }
+
+                // 添加最后一个平台
+                if (currentPlatform.id !== undefined && Object.keys(currentPlatform).length > 1) {
+                    platforms.push(currentPlatform);
+                }
+
+                levelData.level.platforms = platforms;
+                return levelData;
+            }
+
+            clearCodeInput() {
+                document.getElementById('codeInput').value = '';
+                document.getElementById('codeParseResult').style.display = 'none';
+            }
+
+            importLevelData(levelData) {
+                if (levelData.metadata && levelData.metadata.format === 'raccoon-level-v1') {
+                    const level = levelData.level;
+                    this.platforms = level.platforms || [];
+                    this.playerStart = level.playerStart || { x: 50, y: 50 };
+                    this.goal = level.goal || { x: 700, y: 500, size: 30 };
+                    this.levelInfo = {
+                        name: level.name || '导入的关卡',
+                        difficulty: level.difficulty || 1,
+                        description: level.description || '',
+                        author: levelData.metadata.author || 'unknown',
+                        version: levelData.metadata.version || '1.0.0'
+                    };
+
+                    // 更新UI
+                    document.getElementById('levelName').value = this.levelInfo.name;
+                    document.getElementById('levelDifficulty').value = this.levelInfo.difficulty;
+                    document.getElementById('levelDescription').value = this.levelInfo.description;
+                    document.getElementById('exportName').value = this.levelInfo.name;
+                    document.getElementById('exportAuthor').value = this.levelInfo.author;
+                    document.getElementById('exportVersion').value = this.levelInfo.version;
+
+                    this.selectedPlatform = null;
+                    this.updatePlatformList();
+                    this.updatePlatformProperties();
+                    this.draw();
+                    this.saveState();
+                    
+                    alert('关卡导入成功！');
+                } else {
+                    alert('不支持的文件格式！');
+                }
+            }
+
+            closeModal(modalId) {
+                document.getElementById(modalId).style.display = 'none';
+            }
+
+            newLevel() {
+                if (confirm('确定要创建新关卡吗？当前进度将丢失。')) {
+                    this.platforms = [];
+                    this.playerStart = { x: 50, y: 50 };
+                    this.goal = { x: 700, y: 500, size: 30 };
+                    this.levelInfo = {
+                        name: '新关卡',
+                        difficulty: 1,
+                        description: '',
+                        author: 'anonymous',
+                        version: '1.0.0'
+                    };
+                    this.selectedPlatform = null;
+                    
+                    document.getElementById('levelName').value = this.levelInfo.name;
+                    document.getElementById('levelDifficulty').value = this.levelInfo.difficulty;
+                    document.getElementById('levelDescription').value = this.levelInfo.description;
+                    
+                    this.updatePlatformList();
+                    this.updatePlatformProperties();
+                    this.draw();
+                    this.saveState();
+                }
+            }
+
+            clearLevel() {
+                if (confirm('确定要清空所有平台吗？')) {
+                    this.platforms = [];
+                    this.selectedPlatform = null;
+                    this.updatePlatformList();
+                    this.updatePlatformProperties();
+                    this.draw();
+                    this.saveState();
+                }
+            }
+
+            toggleGrid() {
+                this.showGrid = !this.showGrid;
+                this.draw();
+            }
+
+            deleteSelected() {
+                if (this.selectedPlatform) {
+                    const index = this.platforms.indexOf(this.selectedPlatform);
+                    if (index > -1) {
+                        this.platforms.splice(index, 1);
+                        this.selectedPlatform = null;
+                        this.updatePlatformList();
+                        this.updatePlatformProperties();
+                        this.draw();
+                        this.saveState();
+                    }
+                }
+            }
+        }
+
+        // 初始化编辑器
+        let editor;
+
+        function selectTool(tool) {
+            editor.currentTool = tool;
+            document.querySelectorAll('.tool-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.tool === tool) {
+                    item.classList.add('active');
+                }
+            });
+        }
+
+        function toggleGrid() {
+            editor.toggleGrid();
+        }
+
+        function clearLevel() {
+            editor.clearLevel();
+        }
+
+        function exportLevel() {
+            editor.exportLevel();
+        }
+
+        function confirmExport() {
+            editor.confirmExport();
+        }
+
+        function exportAsCode() {
+            editor.exportAsCode();
+        }
+
+        function updateCodePreview() {
+            editor.updateCodePreview();
+        }
+
+        function copyCode() {
+            editor.copyCode();
+        }
+
+        function downloadCode() {
+            editor.downloadCode();
+        }
+
+        function importFromCode() {
+            editor.importFromCode();
+        }
+
+        function parseAndImportCode() {
+            editor.parseAndImportCode();
+        }
+
+        function clearCodeInput() {
+            editor.clearCodeInput();
+        }
+
+        function newLevel() {
+            editor.newLevel();
+        }
+
+        function saveAs() {
+            editor.exportLevel();
+        }
+
+        function updateSelectedPlatform() {
+            editor.updateSelectedPlatform();
+        }
+
+        function updatePlayer() {
+            editor.updatePlayer();
+        }
+
+        function updateGoal() {
+            editor.updateGoal();
+        }
+
+        function deleteSelected() {
+            editor.deleteSelected();
+        }
+
+        function closeModal(modalId) {
+            editor.closeModal(modalId);
+        }
+
+        function importLevel(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const levelData = JSON.parse(e.target.result);
+                        editor.importLevelData(levelData);
+                    } catch (error) {
+                        alert('文件解析失败！请检查文件格式。');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        // 页面加载完成后初始化
+        window.addEventListener('load', function() {
+            editor = new LevelEditor();
+        });
+    </script>
+</body>
+</html>
