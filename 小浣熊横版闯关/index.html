@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小浣熊冒险记</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Baloo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- 关卡选择界面 -->
+    <div id="levelSelect" class="screen active">
+        <div class="container">
+            <h1 class="main-title">小浣熊冒险记</h1>
+            <p class="subtitle">选择一个关卡开始你的冒险！</p>
+            
+            <!-- 进度管理按钮（仅供测试） -->
+            <div class="progress-controls" style="margin-bottom: 20px;">
+                <button class="reset-progress-btn" id="resetProgress" style="background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px;">
+                    🔄 重置进度（测试用）
+                </button>
+            </div>
+            
+            <div class="level-grid">
+                <div class="level-card" data-level="1">
+                    <div class="level-icon">⭐</div>
+                    <div class="level-number">第 1 关</div>
+                    <div class="level-stars">
+                        <span class="star">★</span>
+                        <span class="star">★</span>
+                        <span class="star">★</span>
+                    </div>
+                </div>
+                
+                <div class="level-card locked" data-level="2">
+                    <div class="level-icon">🔒</div>
+                    <div class="level-number">第 2 关</div>
+                    <div class="level-description">移动平台挑战</div>
+                    <div class="level-stars">
+                        <span class="star">☆</span>
+                        <span class="star">☆</span>
+                        <span class="star">☆</span>
+                    </div>
+                </div>
+                
+                <div class="level-card locked" data-level="3">
+                    <div class="level-icon">🔒</div>
+                    <div class="level-number">第 3 关</div>
+                    <div class="level-stars">
+                        <span class="star">☆</span>
+                        <span class="star">☆</span>
+                        <span class="star">☆</span>
+                    </div>
+                </div>
+                
+                <div class="level-card locked" data-level="4">
+                    <div class="level-icon">🔒</div>
+                    <div class="level-number">第 4 关</div>
+                    <div class="level-stars">
+                        <span class="star">☆</span>
+                        <span class="star">☆</span>
+                        <span class="star">☆</span>
+                    </div>
+                </div>
+                
+                <div class="level-card locked" data-level="5">
+                    <div class="level-icon">🔒</div>
+                    <div class="level-number">第 5 关</div>
+                    <div class="level-stars">
+                        <span class="star">☆</span>
+                        <span class="star">☆</span>
+                        <span class="star">☆</span>
+                    </div>
+                </div>
+                <button class="next-page-btn" onclick="goToNextPage()">下一页</button>
+                <script> function goToNextPage() { 
+                    // 跳转到下一页 
+                window.location.href = "index_max.html"; } 
+                </script>
+                <button class="next-page-btn" onclick="goToPage()">关卡编辑器</button>
+                <script> function goToPage() { 
+                    // 跳转关卡编辑器
+                window.location.href = "level_editor.html"; } 
+                </script>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏界面 -->
+    <div id="gameScreen" class="screen">
+        <div class="game-info">
+            <p>💻 键盘：←→移动 | 空格跳跃 | 🕹️ 手柄：支持Xbox/PlayStation/Nintendo | 📱 触屏：虚拟按键</p>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- 增强型移动端控制面板 -->
+        <div class="mobile-controls">
+            <!-- 方向控制区 -->
+            <div class="control-dpad">
+                <button class="control-btn up-btn" id="upBtn">↑</button>
+                <button class="control-btn left-btn" id="leftBtn">←</button>
+                <button class="control-btn right-btn" id="rightBtn">→</button>
+                <button class="control-btn down-btn" id="downBtn">↓</button>
+            </div>
+            
+            <!-- 动作按键区 -->
+            <div class="control-buttons">
+                <button class="control-btn action-btn jump-btn" id="jumpBtn">
+                    <span class="btn-label">跳</span>
+                </button>
+                <button class="control-btn action-btn action-btn-secondary" id="actionBtn">
+                    <span class="btn-label">A</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- 手柄连接状态指示器 -->
+        <div class="controller-status" id="controllerStatus">
+            <span class="status-icon">🎮</span>
+            <span class="status-text">使用手柄：Xbox控制器</span>
+        </div>
+        
+        <!-- 返回按钮 -->
+        <button class="back-btn" id="backToMenu">返回菜单</button>
+    </div>
+
+    <!-- 通关弹窗 -->
+    <div id="winModal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-title">恭喜通关！</h2>
+            <div class="stars-display">
+                <span class="modal-star">★</span>
+                <span class="modal-star">★</span>
+                <span class="modal-star">★</span>
+            </div>
+            <p class="modal-text">小浣熊成功进入树洞！</p>
+            <div class="modal-buttons">
+                <button class="btn btn-primary" id="nextLevel">下一关</button>
+                <button class="btn btn-secondary" id="backToLevelSelect">返回菜单</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
