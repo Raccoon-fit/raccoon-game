@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<!-- V2.9.2 - 去除UI外框 -->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>云海之境 · 简洁UI V2.9.2</title>
+  <style>
+    body { margin: 0; overflow: hidden; font-family: 'Microsoft YaHei', sans-serif; }
+    #ui {
+      position: absolute; top: 20px; left: 20px; pointer-events: none; z-index: 10;
+      display: flex; flex-direction: column; gap: 14px;
+      /* 移除背景、边框、阴影 */
+    }
+    .stat-widget {
+      display: flex; align-items: center; gap: 12px;
+      background: linear-gradient(180deg, rgba(30,20,10,0.8) 0%, rgba(20,10,5,0.9) 100%);
+      border: 2px solid #8a6d3b;
+      border-radius: 25px;
+      padding: 5px 16px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.8), inset 0 1px 5px rgba(255,215,0,0.4);
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-widget::before {
+      content: '';
+      position: absolute;
+      top: -2px; left: -2px; right: -2px; bottom: -2px;
+      background: linear-gradient(45deg, #ffd700, #b8860b, #ffd700, #b8860b);
+      border-radius: 27px;
+      z-index: -1;
+      opacity: 0.8;
+      filter: blur(4px);
+    }
+    .stat-icon { 
+      font-size: 26px; 
+      filter: drop-shadow(0 0 8px currentColor); 
+      width: 36px; text-align: center;
+      text-shadow: 0 0 12px currentColor;
+    }
+    .stat-icon.hp { color: #ff4444; }
+    .stat-icon.cloud { color: #4da6ff; }
+    .stat-icon.stamina { color: #5eff5e; }
+    .stat-track {
+      width: 180px; height: 18px;
+      background: rgba(0,0,0,0.8);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #5a4a2a;
+      box-shadow: inset 0 3px 8px rgba(0,0,0,0.9), 0 0 10px rgba(255,200,0,0.5);
+    }
+    .stat-fill {
+      height: 100%; width: 100%;
+      border-radius: 12px;
+      transition: width 0.3s;
+      position: relative;
+      box-shadow: inset 0 2px 4px rgba(255,255,255,0.5);
+    }
+    .stat-fill::after {
+      content: '';
+      position: absolute;
+      top: 2px; left: 4px; right: 4px; height: 30%;
+      background: rgba(255,255,255,0.5);
+      border-radius: 8px;
+    }
+    .stat-fill::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -30%; width: 30%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+      animation: shimmer 2s infinite;
+    }
+    @keyframes shimmer {
+      0% { left: -30%; }
+      100% { left: 130%; }
+    }
+    .hp-fill { background: linear-gradient(180deg, #ff6666 0%, #b91c1c 100%); }
+    .cloud-fill { background: linear-gradient(180deg, #66aaff 0%, #1e40af 100%); }
+    .stamina-fill { background: linear-gradient(180deg, #66ff66 0%, #166534 100%); }
+    .stat-value {
+      font-size: 16px; font-weight: bold; 
+      color: #ffd966; 
+      text-shadow: 0 0 10px #ff9900, 0 0 5px black;
+      min-width: 70px; text-align: right;
+      letter-spacing: 1px;
+    }
+
+    #quest-panel {
+      position: absolute; top: 20px; right: 20px;
+      background: rgba(20,15,5,0.9); backdrop-filter: blur(8px);
+      border: 2px solid #c0a060; border-radius: 18px;
+      padding: 18px 22px;
+      color: #f5e7c6;
+      box-shadow: 0 0 30px rgba(255, 215, 0, 0.4), inset 0 0 20px rgba(255, 200, 50, 0.2);
+      pointer-events: none; z-index: 10; max-width: 260px;
+      font-family: 'Cinzel', 'Microsoft YaHei', serif;
+    }
+    #quest-panel h3 { margin: 0 0 12px; font-size: 22px; text-align: center; color: #ffd966; text-shadow: 0 0 15px #b8860b; border-bottom: 1px solid #8b7d5b; padding-bottom: 8px; }
+    #quest-list { list-style: none; padding: 0; margin: 0; }
+    #quest-list li { margin-bottom: 10px; font-size: 14px; display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.5); padding: 6px 10px; border-radius: 8px; border: 1px solid #5a4a2a; }
+    .quest-done { color: #a0d468; text-decoration: line-through; opacity: 0.8; }
+    .quest-active { color: #ffd966; }
+    .quest-icon { font-size: 18px; width: 20px; text-align: center; }
+    #time-display {
+      position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+      color: #ffd966; background: rgba(10,10,20,0.8); backdrop-filter: blur(4px);
+      border: 1px solid #c0a060; padding: 6px 20px; border-radius: 30px;
+      font-size: 15px; letter-spacing: 1px; text-shadow: 0 0 8px black; z-index: 10;
+      box-shadow: 0 0 20px rgba(255,215,0,0.5);
+    }
+    #message {
+      position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%);
+      color: #ffd700; font-size: 28px; font-weight: bold; text-shadow: 0 0 15px black;
+      pointer-events: none; z-index: 10; text-align: center;
+    }
+    #crosshair {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 20px; height: 20px; pointer-events: none; z-index: 10;
+    }
+    #crosshair::before, #crosshair::after { content: ''; position: absolute; background: rgba(255,215,0,0.9); }
+    #crosshair::before { width: 2px; height: 100%; left: 9px; }
+    #crosshair::after { width: 100%; height: 2px; top: 9px; }
+    #instructions {
+      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+      color: #ddd; background: rgba(0,0,0,0.8); padding: 6px 18px;
+      border-radius: 20px; font-size: 13px; pointer-events: none; z-index: 10;
+      white-space: nowrap; backdrop-filter: blur(4px);
+    }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <div class="stat-widget"><span class="stat-icon hp">❤️</span><div class="stat-track"><div id="hp-bar" class="stat-fill hp-fill" style="width:100%"></div></div><span class="stat-value" id="hp-text">100/100</span></div>
+    <div class="stat-widget"><span class="stat-icon cloud">💧</span><div class="stat-track"><div id="cloud-bar" class="stat-fill cloud-fill" style="width:100%"></div></div><span class="stat-value" id="cloud-text">100/100</span></div>
+    <div class="stat-widget"><span class="stat-icon stamina">⚡</span><div class="stat-track"><div id="stamina-bar" class="stat-fill stamina-fill" style="width:100%"></div></div><span class="stat-value" id="stamina-text">100/100</span></div>
+  </div>
+
+  <div id="quest-panel"><h3>📜 归云者的使命</h3><ul id="quest-list"></ul></div>
+  <div id="time-display">🌞 正午 12:00</div>
+  <div id="message"></div>
+  <div id="crosshair"></div>
+  <div id="instructions">🖱️ 点击锁定 | WASD移动 | 鼠标左键符文 | F键剑砍 | E键交互/拾取 | Shift疾跑 | ESC释放</div>
+
+  <script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.128.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/" } }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+    // ---------- 游戏状态 ----------
+    const player = {
+      hp: 100, maxHp: 100,
+      cloud: 100, maxCloud: 100,
+      stamina: 100, maxStamina: 100,
+      chaosDefeated: false,
+      memoryCollected: 0, memoryTotal: 4,
+      crystalsGathered: 0, monstersKilled: 0,
+      activatedPillars: 0
+    };
+
+    const quests = [
+      { id:'q1',text:'击败混沌云鼠',done:false,check:()=>player.chaosDefeated },
+      { id:'q2',text:`收集记忆水晶 (${player.memoryCollected}/${player.memoryTotal})`,done:false,check:()=>player.memoryCollected>=player.memoryTotal },
+      { id:'q3',text:'拾取5个云晶碎片',done:false,check:()=>player.crystalsGathered>=5 },
+      { id:'q4',text:'消灭6只怪物',done:false,check:()=>player.monstersKilled>=6 },
+      { id:'q5',text:'激活两处石柱',done:false,check:()=>player.activatedPillars>=2 }
+    ];
+
+    function updateQuestUI(){
+      const listEl=document.getElementById('quest-list'); listEl.innerHTML='';
+      quests.forEach(q=>{
+        const li=document.createElement('li');
+        li.innerHTML=`<span class="quest-icon">${q.done?'✅':'🔹'}</span> ${q.text}`;
+        li.className=q.done?'quest-done':'quest-active'; listEl.appendChild(li);
+      });
+    }
+
+    function checkQuestCompletion(){
+      let anyUpdate=false;
+      quests.forEach(q=>{ if(!q.done&&q.check()){ q.done=true; anyUpdate=true; showMessage(`任务完成：${q.text}`); } });
+      if(anyUpdate) updateQuestUI();
+    }
+
+    const monsters=[], loots=[], memoryCrystals=[], colliders=[];
+    const scene=new THREE.Scene();
+    scene.background=new THREE.Color(0x87CEEB);
+    scene.fog=new THREE.FogExp2(0x000000,0.0008);
+
+    const camera=new THREE.PerspectiveCamera(70,window.innerWidth/window.innerHeight,0.1,300);
+    camera.position.set(0,1.7,5);
+    const renderer=new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(window.innerWidth,window.innerHeight);
+    renderer.shadowMap.enabled=true;
+    renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+    document.body.appendChild(renderer.domElement);
+
+    const controls=new PointerLockControls(camera,renderer.domElement);
+    renderer.domElement.addEventListener('click',()=>{if(!controls.isLocked)controls.lock();});
+    controls.addEventListener('lock',()=>document.getElementById('instructions').style.opacity='0');
+    controls.addEventListener('unlock',()=>document.getElementById('instructions').style.opacity='1');
+
+    const ambientLight=new THREE.AmbientLight(0x404066); scene.add(ambientLight);
+    const dirLight=new THREE.DirectionalLight(0xffeedd,1);
+    dirLight.position.set(30,40,20); dirLight.castShadow=true;
+    dirLight.shadow.mapSize.set(512,512); dirLight.shadow.camera.near=0.5; dirLight.shadow.camera.far=200;
+    dirLight.shadow.camera.left=-60; dirLight.shadow.camera.right=60;
+    dirLight.shadow.camera.top=60; dirLight.shadow.camera.bottom=-60;
+    scene.add(dirLight);
+    const pmremGenerator=new THREE.PMREMGenerator(renderer);
+    scene.environment=pmremGenerator.fromScene(new THREE.Scene()).texture;
+
+    const ground=new THREE.Mesh(new THREE.PlaneGeometry(200,200),new THREE.MeshStandardMaterial({color:0x6b8e23,roughness:0.9}));
+    ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+
+    // 高精地形
+    function addHill(x,z,radius,height,color=0x8b9a46){
+      const hill=new THREE.Mesh(new THREE.CylinderGeometry(radius*0.6,radius,height,16),new THREE.MeshStandardMaterial({color,roughness:0.8}));
+      hill.position.set(x,height/2,z); hill.castShadow=hill.receiveShadow=true; scene.add(hill);
+      colliders.push({center:new THREE.Vector3(x,0,z),radius});
+    }
+    function addRock(x,z,scale){
+      const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(0.8,2),new THREE.MeshStandardMaterial({color:0x696969,roughness:0.6,metalness:0.2}));
+      const radius=0.8*scale; rock.scale.set(scale,scale,scale); rock.position.set(x,radius,z); rock.castShadow=rock.receiveShadow=true; scene.add(rock);
+      colliders.push({center:new THREE.Vector3(x,0,z),radius});
+    }
+    function addPond(x,z,radius){
+      const pond=new THREE.Mesh(new THREE.CircleGeometry(radius,32),new THREE.MeshStandardMaterial({color:0x2c5f8a,roughness:0.2,metalness:0.4}));
+      pond.rotation.x=-Math.PI/2; pond.position.set(x,0.05,z); pond.receiveShadow=true; scene.add(pond);
+    }
+
+    for(let i=0;i<40;i++){
+      const x=(Math.random()-0.5)*180,z=(Math.random()-0.5)*180;
+      if(Math.abs(x)<10&&Math.abs(z)<10)continue;
+      const type=Math.random();
+      if(type<0.4)addHill(x,z,3+Math.random()*5,1+Math.random()*2);
+      else if(type<0.7)addRock(x,z,0.8+Math.random()*1.5);
+      else addPond(x,z,1+Math.random()*3);
+    }
+
+    function createTree(x,z){
+      const g=new THREE.Group();
+      const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.25,0.35,2.5,12),new THREE.MeshStandardMaterial({color:0x5d4037,roughness:0.7}));
+      trunk.position.y=1.25; trunk.castShadow=trunk.receiveShadow=true; g.add(trunk);
+      const crown=new THREE.Group(); crown.position.y=2.6;
+      for(let i=0;i<3;i++) crown.add(new THREE.Mesh(new THREE.ConeGeometry(0.8-i*0.15,1.0,16),new THREE.MeshStandardMaterial({color:[0x2e7d32,0x388e3c,0x4caf50][i],roughness:0.4})));
+      g.add(crown); g.position.set(x,0,z); scene.add(g);
+      colliders.push({center:new THREE.Vector3(x,0,z),radius:0.5});
+    }
+    for(let i=0;i<80;i++){
+      const x=(Math.random()-0.5)*190,z=(Math.random()-0.5)*190;
+      if(Math.abs(x)<8&&Math.abs(z)<8)continue;
+      createTree(x,z);
+    }
+
+    const crystalPillars=[];
+    const activatedPillarsSet=new Set();
+    function createPillar(x,z){
+      const g=new THREE.Group();
+      const p=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.6,3.0,16),new THREE.MeshStandardMaterial({color:0x4fc3f7,emissive:new THREE.Color(0x0288d1),roughness:0.2,metalness:0.3}));
+      p.position.y=1.5; p.castShadow=p.receiveShadow=true; g.add(p);
+      const light=new THREE.PointLight(0x4fc3f7,1.0,10); light.position.y=2.0; g.add(light);
+      g.position.set(x,0,z); scene.add(g);
+      return {mesh:g,pos:new THREE.Vector3(x,0.5,z),id:`pillar_${x}_${z}`};
+    }
+    crystalPillars.push(createPillar(-40,-30),createPillar(45,20),createPillar(-20,50),createPillar(30,-40));
+
+    function createMemoryCrystal(x,z){
+      const crystal=new THREE.Mesh(new THREE.OctahedronGeometry(0.9),new THREE.MeshStandardMaterial({color:0xffd700,emissive:new THREE.Color(0xaa8800),roughness:0.2}));
+      crystal.position.set(x,1.4,z); crystal.castShadow=true; scene.add(crystal);
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(1.2,0.08,16,32),new THREE.MeshStandardMaterial({color:0xffaa00,emissive:new THREE.Color(0x331100)}));
+      ring.position.copy(crystal.position); ring.position.y+=0.3; scene.add(ring);
+      return {crystal,ring,pos:new THREE.Vector3(x,1.4,z),collected:false};
+    }
+    memoryCrystals.push(createMemoryCrystal(60,-50),createMemoryCrystal(-50,60),createMemoryCrystal(-55,-55),createMemoryCrystal(65,65));
+    player.memoryTotal=memoryCrystals.length;
+
+    const swordGroup=new THREE.Group();
+    const blade=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.9,0.03),new THREE.MeshStandardMaterial({color:0xc0c0c0,metalness:0.9,roughness:0.2}));
+    blade.position.y=0.45; swordGroup.add(blade);
+    const guard=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.06,0.12),new THREE.MeshStandardMaterial({color:0x8b4513,roughness:0.6}));
+    guard.position.y=0.05; swordGroup.add(guard);
+    const handle=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.35),new THREE.MeshStandardMaterial({color:0x5d4037,roughness:0.7}));
+    handle.position.y=-0.18; swordGroup.add(handle);
+    swordGroup.position.set(0.35,-0.3,-0.55); camera.add(swordGroup); scene.add(camera);
+    let swordSwinging=false,swordAngle=0;
+
+    class Monster {
+      constructor(id,name,hp,damage,speed,aiType,color,pos,lootTable){
+        this.id=id;this.name=name;this.maxHp=hp;this.hp=hp;this.damage=damage;this.speed=speed;this.aiType=aiType;this.lootTable=lootTable;
+        this.attackCooldown=0;this.stunTimer=0;
+        this.mesh=new THREE.Group();
+        const mat=new THREE.MeshStandardMaterial({color,roughness:0.3,metalness:0.1});
+        const body=new THREE.Mesh(new THREE.CylinderGeometry(0.25,0.45,0.8,12),mat);body.position.y=0.4;body.castShadow=body.receiveShadow=true;this.mesh.add(body);
+        const head=new THREE.Mesh(new THREE.SphereGeometry(0.28,16,12),mat);head.scale.set(1,0.85,1);head.position.y=0.95;head.castShadow=head.receiveShadow=true;this.mesh.add(head);
+        const eyeW=new THREE.Mesh(new THREE.SphereGeometry(0.08,8,6),new THREE.MeshStandardMaterial({color:0xffffff}));
+        const leftW=eyeW.clone();leftW.position.set(-0.12,1.0,0.25);this.mesh.add(leftW);
+        const rightW=eyeW.clone();rightW.position.set(0.12,1.0,0.25);this.mesh.add(rightW);
+        const pupil=new THREE.Mesh(new THREE.SphereGeometry(0.04,6,4),new THREE.MeshStandardMaterial({color:0x000000}));
+        const lp=pupil.clone();lp.position.set(-0.12,1.0,0.31);this.mesh.add(lp);
+        const rp=pupil.clone();rp.position.set(0.12,1.0,0.31);this.mesh.add(rp);
+        const ear=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.25,8),mat);
+        const le=ear.clone();le.position.set(-0.2,1.25,0);le.rotation.z=0.3;this.mesh.add(le);
+        const re=ear.clone();re.position.set(0.2,1.25,0);re.rotation.z=-0.3;this.mesh.add(re);
+        const leg=new THREE.CylinderGeometry(0.12,0.12,0.35,8);
+        [[-0.25,0.15,0.25],[0.25,0.15,0.25],[-0.25,0.15,-0.25],[0.25,0.15,-0.25]].forEach(p=>{const l=new THREE.Mesh(leg,mat);l.position.set(p[0],p[1],p[2]);l.castShadow=true;this.mesh.add(l);});
+        const tail=new THREE.Mesh(new THREE.ConeGeometry(0.08,0.35,6),mat);tail.position.set(0,0.25,-0.5);tail.rotation.x=0.6;this.mesh.add(tail);
+        this.mesh.position.set(pos.x,0,pos.z);scene.add(this.mesh);
+        const barCanvas=document.createElement('canvas');barCanvas.width=64;barCanvas.height=8;this.barCanvas=barCanvas;
+        const barTexture=new THREE.CanvasTexture(barCanvas);this.healthBar=new THREE.Sprite(new THREE.SpriteMaterial({map:barTexture}));
+        this.healthBar.scale.set(1.2,0.15,1);this.healthBar.position.y=1.5;this.mesh.add(this.healthBar);this.updateHealthBar();
+      }
+      updateHealthBar(){const ctx=this.barCanvas.getContext('2d');ctx.clearRect(0,0,64,8);ctx.fillStyle='#333';ctx.fillRect(0,0,64,8);const pct=this.hp/this.maxHp;ctx.fillStyle=pct>0.5?'#4caf50':pct>0.25?'#ff9800':'#f44336';ctx.fillRect(0,0,64*pct,8);this.healthBar.material.map.needsUpdate=true;}
+      takeDamage(amount){if(this.hp<=0)return false;this.hp-=amount;this.updateHealthBar();this.stunTimer=0.2;showDamageNumber(this.mesh.position.clone().add(new THREE.Vector3(0,1.8,0)),amount);if(this.hp<=0){this.die();return true;}return false;}
+      die(){scene.remove(this.mesh);if(this.lootTable)this.lootTable.forEach(item=>loots.push(new Loot(item.id,item.name,item.amount,this.mesh.position.clone())));const idx=monsters.indexOf(this);if(idx>-1)monsters.splice(idx,1);player.monstersKilled++;if(this.id==='M_CLOUD_RAT_CHAOS'){player.chaosDefeated=true;showMessage('混沌云鼠已被击败！');}checkQuestCompletion();}
+      update(delta,playerPos){
+        if(this.hp<=0)return;if(this.stunTimer>0){this.stunTimer-=delta;return;}
+        const pos=this.mesh.position.clone();const dist=pos.distanceTo(playerPos);let direction=new THREE.Vector3();
+        if(this.aiType==='flee'&&dist<10){direction.copy(pos).sub(playerPos).normalize();}
+        else if(this.aiType==='chase'){if(dist>1.8){direction.copy(playerPos).sub(pos).normalize();}else if(this.attackCooldown<=0){player.takeDamage(this.damage);this.attackCooldown=1.2;}}
+        if(direction.length()>0){const newPos=pos.clone().add(direction.multiplyScalar(this.speed*delta));const resolved=resolveCollision(newPos,0.5);this.mesh.position.copy(resolved);this.mesh.position.y=0;}
+        if(this.attackCooldown>0)this.attackCooldown-=delta;
+      }
+    }
+
+    class Loot {
+      constructor(id,name,amount,pos){
+        this.id=id;this.name=name;this.amount=amount;this.mesh=new THREE.Group();
+        const torus=new THREE.Mesh(new THREE.TorusGeometry(0.22,0.07,16,32),new THREE.MeshStandardMaterial({color:0xffd700,metalness:0.9,roughness:0.2,emissive:new THREE.Color(0x221100)}));
+        torus.rotation.x=Math.PI/3;torus.castShadow=true;this.mesh.add(torus);
+        const light=new THREE.PointLight(0xffaa00,0.8,2.8);light.position.y=0.15;this.mesh.add(light);
+        const spriteMap=(()=>{const c=document.createElement('canvas');c.width=c.height=16;const ctx=c.getContext('2d');ctx.beginPath();ctx.arc(8,8,6,0,2*Math.PI);ctx.fillStyle='rgba(255,215,0,0.9)';ctx.fill();return new THREE.CanvasTexture(c);})();
+        const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:spriteMap,blending:THREE.AdditiveBlending}));
+        sprite.scale.set(0.7,0.7,1);sprite.position.y=0.2;this.mesh.add(sprite);
+        this.mesh.position.copy(pos);this.mesh.position.y+=0.3;scene.add(this.mesh);
+      }
+      update(delta){this.mesh.rotation.y+=delta*2.5;this.mesh.rotation.x=Math.sin(Date.now()*0.01)*0.2+Math.PI/3;}
+    }
+
+    function showDamageNumber(pos,amt){const c=document.createElement('canvas');c.width=64;c.height=32;const ctx=c.getContext('2d');ctx.font='bold 20px Arial';ctx.fillStyle='#ff4444';ctx.textAlign='center';ctx.fillText(amt,32,24);const tex=new THREE.CanvasTexture(c);const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex}));sp.position.copy(pos);sp.scale.set(1.2,0.6,1);scene.add(sp);setTimeout(()=>scene.remove(sp),800);}
+    function showMessage(t){const m=document.getElementById('message');m.textContent=t;m.style.opacity='1';setTimeout(()=>m.style.opacity='0',2000);}
+    player.takeDamage=function(amt){if(this.hp<=0)return;this.hp=Math.max(0,this.hp-amt);updateUI();if(this.hp<=0){showMessage('你被击败了... 即将重生');setTimeout(()=>{this.hp=this.maxHp;this.cloud=this.maxCloud;this.stamina=this.maxStamina;camera.position.set(0,1.7,5);updateUI();},2000);}};
+
+    function resolveCollision(pos,entityRadius=0.3){let resolved=pos.clone();for(const col of colliders){const dx=resolved.x-col.center.x;const dz=resolved.z-col.center.z;const dist=Math.sqrt(dx*dx+dz*dz);const minDist=col.radius+entityRadius;if(dist<minDist&&dist>0.001){const overlap=minDist-dist;resolved.x+=dx/dist*overlap;resolved.z+=dz/dist*overlap;}}return resolved;}
+
+    function spawnMonsters(){
+      monsters.push(new Monster('M_CLOUD_RAT_CHAOS','混沌云鼠',30,5,3.5,'chase',0x9c27b0,new THREE.Vector3(3,0,-5),[]));
+      for(let i=0;i<12;i++){const a=Math.random()*Math.PI*2,r=10+Math.random()*70;const pos=new THREE.Vector3(Math.cos(a)*r,0,Math.sin(a)*r);if(pos.distanceTo(new THREE.Vector3(0,0,5))<8)continue;monsters.push(new Monster('M_CLOUD_RAT','晶壳云鼠',15,4,4.0,'flee',0x9e9e9e,pos,[{id:'shard',name:'云晶碎片',amount:1}]));}
+    }
+    spawnMonsters();
+
+    function updateUI(){
+      document.getElementById('hp-bar').style.width=`${(player.hp/player.maxHp)*100}%`;
+      document.getElementById('hp-text').textContent=`${Math.ceil(player.hp)}/${player.maxHp}`;
+      document.getElementById('cloud-bar').style.width=`${(player.cloud/player.maxCloud)*100}%`;
+      document.getElementById('cloud-text').textContent=`${Math.ceil(player.cloud)}/${player.maxCloud}`;
+      document.getElementById('stamina-bar').style.width=`${(player.stamina/player.maxStamina)*100}%`;
+      document.getElementById('stamina-text').textContent=`${Math.ceil(player.stamina)}/${player.maxStamina}`;
+    }
+
+    function getMonstersInCone(range,maxAngle){
+      const forward=new THREE.Vector3();camera.getWorldDirection(forward);const playerPos=camera.position.clone();const result=[];
+      for(const m of monsters){if(m.hp<=0)continue;const toMonster=m.mesh.position.clone().sub(playerPos);const dist=toMonster.length();if(dist>range)continue;const angle=forward.angleTo(toMonster);if(angle<=maxAngle)result.push({monster:m,distance:dist});}
+      result.sort((a,b)=>a.distance-b.distance);return result;
+    }
+    const ATTACK_COOLDOWN=0.5;let attackTimer=0,swordCooldown=0;
+    function performRuneAttack(){if(attackTimer>0)return;if(player.cloud<15){showMessage('云息不足！');return;}const targets=getMonstersInCone(20,0.5);if(targets.length>0){player.cloud-=15;targets[0].monster.takeDamage(20);attackTimer=ATTACK_COOLDOWN;updateUI();}else{showMessage('前方没有敌人');}}
+    function swordAttack(){if(swordCooldown>0)return;swordCooldown=0.6;swordSwinging=true;swordAngle=0;const targets=getMonstersInCone(3.0,0.9);if(targets.length>0){for(const t of targets)t.monster.takeDamage(12);showMessage('剑砍命中！');}}
+    renderer.domElement.addEventListener('pointerdown',e=>{if(!controls.isLocked)return;if(e.button===0)performRuneAttack();});
+
+    function tryInteract(){
+      for(const mem of memoryCrystals){if(!mem.collected&&camera.position.distanceTo(mem.pos)<3.0){mem.collected=true;scene.remove(mem.crystal);scene.remove(mem.ring);player.memoryCollected++;showMessage(`✨ 获得记忆水晶！ (${player.memoryCollected}/${player.memoryTotal})`);updateQuestUI();checkQuestCompletion();return;}}
+      for(const p of crystalPillars){
+        if(camera.position.distanceTo(p.pos)<3.5){
+          player.cloud=Math.min(player.maxCloud,player.cloud+35);player.hp=Math.min(player.maxHp,player.hp+25);
+          if(!activatedPillarsSet.has(p.id)){activatedPillarsSet.add(p.id);player.activatedPillars++;checkQuestCompletion();}
+          showMessage('云息与生命恢复！');updateUI();break;
+        }
+      }
+      for(let i=loots.length-1;i>=0;i--){const loot=loots[i];if(camera.position.distanceTo(loot.mesh.position)<3.0){scene.remove(loot.mesh);showMessage(`获得 ${loot.name} x${loot.amount}`);if(loot.id==='shard')player.crystalsGathered+=loot.amount;loots.splice(i,1);checkQuestCompletion();break;}}
+    }
+
+    const keyState={w:false,a:false,s:false,d:false,shift:false};
+    window.addEventListener('keydown',e=>{if(!controls.isLocked)return;switch(e.code){case'KeyW':keyState.w=true;break;case'KeyA':keyState.a=true;break;case'KeyS':keyState.s=true;break;case'KeyD':keyState.d=true;break;case'ShiftLeft':case'ShiftRight':keyState.shift=true;break;case'KeyE':tryInteract();break;case'KeyF':swordAttack();break;}});
+    window.addEventListener('keyup',e=>{switch(e.code){case'KeyW':keyState.w=false;break;case'KeyA':keyState.a=false;break;case'KeyS':keyState.s=false;break;case'KeyD':keyState.d=false;break;case'ShiftLeft':case'ShiftRight':keyState.shift=false;break;}});
+
+    // 平滑昼夜
+    let targetSkyColor=new THREE.Color(0x87CEEB),targetFogColor=new THREE.Color(0xaaccff),targetAmbient=0.4,targetDir=0.9;
+    let currentSkyColor=targetSkyColor.clone(),currentFogColor=targetFogColor.clone(),currentAmbient=0.4,currentDir=0.9;
+    let timeOfDay=12;
+    function updateDayNight(delta){
+      timeOfDay=(timeOfDay+delta*0.2)%24; const hour=timeOfDay;
+      if(hour>=6&&hour<18){ const t=(hour-6)/12;
+        targetSkyColor=new THREE.Color().lerpColors(new THREE.Color(0xffaa88),new THREE.Color(0x87CEEB),t);
+        targetFogColor=new THREE.Color().lerpColors(new THREE.Color(0xffccaa),new THREE.Color(0xaaccff),t);
+        targetAmbient=0.4; targetDir=0.9;
+      }else{ const t=((hour+6)%24)/12;
+        targetSkyColor=new THREE.Color().lerpColors(new THREE.Color(0x0a1030),new THREE.Color(0x2a3f5f),t);
+        targetFogColor=new THREE.Color().lerpColors(new THREE.Color(0x050a20),new THREE.Color(0x1a2f4f),t);
+        targetAmbient=0.2; targetDir=0.3;
+      }
+      currentSkyColor.lerp(targetSkyColor,0.02); currentFogColor.lerp(targetFogColor,0.02);
+      currentAmbient+=(targetAmbient-currentAmbient)*0.02; currentDir+=(targetDir-currentDir)*0.02;
+      scene.background=currentSkyColor; scene.fog=new THREE.FogExp2(currentFogColor,0.0008);
+      ambientLight.intensity=currentAmbient; dirLight.intensity=currentDir;
+      const displayHour=Math.floor(hour),displayMin=Math.floor((hour%1)*60);
+      document.getElementById('time-display').textContent=`${hour>=6&&hour<18?'🌞':'🌙'} ${displayHour.toString().padStart(2,'0')}:${displayMin.toString().padStart(2,'0')}`;
+    }
+
+    const clock=new THREE.Clock();
+    function animate(){
+      const delta=Math.min(clock.getDelta(),0.2);
+      updateDayNight(delta);
+      if(controls.isLocked){
+        const speed=keyState.shift&&player.stamina>0?8:5;
+        if(keyState.w)controls.moveForward(speed*delta); if(keyState.s)controls.moveForward(-speed*delta);
+        if(keyState.a)controls.moveRight(-speed*delta); if(keyState.d)controls.moveRight(speed*delta);
+        const moving=keyState.w||keyState.a||keyState.s||keyState.d;
+        if(keyState.shift&&moving&&player.stamina>0)player.stamina=Math.max(0,player.stamina-10*delta);
+        else player.stamina=Math.min(player.maxStamina,player.stamina+2*delta);
+        player.cloud=Math.min(player.maxCloud,player.cloud+1*delta);
+        const playerPos=camera.position.clone(); const resolved=resolveCollision(new THREE.Vector3(playerPos.x,0,playerPos.z),0.3);
+        camera.position.x=resolved.x; camera.position.z=resolved.z; camera.position.y=1.7;
+        camera.position.x=Math.max(-95,Math.min(95,camera.position.x)); camera.position.z=Math.max(-95,Math.min(95,camera.position.z));
+        if(attackTimer>0)attackTimer-=delta; if(swordCooldown>0)swordCooldown-=delta;
+        if(swordSwinging){swordAngle+=delta*12;swordGroup.rotation.z=Math.sin(swordAngle)*1.2;if(swordAngle>Math.PI){swordSwinging=false;swordGroup.rotation.z=0;}}
+        updateUI();
+      }
+      for(const m of monsters)m.update(delta,camera.position);
+      for(const l of loots)l.update(delta);
+      for(const mem of memoryCrystals)if(!mem.collected){mem.crystal.rotation.y+=delta*1.5;mem.ring.rotation.z+=delta*1.2;}
+      crystalPillars.forEach(p=>p.mesh.rotation.y+=delta*0.2);
+      renderer.render(scene,camera);
+      requestAnimationFrame(animate);
+    }
+    animate();
+    updateQuestUI();
+    window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
+    setTimeout(()=>showMessage('探索云海，完成使命！'),1500);
+  </script>
+</body>
+</html>
