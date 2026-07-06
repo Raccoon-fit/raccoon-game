@@ -1,0 +1,1997 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>浣境原野 - 开放大世界原型</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #050812;
+            font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+            color: #f5f7ff;
+            touch-action: none;
+        }
+        body {
+            background:
+                radial-gradient(circle at top, rgba(80, 136, 255, 0.35), transparent 28%),
+                linear-gradient(180deg, #07111d 0%, #04070d 100%);
+        }
+        #app {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #renderRoot {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #050812;
+        }
+        #app.playing,
+        #app.playing #renderRoot,
+        #app.playing canvas {
+            cursor: none;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .overlay,
+        .hud,
+        .touch-ui,
+        .tips,
+        .loading-screen {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+        .overlay {
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.04), transparent 20%, transparent 75%, rgba(0,0,0,0.28)),
+                radial-gradient(circle at center, transparent 55%, rgba(4, 8, 14, 0.3) 100%);
+            mix-blend-mode: screen;
+        }
+        .hud {
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 14px;
+        }
+        .title-card,
+        .info-card,
+        .mission-card,
+        .minimap-card,
+        .action-card {
+            background: rgba(8, 14, 25, 0.52);
+            border: 1px solid rgba(173, 216, 255, 0.14);
+            border-radius: 18px;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
+        }
+        .title-card {
+            padding: 12px 14px;
+            min-width: min(320px, 66vw);
+        }
+        .title-card h1 {
+            font-size: clamp(22px, 3vw, 34px);
+            letter-spacing: 1px;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+        .title-card p {
+            color: rgba(233, 242, 255, 0.82);
+            line-height: 1.5;
+            font-size: clamp(12px, 1.8vw, 15px);
+        }
+        .stats-row {
+            margin-top: 14px;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+        .stat {
+            padding: 10px 12px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .stat-label {
+            color: rgba(226, 236, 255, 0.72);
+            font-size: 11px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+        }
+        .stat-value {
+            font-weight: 700;
+            font-size: 18px;
+        }
+        .right-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: stretch;
+            max-width: 250px;
+        }
+        .info-card,
+        .mission-card,
+        .action-card {
+            padding: 10px 12px;
+        }
+        .card-title {
+            font-size: 12px;
+            color: rgba(207, 224, 255, 0.72);
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-bottom: 8px;
+        }
+        .card-content {
+            line-height: 1.6;
+            color: rgba(249, 252, 255, 0.9);
+            font-size: 14px;
+        }
+        .bottom-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 14px;
+        }
+        .minimap-card {
+            width: 180px;
+            padding: 10px;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+        #minimap {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(2, 6, 12, 0.85);
+        }
+        .tips {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 18px;
+        }
+        .tip-pill {
+            padding: 12px 18px;
+            max-width: min(720px, calc(100vw - 28px));
+            border-radius: 999px;
+            background: rgba(6, 11, 20, 0.72);
+            border: 1px solid rgba(255,255,255,0.08);
+            backdrop-filter: blur(14px);
+            color: rgba(238, 244, 255, 0.92);
+            text-align: center;
+            font-size: clamp(12px, 1.6vw, 14px);
+            line-height: 1.6;
+        }
+        .touch-ui {
+            display: none;
+            position: fixed;
+            inset: auto;
+            pointer-events: none;
+            z-index: 40;
+        }
+        .touch-ui * {
+            pointer-events: auto;
+            touch-action: none;
+        }
+        .joystick,
+        .touch-actions {
+            position: fixed;
+            bottom: 24px;
+            pointer-events: auto;
+            z-index: 45;
+        }
+        .joystick {
+            left: 24px;
+            width: 126px;
+            height: 126px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(12px);
+        }
+        .joystick-knob {
+            position: absolute;
+            left: 38px;
+            top: 38px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(138, 188, 255, 0.72);
+            box-shadow: 0 8px 16px rgba(26, 86, 183, 0.35);
+        }
+        .touch-actions {
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .touch-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 24px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            text-align: center;
+            padding: 10px;
+            backdrop-filter: blur(14px);
+            user-select: none;
+        }
+        .world-map-modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 60;
+            background: rgba(2, 8, 18, 0.82);
+            backdrop-filter: blur(14px);
+            padding: 18px;
+        }
+        .world-map-modal.open { display: flex; }
+        .world-map-card {
+            width: min(860px, 100%);
+            max-height: 90vh;
+            overflow: hidden;
+            border-radius: 24px;
+            background: rgba(8, 14, 25, 0.92);
+            border: 1px solid rgba(173, 216, 255, 0.14);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+            padding: 18px;
+        }
+        .world-map-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .world-map-header h3 { font-size: 20px; }
+        .world-map-close {
+            min-width: 44px;
+            min-height: 44px;
+            border: 0;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+            cursor: pointer;
+        }
+        .world-map-stage {
+            display: flex;
+            align-items: stretch;
+            gap: 14px;
+        }
+        .world-map-controls {
+            width: 56px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 14px 8px;
+        }
+        .world-map-controls span {
+            font-size: 11px;
+            color: rgba(236,244,255,0.82);
+            writing-mode: vertical-rl;
+            letter-spacing: 2px;
+        }
+        #mapZoom {
+            width: 180px;
+            transform: rotate(-90deg);
+            accent-color: #7cc7ff;
+        }
+        .world-map-canvas-wrap {
+            flex: 1;
+            min-width: 0;
+        }
+        #worldMap {
+            width: 100%;
+            aspect-ratio: 1.4;
+            border-radius: 18px;
+            background: rgba(2, 6, 12, 0.92);
+            border: 1px solid rgba(255,255,255,0.08);
+            display: block;
+            cursor: grab;
+        }
+        #worldMap.dragging { cursor: grabbing; }
+        .mouse-lock-hint {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 35;
+            min-width: min(320px, calc(100vw - 32px));
+            padding: 16px 18px;
+            border-radius: 18px;
+            background: rgba(7, 13, 24, 0.82);
+            border: 1px solid rgba(173, 216, 255, 0.16);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity .2s ease, visibility .2s ease;
+        }
+        .mouse-lock-hint.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .mouse-lock-hint strong {
+            display: block;
+            font-size: 18px;
+            margin-bottom: 6px;
+        }
+        .mouse-lock-hint span {
+            display: block;
+            font-size: 13px;
+            line-height: 1.6;
+            color: rgba(236, 244, 255, 0.82);
+        }
+        .loading-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, rgba(17, 33, 55, 0.96), rgba(4, 8, 14, 0.98));
+            z-index: 20;
+            transition: opacity .5s ease;
+            pointer-events: auto;
+        }
+        .loading-card {
+            width: min(460px, calc(100vw - 36px));
+            padding: 28px;
+            text-align: center;
+            border-radius: 26px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 26px 64px rgba(0,0,0,0.36);
+        }
+        .loading-card h2 {
+            font-size: clamp(26px, 4vw, 38px);
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+        .loading-card p {
+            color: rgba(233, 243, 255, 0.78);
+            line-height: 1.7;
+            margin-bottom: 18px;
+        }
+        .start-btn {
+            width: min(240px, 100%);
+            margin: 18px auto 0;
+            min-height: 48px;
+            border: 0;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #73bfff, #8cfff2);
+            color: #07111d;
+            font-size: 16px;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 12px 26px rgba(77, 170, 255, 0.28);
+        }
+        .progress-bar {
+            height: 14px;
+            border-radius: 999px;
+            overflow: hidden;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .progress-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #6ac0ff, #98f6ff, #d9ffff);
+            box-shadow: 0 0 18px rgba(114, 215, 255, 0.5);
+            transition: width .35s ease;
+        }
+        .loading-meta {
+            margin-top: 10px;
+            color: rgba(233, 243, 255, 0.78);
+            font-size: 13px;
+            letter-spacing: .6px;
+        }
+        .hidden { opacity: 0; visibility: hidden; }
+        @media (max-width: 980px) {
+            .hud { padding: 14px; }
+            .top-bar, .bottom-bar { flex-direction: column; align-items: stretch; }
+            .right-stack { max-width: none; width: 100%; }
+            .title-card { min-width: 0; width: 100%; }
+            .bottom-bar { align-items: stretch; }
+            .minimap-card { width: 100%; max-width: 220px; }
+        }
+        @media (max-width: 768px) {
+            .hud {
+                padding: 10px 10px 150px;
+                gap: 8px;
+                justify-content: flex-start;
+            }
+            .top-bar,
+            .bottom-bar {
+                flex-direction: row;
+                align-items: flex-start;
+                justify-content: space-between;
+                gap: 8px;
+            }
+            .title-card {
+                width: calc(100% - 136px);
+                min-width: 0;
+                padding: 10px 12px;
+            }
+            .title-card h1 { font-size: 18px; margin-bottom: 4px; }
+            .title-card p { display: none; }
+            .stats-row {
+                margin-top: 8px;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 6px;
+            }
+            .stat { padding: 8px; }
+            .stat-label { font-size: 10px; margin-bottom: 2px; }
+            .stat-value { font-size: 13px; }
+            .right-stack {
+                width: 128px;
+                min-width: 128px;
+                max-width: 128px;
+                gap: 8px;
+            }
+            .info-card,
+            .mission-card,
+            .action-card {
+                padding: 8px 10px;
+                border-radius: 14px;
+            }
+            .card-title { font-size: 10px; margin-bottom: 4px; }
+            .card-content { font-size: 11px; line-height: 1.4; }
+            .info-card .card-content { display: none; }
+            .mission-card .card-content,
+            .action-card .card-content {
+                display: -webkit-box;
+                -webkit-line-clamp: 3;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+            .touch-ui { display: block; }
+            .tip-pill {
+                border-radius: 18px;
+                padding: 10px 14px;
+                font-size: 12px;
+            }
+            .minimap-card {
+                width: 104px;
+                max-width: 104px;
+                padding: 6px;
+                opacity: 0.92;
+            }
+        }
+        @media (max-width: 520px) {
+            .hud { padding: 8px 8px 142px; }
+            .title-card, .info-card, .mission-card, .action-card, .minimap-card { border-radius: 14px; }
+            .title-card { width: calc(100% - 112px); padding: 9px 10px; }
+            .title-card h1 { font-size: 16px; }
+            .stats-row { gap: 4px; }
+            .stat { padding: 6px; }
+            .stat-value { font-size: 12px; }
+            .right-stack {
+                width: 104px;
+                min-width: 104px;
+                max-width: 104px;
+            }
+            .mission-card .card-content,
+            .action-card .card-content {
+                font-size: 10px;
+                -webkit-line-clamp: 2;
+            }
+            .bottom-bar {
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                left: auto;
+                width: auto;
+            }
+            .minimap-card { width: 92px; max-width: 92px; }
+            .joystick { left: 12px; bottom: 12px; width: 104px; height: 104px; }
+            .joystick-knob { left: 32px; top: 32px; width: 40px; height: 40px; }
+            .touch-actions { right: 12px; bottom: 12px; gap: 10px; }
+            .touch-btn { width: 58px; height: 58px; border-radius: 18px; font-size: 11px; }
+            .tips { padding: 8px 8px 118px; align-items: flex-end; }
+            .tip-pill { max-width: calc(100vw - 16px); }
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div id="renderRoot"></div>
+    <div class="overlay"></div>
+    <div class="mouse-lock-hint" id="mouseLockHint">
+        <strong>点击画面锁定鼠标</strong>
+        <span>锁定后鼠标会固定在屏幕中央，直接移动即可转动视角，按 Esc 可退出。</span>
+    </div>
+
+    <div class="hud">
+        <div class="top-bar">
+            <div class="title-card">
+                <h1>浣境原野</h1>
+                <p>一个单文件开放大世界原型。你将步行探索森林、湖泊、远古遗迹与高台观景区，收集星辉碎晶，感受昼夜交错与体积雾带来的空间层次。</p>
+                <div class="stats-row">
+                    <div class="stat">
+                        <div class="stat-label">探索进度</div>
+                        <div class="stat-value" id="exploreValue">0%</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">已收集</div>
+                        <div class="stat-value" id="shardValue">0 / 7</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">时间流逝</div>
+                        <div class="stat-value" id="timeValue">晨光</div>
+                    </div>
+                </div>
+            </div>
+            <div class="right-stack">
+                <div class="info-card">
+                    <div class="card-title">操作说明</div>
+                    <div class="card-content">PC：WASD 移动，鼠标转动视角，Shift 冲刺，E 互动。手机：左下摇杆移动，右侧按钮跳跃与互动。</div>
+                </div>
+                <div class="mission-card">
+                    <div class="card-title">当前目标</div>
+                    <div class="card-content" id="missionText">前往雾湖、林间石阵与天穹遗迹，收集 7 枚星辉碎晶。</div>
+                </div>
+                <div class="action-card">
+                    <div class="card-title">世界状态</div>
+                    <div class="card-content" id="worldText">薄雾环绕，风平浪静，适合开始今天的探索旅程。</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom-bar">
+            <div class="minimap-card">
+                <canvas id="minimap" width="256" height="256"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="tips">
+        <div class="tip-pill" id="tipText">欢迎来到浣境原野。向前走近发光碎晶即可触发采集。地图右上高台可以俯瞰整个世界。</div>
+    </div>
+
+    <div class="touch-ui" id="touchUI">
+        <div class="joystick" id="joystickBase">
+            <div class="joystick-knob" id="joystickKnob"></div>
+        </div>
+        <div class="touch-actions">
+            <div class="touch-btn" id="jumpBtn">跳跃</div>
+            <div class="touch-btn" id="actionBtn">互动</div>
+        </div>
+    </div>
+
+    <div class="world-map-modal" id="worldMapModal">
+        <div class="world-map-card">
+            <div class="world-map-header">
+                <div>
+                    <h3>原野地图</h3>
+                    <p>点击发光点位可直接传送，左侧滑块控制缩放，可拖动画面</p>
+                </div>
+                <button class="world-map-close" id="closeWorldMapBtn">关闭</button>
+            </div>
+            <div class="world-map-stage">
+                <div class="world-map-controls">
+                    <span>缩放</span>
+                    <input id="mapZoom" type="range" min="1" max="2.8" step="0.05" value="1.25">
+                </div>
+                <div class="world-map-canvas-wrap">
+                    <canvas id="worldMap" width="1200" height="860"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-card">
+            <h2>浣境原野</h2>
+            <p>正在生成大世界地形、森林层、雾湖与遗迹。这个原型采用程序化建模，进入后可直接探索。</p>
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+            <div class="loading-meta" id="loadingMeta">点击下方开始游戏并尝试进入全屏</div>
+            <button class="start-btn" id="startGameBtn">开始游戏</button>
+        </div>
+    </div>
+</div>
+
+<script src="./three.min.js"></script>
+<script>
+(() => {
+try {
+    const loadingMeta = document.getElementById('loadingMeta');
+    const progressFill = document.getElementById('progressFill');
+    const loadingScreen = document.getElementById('loadingScreen');
+    const tipText = document.getElementById('tipText');
+    const missionText = document.getElementById('missionText');
+    const worldText = document.getElementById('worldText');
+    const exploreValue = document.getElementById('exploreValue');
+    const shardValue = document.getElementById('shardValue');
+    const timeValue = document.getElementById('timeValue');
+    const minimap = document.getElementById('minimap');
+    const miniCtx = minimap.getContext('2d');
+    const worldMapModal = document.getElementById('worldMapModal');
+    const worldMapCanvas = document.getElementById('worldMap');
+    const worldMapCtx = worldMapCanvas.getContext('2d');
+    const closeWorldMapBtn = document.getElementById('closeWorldMapBtn');
+    const mapZoomInput = document.getElementById('mapZoom');
+    const mouseLockHint = document.getElementById('mouseLockHint');
+
+    function startFallbackMode(reasonText) {
+        loadingMeta.textContent = '已切换到兼容模式';
+        progressFill.style.width = '100%';
+        missionText.textContent = '当前环境已切换为 2D 兼容探索模式。';
+        worldText.textContent = reasonText;
+        tipText.textContent = '兼容模式已启用。使用 WASD 或方向键探索，收集全部星辉碎晶。';
+
+        const fallbackCanvas = document.createElement('canvas');
+        fallbackCanvas.width = innerWidth;
+        fallbackCanvas.height = innerHeight;
+        fallbackCanvas.style.width = '100%';
+        fallbackCanvas.style.height = '100%';
+        renderRoot.innerHTML = '';
+        renderRoot.appendChild(fallbackCanvas);
+        const ctx = fallbackCanvas.getContext('2d');
+
+        const player2D = { x: 0, y: 0, speed: 220, r: 12 };
+        const keys = { up: false, down: false, left: false, right: false };
+        const worldSize = 2200;
+        const crystals = [
+            { x: -520, y: -260, got: false },
+            { x: 430, y: -380, got: false },
+            { x: 620, y: 220, got: false },
+            { x: -180, y: 540, got: false },
+            { x: -700, y: 310, got: false },
+            { x: 120, y: -40, got: false },
+            { x: 760, y: 640, got: false }
+        ];
+        let explored2D = new Set();
+        let last = performance.now();
+        let fallbackShards = 0;
+        let finished = false;
+
+        function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+        function screenCenter() { return { x: fallbackCanvas.width / 2, y: fallbackCanvas.height / 2 }; }
+        function worldToScreen(wx, wy) {
+            const c = screenCenter();
+            return { x: c.x + (wx - player2D.x), y: c.y + (wy - player2D.y) };
+        }
+        function terrainColor(wx, wy) {
+            const n = Math.sin(wx * 0.003) + Math.cos(wy * 0.004) + Math.sin((wx + wy) * 0.002);
+            if ((wx - 260) * (wx - 260) + (wy + 240) * (wy + 240) < 180 * 180) return '#2e7bb8';
+            if (n > 1.4) return '#7ca86b';
+            if (n > 0.4) return '#5d8c50';
+            if (n > -0.5) return '#4c7445';
+            return '#7a735c';
+        }
+        function drawWorld() {
+            fallbackCanvas.width = innerWidth;
+            fallbackCanvas.height = innerHeight;
+            const c = screenCenter();
+            const cell = 80;
+            ctx.clearRect(0, 0, fallbackCanvas.width, fallbackCanvas.height);
+            const sky = ctx.createLinearGradient(0, 0, 0, fallbackCanvas.height);
+            sky.addColorStop(0, '#0d1c34');
+            sky.addColorStop(1, '#06101e');
+            ctx.fillStyle = sky;
+            ctx.fillRect(0, 0, fallbackCanvas.width, fallbackCanvas.height);
+
+            for (let sx = -cell; sx < fallbackCanvas.width + cell; sx += cell) {
+                for (let sy = -cell; sy < fallbackCanvas.height + cell; sy += cell) {
+                    const wx = player2D.x + sx - c.x;
+                    const wy = player2D.y + sy - c.y;
+                    ctx.fillStyle = terrainColor(wx, wy);
+                    ctx.fillRect(sx, sy, cell + 1, cell + 1);
+                }
+            }
+
+            ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+            for (let sx = -cell; sx < fallbackCanvas.width + cell; sx += cell) {
+                ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, fallbackCanvas.height); ctx.stroke();
+            }
+            for (let sy = -cell; sy < fallbackCanvas.height + cell; sy += cell) {
+                ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(fallbackCanvas.width, sy); ctx.stroke();
+            }
+
+            crystals.forEach((crystal, i) => {
+                if (crystal.got) return;
+                const p = worldToScreen(crystal.x, crystal.y);
+                const glow = 12 + Math.sin(performance.now() * 0.004 + i) * 4;
+                const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glow);
+                g.addColorStop(0, 'rgba(160,245,255,0.95)');
+                g.addColorStop(1, 'rgba(160,245,255,0)');
+                ctx.fillStyle = g;
+                ctx.beginPath(); ctx.arc(p.x, p.y, glow, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#d9ffff';
+                ctx.beginPath(); ctx.moveTo(p.x, p.y - 10); ctx.lineTo(p.x + 7, p.y); ctx.lineTo(p.x, p.y + 10); ctx.lineTo(p.x - 7, p.y); ctx.closePath(); ctx.fill();
+            });
+
+            ctx.fillStyle = '#ffefaf';
+            ctx.beginPath(); ctx.arc(c.x, c.y, player2D.r, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(c.x, c.y, player2D.r + 4, 0, Math.PI * 2); ctx.stroke();
+        }
+        function updateHud() {
+            explored2D.add(Math.floor(player2D.x / 120) + '_' + Math.floor(player2D.y / 120));
+            exploreValue.textContent = Math.min(100, Math.round(explored2D.size / 90 * 100)) + '%';
+            shardValue.textContent = fallbackShards + ' / ' + crystals.length;
+            timeValue.textContent = '兼容模式';
+        }
+        function collectCheck() {
+            crystals.forEach((crystal, i) => {
+                if (crystal.got) return;
+                const dx = crystal.x - player2D.x;
+                const dy = crystal.y - player2D.y;
+                if (dx * dx + dy * dy < 34 * 34) {
+                    crystal.got = true;
+                    fallbackShards += 1;
+                    tipText.textContent = '你获得了星辉碎晶 ' + (i + 1) + '。';
+                    if (fallbackShards === crystals.length && !finished) {
+                        finished = true;
+                        missionText.textContent = '兼容模式下也已完成全部收集。';
+                        worldText.textContent = '所有碎晶已收集完成，你可以继续自由漫游。';
+                    }
+                }
+            });
+        }
+        function loop(now) {
+            const dt = Math.min(0.033, (now - last) / 1000);
+            last = now;
+            const moveX = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+            const moveY = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
+            const len = Math.hypot(moveX, moveY) || 1;
+            player2D.x = clamp(player2D.x + moveX / len * player2D.speed * dt, -worldSize / 2, worldSize / 2);
+            player2D.y = clamp(player2D.y + moveY / len * player2D.speed * dt, -worldSize / 2, worldSize / 2);
+            collectCheck();
+            updateHud();
+            drawWorld();
+            requestAnimationFrame(loop);
+        }
+        addEventListener('keydown', (e) => {
+            if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.up = true;
+            if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = true;
+            if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
+            if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
+        });
+        addEventListener('keyup', (e) => {
+            if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.up = false;
+            if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = false;
+            if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = false;
+            if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;
+        });
+        loadingScreen.style.opacity = '0';
+        setTimeout(() => loadingScreen.remove(), 300);
+        requestAnimationFrame(loop);
+    }
+
+    const isTouch = matchMedia('(pointer: coarse)').matches;
+    const app = document.getElementById('app');
+    const renderRoot = document.getElementById('renderRoot');
+    const touchUI = document.getElementById('touchUI');
+    const startGameBtn = document.getElementById('startGameBtn');
+    if (!isTouch) touchUI.style.display = 'none';
+
+    async function requestFullscreenSafe() {
+        const el = document.documentElement;
+        try {
+            if (el.requestFullscreen) await el.requestFullscreen();
+            else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+            else if (el.msRequestFullscreen) el.msRequestFullscreen();
+        } catch (e) {
+            console.warn('fullscreen failed', e);
+        }
+    }
+
+    function updateMouseLockHint() {
+        if (isTouch || !gameStarted) {
+            mouseLockHint.classList.remove('show');
+            return;
+        }
+        mouseLockHint.classList.toggle('show', document.pointerLockElement !== renderer.domElement);
+    }
+
+    function requestMouseLock() {
+        if (isTouch || !gameStarted) return;
+        if (document.pointerLockElement === renderer.domElement) return;
+        renderer.domElement.requestPointerLock();
+    }
+
+    setLoading(2, '等待开始游戏...');
+    const testCanvas = document.createElement('canvas');
+    const gl = testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl');
+    if (!gl) {
+        throw new Error('当前浏览器环境不支持 WebGL');
+    }
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x86b7ff);
+    scene.fog = new THREE.FogExp2(0x9fc6ff, 0.0095);
+
+    const camera = new THREE.PerspectiveCamera(68, innerWidth / innerHeight, 0.1, 900);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    if ('outputColorSpace' in renderer && THREE.SRGBColorSpace) {
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+    } else if ('outputEncoding' in renderer && THREE.sRGBEncoding) {
+        renderer.outputEncoding = THREE.sRGBEncoding;
+    }
+    renderRoot.appendChild(renderer.domElement);
+
+    const clock = new THREE.Clock();
+    const world = new THREE.Group();
+    scene.add(world);
+
+    const ambient = new THREE.HemisphereLight(0xb8dcff, 0x1b2535, 1.4);
+    scene.add(ambient);
+
+    const sun = new THREE.DirectionalLight(0xfff0cf, 2.8);
+    sun.position.set(120, 160, 80);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.left = -180;
+    sun.shadow.camera.right = 180;
+    sun.shadow.camera.top = 180;
+    sun.shadow.camera.bottom = -180;
+    sun.shadow.camera.near = 0.5;
+    sun.shadow.camera.far = 500;
+    scene.add(sun);
+
+    const fill = new THREE.DirectionalLight(0x8ebdff, 1.2);
+    fill.position.set(-80, 45, -60);
+    scene.add(fill);
+
+    const player = {
+        position: new THREE.Vector3(0, 6, 0),
+        velocity: new THREE.Vector3(),
+        yaw: 0,
+        pitch: -0.22,
+        speed: 18,
+        sprint: 1.8,
+        height: 5.8,
+        grounded: false,
+        runBob: 0,
+        explored: new Set(),
+        shards: 0,
+        canJump: true,
+        radius: 3.2
+    };
+
+    const input = {
+        forward: 0,
+        right: 0,
+        sprint: false,
+        interact: false,
+        lookDX: 0,
+        lookDY: 0,
+        touchMove: { x: 0, y: 0 }
+    };
+
+    const STORAGE_KEY = 'raccoon_open_world_save_v1';
+    const LEGACY_STORAGE_KEYS = [
+        'raccoon_open_world_save',
+        'raccoon_open_world_v1',
+        'raccoon_open_world',
+        'open_world_save',
+        'raccoon_save'
+    ];
+    const shardSpots = [];
+    const landmarks = [];
+    const colliders = [];
+    const terrainSize = 520;
+    const terrainSegments = 220;
+    let terrainGeometry;
+    let terrainPosition;
+    let timeCycle = 0.12;
+    let saveTimer = 0;
+    const mapState = { zoom: 1.25, panX: 0, panY: 0, dragging: false, moved: false, lastX: 0, lastY: 0 };
+
+    function setLoading(step, label) {
+        progressFill.style.width = `${step}%`;
+        loadingMeta.textContent = label;
+    }
+
+    function buildSaveData() {
+        return {
+            version: 1,
+            savedAt: Date.now(),
+            position: { x: player.position.x, y: player.position.y, z: player.position.z },
+            yaw: player.yaw,
+            pitch: player.pitch,
+            shards: player.shards,
+            collected: shardSpots.map((shard) => !!shard.userData.collected),
+            explored: Array.from(player.explored),
+            timeCycle
+        };
+    }
+
+    function saveGameState() {
+        try {
+            const payload = JSON.stringify(buildSaveData());
+            localStorage.setItem(STORAGE_KEY, payload);
+        } catch (e) {
+            console.warn('save failed', e);
+        }
+    }
+
+    function readBestSaveData() {
+        const keys = [STORAGE_KEY, ...LEGACY_STORAGE_KEYS];
+        let best = null;
+        for (const key of keys) {
+            const raw = localStorage.getItem(key);
+            if (!raw) continue;
+            try {
+                const data = JSON.parse(raw);
+                if (!data || !data.position) continue;
+                const score = (typeof data.savedAt === 'number' ? data.savedAt : 0) + ((data.shards || 0) * 1000000000);
+                if (!best || score > best.score) best = { key, data, score };
+            } catch (e) {
+                console.warn('parse save failed', key, e);
+            }
+        }
+        return best;
+    }
+
+    function loadGameState() {
+        try {
+            const best = readBestSaveData();
+            if (!best) return;
+            const data = best.data;
+            if (data.position) {
+                player.position.set(data.position.x || 0, data.position.y || player.height, data.position.z || 0);
+            }
+            player.yaw = typeof data.yaw === 'number' ? data.yaw : player.yaw;
+            player.pitch = typeof data.pitch === 'number' ? data.pitch : player.pitch;
+            player.shards = typeof data.shards === 'number' ? data.shards : 0;
+            player.explored = new Set(Array.isArray(data.explored) ? data.explored : []);
+            timeCycle = typeof data.timeCycle === 'number' ? data.timeCycle : timeCycle;
+            if (Array.isArray(data.collected)) {
+                data.collected.forEach((flag, index) => {
+                    if (!shardSpots[index]) return;
+                    shardSpots[index].userData.collected = !!flag;
+                    shardSpots[index].visible = !flag;
+                });
+            }
+            if (best.key !== STORAGE_KEY) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...buildSaveData(), ...data, savedAt: Date.now() }));
+            }
+        } catch (e) {
+            console.warn('load failed', e);
+        }
+    }
+
+    function addCircleCollider(x, z, radius, label) {
+        colliders.push({ type: 'circle', x, z, radius, label });
+    }
+
+    function addBoxCollider(x, z, halfW, halfD, label) {
+        colliders.push({ type: 'box', x, z, halfW, halfD, label });
+    }
+
+    function isInsideBox(x, z, box) {
+        return x >= box.x - box.halfW && x <= box.x + box.halfW && z >= box.z - box.halfD && z <= box.z + box.halfD;
+    }
+
+    function resolveCollisions(nextX, nextZ, playerRadius) {
+        let x = nextX;
+        let z = nextZ;
+        for (const collider of colliders) {
+            if (collider.type === 'circle') {
+                const dx = x - collider.x;
+                const dz = z - collider.z;
+                const minDist = collider.radius + playerRadius;
+                const distSq = dx * dx + dz * dz;
+                if (distSq < minDist * minDist) {
+                    const dist = Math.sqrt(distSq) || 0.0001;
+                    const push = minDist - dist;
+                    x += dx / dist * push;
+                    z += dz / dist * push;
+                }
+            } else {
+                if (collider.label === '观星高台') {
+                    const deckBase = getTerrainHeight(collider.x, collider.z);
+                    const onDeck = player.position.y > deckBase + 14;
+                    const onRamp = x < collider.x - 6 && z > collider.z - 4 && z < collider.z + 4;
+                    if (onDeck || onRamp) continue;
+                }
+                const expandedHalfW = collider.halfW + playerRadius;
+                const expandedHalfD = collider.halfD + playerRadius;
+                const localX = x - collider.x;
+                const localZ = z - collider.z;
+                if (Math.abs(localX) < expandedHalfW && Math.abs(localZ) < expandedHalfD) {
+                    const penX = expandedHalfW - Math.abs(localX);
+                    const penZ = expandedHalfD - Math.abs(localZ);
+                    if (penX < penZ) {
+                        x += localX >= 0 ? penX : -penX;
+                    } else {
+                        z += localZ >= 0 ? penZ : -penZ;
+                    }
+                }
+            }
+        }
+        return { x, z };
+    }
+
+    function noise2D(x, z) {
+        return Math.sin(x * 0.034) * 0.55 + Math.cos(z * 0.027) * 0.38 + Math.sin((x + z) * 0.018) * 0.35 + Math.cos((x - z) * 0.011) * 0.22;
+    }
+
+    function getTerrainHeight(x, z) {
+        const base = noise2D(x, z) * 5.5;
+        const ridge = Math.sin(x * 0.008) * Math.cos(z * 0.006) * 15;
+        const ripples = Math.sin(x * 0.11) * Math.cos(z * 0.12) * 0.7;
+        const lakeMask = Math.exp(-(Math.pow(x - 24, 2) + Math.pow(z + 34, 2)) / 1400);
+        const plateauMask = Math.exp(-(Math.pow(x + 68, 2) + Math.pow(z - 72, 2)) / 1800);
+        const basin = -lakeMask * 11.5;
+        const plateau = plateauMask * 10.5;
+        return base + ridge + ripples + basin + plateau;
+    }
+
+    function buildSky() {
+        const skyGeo = new THREE.SphereGeometry(520, 48, 24);
+        const skyMat = new THREE.ShaderMaterial({
+            side: THREE.BackSide,
+            uniforms: {
+                topColor: { value: new THREE.Color(0x8bc4ff) },
+                bottomColor: { value: new THREE.Color(0xdff1ff) },
+                offset: { value: 33 },
+                exponent: { value: 0.82 }
+            },
+            vertexShader: `varying vec3 vWorldPosition; void main(){ vec4 worldPosition = modelMatrix * vec4(position, 1.0); vWorldPosition = worldPosition.xyz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+            fragmentShader: `uniform vec3 topColor; uniform vec3 bottomColor; uniform float offset; uniform float exponent; varying vec3 vWorldPosition; void main(){ float h = normalize(vWorldPosition + offset).y; gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0); }`
+        });
+        scene.add(new THREE.Mesh(skyGeo, skyMat));
+    }
+
+    function buildTerrain() {
+        terrainGeometry = new THREE.PlaneGeometry(terrainSize, terrainSize, terrainSegments, terrainSegments);
+        terrainGeometry.rotateX(-Math.PI / 2);
+        terrainPosition = terrainGeometry.attributes.position;
+        for (let i = 0; i < terrainPosition.count; i += 1) {
+            const x = terrainPosition.getX(i);
+            const z = terrainPosition.getZ(i);
+            terrainPosition.setY(i, getTerrainHeight(x, z));
+        }
+        terrainGeometry.computeVertexNormals();
+
+        const terrainMat = new THREE.MeshStandardMaterial({
+            color: 0x618f55,
+            roughness: 0.92,
+            metalness: 0.03,
+            vertexColors: false,
+            flatShading: false
+        });
+        const terrain = new THREE.Mesh(terrainGeometry, terrainMat);
+        terrain.receiveShadow = true;
+        terrain.castShadow = false;
+        world.add(terrain);
+    }
+
+    function addGroundDetails() {
+        const patches = new THREE.Group();
+        const stoneGeo = new THREE.DodecahedronGeometry(1, 0);
+        for (let i = 0; i < 180; i += 1) {
+            const stone = new THREE.Mesh(stoneGeo, new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(0.1, 0.08, 0.38 + Math.random() * 0.18), roughness: 1 }));
+            const x = (Math.random() - 0.5) * 460;
+            const z = (Math.random() - 0.5) * 460;
+            const y = getTerrainHeight(x, z);
+            stone.position.set(x, y + 0.2, z);
+            stone.scale.setScalar(0.35 + Math.random() * 1.4);
+            stone.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            stone.castShadow = true;
+            stone.receiveShadow = true;
+            patches.add(stone);
+        }
+        world.add(patches);
+
+        const grassGroup = new THREE.Group();
+        const bladeGeo = new THREE.PlaneGeometry(0.18, 1.6, 1, 3);
+        const bladeMat = new THREE.MeshStandardMaterial({ color: 0x6aa55c, side: THREE.DoubleSide, roughness: 1 });
+        for (let i = 0; i < 1600; i += 1) {
+            const blade = new THREE.Mesh(bladeGeo, bladeMat);
+            const x = (Math.random() - 0.5) * 470;
+            const z = (Math.random() - 0.5) * 470;
+            const y = getTerrainHeight(x, z);
+            if (y < -4) continue;
+            blade.position.set(x, y + 0.7, z);
+            blade.rotation.y = Math.random() * Math.PI * 2;
+            blade.rotation.z = (Math.random() - 0.5) * 0.16;
+            blade.scale.setScalar(0.7 + Math.random() * 1.6);
+            grassGroup.add(blade);
+        }
+        world.add(grassGroup);
+    }
+
+    function createTree(x, z, scale = 1) {
+        if (Math.hypot(x + 68, z - 72) < 26) return;
+        const y = getTerrainHeight(x, z);
+        const tree = new THREE.Group();
+        const trunk = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.7 * scale, 1.1 * scale, 9 * scale, 28, 8),
+            new THREE.MeshStandardMaterial({ color: 0x5b3b22, roughness: 1 })
+        );
+        trunk.position.y = y + 4.5 * scale;
+        trunk.castShadow = true;
+        trunk.receiveShadow = true;
+        tree.add(trunk);
+
+        const leafMat = new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(0.34, 0.46, 0.26 + Math.random() * 0.08), roughness: 0.95 });
+        for (let i = 0; i < 6; i += 1) {
+            const radius = (4.1 - i * 0.42) * scale;
+            const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(radius, 3), leafMat);
+            leaf.position.set((Math.random() - 0.5) * 1.2 * scale, y + 8.5 * scale + i * 1.9 * scale, (Math.random() - 0.5) * 1.2 * scale);
+            leaf.castShadow = true;
+            leaf.receiveShadow = true;
+            tree.add(leaf);
+        }
+        tree.position.set(x, 0, z);
+        addCircleCollider(x, z, 1.6 * scale, '树干');
+        world.add(tree);
+    }
+
+    function buildForest() {
+        const points = [
+            [-70, -35, 52],
+            [56, 12, 44],
+            [16, 76, 40],
+            [-88, 58, 28],
+            [72, -76, 32]
+        ];
+        points.forEach(([cx, cz, count]) => {
+            for (let i = 0; i < count; i += 1) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * 28;
+                const x = cx + Math.cos(angle) * radius;
+                const z = cz + Math.sin(angle) * radius;
+                createTree(x, z, 0.7 + Math.random() * 1.4);
+            }
+        });
+    }
+
+    function buildLake() {
+        const lake = new THREE.Mesh(
+            new THREE.CircleGeometry(24, 64),
+            new THREE.MeshStandardMaterial({
+                color: 0x5eb9ff,
+                roughness: 0.16,
+                metalness: 0.08,
+                transparent: true,
+                opacity: 0.9
+            })
+        );
+        lake.rotation.x = -Math.PI / 2;
+        lake.position.set(24, -4.8, -34);
+        world.add(lake);
+
+        const ring = new THREE.Mesh(
+            new THREE.TorusGeometry(25.2, 0.4, 18, 100),
+            new THREE.MeshStandardMaterial({ color: 0xc8d6db, roughness: 0.95 })
+        );
+        ring.rotation.x = Math.PI / 2;
+        ring.position.set(24, -4.74, -34);
+        world.add(ring);
+        addCircleCollider(24, -34, 17, '雾湖深水区');
+    }
+
+    function buildRuins() {
+        const ruin = new THREE.Group();
+        const stoneMat = new THREE.MeshStandardMaterial({ color: 0xc8c3b4, roughness: 0.96, metalness: 0.02 });
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(8, 10, 2.4, 24, 3), stoneMat);
+        base.position.set(-68, getTerrainHeight(-68, 72) + 1.2, 72);
+        base.castShadow = true;
+        base.receiveShadow = true;
+        ruin.add(base);
+        for (let i = 0; i < 6; i += 1) {
+            const angle = (i / 6) * Math.PI * 2;
+            const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.5, 15 + Math.random() * 4, 20, 5), stoneMat);
+            pillar.position.set(-68 + Math.cos(angle) * 7, getTerrainHeight(-68, 72) + 8.5, 72 + Math.sin(angle) * 7);
+            pillar.rotation.z = (Math.random() - 0.5) * 0.12;
+            pillar.castShadow = true;
+            pillar.receiveShadow = true;
+            ruin.add(pillar);
+        }
+        const core = new THREE.Mesh(new THREE.OctahedronGeometry(2.8, 1), new THREE.MeshStandardMaterial({ color: 0x8ce2ff, emissive: 0x2d9eff, emissiveIntensity: 2.6, roughness: 0.3, metalness: 0.18 }));
+        core.position.set(-68, getTerrainHeight(-68, 72) + 12, 72);
+        ruin.add(core);
+
+        const archRing = new THREE.Mesh(
+            new THREE.TorusGeometry(11.5, 0.45, 12, 80),
+            new THREE.MeshStandardMaterial({ color: 0xb7d4ff, emissive: 0x2c6eff, emissiveIntensity: 0.55, roughness: 0.45, metalness: 0.22 })
+        );
+        archRing.position.set(-68, getTerrainHeight(-68, 72) + 14.5, 72);
+        archRing.rotation.x = Math.PI / 2;
+        ruin.add(archRing);
+
+        for (let i = 0; i < 3; i += 1) {
+            const shard = new THREE.Mesh(
+                new THREE.ConeGeometry(0.9, 4.2, 6),
+                new THREE.MeshStandardMaterial({ color: 0xdffbff, emissive: 0x4ed7ff, emissiveIntensity: 0.8, roughness: 0.25, metalness: 0.14 })
+            );
+            const angle = i / 3 * Math.PI * 2;
+            shard.position.set(-68 + Math.cos(angle) * 4.2, getTerrainHeight(-68, 72) + 10.5, 72 + Math.sin(angle) * 4.2);
+            shard.rotation.z = Math.PI;
+            ruin.add(shard);
+        }
+        landmarks.push({ position: new THREE.Vector3(-68, 0, 72), name: '天穹遗迹' });
+        addCircleCollider(-68, 72, 9.5, '天穹遗迹核心');
+        for (let i = 0; i < 6; i += 1) {
+            const angle = (i / 6) * Math.PI * 2;
+            addCircleCollider(-68 + Math.cos(angle) * 7, 72 + Math.sin(angle) * 7, 1.9, '遗迹立柱');
+        }
+        world.add(ruin);
+    }
+
+    function buildStoneCircle() {
+        const group = new THREE.Group();
+        const mat = new THREE.MeshStandardMaterial({ color: 0x8b8d95, roughness: 1 });
+        const cx = 56;
+        const cz = 22;
+        for (let i = 0; i < 8; i += 1) {
+            const angle = (i / 8) * Math.PI * 2;
+            const stone = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.5, 7 + Math.random() * 4, 18, 4), mat);
+            stone.position.set(cx + Math.cos(angle) * 8, getTerrainHeight(cx, cz) + 4, cz + Math.sin(angle) * 8);
+            stone.rotation.y = angle + Math.random() * 0.3;
+            stone.rotation.z = (Math.random() - 0.5) * 0.08;
+            stone.castShadow = true;
+            stone.receiveShadow = true;
+            group.add(stone);
+        }
+        landmarks.push({ position: new THREE.Vector3(cx, 0, cz), name: '林间石阵' });
+        for (let i = 0; i < 8; i += 1) {
+            const angle = (i / 8) * Math.PI * 2;
+            addCircleCollider(cx + Math.cos(angle) * 8, cz + Math.sin(angle) * 8, 2.1, '林间石柱');
+        }
+        world.add(group);
+    }
+
+    function buildObservationDeck() {
+        const x = -102;
+        const z = -74;
+        const y = getTerrainHeight(x, z);
+        const wood = new THREE.MeshStandardMaterial({ color: 0x5d4430, roughness: 0.92 });
+        const deckTopY = y + 18;
+        const deck = new THREE.Mesh(new THREE.BoxGeometry(18, 1.6, 14), wood);
+        deck.position.set(x, deckTopY, z);
+        deck.castShadow = true;
+        deck.receiveShadow = true;
+        world.add(deck);
+
+        const stairStartX = x - 12;
+        for (let i = 0; i < 5; i += 1) {
+            const step = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1, 6), wood);
+            step.position.set(stairStartX - i * 2.6, y + 1 + i * 1.8, z);
+            step.castShadow = true;
+            step.receiveShadow = true;
+            world.add(step);
+        }
+
+        for (let i = -1; i <= 1; i += 2) {
+            const rail = new THREE.Mesh(new THREE.BoxGeometry(18, 0.5, 0.5), wood);
+            rail.position.set(x, y + 12.6, z + i * 6.2);
+            world.add(rail);
+        }
+        for (let i = -1; i <= 1; i += 2) {
+            const rail = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 14), wood);
+            rail.position.set(x + i * 8.6, y + 12.6, z);
+            world.add(rail);
+        }
+        for (let i = -1; i <= 1; i += 2) {
+            for (let j = -1; j <= 1; j += 2) {
+                const post = new THREE.Mesh(new THREE.BoxGeometry(0.6, 4.8, 0.6), wood);
+                post.position.set(x + i * 8.2, y + 11.2, z + j * 5.8);
+                world.add(post);
+            }
+        }
+        const canopy = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.4, 0.4, 10, 10, 1, true),
+            new THREE.MeshStandardMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.18, side: THREE.DoubleSide })
+        );
+        canopy.position.set(x, y + 16.6, z);
+        canopy.rotation.x = Math.PI / 2;
+        world.add(canopy);
+        const beacon = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.25, 0.25, 7, 8),
+            new THREE.MeshStandardMaterial({ color: 0xcceeff, emissive: 0x66bbff, emissiveIntensity: 0.9 })
+        );
+        beacon.position.set(x, y + 16, z);
+        world.add(beacon);
+        landmarks.push({ position: new THREE.Vector3(x, 0, z), name: '观星高台' });
+        addBoxCollider(x, z, 9.8, 7.8, '观星高台');
+        addBoxCollider(x + 18, z, 10, 3.8, '观星高台阶梯护栏');
+    }
+
+    function buildShards() {
+        const positions = [
+            [12, -8],
+            [32, -58],
+            [-54, 64],
+            [74, 22],
+            [-132, -56],
+            [78, -78],
+            [-18, 88]
+        ];
+        positions.forEach(([x, z], index) => {
+            const y = getTerrainHeight(x, z) + 2.8;
+            const crystal = new THREE.Mesh(
+                new THREE.OctahedronGeometry(1.6, 0),
+                new THREE.MeshStandardMaterial({ color: 0xbff6ff, emissive: 0x41cfff, emissiveIntensity: 2.2, roughness: 0.14, metalness: 0.12 })
+            );
+            crystal.position.set(x, y, z);
+            crystal.castShadow = true;
+            crystal.userData = { collected: false, label: `星辉碎晶 ${index + 1}` };
+            shardSpots.push(crystal);
+            world.add(crystal);
+        });
+    }
+
+    function buildCliffsAndBoulders() {
+        const cliffMat = new THREE.MeshStandardMaterial({ color: 0x7b7468, roughness: 1, metalness: 0.02 });
+        const cliffSeeds = [
+            { x: 118, z: 106, h: 34, sx: 28, sz: 18 },
+            { x: -164, z: 128, h: 28, sx: 22, sz: 16 },
+            { x: 148, z: -156, h: 24, sx: 20, sz: 16 }
+        ];
+        cliffSeeds.forEach((seed) => {
+            const cliff = new THREE.Mesh(new THREE.CylinderGeometry(seed.sx * 0.46, seed.sx * 0.58, seed.h, 24, 6), cliffMat);
+            cliff.position.set(seed.x, getTerrainHeight(seed.x, seed.z) + seed.h / 2 - 2, seed.z);
+            cliff.rotation.y = Math.random() * Math.PI * 0.25;
+            cliff.castShadow = true;
+            cliff.receiveShadow = true;
+            world.add(cliff);
+            addBoxCollider(seed.x, seed.z, seed.sx * 0.45, seed.sz * 0.45, '峭壁');
+        });
+
+        const boulderMat = new THREE.MeshStandardMaterial({ color: 0x969186, roughness: 1 });
+        for (let i = 0; i < 36; i += 1) {
+            const x = (Math.random() - 0.5) * 420;
+            const z = (Math.random() - 0.5) * 420;
+            if (Math.hypot(x + 68, z - 72) < 30) continue;
+            const y = getTerrainHeight(x, z);
+            const boulder = new THREE.Mesh(new THREE.IcosahedronGeometry(2 + Math.random() * 4, 2), boulderMat);
+            boulder.position.set(x, y + 1.6, z);
+            boulder.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            boulder.scale.set(1.4, 0.8 + Math.random() * 0.9, 1.2 + Math.random() * 0.8);
+            boulder.castShadow = true;
+            boulder.receiveShadow = true;
+            world.add(boulder);
+            addCircleCollider(x, z, 2.8, '巨石');
+        }
+    }
+
+    function buildFlowerFields() {
+        const petalColors = [0xf6c8ff, 0xffef9f, 0x8fffd8, 0xffffff];
+        const petalGeo = new THREE.PlaneGeometry(0.28, 0.42);
+        for (let c = 0; c < 4; c += 1) {
+            const mat = new THREE.MeshStandardMaterial({ color: petalColors[c], side: THREE.DoubleSide, roughness: 1 });
+            const group = new THREE.Group();
+            for (let i = 0; i < 220; i += 1) {
+                const x = -40 + (Math.random() - 0.5) * 120 + c * 26;
+                const z = 110 + (Math.random() - 0.5) * 70 - c * 10;
+                const y = getTerrainHeight(x, z);
+                const petal = new THREE.Mesh(petalGeo, mat);
+                petal.position.set(x, y + 0.35, z);
+                petal.rotation.set(-Math.PI / 2, Math.random() * Math.PI * 2, (Math.random() - 0.5) * 0.4);
+                petal.scale.setScalar(0.8 + Math.random() * 1.4);
+                group.add(petal);
+            }
+            world.add(group);
+        }
+    }
+
+    function buildMistParticles() {
+        const count = 1200;
+        const positions = new Float32Array(count * 3);
+        for (let i = 0; i < count; i += 1) {
+            positions[i * 3 + 0] = (Math.random() - 0.5) * 560;
+            positions[i * 3 + 1] = Math.random() * 36 + 2;
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 560;
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const mat = new THREE.PointsMaterial({ color: 0xe7f6ff, size: 0.7, transparent: true, opacity: 0.24, depthWrite: false });
+        const mist = new THREE.Points(geo, mat);
+        scene.add(mist);
+        return mist;
+    }
+
+    function buildWorld() {
+        setLoading(12, '绘制天空与地形...');
+        buildSky();
+        buildTerrain();
+        setLoading(28, '铺设草地与石块...');
+        addGroundDetails();
+        setLoading(38, '塑造峭壁与巨石...');
+        buildCliffsAndBoulders();
+        setLoading(50, '栽种森林层级...');
+        buildForest();
+        setLoading(60, '铺开花海与地表细节...');
+        buildFlowerFields();
+        setLoading(70, '生成湖泊与雾气...');
+        buildLake();
+        const mist = buildMistParticles();
+        setLoading(82, '搭建遗迹与高台...');
+        buildRuins();
+        buildStoneCircle();
+        buildObservationDeck();
+        buildShards();
+        setLoading(100, '世界构建完成，准备进入...');
+        return mist;
+    }
+
+    function worldToMinimap(x, z) {
+        const padding = 18;
+        const size = minimap.width - padding * 2;
+        return {
+            x: padding + ((x + terrainSize / 2) / terrainSize) * size,
+            y: padding + ((z + terrainSize / 2) / terrainSize) * size
+        };
+    }
+
+    function drawMinimap() {
+        miniCtx.clearRect(0, 0, minimap.width, minimap.height);
+        miniCtx.fillStyle = '#07101c';
+        miniCtx.fillRect(0, 0, minimap.width, minimap.height);
+
+        miniCtx.strokeStyle = 'rgba(157, 202, 255, 0.18)';
+        miniCtx.lineWidth = 1;
+        for (let i = 0; i <= 8; i += 1) {
+            const p = 18 + (220 / 8) * i;
+            miniCtx.beginPath();
+            miniCtx.moveTo(18, p);
+            miniCtx.lineTo(238, p);
+            miniCtx.stroke();
+            miniCtx.beginPath();
+            miniCtx.moveTo(p, 18);
+            miniCtx.lineTo(p, 238);
+            miniCtx.stroke();
+        }
+
+        const lake = worldToMinimap(24, -34);
+        miniCtx.fillStyle = 'rgba(86, 185, 255, 0.55)';
+        miniCtx.beginPath();
+        miniCtx.arc(lake.x, lake.y, 22, 0, Math.PI * 2);
+        miniCtx.fill();
+
+        landmarks.forEach((landmark) => {
+            const p = worldToMinimap(landmark.position.x, landmark.position.z);
+            miniCtx.fillStyle = '#d3e6ff';
+            miniCtx.fillRect(p.x - 3, p.y - 3, 6, 6);
+        });
+
+        shardSpots.forEach((shard) => {
+            if (shard.userData.collected) return;
+            const p = worldToMinimap(shard.position.x, shard.position.z);
+            miniCtx.fillStyle = '#8bf8ff';
+            miniCtx.beginPath();
+            miniCtx.arc(p.x, p.y, 3.6, 0, Math.PI * 2);
+            miniCtx.fill();
+        });
+
+        const playerPos = worldToMinimap(player.position.x, player.position.z);
+        miniCtx.save();
+        miniCtx.translate(playerPos.x, playerPos.y);
+        miniCtx.rotate(-player.yaw + Math.PI / 2);
+        miniCtx.fillStyle = '#ffefac';
+        miniCtx.beginPath();
+        miniCtx.moveTo(0, -8);
+        miniCtx.lineTo(6, 8);
+        miniCtx.lineTo(-6, 8);
+        miniCtx.closePath();
+        miniCtx.fill();
+        miniCtx.restore();
+
+        miniCtx.strokeStyle = 'rgba(255,255,255,0.2)';
+        miniCtx.strokeRect(18, 18, 220, 220);
+    }
+
+    function getSpecialGroundHeight(x, z, baseGroundY) {
+        const deckX = -102;
+        const deckZ = -74;
+        const deckBase = getTerrainHeight(deckX, deckZ);
+        const deckSurface = deckBase + 18 + player.height + 0.8;
+        const currentHeight = player.position.y;
+        const nearDeckTop = currentHeight > deckBase + 12;
+        if (nearDeckTop && x >= deckX - 9 && x <= deckX + 9 && z >= deckZ - 7 && z <= deckZ + 7) {
+            return Math.max(baseGroundY, deckSurface);
+        }
+        const stairStart = deckX - 12;
+        for (let i = 0; i < 5; i += 1) {
+            const sx = stairStart - i * 2.6;
+            if (x >= sx - 1.8 && x <= sx + 1.8 && z >= deckZ - 3.4 && z <= deckZ + 3.4) {
+                return Math.max(baseGroundY, deckBase + 1 + i * 1.8 + player.height + 0.5);
+            }
+        }
+        return baseGroundY;
+    }
+
+    function worldToMapCanvas(wx, wz, w, h) {
+        const scale = Math.min(w, h) / terrainSize * mapState.zoom;
+        return {
+            x: w / 2 + (wx - player.position.x) * scale + mapState.panX,
+            y: h / 2 + (wz - player.position.z) * scale + mapState.panY
+        };
+    }
+
+    function drawWorldMap() {
+        const ctx = worldMapCtx;
+        const w = worldMapCanvas.width;
+        const h = worldMapCanvas.height;
+        ctx.clearRect(0, 0, w, h);
+        const sky = ctx.createLinearGradient(0, 0, 0, h);
+        sky.addColorStop(0, '#10233f');
+        sky.addColorStop(1, '#09131f');
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, w, h);
+
+        const step = 32;
+        const scale = Math.min(w, h) / terrainSize * mapState.zoom;
+        const worldHalfWidth = w / scale / 2;
+        const worldHalfHeight = h / scale / 2;
+        const startWX = player.position.x - worldHalfWidth - mapState.panX / scale;
+        const startWZ = player.position.z - worldHalfHeight - mapState.panY / scale;
+
+        for (let sx = 0; sx < w + step; sx += step) {
+            for (let sy = 0; sy < h + step; sy += step) {
+                const wx = startWX + sx / scale;
+                const wz = startWZ + sy / scale;
+                const n = noise2D(wx, wz);
+                ctx.fillStyle = n > 0.9 ? '#6b8d58' : n > 0.1 ? '#4b7445' : '#6e6658';
+                if (Math.hypot(wx - 24, wz + 34) < 26) ctx.fillStyle = '#2f79b5';
+                ctx.fillRect(sx, sy, step + 1, step + 1);
+            }
+        }
+
+        const labelFont = Math.max(13, Math.min(24, 12 * mapState.zoom));
+        const labelOffset = Math.max(14, 12 * mapState.zoom);
+        const pointRadius = Math.max(8, Math.min(14, 8 * mapState.zoom));
+        landmarks.forEach((landmark, index) => {
+            const p = worldToMapCanvas(landmark.position.x, landmark.position.z, w, h);
+            ctx.fillStyle = '#d8eaff';
+            ctx.beginPath(); ctx.arc(p.x, p.y, pointRadius, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `${labelFont}px Microsoft YaHei`;
+            ctx.fillText(String(index + 1), p.x - pointRadius * 0.4, p.y + pointRadius * 0.3);
+            ctx.fillText(landmark.name, p.x + labelOffset, p.y + pointRadius * 0.3);
+            landmark.mapPoint = { x: p.x, y: p.y, radius: pointRadius + 6 };
+        });
+
+        shardSpots.forEach((shard) => {
+            if (shard.userData.collected) return;
+            const p = worldToMapCanvas(shard.position.x, shard.position.z, w, h);
+            ctx.fillStyle = '#8bf8ff';
+            ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2); ctx.fill();
+        });
+
+        const playerPos = worldToMapCanvas(player.position.x, player.position.z, w, h);
+        ctx.fillStyle = '#ffefaf';
+        ctx.beginPath(); ctx.arc(playerPos.x, playerPos.y, 11, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(10, 10, w - 20, h - 20);
+    }
+
+    function openWorldMap() {
+        mapState.panX = 0;
+        mapState.panY = 0;
+        drawWorldMap();
+        worldMapModal.classList.add('open');
+    }
+
+    function closeWorldMap() {
+        worldMapModal.classList.remove('open');
+    }
+
+    function teleportToLandmark(index) {
+        const landmark = landmarks[index];
+        if (!landmark) return;
+        player.position.x = landmark.position.x + 6;
+        player.position.z = landmark.position.z + 6;
+        player.position.y = getTerrainHeight(player.position.x, player.position.z) + player.height;
+        tipText.textContent = `已传送到 ${landmark.name}`;
+        saveGameState();
+        closeWorldMap();
+    }
+
+    function updateCamera(dt) {
+        const moveDir = new THREE.Vector3();
+        const forward = new THREE.Vector3(Math.sin(player.yaw), 0, Math.cos(player.yaw));
+        const right = new THREE.Vector3(-forward.z, 0, forward.x);
+        moveDir.addScaledVector(forward, input.forward);
+        moveDir.addScaledVector(right, input.right);
+        if (moveDir.lengthSq() > 0.0001) moveDir.normalize();
+
+        const currentSpeed = player.speed * (input.sprint ? player.sprint : 1);
+        player.velocity.x = moveDir.x * currentSpeed;
+        player.velocity.z = moveDir.z * currentSpeed;
+        player.velocity.y -= 26 * dt;
+
+        const proposedX = player.position.x + player.velocity.x * dt;
+        const proposedZ = player.position.z + player.velocity.z * dt;
+        const resolved = resolveCollisions(proposedX, proposedZ, player.radius);
+        const nextX = resolved.x;
+        const nextZ = resolved.z;
+        let nextY = player.position.y + player.velocity.y * dt;
+        const baseGroundY = getTerrainHeight(nextX, nextZ) + player.height;
+        const groundY = getSpecialGroundHeight(nextX, nextZ, baseGroundY);
+
+        if (nextY <= groundY) {
+            nextY = groundY;
+            player.velocity.y = 0;
+            player.grounded = true;
+        } else {
+            player.grounded = false;
+        }
+
+        player.position.set(
+            THREE.MathUtils.clamp(nextX, -terrainSize / 2 + 4, terrainSize / 2 - 4),
+            nextY,
+            THREE.MathUtils.clamp(nextZ, -terrainSize / 2 + 4, terrainSize / 2 - 4)
+        );
+
+        if (moveDir.lengthSq() > 0.001 && player.grounded) {
+            player.runBob += dt * (input.sprint ? 11 : 7);
+        }
+        const bob = player.grounded ? Math.sin(player.runBob) * 0.16 : 0;
+
+        camera.position.copy(player.position);
+        camera.position.y += 3.2 + bob;
+        const lookDistance = 16;
+        const lookDir = new THREE.Vector3(
+            Math.sin(player.yaw) * Math.cos(player.pitch),
+            Math.sin(player.pitch),
+            Math.cos(player.yaw) * Math.cos(player.pitch)
+        );
+        camera.lookAt(camera.position.clone().add(lookDir.multiplyScalar(lookDistance)));
+    }
+
+    function updateDayCycle(dt) {
+        timeCycle = (timeCycle + dt * 0.01) % 1;
+        const sunAngle = timeCycle * Math.PI * 2;
+        sun.position.set(Math.cos(sunAngle) * 140, Math.sin(sunAngle) * 140 + 40, 80);
+        const daylight = THREE.MathUtils.clamp((Math.sin(sunAngle) + 0.12) * 0.65, 0.15, 1);
+        ambient.intensity = 0.45 + daylight * 1.2;
+        sun.intensity = 0.35 + daylight * 2.45;
+        fill.intensity = 0.35 + daylight * 0.9;
+        scene.fog.density = 0.01 - daylight * 0.003;
+        const skyLerp = 0.25 + daylight * 0.75;
+        scene.background.lerpColors(new THREE.Color(0x06111f), new THREE.Color(0x89bdfd), skyLerp);
+        const label = daylight > 0.82 ? '正午' : daylight > 0.62 ? '晨光' : daylight > 0.42 ? '午后' : daylight > 0.25 ? '暮色' : '夜幕';
+        timeValue.textContent = label;
+        worldText.textContent = daylight > 0.55 ? '晨风穿过树林，湖面反射着明亮天光。' : daylight > 0.3 ? '暮色逐渐降下，遗迹核心开始变得更耀眼。' : '夜色深入原野，星辉碎晶与遗迹共鸣更明显。';
+    }
+
+    function updateExploration() {
+        const cellX = Math.floor((player.position.x + terrainSize / 2) / 18);
+        const cellZ = Math.floor((player.position.z + terrainSize / 2) / 18);
+        player.explored.add(`${cellX}_${cellZ}`);
+        const totalCells = Math.pow(Math.ceil(terrainSize / 18), 2);
+        const percent = Math.min(100, Math.round((player.explored.size / totalCells) * 100));
+        exploreValue.textContent = `${percent}%`;
+    }
+
+    function tryCollectNearbyShard() {
+        let nearest = null;
+        let bestDist = Infinity;
+        shardSpots.forEach((shard) => {
+            if (shard.userData.collected) return;
+            const d = shard.position.distanceTo(player.position);
+            if (d < 7 && d < bestDist) {
+                bestDist = d;
+                nearest = shard;
+            }
+        });
+        if (!nearest) return false;
+        nearest.userData.collected = true;
+        nearest.visible = false;
+        player.shards += 1;
+        shardValue.textContent = `${player.shards} / ${shardSpots.length}`;
+        tipText.textContent = `你获得了 ${nearest.userData.label}。继续探索其他区域，靠近剩余光点即可采集。`;
+        if (player.shards === shardSpots.length) {
+            missionText.textContent = '你已收集全部星辉碎晶。前往观星高台，感受完整世界的光影变化。';
+            worldText.textContent = '所有碎晶已与世界共鸣，原野中的光线明显更加通透。';
+        }
+        saveGameState();
+        return true;
+    }
+
+    function updateShardAnimation(time) {
+        shardSpots.forEach((shard, index) => {
+            if (shard.userData.collected) return;
+            shard.rotation.y += 0.015;
+            shard.position.y = getTerrainHeight(shard.position.x, shard.position.z) + 2.8 + Math.sin(time * 2 + index) * 0.55;
+        });
+    }
+
+    function setTipForNearestLandmark() {
+        let best = null;
+        let bestDist = Infinity;
+        landmarks.forEach((landmark) => {
+            const d = landmark.position.distanceTo(player.position);
+            if (d < bestDist) {
+                bestDist = d;
+                best = landmark;
+            }
+        });
+        if (!best) return;
+        if (bestDist < 26) {
+            tipText.textContent = `你已接近 ${best.name}。按 E 可尝试采集附近碎晶，继续探索可提升地图完成度。`;
+        }
+    }
+
+    function onKeyChange(code, down) {
+        if (down && code === 'KeyM') {
+            if (worldMapModal.classList.contains('open')) closeWorldMap();
+            else openWorldMap();
+        }
+        if (code === 'KeyW' || code === 'ArrowUp') input.forward = down ? 1 : (input.forward > 0 ? 0 : input.forward);
+        if (code === 'KeyS' || code === 'ArrowDown') input.forward = down ? -1 : (input.forward < 0 ? 0 : input.forward);
+        if (code === 'KeyA' || code === 'ArrowLeft') input.right = down ? -1 : (input.right < 0 ? 0 : input.right);
+        if (code === 'KeyD' || code === 'ArrowRight') input.right = down ? 1 : (input.right > 0 ? 0 : input.right);
+        if (code === 'ShiftLeft' || code === 'ShiftRight') input.sprint = down;
+        if (down && code === 'Space' && player.grounded && player.canJump) {
+            player.velocity.y = 11.5;
+            player.grounded = false;
+            player.canJump = false;
+        }
+        if (!down && code === 'Space') player.canJump = true;
+        if (down && code === 'KeyE') tryCollectNearbyShard();
+    }
+
+    addEventListener('keydown', (e) => onKeyChange(e.code, true));
+    addEventListener('keyup', (e) => onKeyChange(e.code, false));
+
+    addEventListener('pointermove', (e) => {
+        if (document.pointerLockElement !== renderer.domElement) return;
+        const dx = e.movementX || 0;
+        const dy = e.movementY || 0;
+        player.yaw -= dx * 0.0025;
+        player.pitch = THREE.MathUtils.clamp(player.pitch - dy * 0.0018, -1.1, 0.42);
+    });
+    renderer.domElement.addEventListener('click', () => {
+        requestMouseLock();
+    });
+    addEventListener('pointerlockchange', updateMouseLockHint);
+
+    const joystickBase = document.getElementById('joystickBase');
+    const joystickKnob = document.getElementById('joystickKnob');
+    let joyActive = false;
+    let joyId = null;
+    let joyOrigin = { x: 0, y: 0 };
+    let lookTouchActive = false;
+    let lookTouchId = null;
+    let lookLastX = 0;
+    let lookLastY = 0;
+
+    function updateJoystick(dx, dy) {
+        const len = Math.min(1, Math.hypot(dx, dy) / 34);
+        const angle = Math.atan2(dy, dx);
+        const px = Math.cos(angle) * len * 28;
+        const py = Math.sin(angle) * len * 28;
+        joystickKnob.style.transform = `translate(${px}px, ${py}px)`;
+        input.right = Math.abs(px) > 8 ? -px / 28 : 0;
+        input.forward = Math.abs(py) > 8 ? -py / 28 : 0;
+    }
+
+    if (isTouch) {
+        renderRoot.addEventListener('pointerdown', (e) => {
+            if (e.target.closest('#touchUI')) return;
+            lookTouchActive = true;
+            lookTouchId = e.pointerId;
+            lookLastX = e.clientX;
+            lookLastY = e.clientY;
+            if (renderRoot.setPointerCapture) renderRoot.setPointerCapture(e.pointerId);
+        });
+        renderRoot.addEventListener('pointermove', (e) => {
+            if (!lookTouchActive || lookTouchId !== e.pointerId) return;
+            const dx = e.clientX - lookLastX;
+            const dy = e.clientY - lookLastY;
+            lookLastX = e.clientX;
+            lookLastY = e.clientY;
+            player.yaw -= dx * 0.012;
+            player.pitch = THREE.MathUtils.clamp(player.pitch - dy * 0.008, -1.1, 0.42);
+        });
+        const stopLookTouch = (id) => {
+            if (lookTouchId !== id) return;
+            lookTouchActive = false;
+            lookTouchId = null;
+        };
+        renderRoot.addEventListener('pointerup', (e) => stopLookTouch(e.pointerId));
+        renderRoot.addEventListener('pointercancel', (e) => stopLookTouch(e.pointerId));
+
+        const onJoyStart = (clientX, clientY, id) => {
+            const rect = joystickBase.getBoundingClientRect();
+            joyActive = true;
+            joyId = id;
+            joyOrigin = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+            onJoyMove(clientX, clientY, id);
+        };
+        const onJoyMove = (clientX, clientY, id) => {
+            if (!joyActive || joyId !== id) return;
+            updateJoystick(clientX - joyOrigin.x, clientY - joyOrigin.y);
+        };
+        const onJoyEnd = (id) => {
+            if (joyId !== id) return;
+            joyActive = false;
+            joyId = null;
+            joystickKnob.style.transform = 'translate(0px, 0px)';
+            input.forward = 0;
+            input.right = 0;
+        };
+
+        joystickBase.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            if (joystickBase.setPointerCapture) joystickBase.setPointerCapture(e.pointerId);
+            onJoyStart(e.clientX, e.clientY, e.pointerId);
+        });
+        addEventListener('pointermove', (e) => {
+            onJoyMove(e.clientX, e.clientY, e.pointerId);
+        });
+        addEventListener('pointerup', (e) => {
+            onJoyEnd(e.pointerId);
+        });
+        addEventListener('pointercancel', (e) => {
+            onJoyEnd(e.pointerId);
+        });
+
+        const jumpBtn = document.getElementById('jumpBtn');
+        const actionBtn = document.getElementById('actionBtn');
+        const triggerJump = (e) => {
+            if (e) e.preventDefault();
+            if (player.grounded) {
+                player.velocity.y = 11.5;
+                player.grounded = false;
+            }
+        };
+        const triggerAction = (e) => {
+            if (e) e.preventDefault();
+            tryCollectNearbyShard();
+        };
+        ['pointerdown', 'touchstart', 'click'].forEach((eventName) => {
+            jumpBtn.addEventListener(eventName, triggerJump, { passive: false });
+            actionBtn.addEventListener(eventName, triggerAction, { passive: false });
+        });
+    }
+
+    addEventListener('resize', () => {
+        camera.aspect = innerWidth / innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(innerWidth, innerHeight);
+        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    });
+    addEventListener('beforeunload', saveGameState);
+
+    let mist = null;
+    let gameStarted = false;
+
+    function animate() {
+        if (!gameStarted) return;
+        requestAnimationFrame(animate);
+        const dt = Math.min(0.033, clock.getDelta());
+        const elapsed = clock.elapsedTime;
+        updateCamera(dt);
+        updateDayCycle(dt);
+        updateExploration();
+        updateShardAnimation(elapsed);
+        setTipForNearestLandmark();
+        if (mist) mist.rotation.y += dt * 0.02;
+        saveTimer += dt;
+        if (saveTimer > 2) {
+            saveTimer = 0;
+            saveGameState();
+        }
+        renderer.render(scene, camera);
+        drawMinimap();
+        if (worldMapModal.classList.contains('open')) drawWorldMap();
+    }
+
+    async function startGame() {
+        if (gameStarted) return;
+        startGameBtn.disabled = true;
+        startGameBtn.textContent = '正在进入...';
+        app.classList.add('playing');
+        await requestFullscreenSafe();
+        setLoading(4, '初始化渲染器...');
+        mist = buildWorld();
+        player.position.set(0, getTerrainHeight(0, 0) + player.height, 0);
+        loadGameState();
+        if (!player.position.y || Number.isNaN(player.position.y)) {
+            player.position.y = getTerrainHeight(player.position.x, player.position.z) + player.height;
+        }
+        shardValue.textContent = `${player.shards} / ${shardSpots.length}`;
+        gameStarted = true;
+        updateMouseLockHint();
+        setTimeout(() => {
+            loadingScreen.style.opacity = '0';
+            setTimeout(() => loadingScreen.remove(), 540);
+        }, 300);
+        animate();
+    }
+
+    startGameBtn.addEventListener('click', async () => {
+        await startGame();
+        if (!isTouch) requestAnimationFrame(requestMouseLock);
+    });
+    startGameBtn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+    }, { passive: false });
+    document.querySelector('.minimap-card').addEventListener('click', openWorldMap);
+    closeWorldMapBtn.addEventListener('click', closeWorldMap);
+    mapZoomInput.addEventListener('input', () => {
+        mapState.zoom = parseFloat(mapZoomInput.value);
+        drawWorldMap();
+    });
+    worldMapModal.addEventListener('click', (e) => {
+        if (e.target === worldMapModal) closeWorldMap();
+    });
+    worldMapCanvas.addEventListener('pointerdown', (e) => {
+        mapState.dragging = true;
+        mapState.moved = false;
+        mapState.lastX = e.clientX;
+        mapState.lastY = e.clientY;
+        worldMapCanvas.classList.add('dragging');
+    });
+    addEventListener('pointermove', (e) => {
+        if (!mapState.dragging) return;
+        const dx = e.clientX - mapState.lastX;
+        const dy = e.clientY - mapState.lastY;
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1) mapState.moved = true;
+        mapState.panX += dx;
+        mapState.panY += dy;
+        mapState.lastX = e.clientX;
+        mapState.lastY = e.clientY;
+        drawWorldMap();
+    });
+    addEventListener('pointerup', () => {
+        mapState.dragging = false;
+        worldMapCanvas.classList.remove('dragging');
+    });
+    worldMapCanvas.addEventListener('click', (e) => {
+        if (mapState.moved) return;
+        const rect = worldMapCanvas.getBoundingClientRect();
+        const x = (e.clientX - rect.left) * (worldMapCanvas.width / rect.width);
+        const y = (e.clientY - rect.top) * (worldMapCanvas.height / rect.height);
+        const hitIndex = landmarks.findIndex((landmark) => landmark.mapPoint && Math.hypot(landmark.mapPoint.x - x, landmark.mapPoint.y - y) < (landmark.mapPoint.radius || 18));
+        if (hitIndex >= 0) teleportToLandmark(hitIndex);
+    });
+} catch (error) {
+    console.error('Open world init failed:', error);
+    const message = error && error.message ? error.message : String(error);
+    progressFill.style.width = '100%';
+    loadingMeta.textContent = '3D 初始化失败，已切换兼容模式';
+    tipText.textContent = '初始化失败：' + message;
+    missionText.textContent = '3D 模式不可用，正在进入 2D 兼容探索模式。';
+    worldText.textContent = message;
+    startFallbackMode(message);
+}
+})();
+</script>
+</body>
+</html>
