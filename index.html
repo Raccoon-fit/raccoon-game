@@ -531,6 +531,18 @@
             color: #ffffff;
         }
         .bottom-nav i { font-size: 16px; }
+        /* TapTap 组件自适应 */
+        .taptap-wrapper {
+            margin-top: 12px;
+            text-align: center;
+            width: 100%;
+        }
+        .taptap-wrapper iframe {
+            width: 100%;
+            max-width: 470px;
+            height: 76px;
+            border: none;
+        }
         @media (max-width: 1024px) {
             .sidebar { transform: translateX(-100%); width: min(84vw, 320px); }
             .sidebar.open { transform: translateX(0); }
@@ -552,6 +564,7 @@
             .games-grid { grid-template-columns: 1fr; gap: 14px; }
             .welcome-stats { grid-template-columns: 1fr 1fr; }
             .status-chip-row, .recent-row { width: 100%; }
+            .taptap-wrapper iframe { max-width: 100%; }
         }
         @media (max-width: 520px) {
             .main-content { padding: 12px 12px 96px; }
@@ -570,6 +583,7 @@
             .recent-chip button { width: 100%; text-align: left; }
             .footer { margin-bottom: 8px; }
             .bottom-nav { display: flex; }
+            .taptap-wrapper iframe { height: auto; min-height: 76px; }
         }
     </style>
 </head>
@@ -664,7 +678,6 @@
             <section class="welcome-banner">
                 <div class="welcome-content">
                     <h2>欢迎来到软软的游戏库</h2>
-       
                 </div>
                 <div class="welcome-stats">
                     <div class="stat-card">
@@ -772,12 +785,27 @@
                 description: '五百年道行，一夜讨封。成仙或成仁，在你一念之间。',
                 tags: ['传统', '讨封', '黄仙'],
                 categories: ['featured', 'strategy'],
-                href: 'https://raccoon.fit/game/黄小仙讨封.html',
+                href: 'https://game.raccoon.fit/黄小仙讨封.html',
                 external: true,
                 featuredOrder: 1,
                 latestOrder: 9
             },
-{
+            {
+                id: 'huangjingyuanye',
+                title: '浣境原野',
+                rating: 4.6,
+                version: '1.2',
+                badge: 'RPG',
+                icon: 'fa-leaf',
+                description: '在神秘的原野中探索，完成任务，发现隐藏的秘密。',
+                tags: ['RPG', '开放世界', '探索'],
+                categories: ['featured', 'strategy'],
+                href: 'https://game.raccoon.fit/浣境原野/index.html',
+                external: true,
+                featuredOrder: 1.5,
+                latestOrder: 10.5
+            },
+            {
                 id: 'yunhaizhijing',
                 title: '云海之境',
                 rating: 4.7,
@@ -1130,6 +1158,7 @@
                                 <i class="fas fa-circle-info"></i><span>查看详情</span>
                             </button>
                         </div>
+                        ${game.id === 'taofeng' ? `<div class="taptap-wrapper"><iframe src="//www.taptap.cn/widget/883268?platform=android" frameborder="0" width="470" height="76" loading="lazy"></iframe></div>` : ''}
                     </div>
                 </article>
             `).join('');
