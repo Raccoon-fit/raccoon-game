@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>内容警告</title>
+<style>
+:where(html){--aurora:#C5963A;--ember:#E0C080;--parchment:#D4C5A0;--void:#000;--dread:#8B3A3A}
+
+:where(*){margin:0;padding:0;box-sizing:border-box}
+:where(body){
+  background:var(--void);height:100svh;overflow:hidden;
+  display:grid;place-items:center;
+  font:16px/1.6 "Songti SC","Noto Serif SC","KaiTi",serif;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;
+  transition:opacity .48s ease;
+}
+:where(body).is-leaving{opacity:0}
+
+:where(canvas){position:fixed;inset:0;z-index:1;pointer-events:none}
+
+:where(main){
+  position:relative;z-index:2;text-align:center;
+  padding:clamp(20px,5vw,36px);max-width:560px;width:90%;
+  opacity:0;translate:0 10px;
+  transition:opacity .7s cubic-bezier(.25,.1,.25,1),translate .7s cubic-bezier(.25,.1,.25,1);
+}
+:where(main).is-on{opacity:1;translate:0 0}
+:where(main).is-off{opacity:0;translate:0 -8px;transition-duration:.55s;transition-timing-function:ease-in}
+
+main .ico{font-size:clamp(26px,6.5vw,36px);margin-bottom:clamp(12px,3vw,18px);filter:drop-shadow(0 0 14px rgba(139,58,58,.55))}
+main h1{font-size:clamp(14px,4vw,18px);letter-spacing:.3em;color:var(--dread);font-weight:400;text-shadow:0 0 20px rgba(139,58,58,.4);margin-bottom:clamp(16px,4vw,24px)}
+main p{font-size:clamp(13px,3.6vw,15.5px);line-height:2;color:var(--parchment);letter-spacing:.08em;text-shadow:0 0 10px rgba(200,160,90,.18);text-align:left}
+main p+p{margin-top:10px}
+main .tag-list{margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+main .tag{font-size:11px;letter-spacing:.12em;padding:4px 12px;border:1px solid rgba(139,58,58,.45);color:#C08070;border-radius:2px;background:rgba(139,58,58,.08)}
+main .footer-note{margin-top:clamp(16px,4vw,22px);font-size:11px;color:rgba(180,150,110,.55);letter-spacing:.15em;text-align:center}
+</style>
+</head>
+<body>
+
+<canvas id="fx" aria-hidden="true"></canvas>
+
+<main id="stage" role="alertdialog" aria-label="恐怖与心理不适内容警告">
+  <div class="ico">☽</div>
+  <h1>内 容 警 告</h1>
+  <p>本游戏包含<span class="highlight" style="color:#C08070">恐怖、惊悚及心理不适</span>元素，可能使部分玩家产生强烈的情绪反应或身体不适。</p>
+  <p>涉及内容可能包括但不限于：突发惊吓（Jump Scare）、黑暗压抑场景、血腥与暴力画面、扭曲或畸形的角色形象、诡异音效与低频噪音、对精神疾病或创伤的艺术化呈现。</p>
+  <p>如您在游玩过程中出现<span class="highlight" style="color:#C08070">心跳加速、呼吸困难、头晕、恶心或强烈焦虑</span>等症状，请立即停止游戏并休息。如症状持续，请寻求专业医疗建议。</p>
+  <div class="tag-list">
+    <span class="tag">突发惊吓</span>
+    <span class="tag">黑暗恐怖</span>
+    <span class="tag">血腥暴力</span>
+    <span class="tag">心理压抑</span>
+    <span class="tag">诡异音效</span>
+  </div>
+  <p class="footer-note">本内容为虚构作品 · 请勿在深夜或独处时强行挑战自身承受极限</p>
+</main>
+
+<script type="module">
+class Stardust{
+  constructor(){this.canvas=document.getElementById('fx');this.ctx=this.canvas.getContext('2d');this.spawn();this.bind();this.loop()}
+  bind(){addEventListener('resize',()=>this.resize());this.resize()}
+  resize(){this.canvas.width=innerWidth;this.canvas.height=innerHeight;this.w=innerWidth;this.h=innerHeight}
+  spawn(){
+    this.specks=Array.from({length:16},()=>({
+      x:Math.random()*innerWidth,y:Math.random()*innerHeight,
+      r:Math.random()*1.5+.3,phase:Math.random()*Math.PI*2,
+      speed:.0005+Math.random()*.0004,brightness:.1+Math.random()*.25,
+      flicker:.001+Math.random()*.0025,
+      hue:Math.random()<.5?355:280
+    }));
+  }
+  render(){
+    this.ctx.clearRect(0,0,this.w,this.h);
+    for(const s of this.specks){
+      s.phase+=s.speed;const drift=Math.sin(s.phase)*.2;
+      s.brightness+=s.flicker;
+      if(s.brightness>.4||s.brightness<.05) s.flicker*=-1;
+      const a=s.brightness;
+      const grad=this.ctx.createRadialGradient(s.x,s.y,0,s.x,s.y,s.r*6);
+      grad.addColorStop(0,`hsla(${s.hue},65%,50%,${a*.4})`);
+      grad.addColorStop(1,'rgba(100,20,20,0)');
+      this.ctx.fillStyle=grad;this.ctx.beginPath();this.ctx.arc(s.x,s.y,s.r*6,0,7);this.ctx.fill();
+      s.x=(s.x+drift+this.w)%this.w; s.y=(s.y-.08+this.h)%this.h;
+    }
+  }
+  loop=()=>{this.render();this._raf=requestAnimationFrame(this.loop)}
+  kill(){cancelAnimationFrame(this._raf)}
+}
+
+class Gateway{
+  constructor(){
+    this.stage=document.getElementById('stage');
+    this.body=document.body;
+    this.target='index.html';
+    this._locked=false;
+    this.dust=new Stardust();
+    this._wireInputs();
+    this._timeline();
+  }
+  _wireInputs(){
+    this.body.addEventListener('pointerdown',()=>this._navigate(),{passive:true});
+    addEventListener('keydown',()=>this._navigate());
+  }
+  async _timeline(){
+    await this._wait(190);
+    this.stage.classList.add('is-on');
+    await this._wait(5400);
+    this._navigate();
+  }
+  _navigate(){
+    if(this._locked)return;
+    this._locked=true;
+    this.dust.kill();
+    this.body.classList.add('is-leaving');
+    setTimeout(()=>{location.href=this.target},480);
+  }
+  _wait(ms){return new Promise(r=>setTimeout(r,ms))}
+}
+
+new Gateway();
+</script>
+</body>
+</html>

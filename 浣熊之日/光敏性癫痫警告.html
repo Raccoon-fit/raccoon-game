@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>光敏性癫痫警告</title>
+<style>
+:where(html){--aurora:#C5963A;--ember:#E0C080;--parchment:#D4C5A0;--void:#000;--warn:#C45A3A}
+
+:where(*){margin:0;padding:0;box-sizing:border-box}
+:where(body){
+  background:var(--void);height:100svh;overflow:hidden;
+  display:grid;place-items:center;
+  font:16px/1.6 "Songti SC","Noto Serif SC","KaiTi",serif;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;
+  transition:opacity .48s ease;
+}
+:where(body).is-leaving{opacity:0}
+
+:where(canvas){position:fixed;inset:0;z-index:1;pointer-events:none}
+
+:where(main){
+  position:relative;z-index:2;text-align:center;
+  padding:clamp(20px,5vw,36px);max-width:560px;width:90%;
+  opacity:0;translate:0 10px;
+  transition:opacity .7s cubic-bezier(.25,.1,.25,1),translate .7s cubic-bezier(.25,.1,.25,1);
+}
+:where(main).is-on{opacity:1;translate:0 0}
+:where(main).is-off{opacity:0;translate:0 -8px;transition-duration:.55s;transition-timing-function:ease-in}
+
+main .ico{font-size:clamp(28px,7vw,40px);margin-bottom:clamp(12px,3vw,18px);filter:drop-shadow(0 0 12px rgba(196,90,58,.5))}
+main h1{font-size:clamp(14px,4vw,18px);letter-spacing:.3em;color:var(--warn);font-weight:400;text-shadow:0 0 20px rgba(196,90,58,.35);margin-bottom:clamp(16px,4vw,24px)}
+main p{font-size:clamp(13px,3.6vw,15.5px);line-height:2;color:var(--parchment);letter-spacing:.08em;text-shadow:0 0 10px rgba(200,160,90,.18);text-align:left}
+main p+p{margin-top:10px}
+main .highlight{color:#E8A880}
+main .footer-note{margin-top:clamp(16px,4vw,22px);font-size:11px;color:rgba(180,150,110,.55);letter-spacing:.15em;text-align:center}
+</style>
+</head>
+<body>
+
+<canvas id="fx" aria-hidden="true"></canvas>
+
+<main id="stage" role="alertdialog" aria-label="光敏性癫痫警告">
+  <div class="ico">⚠</div>
+  <h1>光 敏 性 癫 痫 警 告</h1>
+  <p>极少数人群在接触特定频率的闪光、快速切换的画面或强烈明暗对比时，可能出现<span class="highlight">光敏性癫痫发作</span>，症状包括头晕、视力改变、面部或眼部抽搐、肢体不自主抖动、意识丧失、定向障碍甚至跌倒受伤。</p>
+  <p>即使<span class="highlight">没有癫痫病史</span>的人，也可能在观看电子游戏中的闪烁特效时首次出现上述症状。</p>
+  <p>如出现任何不适，请<span class="highlight">立即停止游戏</span>并咨询专业医生。儿童与青少年对此类刺激更为敏感，请家长留意。</p>
+  <p class="footer-note">建议在光线充足的环境中游玩 · 保持适当距离 · 避免长时间连续游戏</p>
+</main>
+
+<script type="module">
+class Stardust{
+  constructor(){this.canvas=document.getElementById('fx');this.ctx=this.canvas.getContext('2d');this.spawn();this.bind();this.loop()}
+  bind(){addEventListener('resize',()=>this.resize());this.resize()}
+  resize(){this.canvas.width=innerWidth;this.canvas.height=innerHeight;this.w=innerWidth;this.h=innerHeight}
+  spawn(){
+    this.specks=Array.from({length:18},()=>({
+      x:Math.random()*innerWidth,y:Math.random()*innerHeight,
+      r:Math.random()*1.6+.3,phase:Math.random()*Math.PI*2,
+      speed:.0006+Math.random()*.0005,brightness:.12+Math.random()*.3,
+      flicker:.0015+Math.random()*.003,
+      hue:Math.random()<.5?30:15
+    }));
+  }
+  render(){
+    this.ctx.clearRect(0,0,this.w,this.h);
+    for(const s of this.specks){
+      s.phase+=s.speed;const drift=Math.sin(s.phase)*.25;
+      s.brightness+=s.flicker;
+      if(s.brightness>.45||s.brightness<.06) s.flicker*=-1;
+      const a=s.brightness;
+      const grad=this.ctx.createRadialGradient(s.x,s.y,0,s.x,s.y,s.r*7);
+      grad.addColorStop(0,`hsla(${s.hue+180},70%,55%,${a*.45})`);
+      grad.addColorStop(1,'rgba(180,60,30,0)');
+      this.ctx.fillStyle=grad;this.ctx.beginPath();this.ctx.arc(s.x,s.y,s.r*7,0,7);this.ctx.fill();
+      s.x=(s.x+drift+this.w)%this.w; s.y=(s.y-.1+this.h)%this.h;
+    }
+  }
+  loop=()=>{this.render();this._raf=requestAnimationFrame(this.loop)}
+  kill(){cancelAnimationFrame(this._raf)}
+}
+
+class Gateway{
+  constructor(){
+    this.stage=document.getElementById('stage');
+    this.body=document.body;
+    this.target='内容警告.html';
+    this._locked=false;
+    this.dust=new Stardust();
+    this._wireInputs();
+    this._timeline();
+  }
+  _wireInputs(){
+    this.body.addEventListener('pointerdown',()=>this._navigate(),{passive:true});
+    addEventListener('keydown',()=>this._navigate());
+  }
+  async _timeline(){
+    await this._wait(190);
+    this.stage.classList.add('is-on');
+    await this._wait(5400);
+    this._navigate();
+  }
+  _navigate(){
+    if(this._locked)return;
+    this._locked=true;
+    this.dust.kill();
+    this.body.classList.add('is-leaving');
+    setTimeout(()=>{location.href=this.target},480);
+  }
+  _wait(ms){return new Promise(r=>setTimeout(r,ms))}
+}
+
+new Gateway();
+</script>
+</body>
+</html>

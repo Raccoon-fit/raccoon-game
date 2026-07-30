@@ -1,0 +1,483 @@
+/* ========================================================
+   アライグマの日 — 翌日
+   極簡心理ホラー · 日常侵食 · 単方向進行
+   ======================================================== */
+
+:root {
+    --void: #030303;
+    --ash: #0a0a0a;
+    --dust: #151515;
+    --bone: #c8c8c0;
+    --rot: #3a1a0a;
+    --blood: #6a0000;
+    --pus: #2a2a0a;
+    --decay: 0;
+    --progress: 0%;
+    --lang: 'ja';
+}
+
+* { margin:0; padding:0; box-sizing:border-box; touch-action:none; -webkit-user-select:none; user-select:none; }
+
+body {
+    font-family: 'Noto Sans CJK SC', 'Noto Sans JP', 'WenQuanYi Micro Hei', 'MS Gothic', monospace;
+    background: var(--void);
+    color: var(--bone);
+    overflow:hidden;
+    width:100vw; height:100vh;
+    display:flex; align-items:center; justify-content:center;
+    cursor: none;
+}
+
+/* ========== カスタムカーソル ========== */
+body::before {
+    content: '☽';
+    position:fixed; z-index:99999; pointer-events:none;
+    font-size:18px; color:#666;
+    transform:translate(-50%,-50%);
+    left:var(--mx,50vw); top:var(--my,50vh);
+    transition: color 0.3s, text-shadow 0.3s;
+    text-shadow: 0 0 3px #333;
+}
+body.rotted::before { color:#4a0000; text-shadow: 0 0 8px #800, 0 0 15px #400; content:'☾'; }
+body.rotted { background:#080202; }
+
+/* ========== 環境オーバーレイ ========== */
+#vignette {
+    position:fixed; inset:0; pointer-events:none; z-index:9000;
+    background: radial-gradient(ellipse at center, transparent 20%, rgba(0,0,0,calc(0.5 + var(--decay)*0.4)) 80%, #000 100%);
+}
+#noise {
+    position:fixed; inset:0; pointer-events:none; z-index:8500; opacity:0.06;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size:100px 100px;
+    animation: noiseShift 0.2s steps(2) infinite;
+}
+@keyframes noiseShift { 0%{transform:translate(0)} 50%{transform:translate(-2px,1px)} 100%{transform:translate(1px,-2px)} }
+#scanlines {
+    position:fixed; inset:0; pointer-events:none; z-index:8400; opacity:0.15;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, #000 2px, #000 3px);
+}
+#blood-overlay {
+    position:fixed; inset:0; pointer-events:none; z-index:8200;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(80,0,0,calc(var(--decay)*0.3)) 100%);
+    opacity: var(--decay);
+    transition: opacity 2s;
+}
+#flash-overlay {
+    position:fixed; inset:0; pointer-events:none; z-index:9500;
+    background: #fff; opacity:0; transition: opacity 0.05s;
+}
+#flash-overlay.active { opacity:1; transition:opacity 0s; }
+
+/* ========== 言語切替ボタン（右下固定） ========== */
+.lang-btn {
+    position:fixed; right:16px; bottom:16px; z-index:99998;
+    width:52px; height:52px; border-radius:50%;
+    background:rgba(15,15,15,0.85); border:1px solid #333;
+    color:#aaa; font-size:14px; font-weight:bold; letter-spacing:0.1em;
+    cursor:none; display:flex; align-items:center; justify-content:center;
+    transition:all 0.3s; backdrop-filter:blur(4px);
+    font-family:inherit;
+}
+.lang-btn:hover {
+    border-color:#600; color:#ddd;
+    box-shadow:0 0 15px rgba(80,0,0,0.3);
+    transform:scale(1.05);
+}
+.lang-btn:active { transform:scale(0.95); }
+body[data-lang="zh"] .lang-btn { font-family:'Noto Sans CJK SC',sans-serif; }
+
+/* ========== コンテナ ========== */
+#game-container {
+    width:100%; height:100%; max-width:1000px; position:relative; z-index:10;
+}
+
+.screen {
+    position:absolute; inset:0;
+    display:none; flex-direction:column; align-items:center; justify-content:center;
+    padding:20px; text-align:center;
+}
+.screen.active { display:flex; }
+
+/* ========== タイトル画面 ========== */
+#title-screen {
+    position:absolute; inset:0;
+    display:none;
+    flex-direction:column; align-items:center; justify-content:center;
+    padding:20px; text-align:center;
+    background: #030305;
+}
+#title-screen.active { display:flex; }
+
+#title-canvas {
+    position:absolute; inset:0; width:100%; height:100%;
+    z-index:0; opacity:0.6;
+}
+.title-content {
+    position:relative; z-index:1;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+}
+
+.title-glitch-container { position:relative; margin-bottom:30px; }
+
+.glitch-text {
+    position:relative;
+    font-size: clamp(2.5rem, 10vw, 5rem);
+    font-weight:900;
+    letter-spacing:0.15em;
+    color: var(--bone);
+}
+.title-sub {
+    font-size: clamp(1rem, 4vw, 1.8rem);
+    color: #555;
+    letter-spacing:0.5em;
+    margin-top:5px;
+}
+.glitch-text::before, .glitch-text::after {
+    content: attr(data-text);
+    position:absolute; top:0; left:0; width:100%; height:100%;
+}
+.glitch-text::before {
+    color: #800;
+    animation: glitchA 3s infinite;
+    clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
+}
+.glitch-text::after {
+    color: #008;
+    animation: glitchB 4s infinite;
+    clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
+}
+@keyframes glitchA {
+    0%,90%,100%{transform:translate(0); opacity:0;}
+    92%{transform:translate(-4px,1px); opacity:0.8;}
+    94%{transform:translate(3px,-1px); opacity:0.6;}
+    96%{transform:translate(-2px,2px); opacity:0.9;}
+}
+@keyframes glitchB {
+    0%,88%,100%{transform:translate(0); opacity:0;}
+    90%{transform:translate(3px,-1px); opacity:0.7;}
+    93%{transform:translate(-3px,1px); opacity:0.5;}
+    95%{transform:translate(2px,2px); opacity:0.8;}
+}
+
+.title-raccoon {
+    font-size: clamp(4rem, 15vw, 7rem);
+    filter: grayscale(0.3) contrast(1.2);
+    animation: raccoonBreath 3s ease-in-out infinite;
+    margin:15px 0;
+    text-shadow: 0 0 30px rgba(0,0,0,0.8);
+}
+@keyframes raccoonBreath {
+    0%,100%{transform:translateY(0) scale(1); filter:grayscale(0.3) contrast(1.2);}
+    50%{transform:translateY(-8px) scale(1.03); filter:grayscale(0.5) contrast(1.4) brightness(0.9);}
+}
+
+.title-lore {
+    font-size: clamp(0.85rem, 3vw, 1.1rem);
+    color:#777; line-height:2.2;
+    max-width:480px; margin:10px 0 25px;
+    animation: whisperText 6s ease-in-out infinite;
+}
+@keyframes whisperText {
+    0%,100%{opacity:0.6;}
+    50%{opacity:1; text-shadow:0 0 15px rgba(80,0,0,0.3);}
+}
+
+.title-hint {
+    font-size: clamp(0.7rem, 2.5vw, 0.85rem);
+    color:#444; margin-top:20px; letter-spacing:0.1em;
+}
+
+/* ========== ホラーボタン ========== */
+.horror-btn {
+    position:relative; overflow:hidden;
+    padding:16px 48px;
+    font-family:inherit; font-size:clamp(1rem,3.5vw,1.2rem);
+    letter-spacing:0.3em;
+    background: linear-gradient(180deg, #111 0%, #080808 100%);
+    color:#aaa; border:1px solid #333; border-radius:2px;
+    cursor:none;
+    transition: all 0.4s;
+    z-index:2;
+}
+.horror-btn::before {
+    content:''; position:absolute; inset:0;
+    background: linear-gradient(90deg, transparent, rgba(100,0,0,0.2), transparent);
+    transform:translateX(-100%); transition:transform 0.6s;
+}
+.horror-btn:hover::before { transform:translateX(100%); }
+.horror-btn:hover {
+    border-color:#600; color:#ddd;
+    box-shadow: 0 0 25px rgba(80,0,0,0.3), inset 0 0 15px rgba(60,0,0,0.15);
+}
+.horror-btn:active { transform:scale(0.97); }
+
+/* ========== HUD ========== */
+#hud {
+    width:100%; padding:10px 20px;
+    display:flex; align-items:center; gap:15px;
+    background:rgba(3,3,3,0.9);
+    border-bottom:1px solid #1a1a1a;
+    flex-shrink:0;
+}
+.hud-day {
+    font-size:clamp(0.9rem,3.5vw,1.3rem);
+    font-weight:bold; letter-spacing:0.2em;
+    color:#888;
+    min-width:80px;
+    transition: color 1s;
+}
+.hud-day.late { color:#a44; }
+.hud-day.latest { color:#e22; text-shadow:0 0 10px #800; }
+.hud-bar {
+    flex:1; height:3px;
+    background:rgba(255,255,255,0.05);
+    border-radius:2px;
+    overflow:hidden;
+    position:relative;
+}
+.hud-bar-fill {
+    display:block; height:100%;
+    width:var(--progress);
+    background:linear-gradient(90deg, #333, #a33);
+    transition: width 0.3s ease-out;
+    box-shadow:0 0 8px rgba(160,0,0,0.4);
+}
+.hud-dist {
+    font-size:clamp(0.7rem,2.5vw,0.9rem);
+    color:#555; letter-spacing:0.05em;
+    min-width:80px; text-align:right;
+}
+
+/* ========== Canvas ========== */
+#canvas-container {
+    position:relative; flex:1; width:100%;
+    display:flex; align-items:center; justify-content:center;
+    min-height:200px;
+    overflow:hidden;
+}
+#game-canvas {
+    background:#050505;
+    image-rendering:pixelated;
+    box-shadow: 0 0 60px rgba(0,0,0,0.8), inset 0 0 80px rgba(0,0,0,0.5);
+    display:block;
+}
+#creep-overlay {
+    position:absolute; inset:0; pointer-events:none;
+    opacity:0; transition:opacity 1s;
+    background: radial-gradient(ellipse at center, transparent 30%, rgba(60,0,0,0.2) 100%);
+}
+#creep-overlay.active { opacity:1; }
+
+/* ========== モバイルコントロール ========== */
+#mobile-controls {
+    display:none; padding:15px;
+    flex-shrink:0;
+}
+.ctrl-btn {
+    font-family:inherit; font-size:clamp(1rem,4vw,1.3rem);
+    padding:18px 50px;
+    background:rgba(15,15,15,0.95);
+    border:2px solid #2a2a2a; color:#666;
+    border-radius:4px; cursor:none;
+    letter-spacing:0.2em;
+    transition:all 0.15s;
+    user-select:none; -webkit-user-select:none;
+    touch-action:manipulation;
+}
+.ctrl-btn:active, .ctrl-btn.active {
+    background:rgba(60,0,0,0.4); border-color:#600; color:#c88;
+    transform:scale(0.95);
+    box-shadow:0 0 20px rgba(80,0,0,0.4);
+}
+
+/* ========== 日次切替 ========== */
+#day-transition {
+    background:rgba(0,0,0,0.97);
+    position:relative; overflow:hidden;
+}
+#day-transition::before {
+    content:'';
+    position:absolute; inset:0;
+    background:repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.5) 3px, rgba(0,0,0,0.5) 6px);
+    pointer-events:none;
+}
+.transition-title {
+    font-size:clamp(3rem,12vw,6rem);
+    font-weight:900; letter-spacing:0.2em;
+    color:#444;
+    animation: transGlitch 0.5s steps(3) infinite;
+    position:relative; z-index:1;
+}
+.transition-title.rotted {
+    color:#822; text-shadow:0 0 30px #600, 0 0 60px #300, 0 0 100px #200;
+    animation: transGlitchRotted 0.3s steps(2) infinite;
+}
+@keyframes transGlitchRotted {
+    0%{transform:translate(0) skew(0); color:#822;}
+    20%{transform:translate(-5px,2px) skew(-3deg); color:#a22;}
+    40%{transform:translate(3px,-2px) skew(2deg); color:#611;}
+    60%{transform:translate(-2px,3px) skew(-1deg); color:#911;}
+    80%{transform:translate(4px,-1px) skew(1deg); color:#722;}
+    100%{transform:translate(0) skew(0); color:#822;}
+}
+.transition-sub {
+    font-size:clamp(0.8rem,3vw,1rem);
+    color:#333; margin-top:20px; letter-spacing:0.15em;
+    position:relative; z-index:1;
+}
+
+/* ========== エンディング ========== */
+#ending-screen {
+    background: #000;
+    position: relative;
+    overflow: hidden;
+}
+#ending-screen::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent, transparent 2px,
+        rgba(0,0,0,0.4) 2px, rgba(0,0,0,0.4) 4px
+    );
+    pointer-events: none; z-index: 10;
+}
+#ending-screen::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at center, transparent 20%, rgba(0,0,0,0.8) 100%);
+    pointer-events: none; z-index: 9;
+}
+
+.ending-title {
+    font-size:clamp(2rem,8vw,4rem);
+    letter-spacing:0.2em;
+    margin-bottom:20px;
+    position: relative; z-index: 11;
+    animation: endingTitlePulse 3s ease-in-out infinite;
+}
+@keyframes endingTitlePulse {
+    0%,100%{ opacity:1; }
+    50%{ opacity:0.6; }
+}
+
+/* 生還：薄暗い緑 — でも安泰ではない */
+.ending-title.survive {
+    color:#2a4a35;
+    text-shadow:0 0 20px rgba(40,80,55,0.3), 0 0 40px rgba(20,40,30,0.2);
+}
+/* 独り：赤黒い — 何かがいる */
+.ending-title.alone {
+    color:#a03030;
+    text-shadow:0 0 30px #600, 0 0 60px #300, 0 0 100px #200;
+    animation: endingTitlePulse 2s ease-in-out infinite, endingGlitchText 4s infinite;
+}
+/* 同化：深紅 — 消滅 */
+.ending-title.consumed {
+    color:#1a0000;
+    text-shadow:0 0 50px #400, 0 0 100px #200, 0 0 150px #100;
+    animation: endingTitlePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes endingGlitchText {
+    0%,90%,100%{transform:translate(0);}
+    92%{transform:translate(-3px,1px);}
+    94%{transform:translate(2px,-1px);}
+    96%{transform:translate(-1px,2px);}
+}
+
+.ending-raccoon {
+    font-size:clamp(3rem,12vw,6rem);
+    margin:15px 0;
+    position: relative; z-index: 11;
+}
+#ending-screen[data-ending="survive"] .ending-raccoon {
+    animation: endingRaccoonBreathe 2s ease-in-out infinite;
+    filter: brightness(0.7) contrast(1.2);
+}
+#ending-screen[data-ending="alone"] .ending-raccoon {
+    animation: endingShake 0.5s ease-in-out infinite;
+    filter: brightness(0.5) contrast(1.5) hue-rotate(-20deg);
+}
+#ending-screen[data-ending="consumed"] .ending-raccoon {
+    animation: endingDissolve 3s ease-in-out infinite;
+    filter: brightness(0.3) contrast(2) saturate(1.5);
+}
+
+@keyframes endingRaccoonBreathe {
+    0%,100%{transform:scale(1); opacity:0.8;}
+    50%{transform:scale(1.02); opacity:1;}
+}
+@keyframes endingShake {
+    0%,100%{transform:translate(0) rotate(0);}
+    20%{transform:translate(-2px,1px) rotate(-1deg);}
+    40%{transform:translate(1px,-2px) rotate(0.5deg);}
+    60%{transform:translate(-1px,2px) rotate(-0.5deg);}
+    80%{transform:translate(2px,-1px) rotate(1deg);}
+}
+@keyframes endingDissolve {
+    0%,100%{transform:scale(1) translate(0,0); opacity:0.6; filter:brightness(0.3) contrast(2);}
+    50%{transform:scale(1.05) translate(1px,-1px); opacity:0.3; filter:brightness(0.1) contrast(3) blur(1px);}
+}
+
+.ending-text {
+    font-size:clamp(0.85rem,3vw,1.05rem);
+    color:#666; line-height:2.2; max-width:500px;
+    margin-bottom:15px;
+    position: relative; z-index: 11;
+    animation: textFlicker 5s ease-in-out infinite;
+}
+#ending-screen[data-ending="alone"] .ending-text { color:#a55; }
+#ending-screen[data-ending="consumed"] .ending-text { color:#533; }
+
+@keyframes textFlicker {
+    0%,100%{opacity:0.8;}
+    47%{opacity:0.8;}
+    48%{opacity:0.3;}
+    49%{opacity:0.9;}
+    50%{opacity:0.5;}
+    51%{opacity:0.8;}
+}
+
+.ending-stats {
+    font-size:clamp(0.75rem,2.5vw,0.9rem);
+    color:#444; margin-bottom:25px; letter-spacing:0.1em;
+    position: relative; z-index: 11;
+}
+#ending-screen[data-ending="consumed"] .ending-stats { color:#311; }
+
+/* エンディング別のボタンスタイル */
+#ending-screen[data-ending="survive"] .horror-btn {
+    border-color:#1a3020; color:#4a6a55;
+}
+#ending-screen[data-ending="survive"] .horror-btn:hover {
+    border-color:#2a5040; color:#6a8a75; box-shadow:0 0 20px rgba(40,80,55,0.2);
+}
+#ending-screen[data-ending="alone"] .horror-btn {
+    border-color:#3a1010; color:#8a4040;
+}
+#ending-screen[data-ending="alone"] .horror-btn:hover {
+    border-color:#5a2020; color:#aa6060; box-shadow:0 0 20px rgba(100,20,20,0.3);
+}
+#ending-screen[data-ending="consumed"] .horror-btn {
+    border-color:#1a0000; color:#5a2020;
+}
+#ending-screen[data-ending="consumed"] .horror-btn:hover {
+    border-color:#3a0000; color:#7a3030; box-shadow:0 0 15px rgba(60,0,0,0.2);
+}
+
+/* ========== レスポンシブ ========== */
+@media (max-width:768px){
+    #mobile-controls{display:block;}
+    body{cursor:auto;}
+    body::before{display:none;}
+    #hud{padding:8px 12px;}
+    .title-lore{font-size:0.8rem;}
+    .horror-btn{padding:14px 36px;}
+    .lang-btn{width:44px;height:44px;font-size:12px;right:10px;bottom:10px;}
+}
+@media (max-width:480px){
+    .hud-day{font-size:0.8rem; min-width:60px;}
+    .hud-dist{font-size:0.65rem; min-width:60px;}
+}

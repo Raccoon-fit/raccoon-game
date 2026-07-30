@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Notice</title>
+<style>
+:where(html){--aurora:#C5963A;--ember:#E0C080;--parchment:#D4C5A0;--void:#000}
+
+:where(*){margin:0;padding:0;box-sizing:border-box}
+:where(body){
+  background:var(--void);height:100svh;overflow:hidden;
+  display:grid;place-items:center;
+  font:16px/1.6 "Songti SC","Noto Serif SC","KaiTi",serif;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;
+  transition:opacity .48s ease;
+}
+:where(body).is-leaving{opacity:0}
+
+:where(canvas){position:fixed;inset:0;z-index:1;pointer-events:none}
+
+:where(main){
+  position:relative;z-index:2;text-align:center;
+  padding:clamp(20px,5vw,36px);max-width:540px;width:90%;
+  opacity:0;translate:0 10px;
+  transition:opacity .7s cubic-bezier(.25,.1,.25,1),translate .7s cubic-bezier(.25,.1,.25,1);
+}
+:where(main).is-on{opacity:1;translate:0 0}
+:where(main).is-off{opacity:0;translate:0 -8px;transition-duration:.55s;transition-timing-function:ease-in}
+
+main h1{font-size:clamp(13px,3.5vw,16px);letter-spacing:.35em;color:var(--aurora);font-weight:400;text-shadow:0 0 20px rgba(180,130,60,.35);margin-bottom:clamp(16px,4vw,26px)}
+main p{font-size:clamp(14px,4vw,18px);line-height:2.2;color:var(--parchment);letter-spacing:.12em;text-shadow:0 0 12px rgba(200,160,90,.2)}
+</style>
+</head>
+<body>
+
+<canvas id="fx" aria-hidden="true"></canvas>
+
+<main id="stage" role="dialog" aria-label="健康游戏忠告">
+  <h1>健 康 游 戏 忠 告</h1>
+  <p>抵制不良游戏，拒绝盗版游戏。</p>
+  <p>注意自我保护，谨防受骗上当。</p>
+  <p>适度游戏益脑，沉迷游戏伤身。</p>
+  <p>合理安排时间，享受健康生活。</p>
+</main>
+
+<script type="module">
+class Stardust{
+  constructor(){this.canvas=document.getElementById('fx');this.ctx=this.canvas.getContext('2d');this.spawn();this.bind();this.loop()}
+  bind(){addEventListener('resize',()=>this.resize());this.resize()}
+  resize(){this.canvas.width=innerWidth;this.canvas.height=innerHeight;this.w=innerWidth;this.h=innerHeight}
+  spawn(){
+    this.specks=Array.from({length:22},()=>({
+      x:Math.random()*innerWidth,y:Math.random()*innerHeight,
+      r:Math.random()*1.8+.4,phase:Math.random()*Math.PI*2,
+      speed:.0008+Math.random()*.0006,brightness:.15+Math.random()*.35,
+      flicker:.002+Math.random()*.004
+    }));
+  }
+  render(now){
+    this.ctx.clearRect(0,0,this.w,this.h);
+    for(const s of this.specks){
+      s.phase+=s.speed;const drift=Math.sin(s.phase)*.3;
+      s.brightness+=s.flicker;
+      if(s.brightness>.5||s.brightness<.08) s.flicker*=-1;
+      const alpha=s.brightness;
+      const grad=this.ctx.createRadialGradient(s.x,s.y,0,s.x,s.y,s.r*8);
+      grad.addColorStop(0,`rgba(210,165,55,${alpha*.5})`);
+      grad.addColorStop(1,'rgba(180,130,40,0)');
+      this.ctx.fillStyle=grad;this.ctx.beginPath();this.ctx.arc(s.x,s.y,s.r*8,0,7);this.ctx.fill();
+      s.x=(s.x+drift+this.w)%this.w; s.y=(s.y-.12+this.h)%this.h;
+    }
+  }
+  loop=()=>{this.render(performance.now());this._raf=requestAnimationFrame(this.loop)}
+  kill(){cancelAnimationFrame(this._raf)}
+}
+
+class Gateway{
+  constructor(){
+    this.stage=document.getElementById('stage');
+    this.body=document.body;
+    this.target='光敏性癫痫警告.html';
+    this._locked=false;
+    this.dust=new Stardust();
+    this._wireInputs();
+    this._timeline();
+  }
+  _wireInputs(){
+    this.body.addEventListener('pointerdown',()=>this._navigate(),{passive:true});
+    addEventListener('keydown',()=>this._navigate());
+  }
+  async _timeline(){
+    await this._wait(190);
+    this.stage.classList.add('is-on');
+    await this._wait(2720);
+    this._navigate();
+  }
+  _navigate(){
+    if(this._locked)return;
+    this._locked=true;
+    this.dust.kill();
+    this.body.classList.add('is-leaving');
+    setTimeout(()=>{location.href=this.target},480);
+  }
+  _wait(ms){return new Promise(r=>setTimeout(r,ms))}
+}
+
+new Gateway();
+</script>
+</body>
+</html>
