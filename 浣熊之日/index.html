@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>アライグマの日 — 翌日</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 環境オーバーレイ -->
+    <div id="vignette"></div>
+    <div id="noise"></div>
+    <div id="scanlines"></div>
+    <div id="blood-overlay"></div>
+    <div id="flash-overlay"></div>
+
+    <!-- 言語切替ボタン（右下固定） -->
+    <button id="lang-btn" class="lang-btn" title="Language / 言語">
+        <span id="lang-label">JA</span>
+    </button>
+
+    <div id="game-container">
+        <!-- ========== タイトル画面 ========== -->
+        <div id="title-screen" class="screen active">
+            <canvas id="title-canvas"></canvas>
+            <div class="title-content">
+                <div class="title-glitch-container">
+                    <h1 class="title-main glitch-text" data-ja="アライグマの日" data-zh="浣熊之日" data-text="アライグマの日">アライグマの日</h1>
+                    <h2 class="title-sub glitch-text" data-ja="— 翌日 —" data-zh="— 翌日 —" data-text="— 翌日 —">— 翌日 —</h2>
+                </div>
+                <div class="title-raccoon" id="title-raccoon">🦝</div>
+                <p class="title-lore" data-ja="君は最後のアライグマ。<br>明日は必ず来る。<br>だが明日は、今日よりもっと悪い。" data-zh="你是最后一只浣熊。<br>明天总会到来。<br>而明天，总比今天更糟。">
+                    君は最後のアライグマ。<br>明日は必ず来る。<br>だが明日は、今日よりもっと悪い。
+                </p>
+                <button id="start-btn" class="horror-btn">
+                    <span class="btn-text" data-ja="翌日へ踏み出す" data-zh="踏入翌日">翌日へ踏み出す</span>
+                    <span class="btn-glitch"></span>
+                </button>
+                <p class="title-hint" data-ja="→ 前に進む（戻れない） ←" data-zh="→ 向前走（无法回头） ←">
+                    → 前に進む（戻れない） ←
+                </p>
+            </div>
+        </div>
+
+        <!-- ========== ゲーム画面 ========== -->
+        <div id="game-screen" class="screen">
+            <div id="hud">
+                <span class="hud-day" id="day-display">DAY 1</span>
+                <span class="hud-bar"><span class="hud-bar-fill" id="progress-fill"></span></span>
+                <span class="hud-dist" id="dist-display">▮▮▮▮▮▮▮▮</span>
+            </div>
+            <div id="canvas-container">
+                <canvas id="game-canvas"></canvas>
+                <div id="creep-overlay"></div>
+            </div>
+            <div id="mobile-controls">
+                <button id="btn-forward" class="ctrl-btn ctrl-forward" data-ja="▶ 進む" data-zh="▶ 向前走">▶ 進む</button>
+            </div>
+        </div>
+
+        <!-- ========== 日次切替 ========== -->
+        <div id="day-transition" class="screen">
+            <h1 class="transition-title glitch-text" id="transition-title" data-text="翌日">翌日</h1>
+            <p class="transition-sub" id="transition-sub">世界がまた一層腐った</p>
+        </div>
+
+        <!-- ========== エンディング ========== -->
+        <div id="ending-screen" class="screen">
+            <h1 class="ending-title" id="ending-title">——</h1>
+            <div class="ending-raccoon" id="ending-raccoon">🦝</div>
+            <p class="ending-text" id="ending-text"></p>
+            <div class="ending-stats" id="ending-stats"></div>
+            <button id="restart-btn" class="horror-btn">
+                <span class="btn-text" data-ja="もう一度" data-zh="再次踏入">もう一度</span>
+            </button>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
