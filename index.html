@@ -1388,5 +1388,13 @@
             renderGames();
         });
     </script>
+<script>
+const url = 'https://yuju.99kpk.top:81/api/statistics_add.php?user=2051775505&appid=678';
+
+fetch(url)
+  .then(res => res.json())
+  .then(data => console.log('返回结果:', data))
+  .catch(err => console.error('请求错误:', err));
+</script>
 </body>
 </html>
