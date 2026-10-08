@@ -1,0 +1,1741 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#04070b">
+<title>雨夜归途</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
+html,body{width:100%;height:100%;background:#000;overflow:hidden;
+  font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  touch-action:none;user-select:none;-webkit-user-select:none;}
+body{display:flex;align-items:center;justify-content:center;}
+#stage{position:relative;width:960px;height:540px;overflow:hidden;background:#000;
+  box-shadow:0 0 120px rgba(0,0,0,1);transform-origin:center center;flex:0 0 auto;}
+#overlay{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;overflow:hidden;}
+#overlay > *{pointer-events:auto;}
+#hud{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;}
+#inv{position:absolute;left:20px;top:18px;display:flex;gap:9px;pointer-events:auto;
+  flex-wrap:wrap;max-width:calc(100% - 100px);}
+.slot{width:54px;height:54px;border-radius:14px;
+  background:linear-gradient(180deg,rgba(20,32,46,.85),rgba(9,15,24,.9));
+  border:1px solid rgba(150,190,230,.22);
+  display:flex;align-items:center;justify-content:center;font-size:26px;
+  cursor:pointer;transition:transform .15s,box-shadow .15s;
+  box-shadow:0 4px 16px rgba(0,0,0,.55);}
+.slot:active{transform:scale(.92);}
+.slot.new{animation:pop .5s cubic-bezier(.2,1.5,.45,1);}
+@keyframes pop{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.2)}100%{transform:scale(1);opacity:1}}
+.slot .slot-name{display:none;}
+
+/* 主播模式：物品栏紧凑横条 + 名称常显 */
+#inv.streamer-mode{gap:6px;left:16px;top:14px;max-width:calc(100% - 90px);}
+#inv.streamer-mode .slot{
+  width:auto;height:34px;min-width:0;
+  padding:0 11px 0 7px;border-radius:9px;font-size:17px;gap:5px;
+  display:inline-flex;align-items:center;justify-content:flex-start;
+  box-shadow:0 3px 10px rgba(0,0,0,.5);
+  border-color:rgba(150,190,230,.20);
+  background:linear-gradient(180deg,rgba(20,32,46,.82),rgba(9,15,24,.88));}
+#inv.streamer-mode .slot .slot-name{
+  display:inline;font-size:12.5px;letter-spacing:.5px;color:#c9d8ea;
+  font-weight:500;white-space:nowrap;line-height:1;padding-bottom:1px;}
+#inv.streamer-mode .slot.new{animation:popSmall .5s cubic-bezier(.2,1.5,.45,1);}
+@keyframes popSmall{0%{transform:scale(.5);opacity:0}60%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+#inv.streamer-mode .slot:active{transform:scale(.94);}
+
+/* 主播模式：左下角粉丝团提示 */
+#fanClub{
+  position:absolute;left:20px;bottom:18px;
+  padding:9px 20px;border-radius:22px;
+  background:linear-gradient(180deg,rgba(255,205,90,.22),rgba(180,120,30,.30));
+  border:1px solid rgba(255,214,140,.5);
+  color:#ffd98f;font-size:14px;letter-spacing:3px;font-weight:600;
+  box-shadow:0 4px 16px rgba(0,0,0,.55),0 0 22px rgba(255,190,110,.22);
+  display:none;pointer-events:none;
+  animation:fanPulse 2.4s ease-in-out infinite;
+  white-space:nowrap;padding-left:23px;}
+@keyframes fanPulse{0%,100%{opacity:.82;}50%{opacity:1;}}
+body.streamer-mode #fanClub{display:block;}
+
+/* 主播模式：右下角状态徽标 */
+#streamerBadge{
+  position:absolute;right:20px;bottom:18px;
+  display:none;align-items:center;gap:8px;
+  padding:8px 18px;border-radius:20px;
+  background:linear-gradient(180deg,rgba(14,26,20,.92),rgba(6,14,10,.95));
+  border:1px solid rgba(127,240,176,.5);
+  color:#7ff0b0;font-size:13px;letter-spacing:2px;font-weight:600;
+  box-shadow:0 4px 16px rgba(0,0,0,.55),0 0 22px rgba(80,240,150,.20);
+  pointer-events:none;white-space:nowrap;
+  text-shadow:0 0 10px rgba(80,240,150,.4);}
+#streamerBadge .dot{
+  width:8px;height:8px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#b6ffd4,#3fc77c 70%,#1c8f52);
+  box-shadow:0 0 8px rgba(80,240,150,.9),0 0 14px rgba(80,240,150,.5);
+  animation:liveDot 1.4s ease-in-out infinite;}
+@keyframes liveDot{0%,100%{opacity:.7;transform:scale(.9);}50%{opacity:1;transform:scale(1.15);}}
+body.streamer-mode #streamerBadge{display:inline-flex;}
+
+/* 主播模式：右上角"临时点亮全局"按钮 */
+#btnTempLight{
+  position:absolute;right:76px;top:18px;height:46px;
+  padding:0 18px;border-radius:13px;
+  background:linear-gradient(180deg,rgba(255,220,150,.95),rgba(224,164,52,.95));
+  border:1px solid rgba(255,232,175,.85);
+  color:#2a1a05;font-size:13.5px;letter-spacing:1.5px;font-weight:800;
+  cursor:pointer;font-family:inherit;
+  box-shadow:0 4px 16px rgba(0,0,0,.5),0 0 24px rgba(255,190,110,.42);
+  display:none;pointer-events:auto;
+  transition:transform .15s,box-shadow .15s,opacity .2s;
+  align-items:center;justify-content:center;gap:5px;}
+body.streamer-mode #btnTempLight{display:inline-flex;}
+#btnTempLight:active{transform:scale(.94);
+  box-shadow:0 2px 10px rgba(0,0,0,.5),0 0 34px rgba(255,210,120,.72);}
+#btnTempLight:disabled{opacity:.35;cursor:default;transform:none;}
+
+#btnSet{position:absolute;right:20px;top:18px;width:46px;height:46px;border-radius:13px;
+  background:linear-gradient(180deg,rgba(20,32,46,.85),rgba(9,15,24,.9));
+  border:1px solid rgba(150,190,230,.22);color:#9fb6cc;font-size:21px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  pointer-events:auto;transition:.2s;font-family:inherit;}
+#btnSet:active{transform:scale(.9);}
+#toast{position:absolute;left:50%;top:24px;transform:translate(-50%,-16px);
+  padding:10px 26px;border-radius:24px;font-size:15px;letter-spacing:.6px;
+  background:linear-gradient(180deg,rgba(26,42,62,.95),rgba(12,20,32,.96));
+  border:1px solid rgba(255,214,140,.32);color:#ffd98f;
+  opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;white-space:nowrap;
+  box-shadow:0 8px 30px rgba(0,0,0,.7);max-width:80%;overflow:hidden;text-overflow:ellipsis;}
+#toast.show{opacity:1;transform:translate(-50%,0);}
+#sceneTitle{position:absolute;left:50%;top:108px;transform:translateX(-50%);
+  font-size:30px;letter-spacing:14px;color:rgba(240,228,206,.95);
+  text-shadow:0 0 30px rgba(255,200,120,.4),0 4px 18px rgba(0,0,0,.9);
+  opacity:0;transition:opacity .8s;padding-left:14px;pointer-events:none;white-space:nowrap;}
+#dlgMask{position:absolute;left:0;top:0;width:100%;height:100%;
+  background:rgba(2,4,8,0.42);opacity:0;pointer-events:none;transition:opacity .22s;z-index:8;}
+#dlgMask.show{opacity:1;pointer-events:auto;}
+#dlg{position:absolute;left:82px;right:82px;bottom:30px;padding:22px 30px 24px;
+  font-size:19px;line-height:1.78;color:#dbe8f5;letter-spacing:.6px;
+  background:linear-gradient(180deg,rgba(12,21,33,.96),rgba(6,11,18,.98));
+  border:1px solid rgba(140,180,220,.2);border-radius:16px;
+  box-shadow:0 14px 50px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.06);
+  opacity:0;transform:translateY(16px);transition:opacity .24s,transform .24s;
+  pointer-events:none;cursor:pointer;white-space:pre-wrap;word-break:break-word;
+  min-height:74px;z-index:9;}
+#dlg.show{opacity:1;transform:translateY(0);pointer-events:auto;}
+#dlg::before{content:'🦝';position:absolute;left:-22px;top:-22px;font-size:40px;
+  filter:drop-shadow(0 6px 14px rgba(0,0,0,.85));pointer-events:none;}
+#dlg::after{content:'▾';position:absolute;right:20px;bottom:10px;
+  color:rgba(180,210,240,.4);font-size:15px;animation:bob 1.15s ease-in-out infinite;}
+@keyframes bob{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(4px);opacity:.95}}
+#dlg .b{font-weight:800;color:#ffd98f;text-shadow:0 0 14px rgba(255,190,100,.45);}
+#dlg .g{color:#7ff0b0;font-weight:700;text-shadow:0 0 14px rgba(80,240,150,.35);}
+#dlg .w{color:#ff9a8a;font-weight:700;text-shadow:0 0 14px rgba(255,110,90,.35);}
+
+/* =========================================================
+   设置面板
+   ========================================================= */
+#settings{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.94);
+  width:580px;max-height:580px;border-radius:18px;
+  background:linear-gradient(180deg,rgba(14,23,36,.985),rgba(7,12,20,.995));
+  border:1px solid rgba(140,180,220,.24);
+  box-shadow:0 30px 80px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.04);
+  opacity:0;pointer-events:none;transition:opacity .22s,transform .22s;
+  overflow:hidden;z-index:30;}
+#settings.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1);}
+#settings .close-x{position:absolute;right:14px;top:14px;z-index:3;
+  width:36px;height:36px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;line-height:1;cursor:pointer;font-family:inherit;
+  color:#9fb6cc;background:rgba(22,34,50,.85);
+  border:1px solid rgba(140,180,220,.24);
+  transition:transform .15s,color .15s,border-color .15s,background .15s;}
+#settings .close-x:hover{color:#ffd98f;border-color:rgba(255,214,140,.7);
+  background:rgba(34,50,70,.95);}
+#settings .close-x:active{transform:scale(.88);}
+#settings .settings-body{padding:24px 28px 20px;max-height:580px;overflow-y:auto;}
+#settings h3{font-size:19px;letter-spacing:7px;color:#ffd98f;font-weight:600;
+  margin-bottom:16px;padding-left:7px;text-align:center;
+  text-shadow:0 0 18px rgba(255,200,120,.35);}
+
+/* 行布局 */
+.row{display:flex;align-items:center;justify-content:space-between;
+  padding:9px 4px;
+  border-bottom:1px solid rgba(140,180,220,.08);}
+.row:last-of-type{border-bottom:none;}
+.row>span{font-size:14.5px;color:#a9bdd2;letter-spacing:1.5px;}
+
+/* 优化后的开关组：一整条凹槽 + 金色胶囊 */
+.opts{
+  display:inline-flex;
+  gap:3px;
+  padding:3px;
+  border-radius:11px;
+  background:linear-gradient(180deg,rgba(6,11,18,.92),rgba(10,16,26,.92));
+  border:1px solid rgba(140,180,220,.14);
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.65),
+             inset 0 -1px 0 rgba(255,255,255,.03);}
+.opts button{
+  position:relative;
+  min-width:44px;
+  padding:7px 14px;
+  font-size:12.5px;
+  letter-spacing:1px;
+  font-weight:500;
+  color:#8fa4ba;
+  background:transparent;
+  border:1px solid transparent;
+  border-radius:8px;
+  cursor:pointer;
+  font-family:inherit;
+  transition:color .2s ease,
+             background .25s cubic-bezier(.2,.8,.3,1),
+             box-shadow .25s cubic-bezier(.2,.8,.3,1),
+             transform .12s ease;
+  white-space:nowrap;}
+.opts button:hover:not(.on){
+  color:#c9d8ea;
+  background:rgba(34,50,70,.55);}
+.opts button:active:not(.on){transform:scale(.96);}
+.opts button.on{
+  color:#1a1208;
+  background:linear-gradient(180deg,#ffe6b0 0%,#f0c26e 45%,#d9a24a 100%);
+  border-color:rgba(255,232,175,.85);
+  font-weight:800;
+  box-shadow:
+    0 2px 8px rgba(255,190,110,.38),
+    0 0 16px rgba(255,200,120,.28),
+    inset 0 1px 0 rgba(255,255,255,.55),
+    inset 0 -1px 0 rgba(180,120,40,.30);
+  text-shadow:0 1px 0 rgba(255,240,200,.5);}
+.opts[data-key="streamerMode"] button.on{
+  color:#062014;
+  background:linear-gradient(180deg,#b6ffd4 0%,#5fe89a 45%,#2fb86a 100%);
+  border-color:rgba(200,255,220,.85);
+  box-shadow:
+    0 2px 8px rgba(80,240,150,.40),
+    0 0 20px rgba(80,240,150,.35),
+    inset 0 1px 0 rgba(255,255,255,.55),
+    inset 0 -1px 0 rgba(20,100,60,.30);
+  text-shadow:0 1px 0 rgba(220,255,235,.5);}
+
+.danger{padding:8px 18px;font-size:13px;letter-spacing:1.5px;cursor:pointer;
+  color:#ff9a8a;background:rgba(60,20,20,.5);border:1px solid rgba(255,120,100,.35);
+  border-radius:9px;transition:.15s;font-family:inherit;}
+.danger:hover{background:rgba(80,26,26,.7);border-color:rgba(255,120,100,.6);}
+
+.highlight-btn{padding:8px 20px;font-size:13.5px;letter-spacing:1.5px;cursor:pointer;
+  color:#0d141d;background:linear-gradient(180deg,#7ff0b0,#4fd18b);
+  border:1px solid #7ff0b0;border-radius:9px;
+  transition:transform .15s,box-shadow .15s;font-family:inherit;
+  font-weight:700;box-shadow:0 4px 14px rgba(80,240,150,.28);}
+.highlight-btn:active{transform:scale(.95);}
+
+#warnMask{position:absolute;inset:0;background:rgba(2,4,8,.72);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+  backdrop-filter:blur(3px);z-index:40;}
+#warnMask.show{opacity:1;pointer-events:auto;}
+#warnBox{width:420px;padding:24px 26px 20px;border-radius:16px;
+  background:linear-gradient(180deg,rgba(28,16,18,.98),rgba(14,8,10,.99));
+  border:1px solid rgba(255,120,100,.38);
+  box-shadow:0 24px 70px rgba(0,0,0,.9),0 0 40px rgba(255,80,60,.14);
+  transform:scale(.9);transition:transform .22s cubic-bezier(.2,1.4,.5,1);text-align:center;}
+#warnMask.show #warnBox{transform:scale(1);}
+#warnBox .warn-ic{font-size:44px;margin-bottom:6px;
+  filter:drop-shadow(0 4px 12px rgba(255,80,60,.5));}
+#warnBox h4{margin:0 0 10px;font-size:20px;letter-spacing:5px;
+  color:#ff9a8a;font-weight:700;padding-left:5px;}
+#warnBox p{margin:0 0 6px;font-size:14.5px;line-height:1.9;letter-spacing:1px;
+  color:#d3b8b8;text-align:center;}
+#warnBox p .hl{color:#ffd98f;font-weight:700;}
+#warnBox .warn-btns{display:flex;gap:12px;margin-top:18px;}
+#warnBox button{flex:1;padding:11px 0;font-size:14.5px;letter-spacing:3px;
+  cursor:pointer;font-family:inherit;border-radius:10px;transition:.15s;}
+#warnBox button:active{transform:scale(.96);}
+#warnCancel{color:#c7d2df;background:rgba(30,44,60,.85);
+  border:1px solid rgba(140,180,220,.28);}
+#warnConfirm{color:#fff;background:linear-gradient(180deg,#ff6a5a,#c9342a);
+  border:1px solid #ff6a5a;font-weight:700;box-shadow:0 4px 16px rgba(255,90,70,.35);}
+#ending{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:20px;
+  background:radial-gradient(ellipse at center,rgba(255,248,232,.98),rgba(230,216,190,.99));
+  opacity:0;pointer-events:none;transition:opacity 1.8s;color:#4a3b28;z-index:35;}
+#ending.show{opacity:1;pointer-events:auto;}
+#ending h2{font-size:44px;letter-spacing:18px;margin:0;font-weight:600;padding-left:18px;}
+#ending p{font-size:17px;line-height:2.2;letter-spacing:3px;margin:0;
+  text-align:center;color:#6b563c;}
+#ending button{margin-top:22px;padding:13px 42px;font-size:16px;letter-spacing:5px;
+  font-family:inherit;cursor:pointer;border-radius:11px;color:#4a3b28;
+  background:rgba(255,255,255,.5);border:1px solid rgba(120,95,60,.4);transition:.15s;}
+#loadingScreen{position:absolute;left:0;top:0;width:100%;height:100%;
+  background:#020408;display:flex;align-items:center;justify-content:center;
+  opacity:1;transition:opacity .45s ease;z-index:60;pointer-events:auto;}
+#loadingScreen.hidden{opacity:0;pointer-events:none;}
+.loading-box{width:480px;display:flex;flex-direction:column;align-items:center;gap:22px;}
+.loading-scene-name{font-size:28px;letter-spacing:16px;color:#f2e6cb;padding-left:16px;
+  text-shadow:0 0 40px rgba(255,200,120,.5),0 4px 22px rgba(0,0,0,.95);
+  animation:loadingGlow 2.4s ease-in-out infinite;}
+@keyframes loadingGlow{0%,100%{opacity:.85;}50%{opacity:1;}}
+.loading-bar{width:100%;height:8px;border-radius:4px;
+  background:linear-gradient(180deg,rgba(18,28,42,.98),rgba(8,14,22,.98));
+  border:1px solid rgba(140,180,220,.22);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.8),0 0 32px rgba(255,190,110,.10);
+  overflow:hidden;position:relative;}
+.loading-bar-fill{height:100%;width:0%;
+  background:linear-gradient(90deg,#e8b661,#ffd98f 55%,#ffe6b0);
+  box-shadow:0 0 22px rgba(255,200,120,.85),0 0 8px rgba(255,220,160,.95);
+  position:relative;border-radius:4px;transition:width .12s linear;}
+.loading-bar-fill::after{content:'';position:absolute;right:0;top:0;height:100%;width:52px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.65));filter:blur(5px);}
+.loading-row{width:100%;display:flex;justify-content:space-between;align-items:center;
+  font-size:13.5px;letter-spacing:2.4px;color:#8ba0b6;}
+.loading-tip{transition:color .4s;}
+.loading-tip.slow{color:#ff9a8a;}
+.loading-tip.error{color:#ff6a5a;font-weight:700;}
+.loading-pct{color:#ffd98f;font-weight:600;font-variant-numeric:tabular-nums;
+  text-shadow:0 0 14px rgba(255,200,120,.5);}
+.loading-retry{margin-top:6px;padding:9px 28px;font-size:14px;letter-spacing:4px;
+  color:#e9dcc0;background:linear-gradient(180deg,rgba(34,50,70,.92),rgba(14,22,34,.94));
+  border:1px solid rgba(200,170,110,.4);border-radius:10px;
+  font-family:inherit;cursor:pointer;display:none;transition:.15s;}
+.loading-retry.show{display:block;}
+#rotate{position:absolute;inset:0;display:none;flex-direction:column;
+  align-items:center;justify-content:center;gap:18px;background:#04070b;
+  z-index:99;color:#8fa4ba;}
+#rotate .ic{font-size:56px;}
+#rotate p{font-size:15px;letter-spacing:4px;}
+#rotate button{margin-top:8px;padding:10px 30px;font-size:14px;letter-spacing:3px;
+  color:#9fb6cc;background:rgba(22,34,50,.9);border:1px solid rgba(140,180,220,.25);
+  border-radius:9px;font-family:inherit;cursor:pointer;}
+@media (orientation:portrait){#rotate{display:flex;}body.forceLand #rotate{display:none;}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="overlay">
+    <div id="hud">
+      <div id="inv"></div>
+      <button id="btnTempLight">✨ 临时点亮全局</button>
+      <button id="btnSet">⚙</button>
+    </div>
+    <div id="fanClub">✦ 欢迎加入粉丝团 ✦</div>
+    <div id="streamerBadge"><span class="dot"></span>主播模式：开</div>
+    <div id="toast"></div>
+    <div id="sceneTitle"></div>
+    <div id="dlgMask"></div>
+    <div id="dlg"></div>
+    <div id="settings">
+      <button class="close-x" id="btnCloseSet">✕</button>
+      <div class="settings-body">
+        <h3>设 置</h3>
+        <div class="row"><span>提示</span>
+          <button class="highlight-btn" id="btnHighlight">🔍 高亮可交互（5秒）</button></div>
+        <div class="row"><span>帧率</span>
+          <div class="opts" data-key="fps">
+            <button data-v="30">30</button><button data-v="45">45</button><button data-v="60">60</button></div></div>
+        <div class="row"><span>画质</span>
+          <div class="opts" data-key="quality">
+            <button data-v="low">低</button><button data-v="medium">中</button><button data-v="high">高</button></div></div>
+        <div class="row"><span>文字速度</span>
+          <div class="opts" data-key="textSpeed">
+            <button data-v="slow">慢</button><button data-v="normal">中</button>
+            <button data-v="fast">快</button><button data-v="instant">瞬显</button></div></div>
+        <div class="row"><span>文字大小</span>
+          <div class="opts" data-key="fontSize">
+            <button data-v="17">小</button><button data-v="19">中</button><button data-v="22">大</button></div></div>
+        <div class="row"><span>主播模式</span>
+          <div class="opts" data-key="streamerMode">
+            <button data-v="off">关</button><button data-v="on">开</button></div></div>
+        <div class="row"><span>游戏进度</span>
+          <button class="danger" id="btnReset">清除所有进度</button></div>
+      </div>
+    </div>
+    <div id="warnMask"><div id="warnBox">
+      <div class="warn-ic">⚠️</div><h4>警 告</h4>
+      <p>即将清除<span class="hl">所有游戏进度</span>。</p>
+      <p>包括存档、物品、剧情记录。</p>
+      <p>此操作<span class="hl">无法撤销</span>。</p>
+      <div class="warn-btns">
+        <button id="warnCancel">取 消</button>
+        <button id="warnConfirm">确 认 清 除</button>
+      </div></div></div>
+    <div id="ending">
+      <h2>雨 停 了</h2>
+      <p>第二天早上，红屋顶的房子门口，多了一只浣熊。<br>它在晒太阳。</p>
+      <button id="btnAgain">再 走 一 次</button>
+    </div>
+  </div>
+  <div id="loadingScreen"><div class="loading-box">
+    <div class="loading-scene-name" id="loadingName">雨 夜 归 途</div>
+    <div class="loading-bar"><div class="loading-bar-fill" id="loadingFill"></div></div>
+    <div class="loading-row">
+      <span class="loading-tip" id="loadingTip">正在准备……</span>
+      <span class="loading-pct" id="loadingPct">0%</span>
+    </div>
+    <button class="loading-retry" id="loadingRetry">重 试</button>
+  </div></div>
+  <div id="rotate"><div class="ic">📱</div><p>请 横 屏 使 用</p>
+    <button id="btnForce">仍然继续</button></div>
+</div>
+
+<script>
+window.addEventListener('error', function(ev){
+  try{
+    var tip = document.getElementById('loadingTip');
+    var retry = document.getElementById('loadingRetry');
+    if(tip){tip.textContent = '脚本错误：' + (ev.message || '未知'); tip.classList.add('error');}
+    if(retry) retry.classList.add('show');
+    console.error('[GLOBAL ERROR]', ev.message, ev.filename, ev.lineno);
+  }catch(_){}
+});
+
+var SAVE_KEY   = 'raccoon_rainy_night_v5';
+var LAUNCH_KEY = 'raccoon_launch_mode';
+var SET_KEY    = 'raccoon_settings_v5';
+
+var stage        = document.getElementById('stage');
+var overlayEl    = document.getElementById('overlay');
+var invEl        = document.getElementById('inv');
+var dlgEl        = document.getElementById('dlg');
+var dlgMaskEl    = document.getElementById('dlgMask');
+var toastEl      = document.getElementById('toast');
+var endEl        = document.getElementById('ending');
+var setEl        = document.getElementById('settings');
+var sceneTitleEl = document.getElementById('sceneTitle');
+var loadingEl      = document.getElementById('loadingScreen');
+var loadingNameEl  = document.getElementById('loadingName');
+var loadingFill    = document.getElementById('loadingFill');
+var loadingPctEl   = document.getElementById('loadingPct');
+var loadingTipEl   = document.getElementById('loadingTip');
+var loadingRetryEl = document.getElementById('loadingRetry');
+var btnTempLightEl = document.getElementById('btnTempLight');
+var gameFrame = null;
+
+function resize(){
+  var vw = window.innerWidth, vh = window.innerHeight;
+  var scale = Math.min(vw / 960, vh / 540);
+  stage.style.transform = 'scale(' + scale + ')';
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', function(){ setTimeout(resize, 220); });
+document.getElementById('btnForce').addEventListener('click', function(){
+  document.body.classList.add('forceLand'); setTimeout(resize, 60);
+});
+
+var settings = { fps:'45', quality:'medium', textSpeed:'normal', fontSize:19, streamerMode:'off' };
+try{
+  var _d = JSON.parse(localStorage.getItem(SET_KEY) || '{}');
+  Object.keys(settings).forEach(function(k){ if(k in _d) settings[k] = _d[k]; });
+}catch(e){}
+function saveSettings(){ try{ localStorage.setItem(SET_KEY, JSON.stringify(settings)); }catch(e){} }
+function applySettings(){
+  dlgEl.style.fontSize = settings.fontSize + 'px';
+  var isStreamer = settings.streamerMode === 'on';
+  invEl.classList.toggle('streamer-mode', isStreamer);
+  document.body.classList.toggle('streamer-mode', isStreamer);
+  document.querySelectorAll('.opts').forEach(function(g){
+    var k = g.dataset.key, cur = String(settings[k]);
+    g.querySelectorAll('button[data-v]').forEach(function(b){
+      b.classList.toggle('on', b.dataset.v === cur);
+    });
+  });
+}
+
+var ITEMS = {
+  hook:{name:'生锈的挂钩',icon:'🪝',desc:'从垃圾桶里翻出来的，弯得像一个问号。'},
+  catfood:{name:'半罐猫粮',icon:'🥫',desc:'还剩一半。铁皮边缘被啃得参差不齐。'},
+  key:{name:'黄铜钥匙',icon:'🗝️',desc:'大橘从身下扒出来的，还带着猫毛。'},
+  torch:{name:'手电筒',icon:'🔦',desc:'外壳上有牙印。没电。'},
+  battery:{name:'电池',icon:'🔋',desc:'还剩一点电。'},
+  torchOn:{name:'亮着的手电筒',icon:'🔦',desc:'一道细细的、温暖的光柱。'},
+  rope:{name:'晾衣绳',icon:'🧵',desc:'晾衣绳，上面还夹着两个塑料夹子。'},
+  grapnel:{name:'钩爪',icon:'⚓',desc:'挂钩绑上晾衣绳，歪歪扭扭，但结实。'},
+  photo1:{name:'照片碎片·一',icon:'🖼️',desc:'左半张旧照片：一个老人，和一只很小的浣熊。'},
+  photo2:{name:'照片碎片·二',icon:'🖼️',desc:'右半张：红屋顶的房子，门口的台阶。'},
+  photoFull:{name:'完整的照片',icon:'📷',desc:'一个老人抱着一只小浣熊，站在红屋顶的房子前。'}
+};
+
+var S = null;
+var endingShown = false;
+var endingLock = false;
+
+function torchLit(){
+  return !!(S && S.inv && S.inv.indexOf('torchOn') !== -1
+            && S.flags && S.flags.torchOn);
+}
+
+function freshState(){ return { scene:'alley', inv:[], flags:{}, ended:false }; }
+function save(){ if(!S) return; try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(e){} }
+function loadSave(){
+  try{
+    var raw = localStorage.getItem(SAVE_KEY);
+    if(!raw) return null;
+    var d = JSON.parse(raw);
+    if(!d || !d.scene || !SCENES[d.scene]) return null;
+    return d;
+  }catch(e){ return null; }
+}
+
+/* ========================================================
+   场景定义
+   ======================================================== */
+var SCENES = {
+  alley: {
+    url:'assets/scene1.html', label:'雨 巷',
+    acts: {
+      trash: function(){
+        if(!S.flags.trash){
+          say('垃圾桶里飘出一股酸味。');
+          say('灰豆踮起脚，前爪搭上桶沿，整只桶晃了一下。');
+          say('一个**挂钩**掉了出来，锈得像一块干了的血痂。', function(){
+            S.flags.trash = true; pickup('hook'); save(); syncState();
+          });
+        }else{ say('除了一股馊味，什么也没有了。'); }
+      },
+      photo1: function(){
+        say('一张湿透的纸片贴在墙上。');
+        say('灰豆用指甲把它一点点抠下来。');
+        say('照片上是一个{{老人}}，怀里抱着一只很小的浣熊。');
+        say('背景里有**红色的屋顶**——被撕掉了一半。', function(){
+          S.flags.photo1Taken = true; pickup('photo1'); save(); syncState();
+        });
+      },
+      puddle: function(){
+        if(S.flags.powerCut){ say('水洼里一片漆黑。'); say('连路灯的倒影都没有了。'); }
+        else if(!S.flags.trash){
+          say('水洼里有一只落汤鸡似的浣熊。');
+          say('它盯着倒影看了很久很久。');
+          say('倒影里，远处的**红屋顶**在雨里发着一点光。');
+        }else{
+          say('水洼里，那只浣熊脖子上空空荡荡。');
+          say('它好像记得那里{{应该有点什么}}。');
+        }
+      },
+      lamp: function(){
+        if(S.flags.powerCut){ say('路灯灭了。'); say('灯罩里只剩下黑黢黢的灯泡。'); }
+        else{
+          say('路灯在雨里亮着，光晕被雨丝切碎成一片一片。');
+          say('灰豆抬头看了一眼。');
+          say('——它忽然想起，以前有一盏灯，也是这样昏黄的。');
+        }
+      },
+      wires: function(){
+        say('一根电线从楼顶垂下来，上面挂着一排水珠。');
+        say('风一吹，水珠晃了晃，落下来一颗。');
+        say('灰豆伸出爪子去接——');
+        say('什么都没接住。');
+      },
+      graffiti: function(){
+        say('墙上有一行粉笔字，被雨冲得只剩一半。');
+        say('“……记得回……”');
+        say('后半句没了。');
+        say('灰豆用鼻子凑近闻了闻。是新的。');
+      },
+      exit: function(){ changeScene('backstreet', '后 巷'); say('灰豆钻进了巷子深处。'); }
+    }
+  },
+
+  backstreet: {
+    url:'assets/scene2.html', label:'后 巷',
+    acts: {
+      box: function(){
+        if(!S.flags.catfoodTaken){
+          say('三个纸箱，被雨泡得发软。');
+          say('最上面那个是空的……不，有东西。');
+          say('半罐**猫粮**。铁皮边缘被啃得参差不齐。', function(){
+            S.flags.catfoodTaken = true; pickup('catfood'); save(); syncState();
+          });
+        }else{ say('纸箱里只剩下一些碎纸屑。'); }
+      },
+      cat: function(){
+        if(!S.inv.includes('catfood')){
+          say('一只橘猫蜷在纸箱上，尾巴圈住鼻子。');
+          say('它的肚子瘪瘪的。');
+          say('大橘的耳朵动了一下，但{{没有睁眼}}。');
+        }else if(!S.flags.catFed){
+          S.flags.catFed = true;
+          S.inv = S.inv.filter(function(i){ return i !== 'catfood'; });
+          renderInv();
+          say('灰豆把罐头推过去，铁皮刮着地面。');
+          say('大橘的耳朵先动，然后是鼻子，然后是整只猫。');
+          say('“哟。”它打了个哈欠，“新来的。”');
+          say('“你要过那扇门？老板锁得比他的钱包还紧。”');
+          say('“不过嘛……”它伸了个懒腰，从身下扒出一样东西。');
+          say('一把**黄铜钥匙**，上面还沾着猫毛。', function(){
+            S.flags.catGone = true; pickup('key'); save(); syncState();
+          });
+          say('“前几天他掉这个的时候，我顺手收了。”');
+          say('“罐头归我，钥匙归你。{{公平。}}”');
+          say('“对了——那扇门通着电，是死锁的。”');
+          say('“得先断了这条街的电，才打得开。”');
+          say('“巷子尽头有一扇小铁门，门上写着配电。”');
+          say('“从那儿进去就对了。”');
+        }
+      },
+      door: function(){
+        if(S.flags.doorOpen){
+          say('门开着一条缝。');
+          changeScene('shop', '便 利 店');
+          say('灰豆侧着身子钻了进去。');
+          return;
+        }
+        if(!S.inv.includes('key')){
+          say('金属门冰凉。');
+          say('灰豆用爪子挠了几下，只留下三道白印。');
+          say('门上挂着一把**黄铜锁**。');
+          return;
+        }
+        var missing = [];
+        if(!S.inv.includes('hook') && !S.inv.includes('grapnel'))
+          missing.push('雨巷垃圾桶里的挂钩');
+        if(!S.flags.photo1Taken && !S.inv.includes('photo1') && !S.inv.includes('photoFull'))
+          missing.push('雨巷墙上的湿透的纸片');
+        if(missing.length > 0){
+          say('钥匙插进锁孔，灰豆的动作停住了。');
+          say('它回头看了一眼来时的路。');
+          say('——好像还有什么没做完。');
+          say('（还缺：' + missing.join('、') + '。）');
+          say('（请先往左边走回雨巷，把东西找齐。）');
+          return;
+        }
+        if(!S.flags.powerCut){
+          say('钥匙插进锁孔，转了一圈。');
+          say('“咔哒”一声——');
+          say('门却纹丝不动。');
+          say('门框上亮着一颗**红色**的小灯，一闪，一闪。');
+          say('旁边钉着一块小铁牌：');
+          say('“**电路控制 · 通电中**”。');
+          say('——这条街的电不断掉，这门就永远打不开。');
+          say('（灰豆记得，巷子尽头有一扇配电房的小铁门。）');
+          return;
+        }
+        S.flags.doorOpen = true; save(); syncState();
+        say('钥匙插进锁孔，转了两圈。');
+        say('“咔哒。”');
+        say('门开了一条缝，里面{{黑得像一口井}}。');
+        setTimeout(function(){
+          changeScene('shop', '便 利 店');
+          say('灰豆侧着身子钻了进去。');
+        }, 220);
+      },
+      powerDoor: function(){
+        if(!S.flags.powerDoorSeen){
+          S.flags.powerDoorSeen = true; save(); syncState();
+          say('巷子的尽头，墙上嵌着一扇小铁门。');
+          say('门上钉着一块褪色的红牌子——');
+          say('“**配电**”。');
+          say('门缝里透出一点冷光，还有低低的嗡嗡声。');
+          say('灰豆用肩膀顶了顶，门吱呀一声开了。');
+          say('里面黑漆漆的。', function(){
+            S.flags.powerFrom = 'backstreet'; save(); syncState();
+            changeScene('powerstation', '配 电 房');
+          });
+        } else {
+          say('那扇配电房的小铁门还开着。');
+          say('里面黑漆漆的，嗡嗡声低低地响。', function(){
+            S.flags.powerFrom = 'backstreet'; save(); syncState();
+            changeScene('powerstation', '配 电 房');
+          });
+        }
+      },
+      stairs: function(){
+        if(!S.flags.rooftopSeen){
+          S.flags.rooftopSeen = true; save(); syncState();
+          say('头顶有一架锈透了的消防梯。');
+          say('灰豆跳了一下，够不到。');
+          say('又跳了一下。');
+          say('这一次，爪尖勾住了一道铁横梁。');
+          say('——好吧，上去看看。');
+        } else {
+          say('消防梯上还留着它的爪印。');
+          say('灰豆蹭了蹭铁栏杆。');
+        }
+        changeScene('rooftop', '屋 顶');
+      },
+      mold: function(){
+        say('墙上的霉斑长成一片模糊的地图。');
+        say('灰豆盯着看了很久。');
+        say('——其中一块的形状，有点像一栋房子。');
+        say('红屋顶。');
+      },
+      back: function(){ changeScene('alley', '雨 巷'); }
+    }
+  },
+
+  shop: {
+    url:'assets/scene3.html', label:'便 利 店',
+    acts: {
+      counter: function(){
+        if(torchLit() && !S.flags.photo2Taken){
+          say('光柱扫过墙壁，停住了。');
+          say('墙上贴着一张照片，边角卷了起来。');
+          say('红屋顶的房子，门口的台阶，还有{{半只浣熊的影子}}。', function(){
+            S.flags.photo2Taken = true; pickup('photo2'); save(); syncState();
+          });
+          say('和刚才那半张，**正好能拼上**。');
+          return;
+        }
+        if(!S.flags.torchTaken){
+          say('灰豆跳上收银台。');
+          say('抽屉卡住了，它用牙咬，用爪子刨。');
+          say('一个**手电筒**滚了出来。外壳上有牙印——不是它的。', function(){
+            S.flags.torchTaken = true; pickup('torch'); save(); syncState();
+          });
+        }else if(!torchLit()){ say('抽屉里只剩下一些硬币和过期的会员卡。'); }
+        else{ say('收银台上落了一层薄灰。'); }
+      },
+      shelf: function(){
+        if(!S.flags.batteryTaken){
+          say('货架上大多是空的。');
+          say('最底层滚着一个圆圆的东西。');
+          say('一节**电池**。还剩一点电。', function(){
+            S.flags.batteryTaken = true; pickup('battery'); save(); syncState();
+          });
+        }else{ say('货架空了。'); }
+      },
+      window: function(){
+        if(!torchLit()){
+          say('后窗外一片漆黑。');
+          say('灰豆不想在{{什么都看不见}}的时候往里钻。');
+        }else{
+          changeScene('street', '街 道');
+          say('灰豆从后窗翻了出去。');
+          say('窗台太高，回不去了。');
+        }
+      },
+      floor: function(){
+        if(torchLit()){
+          say('手电的光扫过地板。');
+          say('有一张落满灰的收据，字迹看不清了。');
+          say('日期是……三个月前。');
+        }else{ say('地板太黑，什么也看不见。'); }
+      },
+      poster: function(){
+        if(torchLit()){
+          say('墙上贴着一张促销海报。');
+          say('“本店特惠 · 罐头半价”。');
+          say('海报右下角用圆珠笔画了一只小小的浣熊。');
+          say('画得不太像。但画得很认真。');
+        }else{ say('黑暗中，看不清墙上有什么。'); }
+      }
+    }
+  },
+
+  street: {
+    url:'assets/scene4.html', label:'街 道',
+    acts: {
+      power: function(){
+        if(S.flags.powerCut){
+          say('配电房的铁门半掩着。');
+          say('里面黑漆漆的，只有应急灯一闪一闪。');
+          say('灰豆已经来过了。');
+        }else{
+          say('墙边有一扇窄门。');
+          say('铁皮做的，刷着深灰色漆，门缝里透出一点冷光。');
+          say('门上挂着一块红底白字的牌子——“配电”。');
+          say('门没有锁。');
+          S.flags.powerFrom = 'street'; save(); syncState();
+          changeScene('powerstation', '配 电 房');
+        }
+      },
+      under: function(){
+        if(!S.flags.underpassSeen){
+          S.flags.underpassSeen = true; save(); syncState();
+          say('一个向下的入口，石阶上积着水。');
+          say('牌子被雨打歪了，隐约能看到“地下通道”四个字。');
+          say('灰豆探头往里看了看。');
+          say('——黑得看不见底。');
+          say('但它还是下去了。');
+        } else {
+          say('还是那个向下的入口。');
+          say('灰豆这次没有犹豫。');
+        }
+        changeScene('underpass', '地 下 通 道');
+      },
+      river: function(){
+        if(!S.flags.riversideSeen){
+          S.flags.riversideSeen = true; save(); syncState();
+          say('左侧有一道窄窄的缺口，通向河堤。');
+          say('雨声在那儿忽然变大——');
+          say('像是整条河都在下着。');
+          say('灰豆侧身钻了过去。');
+        } else {
+          say('缺口还在那里，风从那里穿过来。');
+        }
+        changeScene('riverside', '河 堤');
+      },
+      rope: function(){
+        say('一根晾衣绳横在两堵墙之间。');
+        say('灰豆跳起来，一口咬住绳子，吊在半空晃了两下。', function(){
+          S.flags.ropeTaken = true; pickup('rope'); save(); syncState();
+        });
+        say('绳子断了，它摔进了一堆落叶里。');
+      },
+      gate: function(){
+        if(!S.flags.powerCut){
+          say('铁门的横梁上装着一把黑色的电子锁。');
+          say('指示灯是**红色**的，一闪，一闪。');
+          say('灰豆伸爪去碰——');
+          say('一道细小的电流窜上来，麻得它缩回爪子。');
+          say('门上钉着一块小铁牌：');
+          say('“**电路控制 · 请先断电**”。');
+          say('——这条街上应该有一间配电房。');
+          return;
+        }
+        if(S.inv.includes('grapnel')){
+          S.flags.gateOpen = true; save(); syncState();
+          say('灰豆甩出钩爪。');
+          say('挂钩在空中划了一道弧，**咬住了门顶**。');
+          setTimeout(function(){
+            changeScene('doorstep', '门 前');
+            say('门那边，是一栋红屋顶的房子。');
+          }, 300);
+        }else{
+          say('铁门比灰豆站起来还高。');
+          say('栏杆冰凉，爪子抓不住。');
+          say('门后是一栋{{红屋顶的房子}}。');
+          say('窗户是黑的。');
+          say('——刚才那一盏灯，也被灰豆亲手关掉了。');
+        }
+      },
+      fire: function(){
+        if(S.flags.powerCut){ say('消防栓在黑暗里几乎看不见。'); }
+        else{
+          say('路边的消防栓漆掉了大半。');
+          say('灰豆凑过去，在它身上蹭了蹭。');
+          say('——冰凉。');
+          say('但比雨暖一点。');
+        }
+      },
+      mailbox: function(){
+        say('一个旧信箱，锁早就锈死了。');
+        say('灰豆跳上去，扒着投信口往里看。');
+        say('里面有一封信。');
+        say('信封上有两个名字。');
+        say('一个模糊了。另一个，是“灰豆”。');
+        say('……打不开。');
+      },
+      tree: function(){
+        say('街角有一棵梧桐，叶子落得差不多了。');
+        say('树枝上挂着一些塑料袋，在风里抖。');
+        say('灰豆在树根下转了一圈。');
+        say('闻到一点熟悉的、干燥的味道。');
+      },
+      lamp: function(){
+        if(S.flags.powerCut){
+          say('这盏路灯也灭了。');
+          say('白天它亮的时候，灰豆的影子会被拉得很长。');
+          say('现在——什么影子都没有了。');
+        }else{
+          say('这盏路灯比巷子里那盏亮。');
+          say('灰豆的影子被拉得很长，一直伸到铁门下。');
+        }
+      },
+      back: function(){
+        changeScene('backstreet', '后 巷');
+        say('灰豆走回了后巷。');
+      }
+    }
+  },
+
+  doorstep: {
+    url:'assets/scene10.html', label:'门 前',
+    acts: {
+      steps: function(){
+        say('两级石阶，边角被磨得圆润。');
+        say('上面长了一层薄薄的青苔。');
+        say('——有人经常走。');
+      },
+      door: function(){
+        if(!S.flags.powerCut){
+          say('门关着。');
+          say('门缝里透出一点暖光。');
+          say('灰豆抬起爪子，停在半空中。');
+          say('——它认得这扇门。');
+        } else {
+          say('门关着。');
+          say('门缝里是黑的。');
+          say('——灯，是它自己关的。');
+        }
+        say('它用额头轻轻抵了抵门板。');
+        say('门没有锁。');
+        say('——像是，一直在等谁。', function(){
+          setTimeout(function(){
+            changeScene('house', '红 屋 顶');
+            say('灰豆用爪子把门推开了一条缝。');
+          }, 400);
+        });
+      },
+      lamp: function(){
+        if(!S.flags.powerCut){
+          say('门框上面挂着一盏小灯。');
+          say('橙黄色的，暖的。');
+          say('——是这条街上，唯一还亮着的一盏。');
+        } else {
+          say('门框上的小灯灭了。');
+          say('灯罩上还挂着几滴雨。');
+          say('——但那些雨，正好让灯罩泛着一点点微光。');
+        }
+      },
+      window: function(){
+        if(!S.flags.powerCut){
+          say('窗户里亮着一点暖光。');
+          say('——像是特地为谁留着。');
+        } else {
+          say('窗户是黑的。');
+          say('——但那个轮廓，就是它记得的那一栋。');
+        }
+      },
+      back: function(){
+        changeScene('street', '街 道');
+        say('灰豆退回到铁门那边。');
+      }
+    }
+  },
+
+  house: {
+    url:'assets/scene5.html', label:'红 屋 顶',
+    acts: {
+      back: function(){ changeScene('doorstep', '门 前'); },
+      frame: function(){
+        if(S.flags.photoJoined){
+          say('照片还摆在桌上。');
+          say('老人笑着，小浣熊在他怀里，尾巴翘得老高。');
+          say('一条蓝绳子。一栋红屋顶。门口的台阶。');
+          say('——**全都在**。');
+          say('灰豆用爪子轻轻碰了碰玻璃。');
+          say('玻璃是凉的。');
+          say('但照片里透出来的，好像还是暖的。');
+          say('它又想起了一点。');
+          say('只是一点点。');
+          say('老人把它从雨里抱起来的时候，手里还攥着半根火腿肠。');
+          say('“以后，就叫你{{灰豆}}。”');
+          say('它想起来了。');
+          say('它一直都知道。', function(){
+            if(!endingLock){ setTimeout(startEnding, 500); }
+          });
+          return;
+        }
+        if(S.inv.includes('photo1') && S.inv.includes('photo2')){
+          S.flags.photoJoined = true;
+          S.inv = S.inv.filter(function(i){ return i!=='photo1' && i!=='photo2'; });
+          S.inv.push('photoFull'); renderInv('photoFull'); save(); syncState();
+          say('灰豆把两片纸拼在一起，正好填进相框缺掉的那一角。');
+          say('照片上，一个老人抱着一只小浣熊，站在红屋顶的房子前。');
+          say('那只小浣熊的脖子上，系着一条**蓝色的绳子**。');
+          say('灰豆低头看了看自己的脖子。');
+          say('绳子早就没了，只剩一圈浅浅的、{{被压平的毛}}。');
+          setTimeout(startEnding, 800);
+          return;
+        }
+        var has1 = S.inv.includes('photo1');
+        var has2 = S.inv.includes('photo2');
+        say('桌上有一个相框，玻璃上有一道裂痕。');
+        say('照片缺了一角。');
+        if(!has1 && !has2){
+          say('两半都不在灰豆身上。');
+          say('它得回去找找。{{雨巷的墙上，还有那间便利店。}}');
+        }else if(!has1){ say('还缺**雨巷**那半张——老人和一只小浣熊。'); }
+        else if(!has2){ say('还缺**便利店**那半张——红屋顶和台阶。'); }
+      },
+      chair: function(){
+        if(S.flags.photoJoined){ say('摇椅还在轻轻地晃。'); say('像有人刚刚站起来，**去开门**。'); }
+        else{
+          say('一把旧摇椅。');
+          say('灰豆跳上去，椅子吱呀一声，晃了很久。');
+          say('它突然{{不想下来了}}。');
+        }
+      },
+      bowl: function(){
+        say('地上有一只小碗，边上刻着两个字。');
+        say('——**灰豆**。');
+        say('碗是干净的。好像每天都有人把它洗一遍。');
+      },
+      window: function(){
+        say('灰豆跳到窗台上。');
+        say('月亮挂在那里，像一枚不肯落下的硬币。');
+        say('它用额头抵着玻璃——冰凉的。');
+        say('——但比雨夜暖。');
+      },
+      books: function(){
+        say('书架上排着一些旧书，书脊都褪了色。');
+        say('灰豆用爪子抽出一本。');
+        say('里面夹着一片枯叶，压得很平整。');
+        say('叶子上写着很小很小的字：“{{给你的。}}”');
+      },
+      clock: function(){
+        if(S.flags.powerCut){
+          say('挂钟停了。');
+          say('指针卡在某一个时刻。');
+          say('——那是拉下电闸的瞬间。');
+        }else{
+          say('墙上的挂钟还在走。');
+          say('滴答。滴答。');
+          say('指针停在某个早就过去的时间里，却还在往前。');
+        }
+      },
+      lamp: function(){
+        if(S.flags.powerCut){
+          say('台灯灭了。');
+          say('灯罩上还留着一点温度。');
+          say('灰豆把爪子贴在灯罩上——凉的。');
+          say('很快就凉透了。');
+        }else{
+          say('台灯的灯罩上落了一层薄薄的灰。');
+          say('但灯还是亮的。');
+          say('灰豆伸出一只爪子，在光里停了一会儿。');
+          say('——像是在暖手。');
+        }
+      }
+    }
+  },
+
+  powerstation: {
+    url:'assets/scene6.html', label:'配 电 房',
+    acts: {
+      breaker: function(){
+        if(S.flags.powerCut){
+          say('电闸已经在“OFF”的位置了。');
+          say('电流的嗡嗡声早就停了。');
+          say('整个街区都陷在安静的黑里。');
+          say('灰豆站在配电柜前，没有动。');
+          say('——它其实可以再推上去的。');
+          say('但它没有。');
+          say('有些事情，一旦做了，就不该反悔。');
+          return;
+        }
+        say('配电柜上的电压表指针，正缓慢地左右晃着。');
+        say('灰豆盯着那个写着“主电源”的红色手柄。');
+        say('——拉下它，整个街区的灯都会灭。');
+        say('——包括，那栋红屋顶房子窗户里的光。');
+        say('灰豆犹豫了一下。');
+        say('雨声在屋顶上敲着。');
+        say('然后它伸出爪子，握住手柄——');
+        say('**往下一拉。**');
+        say('**啪。**');
+        say('一道微弱的电弧闪过，照亮了灰豆的整张脸。');
+        say('然后，世界暗了下来。', function(){
+          S.flags.powerCut = true; save(); syncState();
+          try{
+            if(gameFrame && gameFrame.contentWindow){
+              gameFrame.contentWindow.postMessage({ type:'powerCutNow' }, '*');
+            }
+          }catch(e){}
+        });
+        say('雨声突然变得很响。');
+        say('远处的霓虹、窗灯、路灯——一盏接一盏地熄灭。');
+        say('整条街，只剩下灰豆眼睛里的两点反光。');
+        say('……还有，远处那栋红屋顶的房子。');
+        say('它窗户里的那点暖光也灭了。');
+        say('灰豆突然有点后悔。');
+        say('但有些门，通了电就打不开。');
+        say('——后巷那扇黄铜锁。');
+        say('——街尽头那扇铁门。');
+        say('现在，它们都松了。');
+      },
+      fuse: function(){
+        if(S.flags.powerCut){
+          say('保险丝盒的面板上，所有指示灯都灭了。');
+          say('一排小玻璃管，安静地躺在那里。');
+          say('像一排熄灭的蜡烛。');
+        }else{
+          say('六根保险丝，指示灯都是绿的。');
+          say('每一根玻璃管里，都有一根细细的金属丝在发光。');
+          say('——像很小很小的日出。');
+        }
+      },
+      log: function(){
+        say('工作台上摊着一本旧日志。');
+        say('纸页泛黄，边角卷起。');
+        say('灰豆用爪子小心地翻开。');
+        say('最后一页写着——');
+        say('“11月14日，晴。今天没下雨。');
+        say('配电房漏雨修好了。');
+        say('隔壁老周说，他家那只浣熊上个月走了。');
+        say('脖子上的绳子断了。');
+        say('我说，它会的，它会回来的。');
+        say('他说，不会了。”');
+        say('……');
+        say('灰豆把爪子搭在纸上。');
+        say('墨迹有点晕开了。');
+        say('像是有谁，很久以前，在这页上落过一滴水。');
+      },
+      back: function(){
+        if(S.flags.powerFrom === 'street'){
+          changeScene('street', '街 道');
+          say('灰豆退回到街上。');
+        } else {
+          changeScene('backstreet', '后 巷');
+          say('灰豆退回到巷子里。');
+        }
+      }
+    }
+  },
+
+  rooftop: {
+    url:'assets/scene7.html', label:'屋 顶',
+    acts: {
+      antenna: function(){
+        say('屋顶角上立着一根旧天线。');
+        say('上面挂着几只塑料袋，被风吹得哗啦啦响。');
+        say('灰豆爬上去，坐在天线的横梁上。');
+        say('——从这里，能看到整条街。');
+        if(!S.flags.powerCut){
+          say('灯一盏一盏亮着。');
+          say('远处的红屋顶，在灯海的边缘。');
+        } else {
+          say('灯全灭了。');
+          say('只有远处那栋红屋顶——');
+          say('像一枚被雨洗过的黑色剪影。');
+        }
+      },
+      watertank: function(){
+        say('一个锈迹斑斑的水塔，立在屋顶另一角。');
+        say('灰豆绕着它转了一圈。');
+        say('塔身上有一圈红漆字，早看不清了。');
+        say('它把爪子按在锈迹上。');
+        say('——粗糙，微凉。');
+        say('像什么东西在说：');
+        say('“我等过很久。”');
+      },
+      hang: function(){
+        say('两栋楼之间拉着一根晾衣绳。');
+        say('上面挂着两块布，被雨淋得透亮。');
+        say('灰豆用爪子碰了碰绳结。');
+        say('绳子晃了一下，又晃了一下。');
+        say('雨珠顺着绳子往下滑，一颗接一颗。');
+      },
+      houseroof: function(){
+        say('灰豆趴在矮墙上，往下看。');
+        say('远处有一栋房子。');
+        say('红屋顶。');
+        if(!S.flags.powerCut){
+          say('窗户里亮着一点暖光。');
+          say('——像是特地为谁留着。');
+        } else {
+          say('窗户是黑的。');
+          say('——但那个轮廓，就是它记得的那一栋。');
+        }
+      },
+      back: function(){
+        changeScene('backstreet', '后 巷');
+        say('灰豆顺着消防梯下去了。');
+      }
+    }
+  },
+
+  underpass: {
+    url:'assets/scene8.html', label:'地 下 通 道',
+    acts: {
+      stairs: function(){
+        say('来时的楼梯。');
+        say('台阶湿漉漉的，上面还留着一层积水。');
+        if(!S.flags.powerCut){
+          say('顶上透下一点路灯的光。');
+        } else {
+          say('顶上也是黑的。');
+          say('——像是一个回不去的出口。');
+        }
+      },
+      graffiti: function(){
+        say('墙上的涂鸦颜色很新。');
+        say('——是一颗歪歪斜斜的星星。');
+        say('星星底下，还有一行字：');
+        say('“今天也要活着。”');
+        say('谁写的呢……');
+      },
+      emergency: function(){
+        say('壁挂式的应急灯。');
+        if(S.flags.powerCut){
+          say('——红灯在闪。');
+          say('一闪，一闪。');
+          say('整个通道里，只有这一点还会亮。');
+        } else {
+          say('——灯光是暗黄色的。');
+          say('像是自己也不知道在等谁。');
+        }
+      },
+      trash: function(){
+        say('一个破了的垃圾桶，倒在地上。');
+        say('灰豆凑过去闻了闻。');
+        say('——里面有一个硬硬的东西。');
+        say('它扒了扒。');
+        say('是一个易拉罐。空的。');
+        say('它用爪子拨了一下，罐子滚了出去。');
+      },
+      room: function(){
+        if(S.flags.powerCut){
+          say('配电房的门。');
+          say('里面还是黑的。');
+          say('——灰豆已经进去过了。');
+        } else {
+          say('一扇铁皮门。门上贴着“配电房”。');
+          say('门缝里透出一点冷光。');
+          S.flags.powerFrom = 'street'; save(); syncState();
+          changeScene('powerstation', '配 电 房');
+        }
+      },
+      back: function(){
+        changeScene('street', '街 道');
+        say('灰豆顺着楼梯爬了上去。');
+      }
+    }
+  },
+
+  riverside: {
+    url:'assets/scene9.html', label:'河 堤',
+    acts: {
+      lamp: function(){
+        if(S.flags.powerCut){
+          say('河堤上的这盏灯也灭了。');
+          say('灰豆摸了一下灯柱。');
+          say('——冰凉。');
+        } else {
+          say('河堤上的路灯是昏黄的。');
+          say('光晕被雨丝切成一小圈一小圈。');
+          say('灰豆站在灯下，没动。');
+        }
+      },
+      bench: function(){
+        say('一张被雨淋湿的长椅。');
+        say('木板上积了一层水。');
+        say('灰豆跳上去，爪子印出一串小小的湿痕。');
+        say('它坐了一会儿。');
+        say('——没有人来赶它走。');
+      },
+      umbrella: function(){
+        say('一把被丢弃的伞。');
+        say('伞面塌了，只剩一根伞骨还挺着。');
+        say('灰豆钻进伞下躲雨。');
+        say('伞布很薄，雨从破洞里漏进来。');
+        say('……但总比什么都没有强。');
+      },
+      river: function(){
+        say('灰豆趴在栏杆上，低头看河。');
+        if(!S.flags.powerCut){
+          say('河面上映着对岸的灯。');
+          say('一闪一闪的，像有人在眨眼。');
+        } else {
+          say('河面是黑的。');
+          say('只有雨点在河上敲出一圈圈微弱的波纹。');
+          say('——河还在。');
+          say('——只是没有人再看它了。');
+        }
+        say('灰豆看了一会儿。');
+        say('然后转身走了。');
+      },
+      back: function(){
+        changeScene('street', '街 道');
+      }
+    }
+  }
+};
+
+/* ========================================================
+   iframe 生命周期
+   ======================================================== */
+var expectingLoad = false;
+function destroyFrame(){
+  if(!gameFrame) return;
+  var old = gameFrame; gameFrame = null;
+  try{
+    old.style.visibility = 'hidden'; old.style.display = 'none';
+    old.style.opacity = '0'; old.style.pointerEvents = 'none';
+    old.style.zIndex = '-1'; old.style.left = '-9999px'; old.style.top = '-9999px';
+  }catch(e){}
+  try{ if(old.contentWindow && old.contentWindow.__engineStop) old.contentWindow.__engineStop(); }catch(e){}
+  try{ old.contentWindow.postMessage({ type:'stop' }, '*'); }catch(e){}
+  setTimeout(function(){
+    if(old.parentNode){ try{ old.parentNode.removeChild(old); }catch(e){} }
+  }, 300);
+}
+function createGameFrame(url){
+  destroyFrame();
+  var fresh = document.createElement('iframe');
+  fresh.id = 'gameFrame';
+  fresh.setAttribute('frameborder', '0');
+  fresh.setAttribute('scrolling', 'no');
+  fresh.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;border:none;background:#000;display:block;';
+  fresh.addEventListener('load', function(){
+    if(!expectingLoad) return;
+    if(fresh !== gameFrame) return;
+    expectingLoad = false;
+    setLoadingProgress(60, 88);
+  });
+  stage.insertBefore(fresh, overlayEl);
+  gameFrame = fresh;
+  expectingLoad = true;
+  fresh.src = url;
+}
+
+/* ========================================================
+   加载条
+   ======================================================== */
+var loadingRAF = null, loadingShown = 0, loadingTarget = 0;
+var loadingCeiling = 40, loadingActive = false, loadingReady = false;
+var loadingFinishCb = null, loadingSlowTimer = null, loadingErrTimer = null;
+function tickLoading(){
+  if(!loadingActive) return;
+  if(loadingTarget < loadingCeiling) loadingTarget = Math.min(loadingTarget + 0.18, loadingCeiling);
+  var diff = loadingTarget - loadingShown;
+  if(Math.abs(diff) < 0.1){ loadingShown = loadingTarget; } else { loadingShown += diff * 0.14; }
+  if(loadingShown > 100) loadingShown = 100;
+  loadingFill.style.width = loadingShown.toFixed(2) + '%';
+  loadingPctEl.textContent = Math.round(loadingShown) + '%';
+  loadingRAF = requestAnimationFrame(tickLoading);
+}
+function showLoading(sceneName){
+  loadingActive = true; loadingReady = false; loadingShown = 0; loadingTarget = 0;
+  loadingCeiling = 40; loadingFinishCb = null;
+  loadingNameEl.textContent = sceneName || '雨 夜 归 途';
+  loadingFill.style.width = '0%';
+  loadingPctEl.textContent = '0%';
+  loadingTipEl.textContent = '正在准备……';
+  loadingTipEl.classList.remove('slow'); loadingTipEl.classList.remove('error');
+  loadingRetryEl.classList.remove('show');
+  loadingEl.classList.remove('hidden');
+  if(loadingRAF) cancelAnimationFrame(loadingRAF);
+  loadingRAF = requestAnimationFrame(tickLoading);
+  if(loadingSlowTimer) clearTimeout(loadingSlowTimer);
+  if(loadingErrTimer) clearTimeout(loadingErrTimer);
+  loadingSlowTimer = setTimeout(function(){
+    if(!loadingReady && loadingActive){
+      loadingCeiling = 90;
+      loadingTipEl.textContent = '加载较慢，请稍候……';
+      loadingTipEl.classList.add('slow');
+    }
+  }, 5000);
+  loadingErrTimer = setTimeout(function(){
+    if(!loadingReady && loadingActive){
+      loadingCeiling = 95;
+      loadingTipEl.textContent = '加载失败，可点击重试';
+      loadingTipEl.classList.add('error');
+      loadingRetryEl.classList.add('show');
+    }
+  }, 15000);
+}
+function setLoadingProgress(target, ceiling){
+  if(!loadingActive) return;
+  if(target > loadingTarget) loadingTarget = target;
+  if(ceiling !== undefined) loadingCeiling = ceiling;
+}
+function finishLoading(callback){
+  if(!loadingActive) return;
+  loadingReady = true; loadingCeiling = 100; loadingTarget = 100;
+  if(loadingSlowTimer){ clearTimeout(loadingSlowTimer); loadingSlowTimer = null; }
+  if(loadingErrTimer){ clearTimeout(loadingErrTimer); loadingErrTimer = null; }
+  loadingFinishCb = callback || null;
+  var waitTop = function(){
+    if(!loadingActive){ if(callback) callback(); return; }
+    if(loadingShown < 99.5){ requestAnimationFrame(waitTop); return; }
+    setTimeout(function(){
+      loadingActive = false;
+      if(loadingRAF){ cancelAnimationFrame(loadingRAF); loadingRAF = null; }
+      loadingEl.classList.add('hidden');
+      var cb = loadingFinishCb;
+      loadingFinishCb = null;
+      if(cb) cb();
+    }, 200);
+  };
+  waitTop();
+}
+loadingRetryEl.addEventListener('click', function(){
+  loadingRetryEl.classList.remove('show');
+  var sceneName = S ? S.scene : 'alley';
+  if(SCENES[sceneName]){
+    showLoading(SCENES[sceneName].label);
+    createGameFrame(SCENES[sceneName].url);
+  }
+});
+
+function changeScene(name, label){
+  if(!SCENES[name]) return;
+  S.scene = name; save();
+  showLoading(label || SCENES[name].label);
+  createGameFrame(SCENES[name].url);
+}
+
+/* ========================================================
+   iframe 通信
+   ======================================================== */
+var pendingOpeningMonologue = false;
+window.addEventListener('message', function(e){
+  var d = e.data;
+  if(!d || !d.type) return;
+  if(!gameFrame || !gameFrame.contentWindow) return;
+  if(e.source !== gameFrame.contentWindow) return;
+  if(d.type === 'ready'){
+    syncState();
+    finishLoading(function(){
+      if(pendingOpeningMonologue){
+        pendingOpeningMonologue = false;
+        setTimeout(function(){
+          say('雨下了**三天**。');
+          say('城市把一半的灯都关掉了。');
+          say('灰豆在垃圾桶后面醒过来，湿得像一块抹布。');
+          say('它记得一些事。{{不多。}}');
+          say('一个老人。一双粗糙的手。还有一个**红色的屋顶**。');
+          say('它决定去找那个屋顶。');
+        }, 420);
+      }
+    });
+  }
+  if(d.type === 'hit'){
+    if(!S) return;
+    var sc = SCENES[S.scene];
+    if(!sc) return;
+    var act = sc.acts[d.spotId];
+    if(act) act();
+  }
+});
+function syncState(){
+  if(!S || !gameFrame || !gameFrame.contentWindow) return;
+  try{
+    gameFrame.contentWindow.postMessage({ type: 'setState', state: S }, '*');
+    gameFrame.contentWindow.postMessage({ type: 'setEnding', value: endingShown }, '*');
+  }catch(e){}
+}
+function triggerHighlight(){
+  if(!gameFrame || !gameFrame.contentWindow) return;
+  try{ gameFrame.contentWindow.postMessage({ type: 'setHighlight', duration: 5 }, '*'); }catch(e){}
+}
+function triggerTempLight(){
+  if(!gameFrame || !gameFrame.contentWindow) return;
+  try{ gameFrame.contentWindow.postMessage({ type: 'tempLight' }, '*'); }catch(e){}
+}
+btnTempLightEl.addEventListener('click', function(e){
+  e.stopPropagation();
+  if(settings.streamerMode !== 'on') return;
+  triggerTempLight();
+  toast('✨ 全局点亮 · 3 秒');
+});
+
+/* ========================================================
+   对话系统（去掉自动播放与瞬显；文字速度按玩家设置）
+   ======================================================== */
+var SPEEDS = { slow: 58, normal: 30, fast: 14, instant: 0 };
+var typing = { active:false, spans:[], idx:0, acc:0 };
+var queue = [];
+var currentDlg = null;
+var comboLock = false;
+
+function parseRich(text){
+  var out = [], stack = [];
+  var i = 0;
+  while(i < text.length){
+    if(text.startsWith('**', i)){ var k1=stack.lastIndexOf('b'); if(k1>=0) stack.splice(k1,1); else stack.push('b'); i+=2; continue; }
+    if(text.startsWith('{{', i)){ stack.push('g'); i+=2; continue; }
+    if(text.startsWith('}}', i)){ var k2=stack.lastIndexOf('g'); if(k2>=0) stack.splice(k2,1); i+=2; continue; }
+    if(text.startsWith('[[', i)){ stack.push('w'); i+=2; continue; }
+    if(text.startsWith(']]', i)){ var k3=stack.lastIndexOf('w'); if(k3>=0) stack.splice(k3,1); i+=2; continue; }
+    out.push({ch:text[i], cls:stack.slice().join(' ')});
+    i++;
+  }
+  return out;
+}
+function typeLine(text){
+  var tokens = parseRich(text);
+  dlgEl.innerHTML = '';
+  var frag = document.createDocumentFragment();
+  var spans = [];
+  for(var i=0;i<tokens.length;i++){
+    var tk = tokens[i];
+    var sp = document.createElement('span');
+    sp.textContent = tk.ch;
+    if(tk.cls) sp.className = tk.cls;
+    sp.style.opacity = '0';
+    frag.appendChild(sp);
+    spans.push(sp);
+  }
+  dlgEl.appendChild(frag);
+  var spd = SPEEDS[settings.textSpeed] !== undefined ? SPEEDS[settings.textSpeed] : 30;
+  typing = { active:true, spans:spans, idx:0, acc:0 };
+  if(spd === 0 || spans.length === 0) finishTyping();
+}
+function finishTyping(){
+  typing.active = false;
+  for(var i=0;i<typing.spans.length;i++) typing.spans[i].style.opacity = '1';
+}
+var lastTyping = performance.now();
+function tickTyping(){
+  var now = performance.now();
+  var dt = Math.min(0.05, (now - lastTyping) / 1000);
+  lastTyping = now;
+  if(!typing.active) return;
+  var spd = SPEEDS[settings.textSpeed] !== undefined ? SPEEDS[settings.textSpeed] : 30;
+  if(spd === 0){ finishTyping(); return; }
+  typing.acc += dt * 1000;
+  while(typing.acc >= spd && typing.idx < typing.spans.length){
+    typing.acc -= spd;
+    typing.spans[typing.idx].style.opacity = '1';
+    typing.idx++;
+  }
+  if(typing.idx >= typing.spans.length) typing.active = false;
+}
+setInterval(tickTyping, 30);
+function say(text, cb){ queue.push({text:text, cb:cb}); if(!currentDlg) nextDlg(); }
+function nextDlg(){
+  if(queue.length === 0){
+    currentDlg = null;
+    dlgEl.classList.remove('show');
+    dlgMaskEl.classList.remove('show');
+    checkCombos();
+    return;
+  }
+  currentDlg = queue.shift();
+  dlgEl.classList.add('show');
+  dlgMaskEl.classList.add('show');
+  typeLine(currentDlg.text);
+}
+function advanceDialog(){
+  if(!currentDlg) return;
+  if(typing.active){ finishTyping(); return; }
+  var cb = currentDlg.cb;
+  currentDlg = null;
+  nextDlg();
+  if(cb) cb();
+}
+dlgEl.addEventListener('click', function(e){ e.stopPropagation(); advanceDialog(); });
+dlgEl.addEventListener('touchend', function(e){ e.stopPropagation(); e.preventDefault(); advanceDialog(); }, {passive:false});
+dlgMaskEl.addEventListener('click', function(e){ e.stopPropagation(); if(currentDlg) advanceDialog(); });
+dlgMaskEl.addEventListener('touchend', function(e){ e.stopPropagation(); e.preventDefault(); if(currentDlg) advanceDialog(); }, {passive:false});
+
+function checkCombos(){
+  if(comboLock || !S) return;
+  comboLock = true;
+  if(S.inv.includes('torch') && S.inv.includes('battery')){
+    S.inv = S.inv.filter(function(i){ return i!=='torch' && i!=='battery'; });
+    S.inv.push('torchOn');
+    if(!S.flags.torchTutorialShown){
+      S.flags.torchTutorialShown = true;
+      S.flags.torchOn = true;
+    }
+    S.flags.lightsOn = !!S.flags.torchOn;
+    renderInv('torchOn'); save(); syncState();
+    comboLock = false;
+    say('灰豆把电池塞进手电筒，用牙咬住尾部转了一圈。');
+    say('啪。');
+    say('一道{{细细的光柱}}亮了起来，照亮了它脚下的一小块地方。');
+    say('');
+    say('（💡 提示：点击物品栏里的 **🔦** 图标，可以随时打开 / 关闭手电筒。）');
+    say('（打开后，光圈会**跟随你的手指 / 光标**移动，照亮周围的场景。）');
+    say('（在黑暗的地方 —— 比如断电后的街道、漆黑的便利店 —— 它会更有用。）');
+    return;
+  }
+  if(S.inv.includes('hook') && S.inv.includes('rope') && !S.inv.includes('grapnel')){
+    S.inv = S.inv.filter(function(i){ return i!=='hook' && i!=='rope'; });
+    S.inv.push('grapnel'); renderInv('grapnel'); save(); syncState();
+    comboLock = false;
+    say('灰豆把晾衣绳一圈一圈缠在挂钩上，打了个死结。');
+    say('**歪歪扭扭**的，但看起来挺结实。');
+    return;
+  }
+  comboLock = false;
+}
+
+/* ========================================================
+   物品栏 / 提示
+   ======================================================== */
+function renderInv(newId){
+  invEl.innerHTML = '';
+  if(!S) return;
+  for(var i=0;i<S.inv.length;i++){
+    (function(id){
+      var it = ITEMS[id];
+      if(!it) return;
+      var d = document.createElement('div');
+      d.className = 'slot' + (id === newId ? ' new' : '');
+
+      var iconEl = document.createElement('span');
+      iconEl.className = 'slot-icon';
+      iconEl.textContent = it.icon;
+      d.appendChild(iconEl);
+
+      var nameEl = document.createElement('span');
+      nameEl.className = 'slot-name';
+      nameEl.textContent = it.name;
+      d.appendChild(nameEl);
+
+      if(id === 'torchOn' && S.flags.torchOn){
+        d.style.borderColor = 'rgba(255,214,140,0.95)';
+        d.style.boxShadow = '0 0 20px rgba(255,200,120,0.65), 0 4px 16px rgba(0,0,0,.55)';
+        d.style.background = 'linear-gradient(180deg,rgba(60,48,26,.95),rgba(30,22,12,.95))';
+      }
+
+      var handler = function(ev){
+        ev.stopPropagation();
+
+        if(id === 'torchOn'){
+          S.flags.torchOn = !S.flags.torchOn;
+          S.flags.lightsOn = S.flags.torchOn;
+          save();
+          syncState();
+          renderInv();
+          if(S.flags.torchOn){
+            toast('🔦 手电筒已打开 · 光会跟随你的手指 / 光标');
+          } else {
+            toast('🔦 手电筒已关闭');
+          }
+          return;
+        }
+
+        toast(it.name + ' · ' + it.desc);
+      };
+
+      d.addEventListener('click', handler);
+      d.addEventListener('touchend', function(ev){ ev.preventDefault(); handler(ev); }, {passive:false});
+      invEl.appendChild(d);
+    })(S.inv[i]);
+  }
+}
+var toastTimer = null;
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ toastEl.classList.remove('show'); }, 3000);
+}
+function pickup(id){
+  if(!S || S.inv.includes(id)) return;
+  S.inv.push(id); renderInv(id);
+  toast('获得 · ' + ITEMS[id].name); save();
+}
+
+/* ========================================================
+   结局
+   ======================================================== */
+function startEnding(){
+  if(endingLock) return;
+  endingLock = true;
+  say('门外传来脚步声。');
+  say('钥匙插进锁孔，转了一圈。');
+  say('门开了。');
+  say('一个女孩站在门口，伞还在滴水。');
+  say('她看着灰豆，很久，很久。');
+  say('“{{你回来了。}}”');
+  say('灰豆不认识她。');
+  say('但它认得这个味道——');
+  say('是被**留下**的味道。', function(){ showEnding(); });
+}
+function showEnding(){
+  endingShown = true; syncState();
+  endEl.classList.add('show');
+  if(S && S.flags){ S.flags.ended = false; save(); }
+}
+document.getElementById('btnAgain').addEventListener('click', function(){
+  try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
+  endEl.classList.remove('show');
+  endingShown = false; endingLock = false;
+  beginGame(freshState(), true); save();
+});
+
+/* ========================================================
+   设置 / 警告
+   ======================================================== */
+document.getElementById('btnSet').addEventListener('click', function(){ setEl.classList.add('show'); applySettings(); });
+document.getElementById('btnCloseSet').addEventListener('click', function(){ setEl.classList.remove('show'); });
+document.getElementById('btnHighlight').addEventListener('click', function(){
+  triggerHighlight(); setEl.classList.remove('show');
+  toast('🔍 可交互物品高亮 · 5 秒');
+});
+document.querySelectorAll('.opts').forEach(function(group){
+  group.addEventListener('click', function(e){
+    var btn = e.target.closest('button[data-v]');
+    if(!btn) return;
+    var key = group.dataset.key, v = btn.dataset.v;
+    if(key === 'fontSize') v = Number(v);
+    settings[key] = v;
+    saveSettings(); applySettings();
+    if(key === 'streamerMode'){
+      if(v === 'on'){ toast('🎬 主播模式已开启'); }
+      else{ toast('主播模式已关闭'); }
+    }
+  });
+});
+var warnMask = document.getElementById('warnMask');
+var warnConfirm = document.getElementById('warnConfirm');
+var warnCancel = document.getElementById('warnCancel');
+document.getElementById('btnReset').addEventListener('click', function(){ warnMask.classList.add('show'); });
+warnCancel.addEventListener('click', function(){ warnMask.classList.remove('show'); toast('已取消'); });
+warnConfirm.addEventListener('click', function(){
+  warnMask.classList.remove('show');
+  try{ localStorage.removeItem(SAVE_KEY); localStorage.removeItem(SET_KEY); }catch(e){}
+  toast('进度已清除 · 即将重启');
+  setTimeout(function(){ location.reload(); }, 700);
+});
+warnMask.addEventListener('click', function(e){ if(e.target === warnMask) warnMask.classList.remove('show'); });
+
+/* ========================================================
+   返回键拦截
+   ======================================================== */
+var historyOk = false;
+try{ history.pushState({ page:'game' }, '', location.href); historyOk = true; }catch(e){}
+function handleBack(){
+  if(loadingActive) return true;
+  if(currentDlg){ advanceDialog(); return true; }
+  if(warnMask.classList.contains('show')){ warnMask.classList.remove('show'); return true; }
+  if(setEl.classList.contains('show')){ setEl.classList.remove('show'); return true; }
+  if(endingShown) return true;
+  setEl.classList.add('show'); applySettings();
+  return true;
+}
+window.addEventListener('popstate', function(){
+  if(historyOk){ try{ history.pushState({ page:'game' }, '', location.href); }catch(e){} }
+  handleBack();
+});
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape'){
+    if(warnMask.classList.contains('show')){ warnMask.classList.remove('show'); return; }
+    if(setEl.classList.contains('show')){ setEl.classList.remove('show'); return; }
+    if(currentDlg){ advanceDialog(); return; }
+  }
+});
+
+/* ========================================================
+   开始游戏 / 初始化
+   ======================================================== */
+function beginGame(state, isNew){
+  S = state;
+  if(S.flags){ S.flags.ended = false; }
+  endingShown = false; endingLock = false;
+  renderInv(); applySettings();
+  var sceneName = S.scene;
+  if(SCENES[sceneName]){
+    showLoading(SCENES[sceneName].label);
+    setLoadingProgress(15, 45);
+    createGameFrame(SCENES[sceneName].url);
+  }
+  pendingOpeningMonologue = isNew;
+}
+(function init(){
+  try{
+    resize(); applySettings();
+    var mode = 'new';
+    try{
+      mode = localStorage.getItem(LAUNCH_KEY) || 'new';
+      localStorage.removeItem(LAUNCH_KEY);
+    }catch(e){}
+    var state, isNew;
+    if(mode === 'continue'){
+      var saved = loadSave();
+      if(saved){ state = saved; isNew = false; }
+      else{ state = freshState(); isNew = true; }
+    }else{
+      try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
+      state = freshState(); isNew = true;
+    }
+    beginGame(state, isNew); save();
+  }catch(err){
+    console.error('[init 失败]', err);
+    var tip = document.getElementById('loadingTip');
+    if(tip){ tip.textContent = '启动失败：' + (err.message || err); tip.classList.add('error'); }
+    var retry = document.getElementById('loadingRetry');
+    if(retry) retry.classList.add('show');
+  }
+})();
+</script>
+</body>
+</html>
