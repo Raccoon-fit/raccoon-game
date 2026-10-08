@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>scene</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:100%;height:100%;background:#000;overflow:hidden;
+    touch-action:none;user-select:none;-webkit-user-select:none;
+    -webkit-tap-highlight-color:transparent;}
+  #cv{display:block;width:100%;height:100%;cursor:none;
+    position:absolute;left:0;top:0;}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<script src="common.js"></script>
+<script src="scenes.js"></script>
+<script>SceneCommon.boot('backstreet');</script>
+</body>
+</html>
