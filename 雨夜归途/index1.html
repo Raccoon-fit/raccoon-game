@@ -1309,7 +1309,6 @@ var SCENES = {
         });
       },
 
-      /* ★ 修复：支线放行后窗，通往街道 */
       window: function(){
         if(isBloodMode()){
           if(is('bloodWindowPassed')){
@@ -1348,7 +1347,6 @@ var SCENES = {
         }
       },
 
-      /* ★ 新增：左下角后门，回到后巷 */
       back: function(){
         if(isBloodMode()){
           say('灰豆退回到后门。');
@@ -1493,10 +1491,13 @@ var SCENES = {
           say('灰豆甩出钩爪。');
           say('挂钩在空中划了一道弧，**咬住了门顶**。');
           setTimeout(function(){
-            changeScene('doorstep', '门 前');
             if(isBloodMode()){
-              say('门那边，是一片焦黑。');
+              changeScene('neighbor', '邻 屋');
+              say('门那边，不是红屋顶的院子。');
+              say('——是旁边那栋房子。');
+              say('——也烧过。');
             } else {
+              changeScene('doorstep', '门 前');
               say('门那边，是一栋红屋顶的房子。');
             }
           }, 300);
@@ -2146,6 +2147,103 @@ var SCENES = {
       },
       back: function(){
         changeScene('street', '街 道');
+      }
+    }
+  },
+
+  /* ===================== 邻屋（支线·主流程必经） ===================== */
+  neighbor: {
+    url:'assets/scene11.html', label:'邻 屋',
+    acts: {
+      neighborWindow: function(){
+        if(is('neighborWindowSeen')){
+          say('窗外还是那栋房子。');
+          say('——烧过的。');
+          say('——和它记忆里，**一模一样**。');
+          return;
+        }
+        set('neighborWindowSeen', true);
+        say('窗框烧焦了，玻璃碎了一地。');
+        say('雨从破洞里飘进来，打在地板上。');
+        say('从这儿看出去，正好能看到那栋**红屋顶的房子**。');
+        say('——但它现在是焦黑的。');
+        say('——只有二楼那扇窗，还亮着一点暗红的光。');
+        say('——像是什么东西，一直在里面，没有走。');
+        say('灰豆盯着看了一会儿。');
+        say('它的爪子，自己按在了窗台上。');
+        say('——这个位置，很熟悉。');
+        say('——它好像在这里，坐过很久。');
+      },
+      neighborFloor: function(){
+        say('地板上有一串小小的爪印。');
+        say('——只有一只动物的。');
+        say('——不大。');
+        say('比灰豆现在小很多。');
+        say('爪印从窗户那边，一直延伸到床边。');
+        say('——好像有一只小动物，');
+        say('——在这个房间里，');
+        say('——坐了很多天。');
+        say('从窗台到床边，从床边到窗台。');
+        say('反反复复。');
+        say('——但一次也没有走到门外。');
+      },
+      neighborCalendar: function(){
+        if(is('neighborCalendarSeen')){
+          say('日历停在 11 月 14 日。');
+          say('“**它回来了。**”');
+          return;
+        }
+        set('neighborCalendarSeen', true);
+        say('墙上挂着一本旧日历。');
+        say('被火舌舔过，边角卷了起来。');
+        say('停在 **11 月 14 日**。');
+        say('——那天的格子里，有一行很小的字。');
+        say('——是手指写的。');
+        say('——笔迹很轻，像是写的时候，手在抖：');
+        say('“**它回来了。**”');
+        say('灰豆盯着那行字，很久。');
+        say('——它不知道那是什么意思。');
+        say('——但它觉得，自己应该知道。');
+      },
+      neighborBed: function(){
+        if(is('neighborRopeSeen')){
+          say('床还在那里。');
+          say('枕头下面的蓝色绳子已经不在了。');
+          say('——但凹陷还在。');
+          say('——蜷着什么睡过很久的凹陷。');
+          return;
+        }
+        set('neighborRopeSeen', true);
+        save();
+        say('一张烧焦的小床。');
+        say('床垫上有一个凹陷。');
+        say('——蜷着的。');
+        say('——小小的。');
+        say('枕头下面，露出一角蓝色。');
+        say('灰豆把爪子伸进去——');
+        say('是一根**蓝色的绳子**。');
+        say('——很短。');
+        say('——断口是整齐的，不是撕开的。');
+        say('——像是被什么东西，**割断**的。');
+        say('灰豆把绳子叼在嘴里。');
+        say('很久没有动。');
+        say('——它记得脖子上有过一根一样的东西。');
+        say('——但它不记得，绳子是什么时候断的。');
+      },
+      exit: function(){
+        say('房间另一头，有一扇门。');
+        say('门板烧得只剩半边。');
+        say('门缝里透出一线暗红的光。');
+        say('——是那栋房子的光。');
+        say('灰豆把爪子放在门上。');
+        say('——门没有锁。');
+        say('——像是在等它。', function(){
+          setTimeout(function(){
+            changeScene('doorstep', '门 前');
+            say('灰豆推开了门。');
+            say('外面，就是那栋房子的院子。');
+          }, 400);
+        });
       }
     }
   }
