@@ -1,81 +1,2481 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>アライグマの日 — 翌日</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>アライグマの日 — 翌日</title>
+<style>
+/* ============================================================
+   style.css — アライグマの日 · 翌日
+   ============================================================ */
+:root{
+  --decay:0;
+  --progress:0%;
+  --mx:50%;
+  --my:50%;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+}
+
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+
+html,body{
+  width:100%;height:100%;
+  background:#000;
+  color:#b8b0a0;
+  font-family:"MS Gothic","Hiragino Kaku Gothic ProN","Courier New",Consolas,monospace;
+  overflow:hidden;
+  -webkit-user-select:none;user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  overscroll-behavior:none;
+}
+body{
+  position:fixed;inset:0;
+  background:radial-gradient(circle at var(--mx) var(--my),#0a0a0c 0%,#000 72%);
+  transition:background .4s linear;
+}
+
+/* ---------- 環境オーバーレイ ---------- */
+#vignette{
+  position:fixed;inset:0;z-index:52;pointer-events:none;
+  background:radial-gradient(ellipse at center,
+    transparent 28%,
+    rgba(0,0,0,calc(.55 + var(--decay)*.35)) 100%);
+}
+#noise{
+  position:fixed;inset:-60px;z-index:60;pointer-events:none;
+  opacity:calc(.035 + var(--decay)*.06);
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+  animation:nz .28s steps(3) infinite;
+  will-change:transform;
+}
+@keyframes nz{
+  0%  {transform:translate(0,0);}
+  33% {transform:translate(-4px,3px);}
+  66% {transform:translate(3px,-4px);}
+  100%{transform:translate(0,0);}
+}
+#scanlines{
+  position:fixed;inset:0;z-index:55;pointer-events:none;
+  background:repeating-linear-gradient(
+    to bottom,
+    rgba(0,0,0,0) 0px,
+    rgba(0,0,0,0) 2px,
+    rgba(0,0,0,.28) 3px
+  );
+  opacity:calc(.4 + var(--decay)*.35);
+  mix-blend-mode:multiply;
+}
+#blood-overlay{
+  position:fixed;inset:0;z-index:53;pointer-events:none;
+  background:radial-gradient(ellipse at center,
+    transparent 35%,
+    rgba(95,0,0,calc(var(--decay)*.55)) 100%);
+  opacity:calc(.15 + var(--decay)*1.1);
+  transition:opacity .8s linear;
+}
+#flash-overlay{
+  position:fixed;inset:0;z-index:72;background:#fff;
+  opacity:0;pointer-events:none;
+  transition:opacity .1s linear;
+}
+#flash-overlay.active{opacity:.85;transition:none;}
+
+/* ---------- 言語切替 ---------- */
+.lang-btn{
+  position:fixed;
+  right:14px;
+  bottom:calc(14px + var(--safe-bottom));
+  z-index:88;
+  width:50px;height:50px;border-radius:50%;
+  background:rgba(8,8,10,.82);
+  border:1px solid rgba(150,25,25,.55);
+  color:#c8b8a8;
+  font-family:inherit;font-size:12px;font-weight:700;letter-spacing:1px;
+  cursor:pointer;
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+  transition:background .25s,color .25s,box-shadow .25s,transform .12s;
+}
+.lang-btn:hover{
+  background:rgba(45,0,0,.9);
+  color:#ff4a4a;
+  box-shadow:0 0 20px rgba(190,0,0,.65);
+}
+.lang-btn:active{transform:scale(.9);}
+
+/* ---------- スクリーン共通 ---------- */
+.screen{
+  position:fixed;inset:0;
+  opacity:0;visibility:hidden;
+  transition:opacity .85s ease,visibility .85s;
+  z-index:10;
+}
+.screen.active{opacity:1;visibility:visible;}
+
+/* ---------- タイトル ---------- */
+#title-screen{
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+}
+#title-canvas{
+  position:absolute;inset:0;z-index:1;
+  width:100%;height:100%;display:block;
+}
+.title-content{
+  position:relative;z-index:2;
+  display:flex;flex-direction:column;align-items:center;
+  gap:16px;
+  width:100%;max-width:580px;
+  padding:32px 24px;
+  text-align:center;
+}
+.title-glitch-container{position:relative;}
+
+.glitch-text{position:relative;display:inline-block;color:#d8d0c0;}
+.glitch-text::before,
+.glitch-text::after{
+  content:attr(data-text);
+  position:absolute;left:0;top:0;width:100%;
+  overflow:hidden;pointer-events:none;
+}
+.glitch-text::before{
+  color:#ff0033;
+  clip-path:inset(0 0 58% 0);
+  animation:gl1 3.4s infinite linear alternate-reverse;
+  opacity:.75;
+}
+.glitch-text::after{
+  color:#00e5ff;
+  clip-path:inset(58% 0 0 0);
+  animation:gl2 2.9s infinite linear alternate-reverse;
+  opacity:.65;
+}
+@keyframes gl1{
+  0%,86%,100%{transform:translate(0,0);}
+  88%{transform:translate(-4px,-2px);}
+  92%{transform:translate(4px,1px);}
+  96%{transform:translate(-2px,2px);}
+}
+@keyframes gl2{
+  0%,88%,100%{transform:translate(0,0);}
+  90%{transform:translate(3px,2px);}
+  94%{transform:translate(-3px,-1px);}
+  98%{transform:translate(2px,-2px);}
+}
+
+.title-main{
+  font-size:clamp(30px,9vw,62px);
+  font-weight:900;
+  letter-spacing:.14em;
+  line-height:1.15;
+  text-shadow:0 0 26px rgba(150,0,0,.75),0 0 5px #000;
+}
+.title-sub{
+  display:block;
+  margin-top:8px;
+  font-size:clamp(14px,4vw,23px);
+  font-weight:400;
+  letter-spacing:.5em;
+  color:#7c1212;
+  text-shadow:0 0 14px rgba(120,0,0,.7);
+}
+.title-raccoon{
+  font-size:clamp(38px,12vw,70px);
+  line-height:1;
+  filter:grayscale(.65) contrast(1.35) drop-shadow(0 0 18px rgba(150,0,0,.65));
+  animation:floatY 4.2s ease-in-out infinite;
+}
+@keyframes floatY{
+  0%,100%{transform:translateY(0) rotate(-2deg);}
+  50%{transform:translateY(-10px) rotate(2deg);}
+}
+.title-lore{
+  font-size:clamp(12px,3.5vw,15px);
+  line-height:2.1;
+  color:#8a8070;
+  letter-spacing:.1em;
+  text-shadow:0 0 12px rgba(0,0,0,.95);
+}
+.title-hint{
+  font-size:11px;
+  color:#4a4440;
+  letter-spacing:.24em;
+  animation:blinkSoft 2.8s ease-in-out infinite;
+}
+@keyframes blinkSoft{0%,100%{opacity:.3;}50%{opacity:.9;}}
+
+/* ---------- ホラーボタン ---------- */
+.horror-btn{
+  position:relative;
+  padding:15px 38px;
+  background:linear-gradient(180deg,rgba(22,10,10,.92),rgba(5,2,2,.96));
+  border:1px solid rgba(155,22,22,.6);
+  color:#d0c0b0;
+  font-family:inherit;
+  font-size:clamp(13px,3.6vw,15px);
+  letter-spacing:.22em;
+  cursor:pointer;
+  overflow:hidden;
+  transition:color .3s,border-color .3s,box-shadow .3s,transform .12s;
+  clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);
+}
+.horror-btn::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(190,0,0,.4),transparent);
+  transform:translateX(-130%);
+  transition:transform .65s ease;
+}
+.horror-btn:hover::before{transform:translateX(130%);}
+.horror-btn:hover{
+  border-color:rgba(230,35,35,.95);
+  color:#fff;
+  box-shadow:inset 0 0 28px rgba(190,0,0,.5),0 0 20px rgba(150,0,0,.45);
+  text-shadow:0 0 10px rgba(255,50,50,.9);
+}
+.horror-btn:active{transform:scale(.965);}
+.horror-btn .btn-text{position:relative;z-index:1;}
+
+/* ---------- ゲーム画面 ---------- */
+#game-screen{background:#000;}
+#game-canvas{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  display:block;
+}
+#hud{
+  position:absolute;
+  top:0;left:0;right:0;z-index:5;
+  display:flex;align-items:center;gap:12px;
+  padding:calc(10px + var(--safe-top)) 16px 12px;
+  font-size:12px;letter-spacing:.14em;
+  background:linear-gradient(180deg,rgba(0,0,0,.88),transparent);
+  pointer-events:none;
+}
+.hud-day{
+  font-weight:700;color:#c0b0a0;
+  text-shadow:0 0 10px rgba(0,0,0,.95);
+  transition:color .9s ease;
+  white-space:nowrap;
+}
+.hud-day.late{color:#c88a52;}
+.hud-day.latest{
+  color:#e02424;
+  animation:pulseRed 1.7s ease-in-out infinite;
+  text-shadow:0 0 14px rgba(220,0,0,.9);
+}
+@keyframes pulseRed{0%,100%{opacity:1;}50%{opacity:.42;}}
+.hud-bar{
+  flex:1;height:3px;min-width:40px;
+  background:rgba(60,42,42,.45);
+  position:relative;overflow:hidden;
+}
+.hud-bar-fill{
+  display:block;height:100%;
+  width:var(--progress);
+  background:linear-gradient(90deg,#3a1010,#a01818,#ff3222);
+  box-shadow:0 0 12px rgba(210,20,20,.75);
+  transition:width .1s linear;
+}
+.hud-dist{
+  color:#6a5a50;font-size:11px;
+  letter-spacing:2px;white-space:nowrap;
+}
+
+#mobile-controls{
+  position:absolute;
+  left:0;right:0;
+  bottom:calc(20px + var(--safe-bottom));
+  z-index:6;
+  display:flex;justify-content:center;
+  pointer-events:none;
+}
+.ctrl-forward{
+  pointer-events:auto;
+  padding:17px 46px;
+  background:rgba(12,6,6,.7);
+  border:1px solid rgba(155,32,32,.55);
+  color:#c8b0a0;
+  font-family:inherit;
+  font-size:clamp(13px,3.8vw,15px);
+  letter-spacing:.22em;
+  cursor:pointer;
+  backdrop-filter:blur(7px);
+  -webkit-backdrop-filter:blur(7px);
+  transition:background .2s,color .2s,box-shadow .2s,transform .1s;
+  clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px);
+}
+.ctrl-forward:active{
+  background:rgba(95,0,0,.82);
+  color:#fff;
+  box-shadow:0 0 28px rgba(210,0,0,.7);
+  transform:scale(.955);
+}
+@media(hover:hover){
+  .ctrl-forward:hover{
+    border-color:rgba(220,30,30,.85);
+    color:#f0e0d0;
+    box-shadow:0 0 20px rgba(150,0,0,.5);
+  }
+}
+
+/* ---------- 日次切替 ---------- */
+#day-transition{
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  background:#000;z-index:32;gap:24px;
+}
+.transition-title{
+  font-size:clamp(36px,13vw,86px);
+  font-weight:900;
+  letter-spacing:.3em;
+  color:#b8b0a0;
+  text-shadow:0 0 32px rgba(155,0,0,.55);
+  transition:color .8s,text-shadow .8s;
+}
+.transition-title.rotted{
+  color:#a81010;
+  text-shadow:0 0 48px rgba(220,0,0,.95),0 0 12px rgba(255,0,0,.7);
+}
+.transition-sub{
+  font-size:clamp(12px,3.6vw,16px);
+  letter-spacing:.32em;
+  color:#6a5a50;
+}
+
+/* ---------- エンディング ---------- */
+#ending-screen{
+  display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at center,#0a0202 0%,#000 72%);
+  z-index:44;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.ending-inner{
+  display:flex;flex-direction:column;align-items:center;
+  gap:20px;
+  width:100%;max-width:640px;
+  padding:48px 26px;
+  text-align:center;
+  animation:fadeUp 1.7s ease both;
+}
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(26px);}
+  to{opacity:1;transform:none;}
+}
+.ending-title{
+  font-size:clamp(26px,8vw,50px);
+  font-weight:900;
+  letter-spacing:.3em;
+  line-height:1.2;
+}
+.ending-title.survive{color:#c8b8a0;text-shadow:0 0 28px rgba(190,160,70,.5);}
+.ending-title.alone{color:#a86868;text-shadow:0 0 28px rgba(170,45,45,.65);}
+.ending-title.consumed{
+  color:#b81010;
+  text-shadow:0 0 38px rgba(255,0,0,.85);
+  animation:pulseRed 1.5s ease-in-out infinite;
+}
+.ending-title.forgotten{color:#66788a;text-shadow:0 0 28px rgba(90,130,170,.55);}
+
+.ending-raccoon{
+  font-size:clamp(36px,11vw,60px);
+  line-height:1;
+  filter:grayscale(.55) contrast(1.25) drop-shadow(0 0 20px rgba(140,0,0,.6));
+}
+.ending-text{
+  font-size:clamp(13px,3.7vw,16px);
+  line-height:2.15;
+  color:#908878;
+  letter-spacing:.07em;
+}
+.ending-stats{
+  font-size:12px;
+  color:#5a5048;
+  letter-spacing:.22em;
+}
+#ending-screen .horror-btn{margin-top:8px;}
+
+/* ---------- 横スクロール防止 ---------- */
+@media(max-width:380px){
+  .hud-dist{display:none;}
+  .title-lore{font-size:11.5px;line-height:2;}
+}
+@media(max-height:520px){
+  .title-lore{display:none;}
+  .title-raccoon{font-size:34px;}
+  .title-main{font-size:26px;}
+}
+</style>
 </head>
 <body>
-    <!-- 環境オーバーレイ -->
-    <div id="vignette"></div>
-    <div id="noise"></div>
-    <div id="scanlines"></div>
-    <div id="blood-overlay"></div>
-    <div id="flash-overlay"></div>
 
-    <!-- 言語切替ボタン（右下固定） -->
-    <button id="lang-btn" class="lang-btn" title="Language / 言語">
-        <span id="lang-label">JA</span>
-    </button>
+<!-- 環境オーバーレイ -->
+<div id="vignette"></div>
+<div id="noise"></div>
+<div id="scanlines"></div>
+<div id="blood-overlay"></div>
+<div id="flash-overlay"></div>
 
-    <div id="game-container">
-        <!-- ========== タイトル画面 ========== -->
-        <div id="title-screen" class="screen active">
-            <canvas id="title-canvas"></canvas>
-            <div class="title-content">
-                <div class="title-glitch-container">
-                    <h1 class="title-main glitch-text" data-ja="アライグマの日" data-zh="浣熊之日" data-text="アライグマの日">アライグマの日</h1>
-                    <h2 class="title-sub glitch-text" data-ja="— 翌日 —" data-zh="— 翌日 —" data-text="— 翌日 —">— 翌日 —</h2>
-                </div>
-                <div class="title-raccoon" id="title-raccoon">🦝</div>
-                <p class="title-lore" data-ja="君は最後のアライグマ。<br>明日は必ず来る。<br>だが明日は、今日よりもっと悪い。" data-zh="你是最后一只浣熊。<br>明天总会到来。<br>而明天，总比今天更糟。">
-                    君は最後のアライグマ。<br>明日は必ず来る。<br>だが明日は、今日よりもっと悪い。
-                </p>
-                <button id="start-btn" class="horror-btn">
-                    <span class="btn-text" data-ja="翌日へ踏み出す" data-zh="踏入翌日">翌日へ踏み出す</span>
-                    <span class="btn-glitch"></span>
-                </button>
-                <p class="title-hint" data-ja="→ 前に進む（戻れない） ←" data-zh="→ 向前走（无法回头） ←">
-                    → 前に進む（戻れない） ←
-                </p>
-            </div>
-        </div>
+<!-- 言語切替 -->
+<button id="lang-btn" class="lang-btn" aria-label="Language / 言語">
+  <span id="lang-label">JA</span>
+</button>
 
-        <!-- ========== ゲーム画面 ========== -->
-        <div id="game-screen" class="screen">
-            <div id="hud">
-                <span class="hud-day" id="day-display">DAY 1</span>
-                <span class="hud-bar"><span class="hud-bar-fill" id="progress-fill"></span></span>
-                <span class="hud-dist" id="dist-display">▮▮▮▮▮▮▮▮</span>
-            </div>
-            <div id="canvas-container">
-                <canvas id="game-canvas"></canvas>
-                <div id="creep-overlay"></div>
-            </div>
-            <div id="mobile-controls">
-                <button id="btn-forward" class="ctrl-btn ctrl-forward" data-ja="▶ 進む" data-zh="▶ 向前走">▶ 進む</button>
-            </div>
-        </div>
+<main id="game-container">
 
-        <!-- ========== 日次切替 ========== -->
-        <div id="day-transition" class="screen">
-            <h1 class="transition-title glitch-text" id="transition-title" data-text="翌日">翌日</h1>
-            <p class="transition-sub" id="transition-sub">世界がまた一層腐った</p>
-        </div>
-
-        <!-- ========== エンディング ========== -->
-        <div id="ending-screen" class="screen">
-            <h1 class="ending-title" id="ending-title">——</h1>
-            <div class="ending-raccoon" id="ending-raccoon">🦝</div>
-            <p class="ending-text" id="ending-text"></p>
-            <div class="ending-stats" id="ending-stats"></div>
-            <button id="restart-btn" class="horror-btn">
-                <span class="btn-text" data-ja="もう一度" data-zh="再次踏入">もう一度</span>
-            </button>
-        </div>
+  <!-- ========== タイトル画面 ========== -->
+  <section id="title-screen" class="screen active">
+    <canvas id="title-canvas"></canvas>
+    <div class="title-content">
+      <div class="title-glitch-container">
+        <h1 class="title-main glitch-text" data-text="アライグマの日">アライグマの日</h1>
+        <h2 class="title-sub glitch-text" data-text="— 翌日 —">— 翌日 —</h2>
+      </div>
+      <div class="title-raccoon" aria-hidden="true">🦝</div>
+      <p class="title-lore">
+        君は最後のアライグマ。<br>
+        明日は必ず来る。<br>
+        だが明日は、今日よりもっと悪い。
+      </p>
+      <button id="start-btn" class="horror-btn">
+        <span class="btn-text">翌日へ踏み出す</span>
+      </button>
+      <p class="title-hint">→ 前に進む（戻れない） ←</p>
     </div>
+  </section>
 
-    <script src="game.js"></script>
+  <!-- ========== ゲーム画面 ========== -->
+  <section id="game-screen" class="screen">
+    <canvas id="game-canvas"></canvas>
+    <div id="hud">
+      <span class="hud-day" id="day-display">DAY 1</span>
+      <span class="hud-bar"><span class="hud-bar-fill" id="progress-fill"></span></span>
+      <span class="hud-dist" id="dist-display">▮▮▮▮▮▮▮▮</span>
+    </div>
+    <div id="mobile-controls">
+      <button id="btn-forward" class="ctrl-forward">▶ 進む</button>
+    </div>
+  </section>
+
+  <!-- ========== 日次切替 ========== -->
+  <section id="day-transition" class="screen">
+    <h1 class="transition-title glitch-text" id="transition-title" data-text="翌日">翌日</h1>
+    <p class="transition-sub" id="transition-sub">世界がまた一層腐った</p>
+  </section>
+
+  <!-- ========== エンディング ========== -->
+  <section id="ending-screen" class="screen">
+    <div class="ending-inner">
+      <h1 class="ending-title" id="ending-title">——</h1>
+      <div class="ending-raccoon" id="ending-raccoon">🦝</div>
+      <p class="ending-text" id="ending-text"></p>
+      <div class="ending-stats" id="ending-stats"></div>
+      <button id="restart-btn" class="horror-btn">
+        <span class="btn-text">もう一度</span>
+      </button>
+    </div>
+  </section>
+
+</main>
+
+<script>
+/* ================================================================
+   アライグマの日 — 翌日
+   自研ホラーエンジン · 外部依存ゼロ · 全プラットフォーム対応
+   コア機構：前に進むのみ · 日数進行 · 日常の漸進的崩壊
+   ================================================================ */
+(function(){
+'use strict';
+
+/* ============================================================
+   1. 多言語テキスト
+   ============================================================ */
+const I18N = {
+  ja: {
+    docTitle: 'アライグマの日 — 翌日',
+    title: 'アライグマの日',
+    subtitle: '— 翌日 —',
+    lore: '君は最後のアライグマ。<br>明日は必ず来る。<br>だが明日は、今日よりもっと悪い。',
+    startBtn: '翌日へ踏み出す',
+    hint: '→ 前に進む（戻れない） ←',
+    forward: '▶ 進む',
+    again: 'もう一度',
+
+    dayNames: ['DAY 1','DAY 2','DAY 3','DAY 4','LAST DAY'],
+    dayLabels: ['翌日','翌日','翌日','殪日','——'],
+    daySubs: [
+      '世界がまた一層腐った',
+      '何か違和感がある',
+      '家への道が長くなった',
+      '何かが一緒に帰ってきた',
+      'もう明日はない'
+    ],
+    dayJournals: [
+      '今日も無事に帰れる。<br>そう思っていた。',
+      '道が少し長い気がする。<br>気のせいだ。',
+      '誰かが後ろを歩いている。<br>振り向けない。',
+      '家の灯りが見えた。<br>でも、窓の数が違う。',
+      'もう、明日は来ない。'
+    ],
+
+    whispers: [
+      '見えるだろ…','助けて…','振り向くな…','それが君についてる…',
+      '明日は来ない…','君の顔が腐ってる…','………',
+      '家には帰るな…','足音を数えてみろ…','それは君じゃない…'
+    ],
+    flashbacks: [
+      '……','あの日、何かが壊れた','もう戻れない',
+      '足音が一つ多い','それはずっと前からいた','数えるな'
+    ],
+    anomalyPhrases: ['……','殺','死','見','還','来','連','伜','不','逃'],
+    wallWords: ['助けて','死','還','HELP','.....','殺','帰れない'],
+
+    preFinal: ['家まであと少し','何かが背後にいる','灯りが消える','自分の足音ではない'],
+
+    endingSurvive: '生還',
+    endingSurviveText: '家の扉を開ける。<br>部屋には誰かがいた。<br>それは君の顔をしていた。<br><br>ドアを閉めた。<br>鍵はなかった。',
+    endingSurviveStats: n=>`君は${n}つの翌日を生き延びた。`,
+
+    endingAlone: '独り',
+    endingAloneText: '家に着いた。<br>誰もいない。<br>いや——何かがいる。<br>それは「家族」の形をしていた。<br><br>暗闇が微笑んだ。',
+    endingAloneStats: n=>`君は${n}つの翌日を歩いた。`,
+
+    endingConsumed: '同化',
+    endingConsumedText: '気づけば、歩く速度が遅くなっていた。<br>足が地面に根を張り始めている。<br>振り向くと——自分の体がいない。<br><br>道が君を飲み込んだ。',
+    endingConsumedStats: n=>`君は${n}つの翌日で姿を消した。`,
+
+    endingForgotten: '忘却',
+    endingForgottenText: '何も見なかった。<br>何も聞かなかった。<br>だから今日も、いつも通り家に帰る。<br><br>玄関の鏡を見る。<br>鏡の中の君が、笑っていた。',
+    endingForgottenStats: n=>`君は${n}つの翌日を、何も気づかずに歩いた。`
+  },
+
+  zh: {
+    docTitle: '浣熊之日 — 翌日',
+    title: '浣熊之日',
+    subtitle: '— 翌日 —',
+    lore: '你是最后一只浣熊。<br>明天总会到来。<br>而明天，总比今天更糟。',
+    startBtn: '踏入翌日',
+    hint: '→ 向前走（无法回头） ←',
+    forward: '▶ 向前走',
+    again: '再次踏入',
+
+    dayNames: ['DAY 1','DAY 2','DAY 3','DAY 4','LAST DAY'],
+    dayLabels: ['翌日','翌日','翌日','殪日','——'],
+    daySubs: [
+      '世界又腐烂了一层',
+      '你察觉到一丝违和',
+      '回家的路变长了',
+      '有什么跟着你回来了',
+      '没有明天了'
+    ],
+    dayJournals: [
+      '今天也能平安回家。<br>我原本是这么想的。',
+      '感觉路变长了一点。<br>一定是错觉。',
+      '有什么在身后走着。<br>我不能回头。',
+      '看见家里的灯了。<br>可是，窗户的数量不对。',
+      '已经没有明天了。'
+    ],
+
+    whispers: [
+      '你能看见我吧…','救救我…','不要回头…','它跟着你…',
+      '明天不会来了…','你的脸在腐烂…','………',
+      '别回家…','数数你的脚步声…','那不是你…'
+    ],
+    flashbacks: [
+      '……','那一天，有什么碎掉了','回不去了',
+      '脚步声多了一个','它很早以前就在了','不要数'
+    ],
+    anomalyPhrases: ['……','杀','死','见','还','来','跟','你','不','逃'],
+    wallWords: ['救命','死','还','HELP','.....','杀','回不去'],
+
+    preFinal: ['就快到家了','有什么在身后','灯要灭了','那不是你的脚步声'],
+
+    endingSurvive: '生还',
+    endingSurviveText: '你打开家门。<br>屋里有人。<br>那张脸和你一模一样。<br><br>你关上门。<br>没有锁。',
+    endingSurviveStats: n=>`你从 ${n} 个翌日中活了下来。`,
+
+    endingAlone: '独处',
+    endingAloneText: '你到了家。<br>没有人在。<br>不——有东西在。<br>它有着「家人」的形状。<br><br>黑暗冲你微笑。',
+    endingAloneStats: n=>`你走过了 ${n} 个翌日。`,
+
+    endingConsumed: '同化',
+    endingConsumedText: '你发现脚步越来越慢。<br>脚在往地里生根。<br>回头时——身体已经不在了。<br><br>路把你吞了下去。',
+    endingConsumedStats: n=>`你在第 ${n} 个翌日消失了。`,
+
+    endingForgotten: '遗忘',
+    endingForgottenText: '你什么都没看见。<br>什么都没听见。<br>所以今天也照常回家。<br><br>你看了一眼玄关的镜子。<br>镜子里的你，在笑。',
+    endingForgottenStats: n=>`你走过了 ${n} 个翌日，什么也没察觉。`
+  }
+};
+
+let currentLang = 'ja';
+const t  = k => (I18N[currentLang][k] ?? I18N.ja[k] ?? k);
+const tf = (k,...a) => { const v = t(k); return typeof v==='function' ? v(...a) : v; };
+
+/* ============================================================
+   2. 日数設定
+   ============================================================ */
+const DAYS = [
+  {
+    name:'DAY 1', decay:0.00,
+    bgTint:'#0a0a0e', groundTint:'#15151a', skyTint:'#0d0d12',
+    fogAlpha:0.00, anomalyChance:0.00, eventCount:0,
+    palette:{ wall:'#1a1a22', wallTop:'#222230', wallEdge:'#111118',
+              floor:'#12121a', floorAlt:'#101018', detail:'#1e1e28' },
+    ambients:[55,82,0]
+  },
+  {
+    name:'DAY 2', decay:0.15,
+    bgTint:'#0c0808', groundTint:'#161112', skyTint:'#100a0a',
+    fogAlpha:0.08, anomalyChance:0.12, eventCount:1,
+    palette:{ wall:'#1c1518', wallTop:'#251820', wallEdge:'#120c10',
+              floor:'#141012', floorAlt:'#11100e', detail:'#221820' },
+    ambients:[52,78,110]
+  },
+  {
+    name:'DAY 3', decay:0.35,
+    bgTint:'#100808', groundTint:'#1a1010', skyTint:'#150a0a',
+    fogAlpha:0.18, anomalyChance:0.25, eventCount:2,
+    palette:{ wall:'#1e1212', wallTop:'#2a1818', wallEdge:'#140808',
+              floor:'#161010', floorAlt:'#131010', detail:'#2a1a1a' },
+    ambients:[48,72,130]
+  },
+  {
+    name:'DAY 4', decay:0.60,
+    bgTint:'#140606', groundTint:'#1e0e0e', skyTint:'#1a0808',
+    fogAlpha:0.30, anomalyChance:0.40, eventCount:3,
+    palette:{ wall:'#201010', wallTop:'#301818', wallEdge:'#180808',
+              floor:'#180c0c', floorAlt:'#150a0a', detail:'#301818' },
+    ambients:[44,66,150]
+  },
+  {
+    name:'LAST DAY', decay:0.90,
+    bgTint:'#1a0404', groundTint:'#220a0a', skyTint:'#1e0606',
+    fogAlpha:0.50, anomalyChance:0.60, eventCount:4,
+    palette:{ wall:'#241010', wallTop:'#381818', wallEdge:'#1a0808',
+              floor:'#1c0808', floorAlt:'#180606', detail:'#381818' },
+    ambients:[40,60,180]
+  }
+];
+
+/* ============================================================
+   3. 定数・状態
+   ============================================================ */
+const SEGMENT_LENGTHS   = [900, 1000, 1100, 1200, 1300];
+const PLAYER_WALK_SPEED = 62;
+const PLAYER_SCREEN_POS = 0.35;
+
+const FINAL_CRAWL = { length: 620, crawlSpeed: 24 };
+
+const STATE = { TITLE:0, WALKING:1, TRANSITION:2, ENDING:3 };
+let gameState = STATE.TITLE;
+
+let currentDay   = 0;
+let segmentWidth = 900;
+let playerX      = 0;
+let playerScreenX= 0;
+let cameraX      = 0;
+let walkProgress = 0;
+let isWalking    = false;
+let decayLevel   = 0;
+let pollution    = 0;      // 汚染度 → エンディング分岐
+
+let canvas, ctx, W = 800, H = 450;
+let titleCanvas, titleCtx, tW = 800, tH = 450;
+let lastTime = 0, rafId = null;
+let keys = {};
+
+let sceneObjects = [];
+let anomalies    = [];
+let particles    = [];
+let whispers     = [];
+let flashes      = [];
+let triggeredAnomalies = new Set();
+
+/* 最終爬行 */
+let finalCrawlActive = false;
+let finalCrawlMsgIndex = 0;
+let finalDroneTimer = null;
+
+const ANOMALY_WEIGHT = {
+  whisper:1, eyes:2, blood:3, crack:2, flicker:1,
+  figure:3, shadow:4, face:5, hand:5, meat:4
+};
+
+/* ============================================================
+   4. ユーティリティ
+   ============================================================ */
+const $     = id => document.getElementById(id);
+const rand  = (a,b) => Math.random()*(b-a)+a;
+const randi = (a,b) => Math.floor(rand(a,b+1));
+const clamp = (v,a,b) => Math.max(a, Math.min(b,v));
+const safeR = r => Math.max(r, 0.5);
+const pick  = arr => arr[Math.floor(Math.random()*arr.length)];
+
+/* ============================================================
+   5. オーディオ（外部依存ゼロ・全て合成）
+   ============================================================ */
+let audioCtx = null, masterGain = null;
+
+function initAudio(){
+  if(audioCtx) return;
+  try{
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return;
+    audioCtx = new AC();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.25;
+    masterGain.connect(audioCtx.destination);
+  }catch(e){ audioCtx = null; }
+}
+
+function resumeAudio(){
+  if(audioCtx && audioCtx.state === 'suspended'){
+    audioCtx.resume().catch(()=>{});
+  }
+}
+
+function tone(freq, dur, type, vol, delay){
+  if(!audioCtx) return;
+  const t0 = audioCtx.currentTime + (delay||0);
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = type || 'sine';
+  o.frequency.value = freq;
+  g.gain.setValueAtTime(vol||0.2, t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+  o.connect(g); g.connect(masterGain);
+  o.start(t0); o.stop(t0+dur+0.02);
+}
+
+function noise(dur, vol){
+  if(!audioCtx) return;
+  const len = Math.floor(audioCtx.sampleRate * dur);
+  const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for(let i=0;i<len;i++){
+    d[i] = (Math.random()*2-1) * (1 - i/len);
+  }
+  const s = audioCtx.createBufferSource();
+  s.buffer = buf;
+  const g = audioCtx.createGain();
+  g.gain.value = vol || 0.15;
+  s.connect(g); g.connect(masterGain);
+  s.start();
+}
+
+/* 環境音ループ */
+let ambientTimer = null;
+function startAmbient(cfg){
+  stopAmbient();
+  const tick = ()=>{
+    if(gameState !== STATE.WALKING) return;
+    const amb = cfg.ambients;
+    tone(amb[0] + Math.random()*8, 2.6, 'sine', 0.055);
+    if(amb[2]) tone(amb[2] + Math.random()*18, 1.6, 'triangle', 0.028);
+    if(Math.random() < 0.22) noise(0.4, 0.018);
+    if(Math.random() < 0.08 + decayLevel*0.28){
+      spawnWhisper(pick(I18N[currentLang].whispers));
+    }
+    ambientTimer = setTimeout(tick, 1700 + Math.random()*2400);
+  };
+  tick();
+}
+function stopAmbient(){
+  if(ambientTimer){ clearTimeout(ambientTimer); ambientTimer = null; }
+}
+
+/* ============================================================
+   6. シーン生成
+   ============================================================ */
+function generateScene(dayIdx){
+  const cfg = DAYS[dayIdx];
+  const segLen = SEGMENT_LENGTHS[dayIdx];
+  segmentWidth = segLen;
+
+  sceneObjects = [];
+  anomalies    = [];
+  particles    = [];
+  whispers     = [];
+  flashes      = [];
+  triggeredAnomalies.clear();
+
+  /* --- 装飾 --- */
+  const decoTypes = ['grass','stone','crack','stain','bone','meat'];
+  const decoCount = Math.floor(segLen / 42);
+  for(let i=0;i<decoCount;i++){
+    sceneObjects.push({
+      type:'deco',
+      sub: decoTypes[randi(0, dayIdx >= 2 ? 5 : 1)],
+      x: rand(20, segLen-20),
+      w: rand(6,18), h: rand(4,12),
+      seed: rand(0,100)
+    });
+  }
+
+  /* --- 建物 --- */
+  const bgCount = Math.floor(segLen / 130);
+  for(let i=0;i<bgCount;i++){
+    const x = rand(40, segLen-60);
+    const w = rand(30, 82);
+    const h = rand(42, 104);
+    const isHouse = Math.random() < 0.55;
+    sceneObjects.push({ type: isHouse?'house':'wall', x, w, h, seed: rand(0,100) });
+    const winCount = randi(1,3);
+    for(let j=0;j<winCount;j++){
+      sceneObjects.push({
+        type:'window',
+        x: x + rand(5, Math.max(6, w-14)),
+        y: rand(10, Math.max(12, h*0.35)),
+        w: rand(6,10), h: rand(8,14),
+        seed: rand(0,100)
+      });
+    }
+  }
+
+  /* --- 街灯 --- */
+  const lampCount = Math.floor(segLen / 210);
+  for(let i=0;i<lampCount;i++){
+    sceneObjects.push({
+      type:'lamp',
+      x: rand(60, segLen-60),
+      w: 4, h: rand(36,56),
+      seed: rand(0,100)
+    });
+  }
+
+  /* --- 異常 --- */
+  const defs = [
+    { type:'whisper', chance:0.60 },
+    { type:'shadow',  chance:0.50 },
+    { type:'blood',   chance:0.40 },
+    { type:'flicker', chance:0.40 },
+    { type:'eyes',    chance:0.30 },
+    { type:'figure',  chance:0.30 },
+    { type:'crack',   chance:0.30 },
+    { type:'meat',    chance:0.22 },
+    { type:'face',    chance:0.20 },
+    { type:'hand',    chance:0.16 }
+  ];
+
+  const target = cfg.eventCount;
+  let placed = 0, tries = 0;
+  while(placed < target && tries < 160){
+    const def = defs[randi(0, defs.length-1)];
+    const passChance = def.chance * (1 + dayIdx*0.32);
+    if(Math.random() > passChance){ tries++; continue; }
+    const x = rand(120, segLen-120);
+    if(anomalies.some(a => Math.abs(a.x - x) < 90)){ tries++; continue; }
+    anomalies.push({
+      type: def.type,
+      x,
+      triggered: false,
+      seed: rand(0,100),
+      intensity: 0.32 + dayIdx*0.18
+    });
+    placed++; tries++;
+  }
+
+  sceneObjects.sort((a,b)=>a.x-b.x);
+  anomalies.sort((a,b)=>a.x-b.x);
+}
+
+/* ============================================================
+   7. 描画：メイン
+   ============================================================ */
+function draw(){
+  if(!ctx) return;
+
+  if(finalCrawlActive){
+    drawFinalCrawl();
+    return;
+  }
+
+  const cfg = DAYS[currentDay];
+  const p = cfg.palette;
+
+  /* 空 */
+  const sky = ctx.createLinearGradient(0, 0, 0, H*0.62);
+  sky.addColorStop(0, cfg.skyTint);
+  sky.addColorStop(1, cfg.bgTint);
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H);
+
+  /* 霧 */
+  if(cfg.fogAlpha > 0){
+    ctx.fillStyle = `rgba(${Math.floor(40 + decayLevel*70)},0,0,${cfg.fogAlpha})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  /* 地面 */
+  const ground = ctx.createLinearGradient(0, H*0.55, 0, H);
+  ground.addColorStop(0, cfg.groundTint);
+  ground.addColorStop(1, '#050505');
+  ctx.fillStyle = ground;
+  ctx.fillRect(0, H*0.55, W, H*0.45);
+
+  /* 地面タイル */
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, H*0.55, W, H*0.45); ctx.clip();
+  for(let gx = 0; gx < W + 30; gx += 30){
+    const wx = gx + cameraX*0.28;
+    const ox = wx % 30;
+    const isAlt = Math.floor(wx/30) % 2 === 0;
+    ctx.fillStyle = isAlt ? p.floor : p.floorAlt;
+    ctx.fillRect(gx - ox, H*0.55, 30, H*0.45);
+  }
+  ctx.restore();
+
+  /* 背景オブジェクト */
+  for(const obj of sceneObjects){
+    const sx = obj.x - cameraX;
+    if(sx < -140 || sx > W + 140) continue;
+    switch(obj.type){
+      case 'house':  drawHouse(sx, obj);  break;
+      case 'wall':   drawWall(sx, obj);   break;
+      case 'window': drawWindow(sx, obj); break;
+      case 'lamp':   drawLamp(sx, obj);   break;
+      case 'deco':   drawDeco(sx, obj);   break;
+    }
+  }
+
+  /* 異常 */
+  for(const an of anomalies){
+    const sx = an.x - cameraX;
+    if(sx < -70 || sx > W + 70) continue;
+    if(!an.triggered && Math.abs(playerX - an.x) < 62){
+      an.triggered = true;
+      triggeredAnomalies.add(an.type);
+      onAnomalyTrigger(an, sx);
+    }
+    if(an.triggered || Math.abs(playerX - an.x) < 130){
+      drawAnomaly(sx, an);
+    }
+  }
+
+  /* 低語 */
+  drawWhispers();
+
+  /* 閃光テキスト（フラッシュバック） */
+  drawFlashes();
+
+  /* 粒子 */
+  drawParticles();
+
+  /* 浣熊 */
+  drawRaccoon(playerScreenX, H*0.55 - 5, decayLevel);
+
+  /* ビネット */
+  const vg = ctx.createRadialGradient(
+    W/2, H/2, Math.min(W,H)*0.18,
+    W/2, H/2, Math.max(W,H)*0.72
+  );
+  vg.addColorStop(0, 'transparent');
+  vg.addColorStop(0.68, `rgba(0,0,0,${0.22 + decayLevel*0.3})`);
+  vg.addColorStop(1,    `rgba(0,0,0,${0.52 + decayLevel*0.4})`);
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, W, H);
+
+  /* 走査線 */
+  ctx.fillStyle = `rgba(0,0,0,${0.06 + decayLevel*0.07})`;
+  for(let y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1);
+
+  /* 血のヴェール */
+  if(decayLevel > 0.5){
+    ctx.fillStyle = `rgba(85,0,0,${(decayLevel-0.5)*0.16})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+/* ============================================================
+   8. 描画：オブジェクト
+   ============================================================ */
+function drawHouse(x, obj){
+  const p = DAYS[currentDay].palette;
+  const y = H*0.55 - obj.h;
+
+  ctx.fillStyle = p.wall;
+  ctx.fillRect(x, y, obj.w, obj.h);
+
+  ctx.fillStyle = p.wallTop;
+  ctx.beginPath();
+  ctx.moveTo(x-5, y);
+  ctx.lineTo(x + obj.w/2, y - obj.h*0.32);
+  ctx.lineTo(x + obj.w + 5, y);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = p.wallEdge;
+  ctx.fillRect(x, y + obj.h - 3, obj.w, 3);
+
+  if(decayLevel > 0.2){
+    ctx.fillStyle = `rgba(85,0,0,${decayLevel*0.22})`;
+    ctx.fillRect(x + obj.w*0.3, y + obj.h*0.4, obj.w*0.4, obj.h*0.3);
+  }
+
+  if(decayLevel > 0.5){
+    const tms = performance.now()*0.001;
+    for(let i=0;i<3;i++){
+      const vx = x + obj.w*(0.22 + i*0.28);
+      ctx.beginPath();
+      ctx.moveTo(vx, y + obj.h*0.3);
+      ctx.quadraticCurveTo(
+        vx + Math.sin(tms + i)*5, y + obj.h*0.6,
+        vx + Math.cos(tms*1.4 + i)*3, y + obj.h
+      );
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = `rgba(90,20,20,${decayLevel*0.55})`;
+      ctx.stroke();
+    }
+  }
+}
+
+function drawWall(x, obj){
+  const p = DAYS[currentDay].palette;
+  const y = H*0.55 - obj.h;
+
+  ctx.fillStyle = p.wall;
+  ctx.fillRect(x, y, obj.w, obj.h);
+
+  ctx.fillStyle = p.wallEdge;
+  for(let row = 0; row < obj.h; row += 8){
+    ctx.fillRect(x, y + row, obj.w, 1);
+    for(let col = 0; col < obj.w; col += 12){
+      ctx.fillRect(x + col + (row % 16 === 0 ? 0 : 6), y + row, 1, 7);
+    }
+  }
+
+  if(decayLevel > 0.3 && obj.seed % 3 < 1){
+    ctx.fillStyle = `rgba(130,0,0,${decayLevel*0.55})`;
+    ctx.font = `${Math.floor(8 + decayLevel*7)}px monospace`;
+    ctx.textAlign = 'left';
+    const words = I18N[currentLang].wallWords;
+    ctx.fillText(words[Math.floor(obj.seed) % words.length], x + obj.w*0.22, y + obj.h*0.55);
+  }
+}
+
+function drawWindow(x, obj){
+  const p = DAYS[currentDay].palette;
+  const lit = (obj.seed % 5) < (2 + decayLevel*2);
+  const y = H*0.55 - obj.y - obj.h;
+
+  ctx.fillStyle = p.wallEdge;
+  ctx.fillRect(x-1, y-1, obj.w+2, obj.h+2);
+
+  ctx.fillStyle = lit
+    ? `rgba(190,165,85,${0.3 + decayLevel*0.3})`
+    : 'rgba(10,10,16,0.92)';
+  ctx.fillRect(x, y, obj.w, obj.h);
+
+  ctx.fillStyle = p.wallEdge;
+  ctx.fillRect(x + obj.w/2 - 0.5, y, 1, obj.h);
+  ctx.fillRect(x, y + obj.h/2 - 0.5, obj.w, 1);
+
+  if(decayLevel > 0.3 && lit && obj.seed % 4 < 1){
+    const tm = performance.now()*0.001;
+    const flick = 0.5 + 0.5*Math.sin(tm*3 + obj.seed);
+    ctx.fillStyle = `rgba(25,0,0,${flick*decayLevel*0.6})`;
+    ctx.beginPath();
+    ctx.ellipse(x + obj.w/2, y + obj.h*0.66, obj.w*0.26, obj.h*0.3, 0, 0, Math.PI*2);
+    ctx.fill();
+    if(decayLevel > 0.5){
+      ctx.fillStyle = `rgba(210,50,0,${flick*0.65})`;
+      ctx.beginPath(); ctx.arc(x + obj.w*0.38, y + obj.h*0.45, safeR(1.6), 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + obj.w*0.62, y + obj.h*0.45, safeR(1.6), 0, Math.PI*2); ctx.fill();
+    }
+  }
+}
+
+function drawLamp(x, obj){
+  const y = H*0.55 - obj.h;
+  const tm = performance.now()*0.001;
+  const lit = decayLevel < 0.7 || Math.sin(tm*5 + obj.seed) > -0.2;
+
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(x, y, obj.w, obj.h);
+
+  const ly = y - 5;
+  ctx.fillStyle = lit
+    ? `rgba(255,200,100,${0.35 + Math.random()*0.1})`
+    : '#111';
+  ctx.beginPath(); ctx.arc(x + obj.w/2, ly, safeR(5), 0, Math.PI*2); ctx.fill();
+
+  if(lit){
+    const glow = ctx.createRadialGradient(x + obj.w/2, ly, 0, x + obj.w/2, ly, 44);
+    glow.addColorStop(0, `rgba(255,180,80,${0.16*(1 - decayLevel*0.55)})`);
+    glow.addColorStop(1, 'rgba(255,180,80,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(x - 40, ly - 40, 80, 80);
+  }
+
+  if(decayLevel > 0.3 && Math.random() < 0.006){
+    ctx.fillStyle = 'rgba(255,255,205,0.8)';
+    ctx.beginPath(); ctx.arc(x + obj.w/2, ly, safeR(9), 0, Math.PI*2); ctx.fill();
+  }
+}
+
+function drawDeco(x, obj){
+  const y = H*0.55 - obj.h*0.3;
+  const p = DAYS[currentDay].palette;
+  const tm = performance.now()*0.001;
+
+  switch(obj.sub){
+    case 'grass':
+      ctx.fillStyle = decayLevel > 0.4
+        ? `rgba(32,${Math.floor(12 + decayLevel*10)},12,0.5)`
+        : 'rgba(16,26,16,0.4)';
+      ctx.fillRect(x, y, obj.w, obj.h);
+      break;
+
+    case 'stone':
+      ctx.fillStyle = p.detail;
+      ctx.beginPath();
+      ctx.arc(x + obj.w/2, y + obj.h/2, safeR(obj.w/2), 0, Math.PI*2);
+      ctx.fill();
+      break;
+
+    case 'crack':
+      ctx.strokeStyle = `rgba(45,0,0,${0.22 + decayLevel*0.32})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + obj.w*0.3, y + obj.h*0.3);
+      ctx.lineTo(x + obj.w*0.5, y + obj.h*0.7);
+      ctx.lineTo(x + obj.w, y + obj.h);
+      ctx.stroke();
+      break;
+
+    case 'stain':
+      ctx.fillStyle = `rgba(65,0,0,${0.16 + decayLevel*0.22})`;
+      ctx.beginPath();
+      ctx.ellipse(x + obj.w/2, y + obj.h/2, obj.w/2, obj.h/2, 0, 0, Math.PI*2);
+      ctx.fill();
+      break;
+
+    case 'bone':
+      if(decayLevel > 0.3){
+        ctx.fillStyle = `rgba(185,175,155,${0.3 + decayLevel*0.3})`;
+        ctx.fillRect(x, y, obj.w*0.3, obj.h);
+        ctx.fillRect(x + obj.w*0.5, y + obj.h*0.2, obj.w*0.3, obj.h*0.6);
+      }
+      break;
+
+    case 'meat':
+      if(decayLevel > 0.5){
+        const pulse = 0.5 + 0.5*Math.sin(tm*2 + obj.seed);
+        ctx.fillStyle = `rgba(125,${Math.floor(22 + pulse*30)},22,${0.3 + decayLevel*0.3})`;
+        ctx.beginPath();
+        for(let i=0;i<5;i++){
+          const a = (i/5)*Math.PI*2 + tm*0.5;
+          const r = obj.w*(0.3 + 0.2*Math.sin(i + a));
+          const px = x + obj.w/2 + Math.cos(a)*r;
+          const py = y + obj.h/2 + Math.sin(a)*r;
+          i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        }
+        ctx.closePath(); ctx.fill();
+      }
+      break;
+  }
+}
+
+/* ============================================================
+   9. 描画：異常
+   ============================================================ */
+function drawAnomaly(x, an){
+  const tm = performance.now()*0.001;
+
+  switch(an.type){
+    case 'shadow': {
+      const h = 22 + an.intensity*26;
+      const w = h*0.34;
+      ctx.fillStyle = `rgba(0,0,0,${0.5 + an.intensity*0.32})`;
+      ctx.beginPath();
+      ctx.ellipse(x, H*0.55 - h*0.7, w, h*0.5, 0, 0, Math.PI*2);
+      ctx.fill();
+      if(an.intensity > 0.5){
+        ctx.fillStyle = `rgba(210,0,0,${an.intensity*0.75})`;
+        ctx.beginPath(); ctx.arc(x - w*0.3, H*0.55 - h*0.82, safeR(1.6), 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(x + w*0.3, H*0.55 - h*0.82, safeR(1.6), 0, Math.PI*2); ctx.fill();
+      }
+      break;
+    }
+
+    case 'blood': {
+      for(let i=0;i<5;i++){
+        const bx = x + Math.sin(tm*0.5 + i)*8 + i*4;
+        const by = H*0.58 + i*5 + Math.cos(tm + i)*3;
+        const r  = 3 + i*1.5;
+        ctx.fillStyle = `rgba(${Math.floor(85 + decayLevel*45)},0,0,${0.3 + an.intensity*0.3})`;
+        ctx.beginPath(); ctx.arc(bx, by, safeR(r), 0, Math.PI*2); ctx.fill();
+      }
+      if(an.intensity > 0.4){
+        ctx.fillStyle = `rgba(130,0,0,${an.intensity*0.55})`;
+        ctx.font = '11px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(currentLang === 'zh' ? '救' : '助', x, H*0.61);
+      }
+      break;
+    }
+
+    case 'eyes': {
+      const n = 2 + Math.floor(an.intensity*3);
+      for(let i=0;i<n;i++){
+        const ex = x + (i - n/2)*12 + Math.sin(tm + i)*3;
+        const ey = H*0.52 + Math.cos(tm*0.7 + i)*8;
+        ctx.fillStyle = `rgba(205,185,155,${0.3 + an.intensity*0.35})`;
+        ctx.beginPath(); ctx.ellipse(ex, ey, 3, 2, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,0.85)';
+        ctx.beginPath(); ctx.arc(ex + Math.sin(tm + i)*0.6, ey, safeR(1), 0, Math.PI*2); ctx.fill();
+      }
+      break;
+    }
+
+    case 'figure': {
+      const dist = 32 + an.intensity*22;
+      const fx = x + Math.sin(tm*0.3)*10;
+      ctx.fillStyle = `rgba(10,5,5,${0.42 + an.intensity*0.32})`;
+      ctx.beginPath();
+      ctx.arc(fx, H*0.55 - dist*0.8, safeR(dist*0.15), 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillRect(fx - dist*0.1, H*0.55 - dist*0.66, dist*0.2, dist*0.66);
+      break;
+    }
+
+    case 'whisper': {
+      const phrases = I18N[currentLang].anomalyPhrases;
+      const phrase = phrases[Math.floor(an.seed) % phrases.length];
+      ctx.fillStyle = `rgba(185,20,20,${0.4 + Math.sin(tm*3)*0.22})`;
+      ctx.font = `${Math.floor(15 + decayLevel*9)}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillText(phrase, x, H*0.4 + Math.sin(tm*2)*10);
+      break;
+    }
+
+    case 'flicker': {
+      if(Math.random() < 0.022 + decayLevel*0.03){
+        flashScreen(30);
+      }
+      break;
+    }
+
+    case 'crack': {
+      ctx.strokeStyle = `rgba(85,0,0,${0.42 + an.intensity*0.3})`;
+      ctx.lineWidth = 2 + an.intensity*2;
+      ctx.beginPath();
+      const cx = x, cy = H*0.6;
+      ctx.moveTo(cx, cy);
+      for(let i=0;i<8;i++){
+        ctx.lineTo(cx + (Math.random()-0.5)*22, cy + i*4 + Math.random()*3);
+      }
+      ctx.stroke();
+      if(an.intensity > 0.5){
+        ctx.fillStyle = `rgba(255,55,0,${0.1 + Math.sin(tm*2)*0.1})`;
+        ctx.beginPath(); ctx.ellipse(cx, cy+16, 5, 10, 0, 0, Math.PI*2); ctx.fill();
+      }
+      break;
+    }
+
+    case 'face': {
+      const fx = x;
+      const fy = H*0.4 + Math.sin(tm*0.5)*5;
+      const appear = 0.32 + 0.3*Math.sin(tm*0.7 + an.seed);
+      ctx.fillStyle = `rgba(32,10,10,${appear*an.intensity})`;
+      ctx.beginPath(); ctx.ellipse(fx, fy, 10, 14, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = `rgba(0,0,0,${appear*an.intensity})`;
+      ctx.beginPath(); ctx.ellipse(fx-4, fy-3, 2.5, 3.5, 0, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(fx+4, fy-3, 2.5, 3.5, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillRect(fx-3, fy+5, 6, 1.5);
+      break;
+    }
+
+    case 'hand': {
+      const hx = x;
+      const hy = H*0.58 + Math.sin(tm)*3;
+      ctx.fillStyle = `rgba(125,105,85,${0.3 + decayLevel*0.35})`;
+      ctx.beginPath(); ctx.ellipse(hx, hy, 5, 3, 0, 0, Math.PI*2); ctx.fill();
+      for(let i=-2;i<=2;i++){
+        ctx.fillRect(hx + i*2 - 0.5, hy - 8 - i*0.5, 1.5, 8 + i*1.5);
+      }
+      break;
+    }
+
+    case 'meat': {
+      const pulse = 0.5 + 0.5*Math.sin(tm*2 + an.seed);
+      const mx = x, my = H*0.56;
+      ctx.fillStyle = `rgba(${Math.floor(105 + pulse*50)},22,22,${0.4 + an.intensity*0.3})`;
+      ctx.beginPath();
+      for(let i=0;i<7;i++){
+        const a = (i/7)*Math.PI*2 + tm;
+        const r = 6 + Math.sin(i*1.5 + tm)*3;
+        const px = mx + Math.cos(a)*r, py = my + Math.sin(a)*r;
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath(); ctx.fill();
+      if(an.intensity > 0.5){
+        ctx.fillStyle = `rgba(65,10,10,${pulse*0.32})`;
+        ctx.beginPath();
+        ctx.arc(mx + Math.cos(tm)*3, my + Math.sin(tm)*2, safeR(2), 0, Math.PI*2);
+        ctx.fill();
+      }
+      break;
+    }
+  }
+}
+
+/* ============================================================
+   10. 描画：最終爬行
+   ============================================================ */
+function drawFinalCrawl(){
+  const tm = performance.now()*0.001;
+  const prog = walkProgress;
+
+  /* 背景 */
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, `rgb(${Math.floor(5 + prog*12)},0,0)`);
+  bg.addColorStop(0.5, `rgb(${Math.floor(2 + prog*6)},0,0)`);
+  bg.addColorStop(1, '#000');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  /* 迫る壁 */
+  const wallOffset = prog * W * 0.16;
+  ctx.fillStyle = `rgb(${Math.floor(15 + prog*22)},${Math.floor(5 + prog*6)},5)`;
+  ctx.fillRect(0, H*0.3, wallOffset, H*0.7);
+  ctx.fillRect(W - wallOffset, H*0.3, wallOffset, H*0.7);
+
+  /* 血の地面 */
+  const ground = ctx.createLinearGradient(0, H*0.6, 0, H);
+  ground.addColorStop(0, `rgba(${Math.floor(45 + prog*45)},0,0,${0.5 + prog*0.3})`);
+  ground.addColorStop(1, '#000');
+  ctx.fillStyle = ground;
+  ctx.fillRect(0, H*0.6, W, H*0.4);
+
+  /* 血管 */
+  ctx.strokeStyle = `rgba(${Math.floor(125 + prog*55)},0,0,${0.3 + prog*0.4})`;
+  ctx.lineWidth = 1 + prog*2;
+  for(let i=0;i<5;i++){
+    ctx.beginPath();
+    const baseY = H*0.65 + i*16 + Math.sin(tm + i)*5;
+    ctx.moveTo(0, baseY);
+    for(let x = 0; x <= W; x += 12){
+      ctx.lineTo(x, baseY + Math.sin(x*0.02 + tm*0.5 + i)*8);
+    }
+    ctx.stroke();
+  }
+
+  /* 前景 */
+  for(const obj of sceneObjects){
+    const sx = obj.x - cameraX;
+    if(sx < -60 || sx > W + 60) continue;
+    if(obj.type === 'wall'){
+      const y = H*0.6 - obj.h*(0.5 + prog*0.5);
+      ctx.fillStyle = `rgb(${Math.floor(22 + prog*32)},${Math.floor(6 + prog*10)},6)`;
+      ctx.fillRect(sx, y, obj.w, obj.h);
+      if(prog > 0.3){
+        ctx.fillStyle = `rgba(${Math.floor(85 + prog*45)},10,10,${prog*0.5})`;
+        ctx.fillRect(sx + 2, y + obj.h*0.3, obj.w - 4, obj.h*0.4);
+      }
+      if(prog > 0.5 && obj.seed % 2 < 1){
+        const e = Math.sin(tm*0.3 + obj.seed)*5;
+        ctx.fillStyle = `rgba(205,55,0,${0.3 + 0.3*Math.sin(tm*2 + obj.seed)})`;
+        ctx.beginPath(); ctx.arc(sx + obj.w*0.3, y + obj.h*0.4 + e, 2.2, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(sx + obj.w*0.7, y + obj.h*0.4 - e, 2.2, 0, Math.PI*2); ctx.fill();
+      }
+    }
+  }
+
+  /* 異常 */
+  for(const an of anomalies){
+    const sx = an.x - cameraX;
+    if(sx < -70 || sx > W + 70) continue;
+    if(!an.triggered && Math.abs(playerX - an.x) < 45){
+      an.triggered = true;
+      triggeredAnomalies.add(an.type);
+      onAnomalyTrigger(an, sx);
+    }
+    if(an.triggered || Math.abs(playerX - an.x) < 90){
+      drawAnomaly(sx, an);
+    }
+  }
+
+  /* 家のシルエット */
+  const homeX = FINAL_CRAWL.length - cameraX;
+  if(homeX > -100 && homeX < W + 120){
+    const distort = prog * 22;
+    ctx.fillStyle = `rgba(5,0,0,${0.8 + prog*0.2})`;
+    ctx.beginPath();
+    ctx.moveTo(homeX - 32 - distort, H*0.6);
+    ctx.lineTo(homeX - 16 + distort*0.5, H*0.3 + Math.sin(tm)*distort);
+    ctx.lineTo(homeX + 16 + distort, H*0.3 + Math.cos(tm*0.7)*distort);
+    ctx.lineTo(homeX + 32 - distort*0.5, H*0.6);
+    ctx.closePath();
+    ctx.fill();
+
+    const doorOpen = prog * 12;
+    ctx.fillStyle = 'rgba(0,0,0,0.92)';
+    ctx.fillRect(homeX - doorOpen*0.3, H*0.45, 8 + doorOpen*0.5, H*0.15);
+    if(prog > 0.5){
+      ctx.fillStyle = `rgba(${Math.floor(205 + prog*50)},${Math.floor(55 + prog*20)},0,${prog*0.6})`;
+      ctx.fillRect(homeX - 2, H*0.48, 4, H*0.08);
+    }
+  }
+
+  /* 粒子 */
+  if(Math.random() < 0.12 + prog*0.2){
+    particles.push({
+      x: rand(W*0.28, W*0.72), y: rand(H*0.18, H*0.5),
+      vx: rand(-0.5,0.5), vy: rand(0.2,1),
+      life: rand(1,3), sz: rand(1,3),
+      color: `rgba(${Math.floor(85 + rand(0,60))},${Math.floor(5 + rand(0,20))},5,${0.4 + prog*0.4})`
+    });
+  }
+  drawParticles();
+
+  /* 低語 */
+  drawWhispers();
+
+  /* 浣熊 */
+  drawRaccoon(playerScreenX, H*0.6 - 2, 0.82 + prog*0.18);
+
+  /* ビネット */
+  const vg = ctx.createRadialGradient(
+    W/2, H/2, Math.min(W,H)*0.1,
+    W/2, H/2, Math.max(W,H)*0.62
+  );
+  vg.addColorStop(0, 'transparent');
+  vg.addColorStop(0.5, `rgba(0,0,0,${0.5 + prog*0.3})`);
+  vg.addColorStop(1, `rgba(25,0,0,${0.8 + prog*0.2})`);
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, W, H);
+
+  if(prog > 0.4){
+    ctx.fillStyle = `rgba(65,0,0,${(prog-0.4)*0.42})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  ctx.fillStyle = `rgba(0,0,0,${0.15 + prog*0.12})`;
+  for(let y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1);
+
+  /* 最終瞬間の歪み */
+  if(prog > 0.9){
+    ctx.fillStyle = `rgba(90,0,0,${(prog - 0.9)*3})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+/* ============================================================
+   11. 描画：共通パーツ
+   ============================================================ */
+function drawWhispers(){
+  for(const w of whispers){
+    w.life -= 0.016;
+    w.y -= 0.3;
+    if(w.life > 0){
+      ctx.fillStyle = `rgba(185,50,50,${Math.min(w.life, 0.62)})`;
+      ctx.font = `${Math.floor(12 + decayLevel*7)}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillText(w.text, w.x, w.y);
+    }
+  }
+  whispers = whispers.filter(w => w.life > 0);
+}
+
+function drawFlashes(){
+  for(const f of flashes){
+    f.life -= 0.012;
+    f.y -= 0.18;
+    if(f.life > 0){
+      const a = Math.min(f.life*0.35, 0.7);
+      ctx.fillStyle = `rgba(220,215,205,${a})`;
+      ctx.font = `${Math.floor(16 + (1 - f.life/6)*6)}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      ctx.shadowBlur = 12;
+      ctx.fillText(f.text, f.x, f.y);
+      ctx.shadowBlur = 0;
+    }
+  }
+  flashes = flashes.filter(f => f.life > 0);
+}
+
+function drawParticles(){
+  for(const p of particles){
+    p.x += p.vx; p.y += p.vy; p.life -= 0.016;
+    if(p.life > 0){
+      ctx.globalAlpha = clamp(p.life, 0, 1);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x, p.y, p.sz, p.sz);
+    }
+  }
+  ctx.globalAlpha = 1;
+  particles = particles.filter(p => p.life > 0);
+}
+
+/* ============================================================
+   12. 描画：アライグマ
+   ============================================================ */
+function drawRaccoon(sx, sy, decay){
+  const tm = performance.now()*0.001;
+  const wobble  = Math.sin(tm*4)*1.5;
+  const breathe = Math.sin(tm*2)*0.5;
+
+  ctx.save();
+  ctx.translate(sx, sy + wobble);
+
+  /* 影 */
+  ctx.fillStyle = `rgba(0,0,0,${0.4*(1 - decay*0.3)})`;
+  ctx.beginPath(); ctx.ellipse(0, 2, 10, 3, 0, 0, Math.PI*2); ctx.fill();
+
+  /* 尻尾 */
+  ctx.save();
+  ctx.translate(-8, -2);
+  ctx.rotate(-0.3 + Math.sin(tm*3)*0.15);
+  ctx.fillStyle = `rgb(${Math.floor(90 - decay*30)},${Math.floor(75 - decay*25)},${Math.floor(60 - decay*20)})`;
+  ctx.beginPath(); ctx.ellipse(0, 0, 3, 12, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = `rgb(${Math.floor(30 - decay*15)},${Math.floor(15 - decay*10)},${Math.floor(10 - decay*8)})`;
+  for(let i=0;i<3;i++) ctx.fillRect(-2.5, -8 + i*6, 5, 2);
+  ctx.restore();
+
+  /* 体 */
+  const bodyR = 8 + decay*3;
+  const bodyColor = `rgb(${Math.floor(100 - decay*40)},${Math.floor(85 - decay*35)},${Math.floor(70 - decay*30)})`;
+
+  ctx.fillStyle = bodyColor;
+  ctx.beginPath(); ctx.ellipse(0, 0, bodyR*0.7, bodyR, 0, 0, Math.PI*2); ctx.fill();
+
+  ctx.fillStyle = `rgb(${Math.floor(160 - decay*50)},${Math.floor(140 - decay*45)},${Math.floor(120 - decay*40)})`;
+  ctx.beginPath(); ctx.ellipse(0, 3, bodyR*0.4, bodyR*0.55, 0, 0, Math.PI*2); ctx.fill();
+
+  /* 頭 */
+  ctx.save();
+  ctx.translate(2, -bodyR*0.7 + breathe);
+  const headR = bodyR*0.7;
+
+  ctx.fillStyle = bodyColor;
+  ctx.beginPath(); ctx.arc(0, 0, safeR(headR), 0, Math.PI*2); ctx.fill();
+
+  /* 耳 */
+  ctx.beginPath(); ctx.arc(-headR*0.7, -headR*0.7, safeR(headR*0.35), 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc( headR*0.7, -headR*0.7, safeR(headR*0.35), 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = `rgb(200,${Math.floor(150 - decay*80)},${Math.floor(150 - decay*80)})`;
+  ctx.beginPath(); ctx.arc(-headR*0.7, -headR*0.7, safeR(headR*0.18), 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc( headR*0.7, -headR*0.7, safeR(headR*0.18), 0, Math.PI*2); ctx.fill();
+
+  /* 仮面 */
+  ctx.fillStyle = `rgb(${Math.floor(25 - decay*10)},${Math.floor(15 - decay*8)},${Math.floor(8 - decay*5)})`;
+  ctx.beginPath();
+  ctx.ellipse(-headR*0.25, -headR*0.1, headR*0.35, headR*0.25, -0.15, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse( headR*0.25, -headR*0.1, headR*0.35, headR*0.25, 0.15, 0, Math.PI*2);
+  ctx.fill();
+
+  /* 目 */
+  const blink = Math.sin(tm*0.7) > 0.95 ? 0.1 : 1;
+  ctx.fillStyle = `rgb(255,${Math.floor(210 - decay*80)},${Math.floor(50 - decay*30)})`;
+  ctx.beginPath();
+  ctx.ellipse(-headR*0.25, -headR*0.15, headR*0.1, headR*0.12*blink, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse( headR*0.25, -headR*0.15, headR*0.1, headR*0.12*blink, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.arc(-headR*0.25, -headR*0.15, safeR(headR*0.04), 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc( headR*0.25, -headR*0.15, safeR(headR*0.04), 0, Math.PI*2); ctx.fill();
+
+  /* 鼻 */
+  ctx.fillStyle = '#1a0a05';
+  ctx.beginPath(); ctx.arc(0, headR*0.15, safeR(headR*0.08), 0, Math.PI*2); ctx.fill();
+
+  /* 口 */
+  if(decay > 0.4){
+    ctx.fillStyle = `rgba(125,0,0,${decay*0.5})`;
+    ctx.fillRect(-1.5, headR*0.25, 3, 1);
+    ctx.beginPath();
+    ctx.arc(1, headR*0.35 + Math.sin(tm*2)*2, safeR(1), 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  /* 腐敗異物 */
+  if(decay > 0.6){
+    ctx.fillStyle = `rgba(85,${Math.floor(10 + decay*20)},10,${decay*0.5})`;
+    for(let i=0;i<3;i++){
+      const a = tm*0.5 + i*2.1;
+      const r = headR*(0.6 + decay*0.3);
+      ctx.beginPath();
+      ctx.arc(Math.cos(a)*r*0.8, Math.sin(a)*r*0.8, safeR(1.5), 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  ctx.restore(); /* head */
+
+  /* 脚 */
+  const legPhase = tm*8;
+  ctx.fillStyle = bodyColor;
+  ctx.fillRect(-4, bodyR*0.8 + Math.sin(legPhase)*2, 3, 5);
+  ctx.fillRect( 2, bodyR*0.8 + Math.sin(legPhase + Math.PI)*2, 3, 5);
+
+  ctx.restore(); /* body */
+
+  /* 腐敗粒子 */
+  if(decay > 0.5 && Math.random() < decay*0.3){
+    particles.push({
+      x: sx + rand(-10,10), y: sy + rand(-15,0),
+      vx: rand(-0.3,0.3), vy: rand(-0.5,-0.1),
+      life: rand(0.5,1.5), sz: rand(1,2.5),
+      color: `rgba(${Math.floor(85 + rand(0,40))},${Math.floor(10 + rand(0,20))},10,0.6)`
+    });
+  }
+}
+
+/* ============================================================
+   13. 異常トリガー
+   ============================================================ */
+function onAnomalyTrigger(an, screenX){
+  pollution += ANOMALY_WEIGHT[an.type] || 1;
+
+  switch(an.type){
+    case 'shadow':
+      tone(150 + Math.random()*50, 0.3, 'sawtooth', 0.15);
+      noise(0.2, 0.08); break;
+    case 'blood':
+      tone(60, 0.5, 'triangle', 0.2);
+      noise(0.4, 0.1);
+      spawnParticles(screenX, H*0.58, 'rgba(125,0,0,0.6)', 8, 2); break;
+    case 'eyes':
+      tone(300 + Math.random()*100, 0.15, 'sine', 0.1); break;
+    case 'figure':
+      tone(80, 0.8, 'sawtooth', 0.12); break;
+    case 'whisper': {
+      const phrases = I18N[currentLang].whispers;
+      spawnWhisper(phrases[Math.floor(an.seed) % phrases.length]);
+      tone(200 + Math.random()*100, 0.3, 'sine', 0.08);
+      break;
+    }
+    case 'flicker':
+      noise(0.1, 0.15); break;
+    case 'crack':
+      tone(40, 0.6, 'triangle', 0.2);
+      noise(0.5, 0.12);
+      flashScreen(50); break;
+    case 'face':
+      tone(100, 0.4, 'square', 0.1); break;
+    case 'hand':
+      tone(70, 0.5, 'sawtooth', 0.15); break;
+    case 'meat':
+      noise(0.3, 0.1);
+      tone(50, 0.4, 'triangle', 0.12); break;
+  }
+
+  if(an.intensity > 0.4) triggerShake(an.intensity*2);
+}
+
+function spawnWhisper(text){
+  whispers.push({
+    text,
+    x: rand(W*0.18, W*0.82),
+    y: rand(H*0.22, H*0.52),
+    life: rand(2, 4)
+  });
+}
+
+function spawnFlash(text){
+  flashes.push({
+    text,
+    x: rand(W*0.25, W*0.75),
+    y: H*0.45,
+    life: 6
+  });
+}
+
+function spawnParticles(x, y, color, count, spd){
+  for(let i=0;i<count;i++){
+    particles.push({
+      x, y,
+      vx: rand(-spd, spd), vy: rand(-spd, 0),
+      life: rand(0.5, 1.5), sz: rand(1,3),
+      color
+    });
+  }
+}
+
+/* ============================================================
+   14. 画面振動・フラッシュ
+   ============================================================ */
+let shakeAmount = 0;
+function triggerShake(amt){ shakeAmount = Math.max(shakeAmount, amt); }
+
+let flashTimer = null;
+function flashScreen(ms){
+  const el = $('flash-overlay');
+  if(!el) return;
+  el.classList.add('active');
+  if(flashTimer) clearTimeout(flashTimer);
+  flashTimer = setTimeout(()=>el.classList.remove('active'), ms || 30);
+}
+
+/* ============================================================
+   15. 更新
+   ============================================================ */
+function update(dt){
+  if(gameState !== STATE.WALKING) return;
+  const dtSec = dt / 1000;
+
+  /* ---- 最終爬行 ---- */
+  if(finalCrawlActive){
+    playerX += FINAL_CRAWL.crawlSpeed * dtSec;
+    cameraX = clamp(
+      playerX - W*PLAYER_SCREEN_POS,
+      0,
+      Math.max(0, FINAL_CRAWL.length - W + 20)
+    );
+    playerScreenX = W*PLAYER_SCREEN_POS;
+    walkProgress = clamp(playerX / FINAL_CRAWL.length, 0, 1);
+    updateHUD();
+
+    decayLevel = 0.95 + walkProgress*0.05;
+    applyCssVars();
+
+    if(Math.random() < 0.01) triggerShake(1 + walkProgress*3);
+    if(Math.random() < 0.005) flashScreen(30);
+    if(Math.random() < 0.08) tone(30 + Math.random()*15, 0.08, 'sine', 0.1);
+
+    /* 段階的な低語 */
+    if(walkProgress > 0.28 && finalCrawlMsgIndex === 0){
+      spawnWhisper(currentLang === 'zh' ? '……不要回头……' : '……振り向くな……');
+      finalCrawlMsgIndex = 1;
+    }
+    if(walkProgress > 0.58 && finalCrawlMsgIndex === 1){
+      spawnWhisper(currentLang === 'zh' ? '它在你身后' : 'それが背中にいる');
+      finalCrawlMsgIndex = 2;
+    }
+    if(walkProgress > 0.84 && finalCrawlMsgIndex === 2){
+      spawnWhisper(currentLang === 'zh' ? '门开了' : 'ドアが開いた');
+      finalCrawlMsgIndex = 3;
+    }
+
+    if(playerX >= FINAL_CRAWL.length - 12){
+      finalCrawlActive = false;
+      isWalking = false;
+      showEnding(determineEnding());
+    }
+    return;
+  }
+
+  /* ---- 通常の日 ---- */
+  if(isWalking){
+    playerX += PLAYER_WALK_SPEED * dtSec;
+    cameraX = clamp(
+      playerX - W*PLAYER_SCREEN_POS,
+      0,
+      Math.max(0, segmentWidth - W + 20)
+    );
+    playerScreenX = W*PLAYER_SCREEN_POS;
+    walkProgress = clamp(playerX / segmentWidth, 0, 1);
+    updateHUD();
+
+    if(Math.random() < 0.02) tone(40 + Math.random()*20, 0.05, 'triangle', 0.03);
+
+    if(playerX >= segmentWidth - 22){
+      isWalking = false;
+      onDayEnd();
+    }
+  }
+
+  decayLevel = DAYS[currentDay].decay;
+  applyCssVars();
+}
+
+function applyCssVars(){
+  const root = document.documentElement;
+  root.style.setProperty('--decay', decayLevel.toFixed(3));
+  root.style.setProperty('--progress', (walkProgress*100).toFixed(2) + '%');
+}
+
+function updateHUD(){
+  const filled = Math.floor(walkProgress * 8);
+  const el = $('dist-display');
+  if(el) el.textContent = '▮'.repeat(filled) + '▯'.repeat(8 - filled);
+  const pf = $('progress-fill');
+  if(pf) pf.style.width = (walkProgress*100) + '%';
+}
+
+/* ============================================================
+   16. 日次フロー
+   ============================================================ */
+function onDayEnd(){
+  if(currentDay >= DAYS.length - 1){
+    startFinalCrawl();
+    return;
+  }
+
+  gameState = STATE.TRANSITION;
+  const trans = $('day-transition');
+  const titleEl = $('transition-title');
+  const subEl = $('transition-sub');
+  const nextIdx = currentDay + 1;
+
+  titleEl.textContent = t('dayLabels')[nextIdx];
+  titleEl.setAttribute('data-text', t('dayLabels')[nextIdx]);
+  titleEl.className = 'transition-title glitch-text' + (currentDay >= 2 ? ' rotted' : '');
+  subEl.textContent = t('daySubs')[nextIdx];
+
+  trans.classList.add('active');
+
+  tone(200, 0.3, 'sine', 0.15);
+  setTimeout(()=>tone(150, 0.5, 'sawtooth', 0.12), 200);
+
+  if(currentDay === 3){
+    setTimeout(()=>{
+      tone(80, 1.5, 'sawtooth', 0.2);
+      noise(0.8, 0.15);
+    }, 800);
+  }
+
+  const delay = 2500 + currentDay*400;
+  setTimeout(()=>{
+    trans.classList.remove('active');
+    startNextDay();
+  }, delay);
+}
+
+function startNextDay(){
+  currentDay++;
+  const cfg = DAYS[currentDay];
+
+  const dayEl = $('day-display');
+  dayEl.textContent = cfg.name;
+  dayEl.className = 'hud-day'
+    + (currentDay >= 2 ? ' late' : '')
+    + (currentDay >= 4 ? ' latest' : '');
+
+  playerX = 0;
+  cameraX = 0;
+  walkProgress = 0;
+  isWalking = false;
+  playerScreenX = W*PLAYER_SCREEN_POS;
+
+  generateScene(currentDay);
+  updateHUD();
+  applyCssVars();
+
+  gameState = STATE.WALKING;
+  startAmbient(cfg);
+
+  tone(55, 1, 'sine', 0.1);
+
+  /* 日記（記憶の断片） */
+  setTimeout(()=>{
+    spawnFlash(t('dayJournals')[currentDay].replace(/<br>/g, ' '));
+  }, 1200);
+
+  /* DAY 4 の追加警告 */
+  if(currentDay === 4){
+    const msgs = t('preFinal');
+    msgs.forEach((m, i)=>{
+      setTimeout(()=>spawnWhisper(m), 3200 + i*4200);
+    });
+  }
+
+  /* 低語 */
+  if(cfg.decay > 0.3){
+    setTimeout(()=>spawnWhisper(pick(I18N[currentLang].whispers)), 2600);
+  }
+}
+
+/* ============================================================
+   17. 最終爬行
+   ============================================================ */
+function startFinalCrawl(){
+  gameState = STATE.TRANSITION;
+  stopAmbient();
+
+  finalCrawlActive  = true;
+  finalCrawlMsgIndex = 0;
+
+  document.body.classList.add('rotted');
+
+  const trans = $('day-transition');
+  const titleEl = $('transition-title');
+  const subEl = $('transition-sub');
+
+  titleEl.textContent = '——';
+  titleEl.setAttribute('data-text', '——');
+  titleEl.className = 'transition-title glitch-text rotted';
+  subEl.textContent = '';
+
+  trans.classList.add('active');
+
+  tone(40, 2, 'sine', 0.3);
+  setTimeout(()=>noise(1.0, 0.2), 300);
+  setTimeout(()=>tone(35, 3, 'sawtooth', 0.2), 800);
+
+  setTimeout(()=>{
+    trans.classList.remove('active');
+    $('game-screen').classList.add('active');
+
+    gameState = STATE.WALKING;
+    finalCrawlActive = true;
+    playerX = 0;
+    cameraX = 0;
+    walkProgress = 0;
+    playerScreenX = W*PLAYER_SCREEN_POS;
+    isWalking = true;
+
+    generateFinalCrawlScene();
+    startFinalDrone();
+  }, 4000);
+}
+
+function startFinalDrone(){
+  stopFinalDrone();
+  const tick = ()=>{
+    if(!finalCrawlActive) return;
+    tone(30 + Math.random()*15, 2.0, 'sine', 0.15);
+    if(Math.random() < 0.4) tone(60 + Math.random()*20, 0.5, 'triangle', 0.08);
+    if(Math.random() < 0.3) noise(0.3, 0.05);
+    if(Math.random() < 0.5){
+      tone(50, 0.1, 'sine', 0.25);
+      setTimeout(()=>tone(45, 0.15, 'sine', 0.2), 150 + Math.random()*100);
+    }
+    finalDroneTimer = setTimeout(tick, 800 + Math.random()*1500);
+  };
+  tick();
+}
+function stopFinalDrone(){
+  if(finalDroneTimer){ clearTimeout(finalDroneTimer); finalDroneTimer = null; }
+}
+
+function generateFinalCrawlScene(){
+  sceneObjects = [];
+  anomalies    = [];
+  particles    = [];
+  whispers     = [];
+  flashes      = [];
+  triggeredAnomalies.clear();
+
+  /* 迫る壁 */
+  for(let i=0;i<8;i++){
+    const x = 80 + i*80;
+    const w = 22 + Math.sin(i*0.8)*10;
+    const h = 52 + Math.cos(i*0.5)*20;
+    sceneObjects.push({ type:'wall', x, w, h, seed: i*7 });
+    sceneObjects.push({ type:'deco', sub:'stain', x: x+5, w: Math.max(8,w-10), h: rand(20,40), seed: i*3 });
+  }
+
+  /* 肉塊 */
+  for(let i=0;i<6;i++){
+    anomalies.push({ type:'meat', x: rand(50, 560), triggered:false, seed: i*13, intensity:0.9 });
+  }
+  /* 目 */
+  for(let i=0;i<4;i++){
+    anomalies.push({ type:'eyes', x: rand(30, 580), triggered:false, seed: i*11, intensity:0.8 });
+  }
+  /* 亀裂 */
+  for(let i=0;i<5;i++){
+    anomalies.push({ type:'crack', x: rand(40, 570), triggered:false, seed: i*17, intensity:0.85 });
+  }
+  /* 顔・手 */
+  anomalies.push({ type:'face', x: 300, triggered:false, seed:42, intensity:0.95 });
+  anomalies.push({ type:'hand', x: 460, triggered:false, seed:99, intensity:0.9 });
+
+  /* 低語 */
+  setTimeout(()=>spawnWhisper(t('preFinal')[1]), 1000);
+  setTimeout(()=>spawnWhisper('………'), 3200);
+  setTimeout(()=>{
+    spawnWhisper(currentLang === 'zh' ? '回头…' : '振り向くな…');
+  }, 5200);
+
+  sceneObjects.sort((a,b)=>a.x-b.x);
+  anomalies.sort((a,b)=>a.x-b.x);
+}
+
+/* ============================================================
+   18. エンディング
+   ============================================================ */
+function determineEnding(){
+  if(pollution >= 22) return 'consumed';
+  if(pollution >= 15) return 'alone';
+  if(pollution >= 8 ) return 'survive';
+  return 'forgotten';
+}
+
+function showEnding(type){
+  gameState = STATE.ENDING;
+  stopAmbient();
+  stopFinalDrone();
+  finalCrawlActive = false;
+
+  /* 背景を黒く塗りつぶす */
+  if(ctx){
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  const screen = $('ending-screen');
+  const titleEl = $('ending-title');
+  const raccoonEl = $('ending-raccoon');
+  const textEl = $('ending-text');
+  const statsEl = $('ending-stats');
+
+  screen.dataset.ending = type;
+
+  const days = DAYS.length;
+
+  switch(type){
+    case 'survive':
+      titleEl.textContent = t('endingSurvive');
+      titleEl.className = 'ending-title survive';
+      raccoonEl.textContent = '🦝';
+      textEl.innerHTML = t('endingSurviveText');
+      statsEl.textContent = tf('endingSurviveStats', days);
+
+      tone(220, 0.5, 'sine', 0.15);
+      setTimeout(()=>tone(277, 0.5, 'sine', 0.12), 200);
+      setTimeout(()=>tone(330, 1.0, 'sine', 0.1), 400);
+      setTimeout(()=>noise(0.3, 0.08), 1500);
+      break;
+
+    case 'alone':
+      titleEl.textContent = t('endingAlone');
+      titleEl.className = 'ending-title alone';
+      raccoonEl.textContent = '🦝💀';
+      textEl.innerHTML = t('endingAloneText');
+      statsEl.textContent = tf('endingAloneStats', days);
+
+      tone(150, 0.8, 'sawtooth', 0.15);
+      setTimeout(()=>tone(100, 1.0, 'sawtooth', 0.12), 300);
+      setTimeout(()=>noise(0.6, 0.12), 600);
+      setTimeout(()=>{
+        tone(400, 0.1, 'square', 0.06);
+        setTimeout(()=>tone(380, 0.15, 'square', 0.05), 100);
+      }, 1200);
+      break;
+
+    case 'consumed':
+      titleEl.textContent = t('endingConsumed');
+      titleEl.className = 'ending-title consumed';
+      raccoonEl.textContent = '💀🦝💀';
+      textEl.innerHTML = t('endingConsumedText');
+      statsEl.textContent = tf('endingConsumedStats', days);
+
+      noise(2.0, 0.25);
+      tone(40, 2.0, 'sawtooth', 0.2);
+      setTimeout(()=>tone(30, 3.0, 'triangle', 0.15), 500);
+      setTimeout(()=>{
+        tone(60, 0.1, 'sine', 0.3);
+        setTimeout(()=>tone(50, 0.2, 'sine', 0.25), 200);
+      }, 1000);
+      setTimeout(()=>{
+        if(audioCtx && masterGain){
+          try{
+            masterGain.gain.setTargetAtTime(0.001, audioCtx.currentTime, 0.8);
+          }catch(e){}
+        }
+      }, 2000);
+      break;
+
+    case 'forgotten':
+      titleEl.textContent = t('endingForgotten');
+      titleEl.className = 'ending-title forgotten';
+      raccoonEl.textContent = '🦝';
+      textEl.innerHTML = t('endingForgottenText');
+      statsEl.textContent = tf('endingForgottenStats', days);
+
+      tone(180, 0.6, 'sine', 0.1);
+      setTimeout(()=>tone(240, 0.8, 'sine', 0.08), 400);
+      setTimeout(()=>noise(0.4, 0.05), 900);
+      setTimeout(()=>{
+        tone(500, 0.08, 'square', 0.04);
+        setTimeout(()=>tone(490, 0.12, 'square', 0.03), 120);
+      }, 1400);
+      break;
+  }
+
+  triggerShake(type === 'consumed' ? 5 : type === 'alone' ? 3 : 1.5);
+  flashScreen(80);
+
+  screen.classList.add('active');
+}
+
+/* ============================================================
+   19. メインループ
+   ============================================================ */
+function loop(ts){
+  if(!lastTime) lastTime = ts;
+  const dt = Math.min(ts - lastTime, 50);
+  lastTime = ts;
+
+  if(gameState === STATE.WALKING){
+    update(dt);
+
+    if(ctx){
+      ctx.save();
+      if(shakeAmount > 0){
+        ctx.translate(
+          rand(-shakeAmount, shakeAmount),
+          rand(-shakeAmount, shakeAmount)
+        );
+        shakeAmount *= 0.9;
+        if(shakeAmount < 0.1) shakeAmount = 0;
+      }
+      ctx.fillStyle = '#000';
+      ctx.fillRect(-20, -20, W + 40, H + 40);
+      draw();
+      ctx.restore();
+    }
+  } else if(gameState === STATE.TITLE){
+    drawTitleCanvas(ts);
+  }
+
+  rafId = requestAnimationFrame(loop);
+}
+
+/* ============================================================
+   20. タイトル背景
+   ============================================================ */
+function drawTitleCanvas(ts){
+  if(!titleCtx) return;
+  const tm = ts * 0.001;
+
+  titleCtx.clearRect(0, 0, tW, tH);
+
+  /* 空 */
+  const sky = titleCtx.createLinearGradient(0, 0, 0, tH);
+  sky.addColorStop(0, '#050508');
+  sky.addColorStop(1, '#020203');
+  titleCtx.fillStyle = sky;
+  titleCtx.fillRect(0, 0, tW, tH);
+
+  /* 地面 */
+  titleCtx.fillStyle = '#080810';
+  titleCtx.beginPath();
+  titleCtx.moveTo(tW*0.08, tH*0.66);
+  titleCtx.lineTo(tW*0.92, tH*0.66);
+  titleCtx.lineTo(tW, tH);
+  titleCtx.lineTo(0, tH);
+  titleCtx.closePath();
+  titleCtx.fill();
+
+  /* 街灯 */
+  for(let i=0;i<5;i++){
+    const lx = ((i + 0.5) / 5) * tW + Math.sin(tm*0.3 + i)*14;
+    const lh = 36 + Math.sin(i*1.7)*18;
+    const ly = tH*0.66 - lh;
+
+    titleCtx.fillStyle = '#0a0a0f';
+    titleCtx.fillRect(lx, ly, 2, lh);
+
+    const lit = 0.3 + 0.2*Math.sin(tm*2 + i);
+    titleCtx.fillStyle = `rgba(255,180,80,${lit*0.5})`;
+    titleCtx.beginPath();
+    titleCtx.arc(lx + 1, ly - 3, safeR(4), 0, Math.PI*2);
+    titleCtx.fill();
+
+    const lg = titleCtx.createRadialGradient(lx+1, ly-3, 0, lx+1, ly-3, 56);
+    lg.addColorStop(0, `rgba(255,180,80,${lit*0.09})`);
+    lg.addColorStop(1, 'rgba(255,180,80,0)');
+    titleCtx.fillStyle = lg;
+    titleCtx.fillRect(lx - 50, ly - 50, 100, 100);
+  }
+
+  /* 漂う霧 */
+  for(let i=0;i<5;i++){
+    const fx = ((tm*(16 + i*8) + i*260) % (tW + 300)) - 150;
+    const fy = tH*0.32 + Math.sin(tm*0.5 + i)*26 + i*34;
+    const g = titleCtx.createRadialGradient(fx, fy, 0, fx, fy, 90 + i*22);
+    g.addColorStop(0, `rgba(22,22,32,${0.035 + 0.02*Math.sin(tm + i)})`);
+    g.addColorStop(1, 'rgba(22,22,32,0)');
+    titleCtx.fillStyle = g;
+    titleCtx.fillRect(fx - 120, fy - 120, 240, 240);
+  }
+
+  /* 地面ライン */
+  for(let gx = 0; gx < tW; gx += 40){
+    const shade = 5 + Math.sin(gx*0.1 + tm)*3;
+    titleCtx.fillStyle = `rgb(${Math.floor(shade)},${Math.floor(shade)},${Math.floor(shade + 2)})`;
+    titleCtx.fillRect(gx, tH*0.66, 38, 2);
+  }
+
+  /* 埃 */
+  for(let i=0;i<18;i++){
+    const px = (Math.sin(tm*0.3 + i*1.7)*0.3 + 0.5) * tW;
+    const py = (Math.cos(tm*0.2 + i*0.9)*0.3 + 0.5) * tH * 0.72;
+    const a = 0.08 + 0.09*Math.sin(tm + i);
+    titleCtx.fillStyle = `rgba(150,150,160,${Math.max(0,a)})`;
+    titleCtx.fillRect(px, py, 2, 2);
+  }
+
+  /* 走査線 */
+  titleCtx.fillStyle = 'rgba(0,0,0,0.16)';
+  for(let y=0;y<tH;y+=3) titleCtx.fillRect(0, y, tW, 1);
+}
+
+/* ============================================================
+   21. 入力
+   ============================================================ */
+function bindInput(){
+  const pressForward = e => {
+    if(e && e.cancelable) e.preventDefault();
+    resumeAudio();
+    keys.forward = true;
+    if(gameState === STATE.WALKING) isWalking = true;
+  };
+  const releaseForward = e => {
+    if(e && e.cancelable) e.preventDefault();
+    keys.forward = false;
+    isWalking = false;
+  };
+
+  const isForwardKey = k =>
+    k === 'ArrowRight' || k === 'd' || k === 'D' || k === ' ' ||
+    k === 'Enter' || k === 'ArrowUp' || k === 'w' || k === 'W';
+
+  document.addEventListener('keydown', e => {
+    if(isForwardKey(e.key)){
+      pressForward(e);
+    }
+    if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key)){
+      e.preventDefault();
+    }
+  }, {passive:false});
+
+  document.addEventListener('keyup', e => {
+    if(isForwardKey(e.key)){
+      releaseForward(e);
+    }
+  }, {passive:false});
+
+  document.addEventListener('blur', ()=>{
+    keys = {};
+    isWalking = false;
+  });
+
+  window.addEventListener('pointermove', e => {
+    const root = document.documentElement;
+    root.style.setProperty('--mx', e.clientX + 'px');
+    root.style.setProperty('--my', e.clientY + 'px');
+  }, {passive:true});
+
+  const btn = $('btn-forward');
+  if(btn){
+    btn.addEventListener('touchstart', pressForward, {passive:false});
+    btn.addEventListener('touchend', releaseForward, {passive:false});
+    btn.addEventListener('touchcancel', releaseForward, {passive:false});
+    btn.addEventListener('mousedown', pressForward);
+    btn.addEventListener('mouseup', releaseForward);
+    btn.addEventListener('mouseleave', releaseForward);
+  }
+
+  /* 画面タップでも前進（ゲーム中のみ） */
+  const gameScreen = $('game-screen');
+  if(gameScreen){
+    gameScreen.addEventListener('touchstart', e => {
+      if(e.target.closest('.ctrl-forward')) return;
+      if(gameState === STATE.WALKING) pressForward(e);
+    }, {passive:false});
+    gameScreen.addEventListener('touchend', e => {
+      if(e.target.closest('.ctrl-forward')) return;
+      releaseForward(e);
+    }, {passive:false});
+  }
+}
+
+/* ============================================================
+   22. 言語切替
+   ============================================================ */
+function toggleLanguage(){
+  currentLang = currentLang === 'ja' ? 'zh' : 'ja';
+  applyLanguage();
+}
+
+function applyLanguage(){
+  const dict = I18N[currentLang];
+
+  document.documentElement.lang = currentLang === 'ja' ? 'ja' : 'zh-CN';
+  document.title = dict.docTitle;
+
+  const titleMain = document.querySelector('.title-main');
+  if(titleMain){
+    titleMain.textContent = dict.title;
+    titleMain.setAttribute('data-text', dict.title);
+  }
+  const titleSub = document.querySelector('.title-sub');
+  if(titleSub){
+    titleSub.textContent = dict.subtitle;
+    titleSub.setAttribute('data-text', dict.subtitle);
+  }
+  const lore = document.querySelector('.title-lore');
+  if(lore) lore.innerHTML = dict.lore;
+
+  const startBtn = document.querySelector('#start-btn .btn-text');
+  if(startBtn) startBtn.textContent = dict.startBtn;
+
+  const hint = document.querySelector('.title-hint');
+  if(hint) hint.textContent = dict.hint;
+
+  const fwBtn = $('btn-forward');
+  if(fwBtn) fwBtn.textContent = dict.forward;
+
+  const againBtn = document.querySelector('#restart-btn .btn-text');
+  if(againBtn) againBtn.textContent = dict.again;
+
+  const langLabel = $('lang-label');
+  if(langLabel) langLabel.textContent = currentLang === 'ja' ? 'JA' : 'ZH';
+
+  document.body.setAttribute('data-lang', currentLang);
+}
+
+/* ============================================================
+   23. ゲーム開始・リスタート
+   ============================================================ */
+function startGame(){
+  initAudio();
+  resumeAudio();
+
+  currentDay = 0;
+  playerX = 0;
+  cameraX = 0;
+  walkProgress = 0;
+  isWalking = false;
+  decayLevel = 0;
+  pollution = 0;
+
+  finalCrawlActive = false;
+  finalCrawlMsgIndex = 0;
+  stopFinalDrone();
+
+  $('title-screen').classList.remove('active');
+  $('ending-screen').classList.remove('active');
+  $('day-transition').classList.remove('active');
+  $('game-screen').classList.add('active');
+
+  const dayEl = $('day-display');
+  dayEl.textContent = DAYS[0].name;
+  dayEl.className = 'hud-day';
+
+  playerScreenX = W*PLAYER_SCREEN_POS;
+
+  generateScene(0);
+  updateHUD();
+  applyCssVars();
+
+  gameState = STATE.WALKING;
+  startAmbient(DAYS[0]);
+
+  tone(55, 1.5, 'sine', 0.1);
+  setTimeout(()=>tone(82, 2, 'triangle', 0.06), 500);
+
+  /* 最初の日記 */
+  setTimeout(()=>{
+    spawnFlash(t('dayJournals')[0].replace(/<br>/g, ' '));
+  }, 1400);
+}
+
+function restartGame(){
+  $('ending-screen').classList.remove('active');
+  $('game-screen').classList.remove('active');
+  $('title-screen').classList.add('active');
+
+  document.body.classList.remove('rotted');
+  document.documentElement.style.setProperty('--decay', '0');
+  document.documentElement.style.setProperty('--progress', '0%');
+
+  if(masterGain && audioCtx){
+    try{
+      masterGain.gain.setTargetAtTime(0.25, audioCtx.currentTime, 0.2);
+    }catch(e){}
+  }
+
+  gameState = STATE.TITLE;
+  lastTime = 0;
+  applyLanguage();
+}
+
+/* ============================================================
+   24. 初期化
+   ============================================================ */
+function init(){
+  canvas = $('game-canvas');
+  ctx = canvas.getContext('2d', {alpha:false});
+
+  titleCanvas = $('title-canvas');
+  titleCtx = titleCanvas.getContext('2d', {alpha:false});
+
+  function resize(){
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    /* ゲームキャンバス（全画面） */
+    const gw = Math.max(320, window.innerWidth);
+    const gh = Math.max(240, window.innerHeight);
+    W = gw; H = gh;
+    canvas.width  = Math.floor(gw * dpr);
+    canvas.height = Math.floor(gh * dpr);
+    canvas.style.width  = gw + 'px';
+    canvas.style.height = gh + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    /* タイトルキャンバス */
+    tW = gw; tH = gh;
+    titleCanvas.width  = Math.floor(gw * dpr);
+    titleCanvas.height = Math.floor(gh * dpr);
+    titleCanvas.style.width  = gw + 'px';
+    titleCanvas.style.height = gh + 'px';
+    titleCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    playerScreenX = W * PLAYER_SCREEN_POS;
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', ()=>setTimeout(resize, 120));
+
+  bindInput();
+
+  const langBtn = $('lang-btn');
+  if(langBtn) langBtn.addEventListener('click', e => {
+    e.preventDefault();
+    resumeAudio();
+    toggleLanguage();
+  });
+
+  $('start-btn').addEventListener('click', e => {
+    e.preventDefault();
+    startGame();
+  });
+
+  $('restart-btn').addEventListener('click', e => {
+    e.preventDefault();
+    restartGame();
+  });
+
+  applyLanguage();
+
+  /* 初回タップでオーディオを有効化 */
+  const unlock = ()=>{
+    initAudio();
+    resumeAudio();
+    document.removeEventListener('pointerdown', unlock);
+    document.removeEventListener('touchstart', unlock);
+  };
+  document.addEventListener('pointerdown', unlock);
+  document.addEventListener('touchstart', unlock, {passive:true});
+
+  lastTime = 0;
+  rafId = requestAnimationFrame(loop);
+}
+
+init();
+
+})();
+</script>
 </body>
 </html>
