@@ -2230,7 +2230,36 @@ var SCENES = {
         say('——它记得脖子上有过一根一样的东西。');
         say('——但它不记得，绳子是什么时候断的。');
       },
+      back: function(){
+        say('灰豆转过身。');
+        say('——顺着来的路，往回走。');
+        say('它的爪子，还在抖。');
+        say('——像是有什么东西，一直在身后看着它。');
+        changeScene('street', '街 道');
+      },
       exit: function(){
+        var inv = getInv();
+        var has1 = inv.indexOf('photo1') !== -1 || inv.indexOf('photoFull') !== -1;
+        var has2 = inv.indexOf('photo2') !== -1 || inv.indexOf('photoFull') !== -1;
+        if(!has1 || !has2){
+          say('灰豆把爪子放在门上。');
+          say('——门没有开。');
+          say('它停住了。');
+          say('——好像还有什么东西，没有找到。');
+          if(!has1 && !has2){
+            say('（两张照片碎片，都还没有找到。）');
+            say('（一张在**后巷**，一张在**便利店**。）');
+          } else if(!has1){
+            say('（还缺**左半张**照片。）');
+            say('（好像是在**后巷**的什么地方。）');
+          } else {
+            say('（还缺**右半张**照片。）');
+            say('（好像是在**便利店**的什么地方。）');
+          }
+          say('灰豆转过身。');
+          say('——得先回去，把东西找齐。');
+          return;
+        }
         say('房间另一头，有一扇门。');
         say('门板烧得只剩半边。');
         say('门缝里透出一线暗红的光。');
