@@ -12,11 +12,8 @@ function getCtx(){ return ctx; }
 
 function flags(){ return (window.S && window.S.flags) || {}; }
 function isPowerCut(){ return !!flags().powerCut; }
-/* ★ 血腥模式：bloodMode 为 true，且非主播模式 */
-function isBloodMode(){
-  const f = flags();
-  return !!(f.bloodMode && !f.streamerMode);
-}
+/* ★ 暗色分支：只判断 bloodMode，与主播模式无关 */
+function isBloodMode(){ return !!flags().bloodMode; }
 
 /* ================== 工具 ================== */
 function rrect(x,y,w,h,r){
@@ -145,7 +142,7 @@ function drawAlleyStatic(){
     }
   });
 
-  /* 远处红屋顶：血腥模式下变成烧焦的黑屋顶 */
+  /* 远处红屋顶：暗色模式下变成烧焦的黑屋顶 */
   const hx = 780, hy = 210;
   ctx.fillStyle = blood ? '#180808' : '#2c1414';
   ctx.beginPath();
@@ -218,7 +215,7 @@ function drawAlleyStatic(){
   ]);
   ctx.fillRect(0, 380, 160, 160);
 
-  /* 墙上的苔痕：血腥模式下变成红色斑 */
+  /* 墙上的苔痕：暗色模式下变成红色斑 */
   for(let i=0;i<20;i++){
     const mx = 6 + (i*43)%148;
     const my = 60 + (i*67)%430;
@@ -326,7 +323,7 @@ function drawAlleyStatic(){
     ctx.stroke();
   }
 
-  /* 水洼（普通） */
+  /* 水洼 */
   ctx.save();
   ctx.beginPath();
   ctx.ellipse(330, 492, 100, 22, 0, 0, Math.PI*2);
@@ -348,7 +345,7 @@ function drawAlleyStatic(){
   }
   ctx.restore();
 
-  /* 血腥模式的额外暗红水渍 */
+  /* 暗色模式下额外暗红水渍 */
   if(blood){
     ctx.fillStyle = 'rgba(140,20,30,0.35)';
     ctx.beginPath();
@@ -629,7 +626,7 @@ function drawBackstreetDynamic(t, dt){
     ctx.beginPath(); ctx.arc(dx + dw/2, dy + dh/2, 8, 0, Math.PI*2); ctx.fill();
   }
 
-  /* 猫：血腥模式下不绘制 */
+  /* 猫：暗色模式下不绘制 */
   if(!f.catGone && !blood) drawCat(246, 354, t);
 }
 
@@ -719,7 +716,7 @@ function drawShopStatic(){
       ctx.fillStyle = itemC;
       ctx.fillRect(126 + j*42, y - h0, w0, h0);
       if(blood){
-        /* 血腥模式：罐头标签是暗红的 */
+        /* 暗色模式下：罐头标签是暗红的 */
         ctx.fillStyle = 'rgba(200,30,40,0.55)';
         ctx.fillRect(126 + j*42, y - h0 + 4, w0 - 2, h0 - 10);
       } else if(lit){
@@ -807,7 +804,7 @@ function drawShopDynamic(t, dt){
     ctx.fillStyle = g2;
     ctx.fillRect(0, 0, W, H);
   } else if(blood){
-    /* 血腥模式下的暗红氛围 */
+    /* 暗色模式下的暗红氛围 */
     const g2 = ctx.createRadialGradient(470, 400, 0, 470, 400, 640);
     g2.addColorStop(0, 'rgba(140,15,25,0.22)');
     g2.addColorStop(1, 'rgba(80,5,15,0)');
@@ -2451,7 +2448,7 @@ function drawRiversideDynamic(t, dt){
 /* =========================================================
    场景 SPOTS 定义
    ★ 已移除所有 arrows
-   ★ 血腥分支相关 spot 用 cond 条件控制可见性
+   ★ 暗色分支 spot 只根据 bloodMode 出现，与主播模式无关
    ========================================================= */
 const SCENES = {
   alley: {
@@ -2464,9 +2461,9 @@ const SCENES = {
       { id:'photo1',   x:442, y:470, w:70,  h:56,  label:'湿透的纸片',
         cond: () => !flags().photo1Taken && !flags().bloodMode },
       { id:'puddle',   x:236, y:466, w:190, h:56,  label:'水洼' },
-      /* ★ 血腥分支：墙根窄缝（只在 bloodMode 且非主播模式时出现） */
+      /* ★ 暗色分支：墙根窄缝（只要处于 bloodMode 就出现） */
       { id:'bloodExit', x:170, y:520, w:60, h:20, label:'墙根窄缝',
-        cond: () => flags().bloodMode && !flags().streamerMode },
+        cond: () => flags().bloodMode },
       { id:'exit',     x:892, y:244, w:52,  h:52,  label:'巷子深处' }
     ]
   },
@@ -2477,7 +2474,7 @@ const SCENES = {
       { id:'mold',   x:556, y:262, w:70,  h:70,  label:'墙上的霉斑' },
       { id:'box',    x:166, y:312, w:184, h:170, label:'纸箱' },
       { id:'cat',    x:196, y:288, w:150, h:84,  label:'大橘',
-        cond: () => !flags().catGone },
+        cond: () => !flags().catGone && !flags().bloodMode },
       { id:'door',   x:566, y:130, w:210, h:340, label:'后门' },
       { id:'powerDoor', x:390, y:290, w:180, h:170, label:'配电房' },
       { id:'back',   x:16,  y:244, w:52,  h:52,  label:'回到雨巷' }
