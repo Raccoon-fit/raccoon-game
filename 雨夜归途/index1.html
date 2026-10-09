@@ -1311,13 +1311,18 @@ var SCENES = {
 
       window: function(){
         if(isBloodMode()){
+          if(!torchLit()){
+            say('后窗外一片漆黑。');
+            say('——那种连雨都照不亮的黑。');
+            say('灰豆不想在{{什么都看不见}}的时候往里钻。');
+            return;
+          }
           say('后窗外，是一片黑。');
           say('——那种连雨都照不亮的黑。');
-          say('灰豆不想往里钻。');
-          say('——但后窗玻璃上，有一层**水汽**。');
-          say('水汽上，画着一只很小的手印。');
-          say('——五个指头。');
-          say('——浣熊只有四个。');
+          say('但灰豆还是钻了出去。');
+          say('——它不想留在室内。');
+          changeScene('street', '街 道');
+          say('窗台太高，回不去了。');
           return;
         }
         if(!torchLit()){
@@ -2423,9 +2428,9 @@ function checkCombos(){
     return;
   }
   if(myInv.indexOf('hook') !== -1 && myInv.indexOf('rope') !== -1 && myInv.indexOf('grapnel') === -1){
-    var n = myInv.filter(function(i){ return i!=='hook' && i!=='rope'; });
-    n.push('grapnel');
-    setInv(n);
+    var n2 = myInv.filter(function(i){ return i!=='hook' && i!=='rope'; });
+    n2.push('grapnel');
+    setInv(n2);
     renderInv('grapnel'); save(); syncState();
     comboLock = false;
     say('灰豆把晾衣绳一圈一圈缠在挂钩上，打了个死结。');
@@ -2492,6 +2497,7 @@ function toast(msg){
   clearTimeout(toastTimer);
   toastTimer = setTimeout(function(){ toastEl.classList.remove('show'); }, 3000);
 }
+/* ★ 修复：pickup 里立即触发 checkCombos，避免玩家拿齐道具不合成 */
 function pickup(id){
   if(!S || !ITEMS[id]) return;
   var arr = getInv();
@@ -2500,6 +2506,7 @@ function pickup(id){
   renderInv(id);
   toast('获得 · ' + ITEMS[id].name);
   save();
+  checkCombos();
 }
 
 /* ========================================================
