@@ -1,8 +1,9 @@
 /* =========================================================
    common.js — 引擎核心
    状态 / 雨 / 涟漪 / 光尘 / 箭头 / 环境灯 / 渲染 / 通信
-   + 移动端触控板式虚拟光标（支持实体鼠标动态切换）
+   + 移动端触控板式虚拟光标
    + 主播模式"临时点亮全局"
+   + ★ 暗色分支 overlay
    ========================================================= */
 (function(){
 'use strict';
@@ -30,10 +31,9 @@ let rain = [], ripples = [], motes = [];
 const MAX_RIPPLES = 18;
 const PERF = { rain:95, motes:22 };
 
-/* ★ 主播模式临时点亮：剩余计时 */
 let tempLightTimer = 0;
-const TEMP_FADE = 0.6;      /* 渐亮 / 渐暗各 0.6 秒 */
-const TEMP_HOLD = 3.0;      /* 保持 3 秒 */
+const TEMP_FADE = 0.6;
+const TEMP_HOLD = 3.0;
 const TEMP_TOTAL = TEMP_FADE + TEMP_HOLD + TEMP_FADE;
 
 const VC = {
@@ -82,6 +82,8 @@ function setSceneCtx(c){
 }
 
 function isPowerCut(){ return !!(window.S.flags && window.S.flags.powerCut); }
+function isBloodMode(){ return !!(window.S.flags && window.S.flags.bloodMode); }
+function isStreamerMode(){ return !!(window.S.flags && window.S.flags.streamerMode); }
 
 function rrectOn(c,x,y,w,h,r){
   c.beginPath();
@@ -107,7 +109,10 @@ function rebuildRain(){
 function drawRain(dt){
   if(!rain.length) return;
   mainCtx.save();
-  mainCtx.strokeStyle = 'rgba(168,205,240,0.9)';
+  /* 血腥模式下，雨的颜色偏红 */
+  mainCtx.strokeStyle = isBloodMode() && !isStreamerMode()
+    ? 'rgba(220,150,150,0.85)'
+    : 'rgba(168,205,240,0.9)';
   mainCtx.lineWidth = 1;
   for(let i=0;i<rain.length;i++){
     const d = rain[i];
@@ -138,7 +143,9 @@ function updateRipples(dt){
 function drawRipples(){
   if(!ripples.length) return;
   mainCtx.save();
-  mainCtx.strokeStyle = 'rgba(170,205,240,0.55)';
+  mainCtx.strokeStyle = isBloodMode() && !isStreamerMode()
+    ? 'rgba(220,150,150,0.55)'
+    : 'rgba(170,205,240,0.55)';
   mainCtx.lineWidth = 1.2;
   for(let i=0;i<ripples.length;i++){
     const p = ripples[i];
@@ -183,10 +190,11 @@ function cacheKey(){
   const f = window.S.flags || {};
   const b = n => n ? '1' : '0';
   const p = b(f.powerCut);
+  const bl = b(f.bloodMode && !f.streamerMode);
   switch(currentSceneKey){
-    case 'alley':       return b(f.trash) + b(f.photo1Taken) + p;
-    case 'backstreet':  return b(f.catfoodTaken) + b(f.catGone) + b(f.doorOpen) + p;
-    case 'shop':        return b(f.torchTaken) + b(f.batteryTaken) + b(f.lightsOn) + b(f.photo2Taken) + p;
+    case 'alley':       return b(f.trash) + b(f.photo1Taken) + p + bl;
+    case 'backstreet':  return b(f.catfoodTaken) + b(f.catGone) + b(f.doorOpen) + p + bl;
+    case 'shop':        return b(f.torchTaken) + b(f.batteryTaken) + b(f.lightsOn) + b(f.photo2Taken) + p + bl;
     case 'street':      return b(f.ropeTaken) + b(f.gateOpen) + p;
     case 'doorstep':    return b(f.powerCut);
     case 'house':       return b(f.photoJoined) + b(window.__ENDING__) + p;
@@ -228,18 +236,12 @@ function getLitBg(){
   const cctx = c.getContext('2d');
   cctx.clearRect(0, 0, W, H);
 
-  try{
-    cctx.filter = 'brightness(2.05) saturate(1.18) contrast(1.05)';
-    cctx.drawImage(src, 0, 0);
-    cctx.filter = 'none';
-  }catch(e){
-    cctx.drawImage(src, 0, 0);
-    cctx.globalCompositeOperation = 'lighter';
-    cctx.globalAlpha = 0.7;
-    cctx.drawImage(src, 0, 0);
-    cctx.globalAlpha = 1;
-    cctx.globalCompositeOperation = 'source-over';
-  }
+  /* 使用 globalCompositeOperation 加半透明白色叠加来提亮（最兼容） */
+  cctx.drawImage(src, 0, 0);
+  cctx.globalCompositeOperation = 'lighter';
+  cctx.fillStyle = 'rgba(240, 224, 200, 0.55)';
+  cctx.fillRect(0, 0, W, H);
+  cctx.globalCompositeOperation = 'source-over';
 
   bgCache.__lit = { canvas: c, key };
   return c;
@@ -266,6 +268,7 @@ function getDynamicCanvas(){
 }
 
 function drawArrow(dir, x, y, t){
+  /* 已不使用箭头，保留函数以防老代码调用 */
   const pulse = 0.55 + 0.45 * Math.sin(t * 2.2);
   const bob = Math.sin(t * 2.2) * 3;
   const sign = dir === 'left' ? -1 : 1;
@@ -287,13 +290,6 @@ function drawArrow(dir, x, y, t){
   mainCtx.lineWidth = 2;
   mainCtx.beginPath(); mainCtx.arc(0, 0, 24, 0, Math.PI*2); mainCtx.stroke();
 
-  mainCtx.strokeStyle = `rgba(255,214,140,${(0.22 + 0.2*pulse).toFixed(3)})`;
-  mainCtx.lineWidth = 1;
-  mainCtx.setLineDash([3, 4]);
-  mainCtx.lineDashOffset = -t * 18 * sign;
-  mainCtx.beginPath(); mainCtx.arc(0, 0, 19, 0, Math.PI*2); mainCtx.stroke();
-  mainCtx.setLineDash([]);
-
   mainCtx.strokeStyle = `rgba(255,238,195,${(0.82 + 0.18*pulse).toFixed(3)})`;
   mainCtx.lineWidth = 3.4;
   mainCtx.lineCap = 'round';
@@ -314,7 +310,8 @@ function drawAmbientLights(t){
   if(!spots.length) return;
 
   const cut = isPowerCut();
-  const baseAlpha = cut ? 0.10 : 0.18;
+  const blood = isBloodMode() && !isStreamerMode();
+  const baseAlpha = blood ? 0.16 : (cut ? 0.10 : 0.18);
   const pulse = 0.75 + 0.25 * Math.sin(t * 1.6);
 
   mainCtx.save();
@@ -328,26 +325,17 @@ function drawAmbientLights(t){
     const R = Math.min(maxR + 34, 96);
 
     const g = mainCtx.createRadialGradient(cx, cy, 0, cx, cy, R);
-    g.addColorStop(0,   `rgba(255,222,160,${(baseAlpha * pulse).toFixed(3)})`);
-    g.addColorStop(0.5, `rgba(255,205,125,${(baseAlpha * 0.35 * pulse).toFixed(3)})`);
-    g.addColorStop(1,   'rgba(255,200,120,0)');
+    if(blood){
+      g.addColorStop(0,   `rgba(255,160,140,${(baseAlpha * pulse).toFixed(3)})`);
+      g.addColorStop(0.5, `rgba(220,90,80,${(baseAlpha * 0.35 * pulse).toFixed(3)})`);
+      g.addColorStop(1,   'rgba(200,60,60,0)');
+    } else {
+      g.addColorStop(0,   `rgba(255,222,160,${(baseAlpha * pulse).toFixed(3)})`);
+      g.addColorStop(0.5, `rgba(255,205,125,${(baseAlpha * 0.35 * pulse).toFixed(3)})`);
+      g.addColorStop(1,   'rgba(255,200,120,0)');
+    }
     mainCtx.fillStyle = g;
     mainCtx.fillRect(cx - R, cy - R, R*2, R*2);
-
-    const dot = mainCtx.createRadialGradient(cx, cy, 0, cx, cy, 5);
-    dot.addColorStop(0, `rgba(255,242,208,${(0.55 * pulse).toFixed(3)})`);
-    dot.addColorStop(0.6, `rgba(255,220,150,${(0.22 * pulse).toFixed(3)})`);
-    dot.addColorStop(1, 'rgba(255,220,150,0)');
-    mainCtx.fillStyle = dot;
-    mainCtx.beginPath(); mainCtx.arc(cx, cy, 5, 0, Math.PI*2); mainCtx.fill();
-
-    if(cut){
-      const cool = mainCtx.createRadialGradient(cx, cy, 0, cx, cy, R*0.7);
-      cool.addColorStop(0, `rgba(140,190,240,${(0.05 * pulse).toFixed(3)})`);
-      cool.addColorStop(1, 'rgba(140,190,240,0)');
-      mainCtx.fillStyle = cool;
-      mainCtx.fillRect(cx - R, cy - R, R*2, R*2);
-    }
   }
   mainCtx.restore();
 }
@@ -505,30 +493,24 @@ function isDarkScene(){
 
 function renderDynamicLayer(scene, t, dt){
   if(!scene.dynamic) return;
-
   const f = window.S.flags || {};
   const torchOn = !!f.torchOn;
   const dark = isDarkScene();
-
   if(!dark || !torchOn){
     scene.dynamic(t, dt);
     return;
   }
-
   const dcv = getDynamicCanvas();
   const dctx = dcv.getContext('2d');
   dctx.globalCompositeOperation = 'source-over';
   dctx.globalAlpha = 1;
   dctx.clearRect(0, 0, W, H);
-
   setSceneCtx(dctx);
   scene.dynamic(t, dt);
   setSceneCtx(mainCtx);
-
   let mx = mouse.x, my = mouse.y;
   if(!hasPointer){ mx = W * 0.5; my = H * 0.58; }
   const R = 290;
-
   dctx.globalCompositeOperation = 'destination-in';
   const mask = dctx.createRadialGradient(mx, my, 0, mx, my, R);
   mask.addColorStop(0,    'rgba(0,0,0,1)');
@@ -539,38 +521,44 @@ function renderDynamicLayer(scene, t, dt){
   dctx.fillStyle = mask;
   dctx.fillRect(0, 0, W, H);
   dctx.globalCompositeOperation = 'source-over';
-
   mainCtx.drawImage(dcv, 0, 0);
 }
 
-/* ★ 主播模式：临时点亮全局（渐亮 → 保持 → 渐暗） */
+/* ★ 暗色分支 overlay */
+function drawBloodOverlay(){
+  if(!isBloodMode()) return;
+  if(isStreamerMode()) return; /* 主播模式下不显示 */
+  mainCtx.save();
+  /* 暗红薄雾 */
+  mainCtx.fillStyle = 'rgba(60, 8, 12, 0.26)';
+  mainCtx.fillRect(0, 0, W, H);
+  mainCtx.fillStyle = 'rgba(120, 20, 30, 0.10)';
+  mainCtx.fillRect(0, 0, W, H);
+  /* 暗角更重 */
+  const vg = mainCtx.createRadialGradient(W/2, H/2, H*0.28, W/2, H/2, H*0.92);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(40, 0, 5, 0.55)');
+  mainCtx.fillStyle = vg;
+  mainCtx.fillRect(0, 0, W, H);
+  mainCtx.restore();
+}
+
+/* ★ 临时点亮 */
 function drawTempLight(dt){
   if(tempLightTimer <= 0) return;
-
   tempLightTimer = Math.max(0, tempLightTimer - dt);
   const elapsed = TEMP_TOTAL - tempLightTimer;
-
   let alpha = 0;
-  if(elapsed < TEMP_FADE){
-    alpha = elapsed / TEMP_FADE;                              /* 渐亮 */
-  } else if(elapsed < TEMP_FADE + TEMP_HOLD){
-    alpha = 1;                                                /* 保持 */
-  } else if(elapsed < TEMP_TOTAL){
-    alpha = Math.max(0, (TEMP_TOTAL - elapsed) / TEMP_FADE);  /* 渐暗 */
-  } else {
-    return;
-  }
-
+  if(elapsed < TEMP_FADE){ alpha = elapsed / TEMP_FADE; }
+  else if(elapsed < TEMP_FADE + TEMP_HOLD){ alpha = 1; }
+  else if(elapsed < TEMP_TOTAL){ alpha = Math.max(0, (TEMP_TOTAL - elapsed) / TEMP_FADE); }
+  else return;
   if(alpha <= 0.001) return;
-
-  /* 叠加亮版背景 */
   const lit = getLitBg();
   mainCtx.save();
   mainCtx.globalAlpha = alpha * 0.92;
   mainCtx.drawImage(lit, 0, 0);
   mainCtx.restore();
-
-  /* 柔和的暖白光叠加，让过渡更圆润 */
   mainCtx.save();
   mainCtx.globalCompositeOperation = 'lighter';
   mainCtx.fillStyle = `rgba(255,240,205,${(alpha * 0.10).toFixed(3)})`;
@@ -617,11 +605,15 @@ function render(dt, t){
 
   drawTorchDarknessOverlay();
 
-  /* ★ 临时点亮：放在黑暗遮罩之后、UI 之前 */
+  /* ★ 暗色分支：叠加红光 + 重暗角 */
+  drawBloodOverlay();
+
+  /* 临时点亮 */
   drawTempLight(dt);
 
   drawAmbientLights(t);
 
+  /* 已不使用箭头，这里保留兼容 */
   if(scene.arrows){
     for(let i = 0; i < scene.arrows.length; i++){
       const a = scene.arrows[i];
@@ -717,7 +709,8 @@ function resizeCanvas(){
   cv.style.height = cssH + 'px';
   cv.style.left = Math.round((vw - cssW) / 2) + 'px';
   cv.style.top  = Math.round((vh - cssH) / 2) + 'px';
-  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  /* DPR 上限降为 1.0，降低安卓 WebView 闪退率 */
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.0);
   cv.width  = Math.round(cssW * dpr);
   cv.height = Math.round(cssH * dpr);
   mainCtx.setTransform(cv.width / W, 0, 0, cv.height / H, 0, 0);
@@ -740,16 +733,13 @@ function bindInput(){
     updateMouseFromEvent(e.clientX, e.clientY);
     pointerAlpha = 0.8;
   });
-
   cv.addEventListener('mouseleave', () => {
     if(inputMode !== 'mouse') return;
     pointerAlpha = 0;
   });
-
   window.addEventListener('blur', () => {
     if(inputMode === 'mouse') pointerAlpha = 0;
   });
-
   cv.addEventListener('click', e => {
     const now = performance.now();
     if(now - lastTouchTime < 700) return;
@@ -764,20 +754,14 @@ function bindInput(){
     if(!e.touches.length) return;
     lastTouchTime = performance.now();
     inputMode = 'touch';
-
     const t0 = e.touches[0];
     VC.tracking = true;
     VC.lastTX = t0.clientX;
     VC.lastTY = t0.clientY;
     VC.startTime = performance.now();
     VC.movedDist = 0;
-
-    if(!hasPointer){
-      VC.x = W * 0.5;
-      VC.y = H * 0.55;
-    }
-    mouse.x = VC.x;
-    mouse.y = VC.y;
+    if(!hasPointer){ VC.x = W * 0.5; VC.y = H * 0.55; }
+    mouse.x = VC.x; mouse.y = VC.y;
     hasPointer = true;
     pointerAlpha = 1;
   }, {passive:false});
@@ -788,22 +772,16 @@ function bindInput(){
     lastTouchTime = performance.now();
     inputMode = 'touch';
     if(!VC.tracking) return;
-
     const t0 = e.touches[0];
     const dxs = t0.clientX - VC.lastTX;
     const dys = t0.clientY - VC.lastTY;
-    VC.lastTX = t0.clientX;
-    VC.lastTY = t0.clientY;
+    VC.lastTX = t0.clientX; VC.lastTY = t0.clientY;
     VC.movedDist += Math.sqrt(dxs*dxs + dys*dys);
-
     const r = cv.getBoundingClientRect();
-    const kx = W / r.width;
-    const ky = H / r.height;
+    const kx = W / r.width, ky = H / r.height;
     VC.x = Math.max(0, Math.min(W, VC.x + dxs * kx * VC.sensitivity));
     VC.y = Math.max(0, Math.min(H, VC.y + dys * ky * VC.sensitivity));
-
-    mouse.x = VC.x;
-    mouse.y = VC.y;
+    mouse.x = VC.x; mouse.y = VC.y;
   }, {passive:false});
 
   cv.addEventListener('touchend', e => {
@@ -811,32 +789,18 @@ function bindInput(){
     lastTouchTime = performance.now();
     if(!VC.tracking) return;
     VC.tracking = false;
-
     const t0 = e.changedTouches && e.changedTouches[0];
     const dtms = performance.now() - VC.startTime;
-
     if(VC.movedDist < 20 && dtms < 800){
       let hit = null;
-
-      /* ① 优先用触摸位置查 spot */
       if(t0){
         const r = cv.getBoundingClientRect();
         const tx = (t0.clientX - r.left) * (W / r.width);
         const ty = (t0.clientY - r.top) * (H / r.height);
         hit = findSpotAt(tx, ty);
-        if(hit){
-          VC.x = tx;
-          VC.y = ty;
-          mouse.x = tx;
-          mouse.y = ty;
-        }
+        if(hit){ VC.x = tx; VC.y = ty; mouse.x = tx; mouse.y = ty; }
       }
-
-      /* ② 备用：虚拟光标位置 */
-      if(!hit){
-        hit = findSpotAt(VC.x, VC.y);
-      }
-
+      if(!hit) hit = findSpotAt(VC.x, VC.y);
       if(hit){
         window.parent.postMessage({ type:'hit', spotId:hit.id }, '*');
         VC.clickX = mouse.x;
@@ -845,10 +809,7 @@ function bindInput(){
       }
     }
   }, {passive:false});
-
-  cv.addEventListener('touchcancel', () => {
-    VC.tracking = false;
-  }, {passive:false});
+  cv.addEventListener('touchcancel', () => { VC.tracking = false; });
 }
 
 function bindMessage(){
@@ -865,10 +826,7 @@ function bindMessage(){
     }
     else if(d.type === 'setEnding'){ window.__ENDING__ = !!d.value; }
     else if(d.type === 'setHighlight'){ highlightTimer = d.duration || 5; }
-    /* ★ 主播模式：临时点亮全局 */
-    else if(d.type === 'tempLight'){
-      tempLightTimer = TEMP_TOTAL;
-    }
+    else if(d.type === 'tempLight'){ tempLightTimer = TEMP_TOTAL; }
   });
   window.parent.postMessage({ type:'ready' }, '*');
 }
@@ -895,22 +853,17 @@ function boot(sceneKey){
   inputMode = touchMode ? 'touch' : 'mouse';
 
   if(touchMode){
-    VC.x = W * 0.5;
-    VC.y = H * 0.55;
+    VC.x = W * 0.5; VC.y = H * 0.55;
     VC.sensitivity = 2.2;
-    mouse.x = VC.x;
-    mouse.y = VC.y;
+    mouse.x = VC.x; mouse.y = VC.y;
     hasPointer = true;
     pointerAlpha = 1;
-
     try{
       if(!sessionStorage.getItem('vc_hint_shown')){
         vcHintTimer = 6.5;
         sessionStorage.setItem('vc_hint_shown', '1');
       }
-    }catch(e){
-      vcHintTimer = 6.5;
-    }
+    }catch(e){ vcHintTimer = 6.5; }
   }
 
   resizeCanvas();
@@ -938,10 +891,8 @@ function drawTorchBackground(t){
   const f = window.S.flags || {};
   const on = !!f.torchOn;
   if(!on) return;
-
   let mx = mouse.x, my = mouse.y;
   if(!hasPointer){ mx = W * 0.5; my = H * 0.58; }
-
   const darkScene = isDarkScene();
   const flick = 0.93 + 0.07 * Math.sin(t * 17) * (Math.random() > 0.85 ? 1.5 : 1);
   const R = darkScene ? 290 : 230;
@@ -962,7 +913,6 @@ function drawTorchBackground(t){
   tctx.globalCompositeOperation = 'source-over';
   tctx.clearRect(0, 0, W, H);
   tctx.drawImage(lit, 0, 0);
-
   tctx.globalCompositeOperation = 'destination-in';
   const mask = tctx.createRadialGradient(mx, my, 0, mx, my, R);
   mask.addColorStop(0,    'rgba(0,0,0,1)');
