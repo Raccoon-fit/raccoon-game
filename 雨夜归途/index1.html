@@ -131,9 +131,6 @@ body.streamer-mode #btnTempLight{display:inline-flex;}
 #dlg .w{color:#ff9a8a;font-weight:700;text-shadow:0 0 14px rgba(255,110,90,.35);}
 #dlg .r{color:#ff5a5a;font-weight:700;text-shadow:0 0 14px rgba(255,60,60,.5);}
 
-/* =========================================================
-   设置面板
-   ========================================================= */
 #settings{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.94);
   width:580px;max-height:580px;border-radius:18px;
   background:linear-gradient(180deg,rgba(14,23,36,.985),rgba(7,12,20,.995));
@@ -251,7 +248,6 @@ body.streamer-mode #btnTempLight{display:inline-flex;}
 #warnConfirm{color:#fff;background:linear-gradient(180deg,#ff6a5a,#c9342a);
   border:1px solid #ff6a5a;font-weight:700;box-shadow:0 4px 16px rgba(255,90,70,.35);}
 
-/* ★ 血腥分支确认弹窗 */
 #bloodWarnMask{position:absolute;inset:0;background:rgba(20,2,6,.82);
   display:flex;align-items:center;justify-content:center;
   opacity:0;pointer-events:none;transition:opacity .22s;
@@ -286,7 +282,6 @@ body.streamer-mode #btnTempLight{display:inline-flex;}
   box-shadow:0 4px 20px rgba(220,50,60,.5),0 0 24px rgba(180,20,30,.35);}
 #bloodConfirm:hover{background:linear-gradient(180deg,#ff5a60,#a8242a);}
 
-/* ★ 主播模式冲突提醒弹窗（仅提醒，不影响任何状态） */
 #streamerWarnMask{position:absolute;inset:0;background:rgba(2,8,10,.72);
   display:flex;align-items:center;justify-content:center;
   opacity:0;pointer-events:none;transition:opacity .2s;
@@ -315,7 +310,6 @@ body.streamer-mode #btnTempLight{display:inline-flex;}
   border:1px solid #7ff0b0;font-weight:700;
   box-shadow:0 4px 16px rgba(80,240,150,.35);}
 
-/* ★ 主播模式拦截弹窗（拦截进入暗色支线） */
 #streamerBlockMask{position:absolute;inset:0;background:rgba(6,2,2,.78);
   display:flex;align-items:center;justify-content:center;
   opacity:0;pointer-events:none;transition:opacity .2s;
@@ -344,6 +338,7 @@ body.streamer-mode #btnTempLight{display:inline-flex;}
   box-shadow:0 4px 16px rgba(255,150,80,.35);}
 #streamerBlockBox button:active{transform:scale(.96);}
 
+/* ★ 正常结局 */
 #ending{position:absolute;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:20px;
   background:radial-gradient(ellipse at center,rgba(255,248,232,.98),rgba(230,216,190,.99));
@@ -355,6 +350,28 @@ body.streamer-mode #btnTempLight{display:inline-flex;}
 #ending button{margin-top:22px;padding:13px 42px;font-size:16px;letter-spacing:5px;
   font-family:inherit;cursor:pointer;border-radius:11px;color:#4a3b28;
   background:rgba(255,255,255,.5);border:1px solid rgba(120,95,60,.4);transition:.15s;}
+
+/* ★ 血腥结局 */
+#bloodEnding{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:16px;
+  background:radial-gradient(ellipse at center,rgba(28,6,10,.985),rgba(6,1,3,.995));
+  opacity:0;pointer-events:none;transition:opacity 2.4s;color:#e6c2c2;z-index:36;}
+#bloodEnding.show{opacity:1;pointer-events:auto;}
+#bloodEnding h2{font-size:42px;letter-spacing:16px;margin:0 0 8px;font-weight:600;
+  padding-left:16px;color:#ff8a8a;
+  text-shadow:0 0 40px rgba(220,40,60,.65),0 4px 24px rgba(0,0,0,.95);}
+#bloodEnding p{font-size:16px;line-height:2.05;letter-spacing:2.5px;margin:0;
+  text-align:center;color:#c9a6a6;max-width:640px;}
+#bloodEnding p .dim{color:#8f7070;}
+#bloodEnding p .hl{color:#ff9a8a;font-weight:700;
+  text-shadow:0 0 10px rgba(255,90,90,.5);}
+#bloodEnding button{margin-top:26px;padding:13px 42px;font-size:16px;letter-spacing:5px;
+  font-family:inherit;cursor:pointer;border-radius:11px;
+  color:#e6c2c2;background:rgba(60,12,18,.55);
+  border:1px solid rgba(220,60,70,.45);transition:.2s;}
+#bloodEnding button:hover{background:rgba(80,18,26,.7);
+  border-color:rgba(255,110,110,.6);color:#ffd0d0;}
+
 #loadingScreen{position:absolute;left:0;top:0;width:100%;height:100%;
   background:#020408;display:flex;align-items:center;justify-content:center;
   opacity:1;transition:opacity .45s ease;z-index:60;pointer-events:auto;}
@@ -480,10 +497,33 @@ body.streamer-mode #btnTempLight{display:inline-flex;}
         <button id="streamerBlockOk">知 道 了</button>
       </div>
     </div></div>
+
+    <!-- ★ 正常结局 -->
     <div id="ending">
       <h2>雨 停 了</h2>
       <p>第二天早上，红屋顶的房子门口，多了一只浣熊。<br>它在晒太阳。</p>
       <button id="btnAgain">再 走 一 次</button>
+    </div>
+
+    <!-- ★ 血腥结局 -->
+    <div id="bloodEnding">
+      <h2>雨 还 在 下</h2>
+      <p>灰豆把两片纸拼在一起。</p>
+      <p>照片上的老人没有笑。小浣熊在哭。</p>
+      <p class="dim">——不是它要找的那一张。</p>
+      <p>它想起来了。</p>
+      <p><span class="hl">全部。</span></p>
+      <p>那栋房子烧起来的那一夜，它从窗户跳了出去。</p>
+      <p>老人没有追出来。</p>
+      <p>——也许是因为，他追不动了。</p>
+      <p>灰豆一直都知道这件事。</p>
+      <p>它只是<span class="hl">不想承认</span>。</p>
+      <p>它跑了很多年。</p>
+      <p>回到这里，只是想告诉自己：</p>
+      <p class="dim">“那天，我只是迷路了。”</p>
+      <p>——但它没有。</p>
+      <p>它只是<span class="hl">跑掉了</span>。</p>
+      <button id="btnBloodAgain">再 走 一 次</button>
     </div>
   </div>
   <div id="loadingScreen"><div class="loading-box">
@@ -521,6 +561,7 @@ var dlgEl        = document.getElementById('dlg');
 var dlgMaskEl    = document.getElementById('dlgMask');
 var toastEl      = document.getElementById('toast');
 var endEl        = document.getElementById('ending');
+var bloodEndEl   = document.getElementById('bloodEnding');
 var setEl        = document.getElementById('settings');
 var sceneTitleEl = document.getElementById('sceneTitle');
 var loadingEl      = document.getElementById('loadingScreen');
@@ -550,7 +591,6 @@ try{
 }catch(e){}
 function saveSettings(){ try{ localStorage.setItem(SET_KEY, JSON.stringify(settings)); }catch(e){} }
 
-/* ★ 主播模式切换时的冲突检测：只弹一次提醒，不改变任何状态 */
 var streamerWarnShownThisSession = false;
 
 function applySettings(){
@@ -564,12 +604,10 @@ function applySettings(){
       b.classList.toggle('on', b.dataset.v === cur);
     });
   });
-  /* 同步 streamerMode 到 S.flags */
   if(S && S.flags){
     S.flags.streamerMode = isStreamer;
   }
   syncState();
-  /* 若已处于暗色支线且开启主播模式 → 仅弹提醒，支线与主播权益都保留 */
   if(isStreamer && S && S.flags && S.flags.bloodMode && !streamerWarnShownThisSession){
     streamerWarnShownThisSession = true;
     setTimeout(function(){
@@ -620,9 +658,6 @@ function loadSave(){
   }catch(e){ return null; }
 }
 
-/* ========================================================
-   血腥分支弹窗
-   ======================================================== */
 var bloodWarnMask = document.getElementById('bloodWarnMask');
 var streamerWarnMask = document.getElementById('streamerWarnMask');
 var streamerBlockMask = document.getElementById('streamerBlockMask');
@@ -682,6 +717,7 @@ document.getElementById('streamerBlockOk').addEventListener('click', function(){
    场景定义
    ======================================================== */
 var SCENES = {
+
   /* ===================== 雨巷 ===================== */
   alley: {
     url:'assets/scene1.html', label:'雨 巷',
@@ -724,14 +760,12 @@ var SCENES = {
           S.flags.photo1Taken = true; pickup('photo1'); save(); syncState();
         });
       },
-      /* ★ 水洼：血腥分支入口 */
+      /* ★ 水洼：暗夜分支入口 */
       puddle: function(){
-        /* 主播模式 + 未进入暗色支线 → 拦截 */
         if(isStreamer() && !isBloodMode()){
           document.getElementById('streamerBlockMask').classList.add('show');
           return;
         }
-        /* 已进入分支 */
         if(isBloodMode()){
           bloodPuddleCount++;
           if(bloodPuddleCount === 1){
@@ -752,7 +786,6 @@ var SCENES = {
           }
           return;
         }
-        /* 首次触发 → 铺垫 → 弹窗 */
         say('水洼里浮着一团暗红色。');
         say('——不像油漆。');
         say('灰豆低下头，凑近闻了闻。');
@@ -810,7 +843,7 @@ var SCENES = {
         say('——是新的。');
         say('——粉笔的味道里，混着一点淡淡的铁锈味。');
       },
-      /* ★ 血腥分支：墙根窄缝（回归主线） */
+      /* ★ 暗夜分支：墙根窄缝（回归主线） */
       bloodExit: function(){
         if(!isBloodMode()) return;
         say('墙根处，有一道细得像线的缝。');
@@ -842,14 +875,26 @@ var SCENES = {
   backstreet: {
     url:'assets/scene2.html', label:'后 巷',
     acts: {
+      /* ★ 纸箱：暗夜模式下直接给钥匙 */
       box: function(){
         if(isBloodMode()){
-          say('三个纸箱还在。');
-          say('最上面那个，纸箱底被撕开了。');
-          say('露出下面一叠旧报纸。');
-          say('头版上写着：“**某小区昨夜失火，一家三口……**”');
-          say('后面几个字，被雨水洇糊了。');
-          say('灰豆没有把报纸拿出来。');
+          if(!S.inv.includes('key')){
+            say('三个纸箱还在。');
+            say('最上面那个，纸箱底被撕开了。');
+            say('露出下面一叠旧报纸。');
+            say('头版上写着：“**某小区昨夜失火，一家三口……**”');
+            say('后面几个字，被雨水洇糊了。');
+            say('报纸下面，压着一样东西。');
+            say('一把**黄铜钥匙**。');
+            say('上面……沾着一点猫毛。');
+            say('——干干的。不像刚掉的。');
+            say('灰豆把它叼了出来。', function(){
+              pickup('key'); save(); syncState();
+            });
+          } else {
+            say('纸箱里只剩下一些碎纸屑。');
+            say('还有那张旧报纸——“一家三口”几个字，被雨洇糊了。');
+          }
           return;
         }
         if(!S.flags.catfoodTaken){
@@ -918,7 +963,8 @@ var SCENES = {
         var missing = [];
         if(!S.inv.includes('hook') && !S.inv.includes('grapnel'))
           missing.push('雨巷垃圾桶里的挂钩');
-        if(!S.flags.photo1Taken && !S.inv.includes('photo1') && !S.inv.includes('photoFull'))
+        /* ★ 只要求照片1：暗夜模式下不需要 */
+        if(!isBloodMode() && !S.flags.photo1Taken && !S.inv.includes('photo1') && !S.inv.includes('photoFull'))
           missing.push('雨巷墙上的湿透的纸片');
         if(missing.length > 0){
           say('钥匙插进锁孔，灰豆的动作停住了。');
@@ -1019,13 +1065,33 @@ var SCENES = {
     url:'assets/scene3.html', label:'便 利 店',
     acts: {
       counter: function(){
+        /* ★ 暗夜模式：从收银台底下摸出照片2 */
         if(isBloodMode()){
-          say('收银台上，落了一层灰。');
+          if(!S.flags.bloodPhotoTaken){
+            if(!torchLit()){
+              say('太黑了。');
+              say('——灰豆摸到抽屉边缘有一块凸起。');
+              say('但它看不清那是什么。');
+              return;
+            }
+            say('手电的光扫过抽屉底板。');
+            say('有一块木板是松的。');
+            say('灰豆用爪子把它撬开——');
+            say('木板下面，藏着一张照片。');
+            say('照片上，红屋顶的房子，门口的台阶。');
+            say('台阶上站着一个女孩，举着一把**蓝伞**。');
+            say('——照片的边角，还在冒烟。', function(){
+              S.flags.bloodPhotoTaken = true;
+              pickup('photo2'); save(); syncState();
+            });
+            return;
+          }
+          say('收银台上落了一层灰。');
           say('抽屉半开着。');
           say('里面是空的。');
-          say('——连硬币也没有。');
           return;
         }
+        /* 正常模式 */
         if(torchLit() && !S.flags.photo2Taken){
           say('光柱扫过墙壁，停住了。');
           say('墙上贴着一张照片，边角卷了起来。');
@@ -1248,11 +1314,32 @@ var SCENES = {
     url:'assets/scene10.html', label:'门 前',
     acts: {
       steps: function(){
+        if(isBloodMode()){
+          say('两级石阶。');
+          say('灰豆低头看了看。');
+          say('——不是青苔。');
+          say('是**焦黑**的痕迹。');
+          return;
+        }
         say('两级石阶，边角被磨得圆润。');
         say('上面长了一层薄薄的青苔。');
         say('——有人经常走。');
       },
       door: function(){
+        if(isBloodMode()){
+          say('门关着。');
+          say('——但这一次，门缝里透出的不是暖光。');
+          say('是**火光**。');
+          say('灰豆抬起爪子。');
+          say('门没有锁。');
+          say('——像是，一直在等谁。', function(){
+            setTimeout(function(){
+              changeScene('house', '红 屋 顶');
+              say('它把门推开了。');
+            }, 400);
+          });
+          return;
+        }
         if(!S.flags.powerCut){
           say('门关着。');
           say('门缝里透出一点暖光。');
@@ -1273,6 +1360,12 @@ var SCENES = {
         });
       },
       lamp: function(){
+        if(isBloodMode()){
+          say('门框上面那盏小灯，早就没了。');
+          say('只剩下一截烧断的铁丝。');
+          say('——和一圈被熏黑的墙。');
+          return;
+        }
         if(!S.flags.powerCut){
           say('门框上面挂着一盏小灯。');
           say('橙黄色的，暖的。');
@@ -1284,6 +1377,12 @@ var SCENES = {
         }
       },
       window: function(){
+        if(isBloodMode()){
+          say('窗户里什么都没有。');
+          say('——玻璃早碎了。');
+          say('只剩几片焦黑的碎片卡在窗框上。');
+          return;
+        }
         if(!S.flags.powerCut){
           say('窗户里亮着一点暖光。');
           say('——像是特地为谁留着。');
@@ -1305,6 +1404,41 @@ var SCENES = {
     acts: {
       back: function(){ changeScene('doorstep', '门 前'); },
       frame: function(){
+        /* ★ 暗夜分支：血腥结局 */
+        if(isBloodMode()){
+          if(!S.flags.bloodPhotoTaken){
+            say('桌上有一个相框。');
+            say('玻璃全碎了。');
+            say('照片被撕成了两半——只剩右半。');
+            say('左边那半，不知道在哪。');
+            return;
+          }
+          if(S.flags.bloodEnded){
+            say('照片已经拼好了。');
+            say('灰豆不想再看它第二眼。');
+            return;
+          }
+          if(!S.inv.includes('photo2')){
+            say('相框还在桌上。');
+            say('右半张照片，不知道去哪了。');
+            return;
+          }
+          S.flags.bloodEnded = true;
+          save(); syncState();
+          say('灰豆把右半张照片，放到相框里。');
+          say('——但它拼不上。');
+          say('左半张，不是老人和小浣熊。');
+          say('左半张，是一栋**烧过的房子**。');
+          say('窗户里，有一只手。');
+          say('——一只很小的、浣熊的手。');
+          say('灰豆盯着那只手看了很久。');
+          say('然后它转过身，坐在了摇椅上。');
+          say('摇椅吱呀一声——');
+          say('——那声音，它**记得**。');
+          setTimeout(startBloodEnding, 700);
+          return;
+        }
+        /* 正常模式 */
         if(S.flags.photoJoined){
           say('照片还摆在桌上。');
           say('老人笑着，小浣熊在他怀里，尾巴翘得老高。');
@@ -1346,6 +1480,14 @@ var SCENES = {
         else if(!has2){ say('还缺**便利店**那半张——红屋顶和台阶。'); }
       },
       chair: function(){
+        if(isBloodMode()){
+          say('摇椅还在慢慢地晃。');
+          say('——但它没有风。');
+          say('灰豆走过去，把爪子按在扶手上。');
+          say('扶手上有一圈浅浅的印子。');
+          say('——像是什么东西，**经常坐在那里**。');
+          return;
+        }
         if(S.flags.photoJoined){ say('摇椅还在轻轻地晃。'); say('像有人刚刚站起来，**去开门**。'); }
         else{
           say('一把旧摇椅。');
@@ -1354,23 +1496,54 @@ var SCENES = {
         }
       },
       bowl: function(){
+        if(isBloodMode()){
+          say('地上有一只小碗。');
+          say('碗底结了一层黑色的东西。');
+          say('——像干了的血。');
+          say('碗边上刻着两个字。');
+          say('灰豆没有去看。');
+          return;
+        }
         say('地上有一只小碗，边上刻着两个字。');
         say('——**灰豆**。');
         say('碗是干净的。好像每天都有人把它洗一遍。');
       },
       window: function(){
+        if(isBloodMode()){
+          say('灰豆跳到窗台上。');
+          say('——窗台是烫的。');
+          say('像刚刚烧过。');
+          say('外面什么都没有。');
+          say('没有月亮，没有街灯。');
+          say('只有雨。');
+          return;
+        }
         say('灰豆跳到窗台上。');
         say('月亮挂在那里，像一枚不肯落下的硬币。');
         say('它用额头抵着玻璃——冰凉的。');
         say('——但比雨夜暖。');
       },
       books: function(){
+        if(isBloodMode()){
+          say('书架上的书，全烧焦了。');
+          say('灰豆用爪子碰了碰——');
+          say('书页碎成了灰。');
+          say('——像有很多话，再也没有人说了。');
+          return;
+        }
         say('书架上排着一些旧书，书脊都褪了色。');
         say('灰豆用爪子抽出一本。');
         say('里面夹着一片枯叶，压得很平整。');
         say('叶子上写着很小很小的字：“{{给你的。}}”');
       },
       clock: function(){
+        if(isBloodMode()){
+          say('挂钟停了。');
+          say('指针卡在凌晨两点。');
+          say('——那是那栋房子烧起来的时间。');
+          say('灰豆不想再看它。');
+          return;
+        }
         if(S.flags.powerCut){
           say('挂钟停了。');
           say('指针卡在某一个时刻。');
@@ -1382,6 +1555,12 @@ var SCENES = {
         }
       },
       lamp: function(){
+        if(isBloodMode()){
+          say('台灯早就没了。');
+          say('只剩一个铁架子。');
+          say('——上面还挂着一点烧化的塑料。');
+          return;
+        }
         if(S.flags.powerCut){
           say('台灯灭了。');
           say('灯罩上还留着一点温度。');
@@ -2009,7 +2188,7 @@ function pickup(id){
 }
 
 /* ========================================================
-   结局
+   结局：正常 & 血腥
    ======================================================== */
 function startEnding(){
   if(endingLock) return;
@@ -2029,9 +2208,32 @@ function showEnding(){
   endEl.classList.add('show');
   if(S && S.flags){ S.flags.ended = false; save(); }
 }
+
+function startBloodEnding(){
+  if(endingLock) return;
+  endingLock = true;
+  /* 血腥结局：独白式，不需要更多对话，直接展示 */
+  setTimeout(function(){
+    showBloodEnding();
+  }, 400);
+}
+function showBloodEnding(){
+  endingShown = true; syncState();
+  bloodEndEl.classList.add('show');
+  if(S && S.flags){ S.flags.ended = false; save(); }
+}
+
+/* 正常结局的"再走一次" */
 document.getElementById('btnAgain').addEventListener('click', function(){
   try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
   endEl.classList.remove('show');
+  endingShown = false; endingLock = false;
+  beginGame(freshState(), true); save();
+});
+/* 血腥结局的"再走一次" */
+document.getElementById('btnBloodAgain').addEventListener('click', function(){
+  try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
+  bloodEndEl.classList.remove('show');
   endingShown = false; endingLock = false;
   beginGame(freshState(), true); save();
 });
