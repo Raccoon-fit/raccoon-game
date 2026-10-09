@@ -2,17 +2,18 @@
    common.js — 引擎核心
    状态 / 雨 / 涟漪 / 光尘 / 箭头 / 环境灯 / 渲染 / 通信
    + 移动端触控板式虚拟光标
-   + 主播模式"临时点亮全局"
-   + ★ 暗色分支 overlay（独立于主播模式）
+   + 主播模式"临时点亮全局"（支线中禁用）
+   + ★ 暗色分支：光圈减半、余烬粒子、心跳脉动、加重暗角
    ========================================================= */
 (function(){
 'use strict';
 
 const W = 960, H = 540;
 
-window.S = { scene:'alley', inv:[], flags:{}, ended:false };
+window.S = { scene:'alley', inv:[], invBlood:[], flags:{}, ended:false };
 window.__ENDING__ = false;
 
+/* ================== 模块状态 ================== */
 let stopped = false;
 let highlightTimer = 0;
 let currentSceneKey = null;
@@ -27,9 +28,10 @@ let lastFrame = performance.now();
 let time = 0;
 let rainSpawnT = 0;
 
-let rain = [], ripples = [], motes = [];
+let rain = [], ripples = [], motes = [], embers = [];
 const MAX_RIPPLES = 18;
-const PERF = { rain:95, motes:22 };
+/* ★ 雨池固定 160；主线显示前 95，支线显示全部 */
+const PERF = { rain:160, mainRain:95, motes:22, embers:55 };
 
 let tempLightTimer = 0;
 const TEMP_FADE = 0.6;
@@ -82,7 +84,6 @@ function setSceneCtx(c){
 }
 
 function isPowerCut(){ return !!(window.S.flags && window.S.flags.powerCut); }
-/* ★ 暗色分支：只判断 bloodMode，与主播模式无关 */
 function isBloodMode(){ return !!(window.S.flags && window.S.flags.bloodMode); }
 
 function rrectOn(c,x,y,w,h,r){
@@ -96,29 +97,37 @@ function rrectOn(c,x,y,w,h,r){
 }
 function rrOn(c,x,y,w,h,r,col){ rrectOn(c,x,y,w,h,r); c.fillStyle=col; c.fill(); }
 
+/* ================== 雨 ================== */
 function rebuildRain(){
   rain = [];
   for(let i=0;i<PERF.rain;i++){
+    /* 前 95 个是主线雨；后 65 个是支线追加雨 */
+    const isExtra = i >= PERF.mainRain;
     rain.push({
-      x: Math.random()*W*1.4-140, y: Math.random()*H,
-      len: 10 + Math.random()*20, sp: 640 + Math.random()*540,
-      a: 0.10 + Math.random()*0.12
+      x: Math.random()*W*1.4-140,
+      y: Math.random()*H,
+      len: (isExtra ? 14 : 10) + Math.random()*20,
+      sp: (isExtra ? 760 : 640) + Math.random()*540,
+      a: (isExtra ? 0.13 : 0.10) + Math.random()*0.12
     });
   }
 }
 function drawRain(dt){
   if(!rain.length) return;
+  const blood = isBloodMode();
+  const visible = blood ? rain.length : PERF.mainRain;
   mainCtx.save();
-  /* 暗色分支：雨色偏红 */
-  mainCtx.strokeStyle = isBloodMode()
-    ? 'rgba(220,150,150,0.85)'
+  mainCtx.strokeStyle = blood
+    ? 'rgba(220,140,140,0.92)'
     : 'rgba(168,205,240,0.9)';
-  mainCtx.lineWidth = 1;
+  mainCtx.lineWidth = blood ? 1.35 : 1;
   for(let i=0;i<rain.length;i++){
     const d = rain[i];
-    d.y += d.sp * dt; d.x -= d.sp * dt * 0.16;
+    d.y += d.sp * dt;
+    d.x -= d.sp * dt * 0.16;
     if(d.y > H+24){ d.y = -30 - Math.random()*140; d.x = Math.random()*W*1.4 - 140; }
     if(d.x < -70) d.x = W + 50;
+    if(i >= visible) continue; /* 位置照常更新，但主线不绘制 */
     mainCtx.globalAlpha = d.a;
     mainCtx.beginPath();
     mainCtx.moveTo(d.x, d.y);
@@ -128,6 +137,43 @@ function drawRain(dt){
   mainCtx.restore();
 }
 
+/* ================== 余烬粒子（仅支线） ================== */
+function rebuildEmbers(){
+  embers = [];
+  for(let i=0;i<PERF.embers;i++){
+    embers.push({
+      x: Math.random()*W,
+      y: Math.random()*H,
+      vx: (Math.random()-.5)*12,
+      vy: -10 - Math.random()*28,
+      r: 0.6 + Math.random()*1.8,
+      a: 0.18 + Math.random()*0.42,
+      hue: Math.random() < 0.4 ? '#ff8040' : '#c04020'
+    });
+  }
+}
+function drawEmbers(dt){
+  if(!isBloodMode()) return;
+  if(!embers.length) return;
+  mainCtx.save();
+  mainCtx.globalCompositeOperation = 'lighter';
+  for(let i=0;i<embers.length;i++){
+    const e = embers[i];
+    e.x += e.vx * dt;
+    e.y += e.vy * dt;
+    if(e.y < -10){ e.y = H + 10; e.x = Math.random()*W; }
+    if(e.x < -10){ e.x = W + 10; }
+    if(e.x > W + 10){ e.x = -10; }
+    mainCtx.globalAlpha = e.a;
+    mainCtx.fillStyle = e.hue;
+    mainCtx.beginPath();
+    mainCtx.arc(e.x, e.y, e.r, 0, Math.PI*2);
+    mainCtx.fill();
+  }
+  mainCtx.restore();
+}
+
+/* ================== 涟漪 ================== */
 function spawnRipple(x,y){
   if(ripples.length >= MAX_RIPPLES) return;
   ripples.push({ x, y, r:1, max:12 + Math.random()*22, life:0, dur:.65 + Math.random()*.5 });
@@ -142,9 +188,10 @@ function updateRipples(dt){
 }
 function drawRipples(){
   if(!ripples.length) return;
+  const blood = isBloodMode();
   mainCtx.save();
-  mainCtx.strokeStyle = isBloodMode()
-    ? 'rgba(220,150,150,0.55)'
+  mainCtx.strokeStyle = blood
+    ? 'rgba(220,150,150,0.6)'
     : 'rgba(170,205,240,0.55)';
   mainCtx.lineWidth = 1.2;
   for(let i=0;i<ripples.length;i++){
@@ -157,6 +204,7 @@ function drawRipples(){
   mainCtx.restore();
 }
 
+/* ================== 光尘（主线用） ================== */
 function rebuildMotes(){
   motes = [];
   for(let i=0;i<PERF.motes;i++){
@@ -167,30 +215,13 @@ function rebuildMotes(){
     });
   }
 }
-function drawMotes(dt, alpha){
-  if(alpha <= 0 || !motes.length) return;
-  mainCtx.save();
-  mainCtx.fillStyle = '#ffe6b8';
-  for(let i=0;i<motes.length;i++){
-    const m = motes[i];
-    m.x += m.vx*dt; m.y += m.vy*dt;
-    if(m.y < -10){ m.y = H + 10; m.x = Math.random()*W; }
-    if(m.x < -10) m.x = W + 10;
-    if(m.x > W + 10) m.x = -10;
-    mainCtx.globalAlpha = m.a * alpha;
-    mainCtx.beginPath();
-    mainCtx.arc(m.x, m.y, m.r, 0, Math.PI*2);
-    mainCtx.fill();
-  }
-  mainCtx.restore();
-}
 
+/* ================== 离屏缓存 ================== */
 const bgCache = {};
 function cacheKey(){
   const f = window.S.flags || {};
   const b = n => n ? '1' : '0';
   const p = b(f.powerCut);
-  /* ★ bl 只考虑 bloodMode，与主播模式无关 */
   const bl = b(f.bloodMode);
   switch(currentSceneKey){
     case 'alley':       return b(f.trash) + b(f.photo1Taken) + p + bl;
@@ -237,7 +268,6 @@ function getLitBg(){
   const cctx = c.getContext('2d');
   cctx.clearRect(0, 0, W, H);
 
-  /* 使用 globalCompositeOperation 加半透明白色叠加来提亮（兼容所有安卓 WebView） */
   cctx.drawImage(src, 0, 0);
   cctx.globalCompositeOperation = 'lighter';
   cctx.fillStyle = 'rgba(240, 224, 200, 0.55)';
@@ -268,7 +298,14 @@ function getDynamicCanvas(){
   return dynamicCanvas;
 }
 
-/* 已不使用箭头，保留函数以防老代码调用 */
+/* ================== 手电筒光圈半径 ================== */
+/* ★ 支线里光圈减半 */
+function torchRadius(darkScene){
+  const base = darkScene ? 290 : 230;
+  return isBloodMode() ? Math.round(base * 0.5) : base;
+}
+
+/* ================== 场景导航箭头（已不使用，保留兼容） ================== */
 function drawArrow(dir, x, y, t){
   const pulse = 0.55 + 0.45 * Math.sin(t * 2.2);
   const bob = Math.sin(t * 2.2) * 3;
@@ -291,19 +328,10 @@ function drawArrow(dir, x, y, t){
   mainCtx.lineWidth = 2;
   mainCtx.beginPath(); mainCtx.arc(0, 0, 24, 0, Math.PI*2); mainCtx.stroke();
 
-  mainCtx.strokeStyle = `rgba(255,238,195,${(0.82 + 0.18*pulse).toFixed(3)})`;
-  mainCtx.lineWidth = 3.4;
-  mainCtx.lineCap = 'round';
-  mainCtx.lineJoin = 'round';
-  mainCtx.beginPath();
-  mainCtx.moveTo(-sign * 7, -9);
-  mainCtx.lineTo(sign * 7, 0);
-  mainCtx.lineTo(-sign * 7, 9);
-  mainCtx.stroke();
-
   mainCtx.restore();
 }
 
+/* ================== 环境提示灯 ================== */
 function drawAmbientLights(t){
   const scene = getScene(currentSceneKey);
   if(!scene || !scene.spots) return;
@@ -311,9 +339,8 @@ function drawAmbientLights(t){
   if(!spots.length) return;
 
   const cut = isPowerCut();
-  /* ★ 只根据 bloodMode 判断，与主播模式无关 */
   const blood = isBloodMode();
-  const baseAlpha = blood ? 0.16 : (cut ? 0.10 : 0.18);
+  const baseAlpha = blood ? 0.14 : (cut ? 0.10 : 0.18);
   const pulse = 0.75 + 0.25 * Math.sin(t * 1.6);
 
   mainCtx.save();
@@ -328,9 +355,9 @@ function drawAmbientLights(t){
 
     const g = mainCtx.createRadialGradient(cx, cy, 0, cx, cy, R);
     if(blood){
-      g.addColorStop(0,   `rgba(255,160,140,${(baseAlpha * pulse).toFixed(3)})`);
-      g.addColorStop(0.5, `rgba(220,90,80,${(baseAlpha * 0.35 * pulse).toFixed(3)})`);
-      g.addColorStop(1,   'rgba(200,60,60,0)');
+      g.addColorStop(0,   `rgba(255,150,130,${(baseAlpha * pulse).toFixed(3)})`);
+      g.addColorStop(0.5, `rgba(210,80,70,${(baseAlpha * 0.35 * pulse).toFixed(3)})`);
+      g.addColorStop(1,   'rgba(180,50,50,0)');
     } else {
       g.addColorStop(0,   `rgba(255,222,160,${(baseAlpha * pulse).toFixed(3)})`);
       g.addColorStop(0.5, `rgba(255,205,125,${(baseAlpha * 0.35 * pulse).toFixed(3)})`);
@@ -342,6 +369,7 @@ function drawAmbientLights(t){
   mainCtx.restore();
 }
 
+/* ================== 高亮 ================== */
 function drawHighlight(t){
   if(highlightTimer <= 0) return;
   const scene = getScene(currentSceneKey);
@@ -398,6 +426,7 @@ function drawHighlight(t){
   }
 }
 
+/* ================== 悬停 ================== */
 function drawHover(t){
   if(!hoverSpot) return;
   mainCtx.save();
@@ -431,6 +460,7 @@ function drawHover(t){
   mainCtx.restore();
 }
 
+/* ================== 指针 ================== */
 function drawPointer(dt){
   if(pointerAlpha <= 0.01 || mouse.x < 0 || mouse.y < 0) return;
   const hl = !!hoverSpot;
@@ -472,6 +502,7 @@ function drawPointer(dt){
   mainCtx.restore();
 }
 
+/* ================== 场景 spot 查询 ================== */
 function getSpots(){
   const scene = getScene(currentSceneKey);
   if(!scene || !scene.spots) return [];
@@ -486,6 +517,7 @@ function findSpotAt(x, y){
   return null;
 }
 
+/* ================== 判断黑暗场景 ================== */
 function isDarkScene(){
   const f = window.S.flags || {};
   return !!f.powerCut
@@ -493,6 +525,7 @@ function isDarkScene(){
       || (currentSceneKey === 'powerstation' && f.powerCut);
 }
 
+/* ================== dynamic 层（受手电筒光圈裁切） ================== */
 function renderDynamicLayer(scene, t, dt){
   if(!scene.dynamic) return;
   const f = window.S.flags || {};
@@ -510,9 +543,12 @@ function renderDynamicLayer(scene, t, dt){
   setSceneCtx(dctx);
   scene.dynamic(t, dt);
   setSceneCtx(mainCtx);
+
   let mx = mouse.x, my = mouse.y;
   if(!hasPointer){ mx = W * 0.5; my = H * 0.58; }
-  const R = 290;
+  /* ★ 支线里 dynamic 层裁切光圈与背景一致（同样减半） */
+  const R = torchRadius(true);
+
   dctx.globalCompositeOperation = 'destination-in';
   const mask = dctx.createRadialGradient(mx, my, 0, mx, my, R);
   mask.addColorStop(0,    'rgba(0,0,0,1)');
@@ -523,30 +559,45 @@ function renderDynamicLayer(scene, t, dt){
   dctx.fillStyle = mask;
   dctx.fillRect(0, 0, W, H);
   dctx.globalCompositeOperation = 'source-over';
+
   mainCtx.drawImage(dcv, 0, 0);
 }
 
-/* ★ 暗色分支 overlay —— 只要处于 bloodMode 就绘制，与主播模式无关 */
+/* ================== 暗色分支 overlay ================== */
 function drawBloodOverlay(){
   if(!isBloodMode()) return;
   mainCtx.save();
-  /* 暗红薄雾 */
-  mainCtx.fillStyle = 'rgba(60, 8, 12, 0.26)';
+  /* 暗红薄雾 —— 比之前更重 */
+  mainCtx.fillStyle = 'rgba(60, 8, 12, 0.30)';
   mainCtx.fillRect(0, 0, W, H);
-  mainCtx.fillStyle = 'rgba(120, 20, 30, 0.10)';
+  mainCtx.fillStyle = 'rgba(120, 20, 30, 0.12)';
   mainCtx.fillRect(0, 0, W, H);
-  /* 暗角更重 */
-  const vg = mainCtx.createRadialGradient(W/2, H/2, H*0.28, W/2, H/2, H*0.92);
+  /* 暗角 —— 比之前更重 */
+  const vg = mainCtx.createRadialGradient(W/2, H/2, H*0.20, W/2, H/2, H*0.88);
   vg.addColorStop(0, 'rgba(0,0,0,0)');
-  vg.addColorStop(1, 'rgba(40, 0, 5, 0.55)');
+  vg.addColorStop(0.7, 'rgba(30, 0, 4, 0.35)');
+  vg.addColorStop(1, 'rgba(20, 0, 2, 0.82)');
   mainCtx.fillStyle = vg;
   mainCtx.fillRect(0, 0, W, H);
   mainCtx.restore();
 }
 
-/* ★ 主播模式：临时点亮全局（渐亮 → 保持 → 渐暗） */
+/* ================== 心跳脉动（仅支线） ================== */
+function drawHeartbeat(t){
+  if(!isBloodMode()) return;
+  const pulse = 0.5 + 0.5*Math.sin(t * 1.7);
+  const a = 0.05 + 0.07 * pulse;
+  mainCtx.save();
+  mainCtx.fillStyle = `rgba(70, 0, 8, ${a.toFixed(3)})`;
+  mainCtx.fillRect(0, 0, W, H);
+  mainCtx.restore();
+}
+
+/* ================== 临时点亮（主播模式，支线里禁用） ================== */
 function drawTempLight(dt){
   if(tempLightTimer <= 0) return;
+  /* ★ 支线里不提供此功能 */
+  if(isBloodMode()) return;
   tempLightTimer = Math.max(0, tempLightTimer - dt);
   const elapsed = TEMP_TOTAL - tempLightTimer;
   let alpha = 0;
@@ -567,6 +618,7 @@ function drawTempLight(dt){
   mainCtx.restore();
 }
 
+/* ================== 渲染主循环 ================== */
 function render(dt, t){
   mainCtx.clearRect(0, 0, W, H);
   setSceneCtx(mainCtx);
@@ -574,8 +626,10 @@ function render(dt, t){
   const scene = getScene(currentSceneKey);
   if(!scene) return;
 
+  /* ① 静态背景 */
   mainCtx.drawImage(getBg(), 0, 0);
 
+  /* ② 断电冷色滤镜 */
   if(isPowerCut()){
     mainCtx.save();
     mainCtx.fillStyle = 'rgba(2, 8, 20, 0.42)';
@@ -585,8 +639,10 @@ function render(dt, t){
     mainCtx.restore();
   }
 
+  /* ③ 手电筒（只作用于背景层） */
   drawTorchBackground(t);
 
+  /* ④ 雨 + 涟漪 */
   if(scene.rain){
     drawRain(dt);
     rainSpawnT += dt;
@@ -602,19 +658,28 @@ function render(dt, t){
   updateRipples(dt);
   drawRipples();
 
+  /* ★ 支线余烬粒子 —— 在雨之后、dynamic 之前 */
+  drawEmbers(dt);
+
+  /* ⑤ dynamic 层 */
   renderDynamicLayer(scene, t, dt);
 
+  /* ⑥ 黑暗遮罩 */
   drawTorchDarknessOverlay();
 
-  /* ★ 暗色分支：叠加红光 + 重暗角（与主播模式无关） */
+  /* ⑦ 暗色分支 overlay */
   drawBloodOverlay();
 
-  /* 临时点亮（主播模式权益，独立运作） */
+  /* ★ 心跳脉动 */
+  drawHeartbeat(t);
+
+  /* ⑧ 临时点亮 */
   drawTempLight(dt);
 
+  /* ⑨ 环境灯 */
   drawAmbientLights(t);
 
-  /* 已不使用箭头，但保留兼容 */
+  /* ⑩ UI 层 */
   if(scene.arrows){
     for(let i = 0; i < scene.arrows.length; i++){
       const a = scene.arrows[i];
@@ -701,6 +766,7 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 
+/* ================== 尺寸自适应 ================== */
 function resizeCanvas(){
   const vw = window.innerWidth, vh = window.innerHeight;
   const scale = Math.min(vw / W, vh / H);
@@ -710,14 +776,16 @@ function resizeCanvas(){
   cv.style.height = cssH + 'px';
   cv.style.left = Math.round((vw - cssW) / 2) + 'px';
   cv.style.top  = Math.round((vh - cssH) / 2) + 'px';
-  /* DPR 上限降为 1.0，降低安卓 WebView 闪退率 */
-  const dpr = Math.min(window.devicePixelRatio || 1, 1.0);
+  /* ★ 帧率/画质提升：DPR 上限由 1.0 → 1.35（支线画质更好） */
+  const dprLimit = isBloodMode() ? 1.35 : 1.0;
+  const dpr = Math.min(window.devicePixelRatio || 1, dprLimit);
   cv.width  = Math.round(cssW * dpr);
   cv.height = Math.round(cssH * dpr);
   mainCtx.setTransform(cv.width / W, 0, 0, cv.height / H, 0, 0);
   mainCtx.imageSmoothingEnabled = true;
 }
 
+/* ================== 输入处理 ================== */
 function updateMouseFromEvent(clientX, clientY){
   if(!cv) return;
   const r = cv.getBoundingClientRect();
@@ -813,6 +881,8 @@ function bindInput(){
   cv.addEventListener('touchcancel', () => { VC.tracking = false; });
 }
 
+/* ================== 通信 ================== */
+let lastBlood = null;
 function bindMessage(){
   window.addEventListener('message', e => {
     const d = e.data;
@@ -823,15 +893,34 @@ function bindMessage(){
         window.S = d.state;
         if(!window.S.flags) window.S.flags = {};
         if(!window.S.inv) window.S.inv = [];
+        if(!window.S.invBlood) window.S.invBlood = [];
+        /* ★ 支线切换时重建雨池和余烬粒子 */
+        const nowBlood = isBloodMode();
+        if(lastBlood !== nowBlood){
+          lastBlood = nowBlood;
+          rebuildRain();
+          if(nowBlood){
+            rebuildEmbers();
+            /* ★ 支线时提高 DPR 上限，重设画布 */
+            resizeCanvas();
+          } else {
+            resizeCanvas();
+          }
+        }
       }
     }
     else if(d.type === 'setEnding'){ window.__ENDING__ = !!d.value; }
     else if(d.type === 'setHighlight'){ highlightTimer = d.duration || 5; }
-    else if(d.type === 'tempLight'){ tempLightTimer = TEMP_TOTAL; }
+    else if(d.type === 'tempLight'){
+      /* ★ 支线中不响应全局点亮 */
+      if(isBloodMode()) return;
+      tempLightTimer = TEMP_TOTAL;
+    }
   });
   window.parent.postMessage({ type:'ready' }, '*');
 }
 
+/* ================== 启动 ================== */
 function boot(sceneKey){
   currentSceneKey = sceneKey;
   if(!getScene(sceneKey)){
@@ -848,7 +937,10 @@ function boot(sceneKey){
 
   rebuildRain();
   rebuildMotes();
+  rebuildEmbers();
   ripples.length = 0;
+
+  lastBlood = isBloodMode();
 
   touchMode = isTouchDevice();
   inputMode = touchMode ? 'touch' : 'mouse';
@@ -888,18 +980,23 @@ window.__engineStop = function(){
 window.addEventListener('pagehide', () => { stopped = true; });
 window.addEventListener('beforeunload', () => { stopped = true; });
 
+/* ================== 手电筒背景层 ================== */
 function drawTorchBackground(t){
   const f = window.S.flags || {};
   const on = !!f.torchOn;
   if(!on) return;
+
   let mx = mouse.x, my = mouse.y;
   if(!hasPointer){ mx = W * 0.5; my = H * 0.58; }
+
   const darkScene = isDarkScene();
   const flick = 0.93 + 0.07 * Math.sin(t * 17) * (Math.random() > 0.85 ? 1.5 : 1);
-  const R = darkScene ? 290 : 230;
+  /* ★ 支线里光圈减半 */
+  const R = torchRadius(darkScene);
   const boost = darkScene ? 1.0 : 0.55;
   const litAlpha = Math.min(1, 0.86 * boost + 0.16);
 
+  /* ① 遮罩：光圈外压暗 */
   const g = mainCtx.createRadialGradient(mx, my, 0, mx, my, R);
   g.addColorStop(0,    'rgba(0,0,0,0)');
   g.addColorStop(0.34, `rgba(0,0,0,${(0.04 * boost * flick).toFixed(3)})`);
@@ -908,12 +1005,14 @@ function drawTorchBackground(t){
   mainCtx.fillStyle = g;
   mainCtx.fillRect(0, 0, W, H);
 
+  /* ② 亮版背景贴进光圈 */
   const lit = getLitBg();
   const tmp = getTorchMaskCanvas();
   const tctx = tmp.getContext('2d');
   tctx.globalCompositeOperation = 'source-over';
   tctx.clearRect(0, 0, W, H);
   tctx.drawImage(lit, 0, 0);
+
   tctx.globalCompositeOperation = 'destination-in';
   const mask = tctx.createRadialGradient(mx, my, 0, mx, my, R);
   mask.addColorStop(0,    'rgba(0,0,0,1)');
@@ -930,20 +1029,29 @@ function drawTorchBackground(t){
   mainCtx.drawImage(tmp, 0, 0);
   mainCtx.restore();
 
+  /* ③ 暖色光晕 */
   mainCtx.save();
   mainCtx.globalCompositeOperation = 'lighter';
   const warmR = R * 0.95;
   const warm = mainCtx.createRadialGradient(mx, my, 0, mx, my, warmR);
-  warm.addColorStop(0,    `rgba(255,244,214,${(0.28 * boost * flick).toFixed(3)})`);
-  warm.addColorStop(0.38, `rgba(255,232,186,${(0.14 * boost * flick).toFixed(3)})`);
-  warm.addColorStop(0.72, `rgba(255,220,158,${(0.05 * boost * flick).toFixed(3)})`);
-  warm.addColorStop(1,    'rgba(255,210,140,0)');
+  if(isBloodMode()){
+    warm.addColorStop(0,    `rgba(255,220,180,${(0.24 * boost * flick).toFixed(3)})`);
+    warm.addColorStop(0.38, `rgba(255,190,140,${(0.12 * boost * flick).toFixed(3)})`);
+    warm.addColorStop(0.72, `rgba(255,150,110,${(0.05 * boost * flick).toFixed(3)})`);
+    warm.addColorStop(1,    'rgba(200,80,60,0)');
+  } else {
+    warm.addColorStop(0,    `rgba(255,244,214,${(0.28 * boost * flick).toFixed(3)})`);
+    warm.addColorStop(0.38, `rgba(255,232,186,${(0.14 * boost * flick).toFixed(3)})`);
+    warm.addColorStop(0.72, `rgba(255,220,158,${(0.05 * boost * flick).toFixed(3)})`);
+    warm.addColorStop(1,    'rgba(255,210,140,0)');
+  }
   mainCtx.fillStyle = warm;
   mainCtx.beginPath();
   mainCtx.arc(mx, my, warmR, 0, Math.PI * 2);
   mainCtx.fill();
   mainCtx.restore();
 
+  /* ④ 中心热点 */
   mainCtx.save();
   mainCtx.globalCompositeOperation = 'lighter';
   const hot = mainCtx.createRadialGradient(mx, my, 0, mx, my, 44);
@@ -956,6 +1064,7 @@ function drawTorchBackground(t){
   mainCtx.fill();
   mainCtx.restore();
 
+  /* ⑤ 光圈边缘柔和亮线 */
   mainCtx.save();
   mainCtx.strokeStyle = `rgba(255,234,186,${(0.16 * boost * flick).toFixed(3)})`;
   mainCtx.lineWidth = 1.4;
