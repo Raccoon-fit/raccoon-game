@@ -1157,7 +1157,7 @@ var SCENES = {
           say('头顶那架消防梯，锈得更厉害了。');
           say('——但这次，灰豆不想上去。');
           say('消防梯的横梁上，挂着一根**很细的绳**。');
-          say('像是一根**猫毛编的**。');
+          say('像是**猫毛编的**。');
           say('——从上面垂下来。');
           say('一直垂到地面上。');
           return;
@@ -1309,20 +1309,33 @@ var SCENES = {
         });
       },
 
+      /* ★ 修复：支线放行后窗，通往街道 */
       window: function(){
         if(isBloodMode()){
-          if(!torchLit()){
-            say('后窗外一片漆黑。');
-            say('——那种连雨都照不亮的黑。');
-            say('灰豆不想在{{什么都看不见}}的时候往里钻。');
+          if(is('bloodWindowPassed')){
+            say('后窗已经关死了。');
+            say('——从里面，从外面，都打不开。');
             return;
           }
+          set('bloodWindowPassed', true);
           say('后窗外，是一片黑。');
           say('——那种连雨都照不亮的黑。');
-          say('但灰豆还是钻了出去。');
-          say('——它不想留在室内。');
-          changeScene('street', '街 道');
-          say('窗台太高，回不去了。');
+          say('灰豆不想往里钻。');
+          say('——但后窗玻璃上，有一层**水汽**。');
+          say('水汽上，画着一只很小的手印。');
+          say('——五个指头。');
+          say('——浣熊只有四个。');
+          say('手印旁边，又慢慢浮出第二只。');
+          say('——五个指头。');
+          say('——和灰豆的爪子，**一样大**。');
+          say('灰豆往后退了一步。');
+          say('——窗户自己开了。');
+          say('雨声涌了进来。', function(){
+            changeScene('street', '街 道');
+            say('灰豆从后窗掉了出去。');
+            say('——玻璃在身后，无声地合上。');
+            say('回不去了。');
+          });
           return;
         }
         if(!torchLit()){
@@ -1333,6 +1346,18 @@ var SCENES = {
           say('灰豆从后窗翻了出去。');
           say('窗台太高，回不去了。');
         }
+      },
+
+      /* ★ 新增：左下角后门，回到后巷 */
+      back: function(){
+        if(isBloodMode()){
+          say('灰豆退回到后门。');
+          say('——门缝里透出的，还是那股腥甜。');
+          say('——但它还是钻了出去。');
+        } else {
+          say('灰豆从后门钻了出去。');
+        }
+        changeScene('backstreet', '后 巷');
       },
 
       floor: function(){
@@ -2428,9 +2453,9 @@ function checkCombos(){
     return;
   }
   if(myInv.indexOf('hook') !== -1 && myInv.indexOf('rope') !== -1 && myInv.indexOf('grapnel') === -1){
-    var n2 = myInv.filter(function(i){ return i!=='hook' && i!=='rope'; });
-    n2.push('grapnel');
-    setInv(n2);
+    var n = myInv.filter(function(i){ return i!=='hook' && i!=='rope'; });
+    n.push('grapnel');
+    setInv(n);
     renderInv('grapnel'); save(); syncState();
     comboLock = false;
     say('灰豆把晾衣绳一圈一圈缠在挂钩上，打了个死结。');
@@ -2497,7 +2522,6 @@ function toast(msg){
   clearTimeout(toastTimer);
   toastTimer = setTimeout(function(){ toastEl.classList.remove('show'); }, 3000);
 }
-/* ★ 修复：pickup 里立即触发 checkCombos，避免玩家拿齐道具不合成 */
 function pickup(id){
   if(!S || !ITEMS[id]) return;
   var arr = getInv();
@@ -2506,7 +2530,6 @@ function pickup(id){
   renderInv(id);
   toast('获得 · ' + ITEMS[id].name);
   save();
-  checkCombos();
 }
 
 /* ========================================================
