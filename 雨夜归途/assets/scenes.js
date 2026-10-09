@@ -1,6 +1,7 @@
 /* =========================================================
    scenes.js — 10 场景绘制 + 定义
    依赖 window.S（游戏状态）
+   + 新增：邻屋（支线·主流程必经）
    ========================================================= */
 (function(){
 'use strict';
@@ -613,9 +614,7 @@ function drawBackstreetDynamic(t, dt){
     ctx.beginPath(); ctx.arc(dx + dw/2, dy + dh/2, 8, 0, Math.PI*2); ctx.fill();
   }
 
-  /* ★ 修复：
-     主线：有猫就画猫
-     支线：未拿 photo1 时画猫形水渍 + 三爪划痕 */
+  /* 主线：有猫就画猫；支线：未拿 photo1 时画猫形水渍 */
   if(!blood){
     if(!f.catGone) drawCat(246, 354, t);
   } else if(!f.photo1Taken){
@@ -660,12 +659,11 @@ function drawCat(x, y, t){
   ctx.restore();
 }
 
-/* ★ 新增：支线的猫形水渍（替代大橘的视觉占位） */
+/* 支线的猫形水渍（替代大橘的视觉占位） */
 function drawBloodStain(x, y, t){
   ctx.save();
   ctx.translate(x, y);
 
-  /* 蜷着的猫形水渍 */
   ctx.fillStyle = 'rgba(70, 6, 12, 0.55)';
   ctx.beginPath();
   ctx.ellipse(0, 18, 56, 15, -0.08, 0, Math.PI*2);
@@ -675,7 +673,6 @@ function drawBloodStain(x, y, t){
   ctx.ellipse(-6, 14, 40, 10, -0.08, 0, Math.PI*2);
   ctx.fill();
 
-  /* 三只爪的划痕（暗示第四条腿被拖走） */
   ctx.strokeStyle = 'rgba(50, 4, 9, 0.75)';
   ctx.lineWidth = 1.5;
   ctx.lineCap = 'round';
@@ -687,7 +684,6 @@ function drawBloodStain(x, y, t){
     ctx.stroke();
   }
 
-  /* 极淡反光，暗示"还没干" */
   const g = ctx.createRadialGradient(-4, 12, 0, -4, 12, 32);
   g.addColorStop(0, 'rgba(255,180,180,0.14)');
   g.addColorStop(1, 'rgba(255,180,180,0)');
@@ -943,6 +939,19 @@ function drawStreetStatic(){
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('17', 137, 330);
+
+  /* ★ 支线：17 号 → 焦黑的门洞 */
+  if(isBloodMode()){
+    ctx.fillStyle = '#060404';
+    ctx.fillRect(108, 342, 60, 128);
+    ctx.strokeStyle = '#2a1408';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(108, 342, 60, 128);
+    ctx.fillStyle = 'rgba(140, 30, 20, 0.55)';
+    ctx.fillRect(112, 346, 52, 5);
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(108, 342, 60, 8);
+  }
 
   ctx.strokeStyle = 'rgba(200,210,220,0.45)';
   ctx.lineWidth = 2;
@@ -2473,9 +2482,189 @@ function drawRiversideDynamic(t, dt){
 }
 
 /* =========================================================
+   邻屋（支线·主流程必经）
+   ========================================================= */
+function drawNeighborStatic(){
+  /* 背景：深焦褐 */
+  ctx.fillStyle = grad(0, 0, 0, H, [
+    [0,'#0a0706'],[0.5,'#120b08'],[1,'#060403']
+  ]);
+  ctx.fillRect(0, 0, W, H);
+
+  /* 墙：烧焦的砖 */
+  brickWall(0, 60, W, 400, 60, 24, '#1a1008', 'rgba(0,0,0,0.55)');
+
+  /* 房梁 */
+  ctx.fillStyle = '#0a0604';
+  ctx.fillRect(0, 40, W, 24);
+  ctx.fillStyle = '#1a0f08';
+  ctx.fillRect(0, 44, W, 6);
+
+  /* 天花板的破洞 */
+  ctx.fillStyle = '#02040a';
+  ctx.beginPath();
+  ctx.moveTo(340, 0);
+  ctx.lineTo(400, 60);
+  ctx.lineTo(500, 50);
+  ctx.lineTo(580, 40);
+  ctx.lineTo(620, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#050202';
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(340, 0);
+  ctx.lineTo(400, 60);
+  ctx.lineTo(500, 50);
+  ctx.lineTo(580, 40);
+  ctx.lineTo(620, 0);
+  ctx.stroke();
+
+  /* 窗户 */
+  const wx = 300, wy = 160, ww = 300, wh = 240;
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(wx - 8, wy - 8, ww + 16, wh + 16);
+  ctx.fillStyle = '#1a0e08';
+  ctx.fillRect(wx - 6, wy - 6, ww + 12, wh + 12);
+  ctx.fillStyle = '#050810';
+  ctx.fillRect(wx, wy, ww, wh);
+
+  /* 窗外：远处焦黑的红屋顶 */
+  const hx0 = wx + 100, hy0 = wy + 170;
+  ctx.fillStyle = '#2a0e08';
+  ctx.beginPath();
+  ctx.moveTo(hx0 - 24, hy0);
+  ctx.lineTo(hx0 + 56, hy0 - 78);
+  ctx.lineTo(hx0 + 136, hy0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#0a0505';
+  ctx.fillRect(hx0 + 18, hy0, 76, 60);
+  /* 二楼那扇暗红的窗 */
+  ctx.fillStyle = 'rgba(180,40,30,0.6)';
+  ctx.fillRect(hx0 + 40, hy0 + 18, 30, 32);
+
+  /* 窗格 */
+  ctx.strokeStyle = '#2a1a10';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(wx, wy, ww, wh);
+  ctx.beginPath();
+  ctx.moveTo(wx + ww/2, wy); ctx.lineTo(wx + ww/2, wy + wh);
+  ctx.moveTo(wx, wy + wh/2); ctx.lineTo(wx + ww, wy + wh/2);
+  ctx.stroke();
+
+  /* 日历 */
+  const cx = 100, cy = 170, cw = 70, ch = 92;
+  ctx.fillStyle = '#2a1f14';
+  ctx.fillRect(cx, cy, cw, ch);
+  ctx.fillStyle = '#d8c898';
+  ctx.fillRect(cx + 4, cy + 4, cw - 8, ch - 8);
+  ctx.fillStyle = '#3a2a1a';
+  ctx.font = 'bold 15px "PingFang SC",sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('11 月', cx + cw/2, cy + 26);
+  ctx.font = 'bold 26px "PingFang SC",sans-serif';
+  ctx.fillText('14', cx + cw/2, cy + 62);
+  ctx.fillStyle = '#0a0505';
+  ctx.beginPath();
+  ctx.moveTo(cx + cw - 12, cy + ch - 16);
+  ctx.lineTo(cx + cw + 4, cy + ch - 6);
+  ctx.lineTo(cx + cw - 6, cy + ch + 6);
+  ctx.closePath();
+  ctx.fill();
+
+  /* 小床 */
+  const bx = 680, by = 320, bw = 240, bh = 160;
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(bx + 6, by + 6, bw, bh);
+  ctx.fillStyle = '#1a1008';
+  ctx.fillRect(bx, by, bw, bh);
+  ctx.fillStyle = '#2a1c10';
+  ctx.fillRect(bx + 8, by + 8, bw - 16, bh - 16);
+  ctx.fillStyle = '#1c1410';
+  ctx.fillRect(bx + 20, by + 20, bw - 40, bh - 40);
+  ctx.fillStyle = '#0a0604';
+  ctx.fillRect(bx - 8, by - 6, 24, bh + 12);
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.beginPath();
+  ctx.ellipse(bx + 60, by + 55, 34, 18, -0.1, 0, Math.PI*2);
+  ctx.fill();
+
+  /* 地板 */
+  ctx.fillStyle = grad(0, 460, 0, H, [
+    [0,'#0e0806'],[1,'#040201']
+  ]);
+  ctx.fillRect(0, 460, W, 80);
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.lineWidth = 1;
+  for(let x = 0; x < W; x += 60){
+    ctx.beginPath();
+    ctx.moveTo(x, 460);
+    ctx.lineTo(x + 20, H);
+    ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(50,18,18,0.32)';
+  ctx.beginPath();
+  ctx.ellipse(400, 500, 120, 20, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  /* 右侧：通向门前的门 */
+  const dx = 860, dy = 240, dw = 88, dh = 130;
+  ctx.fillStyle = '#0a0604';
+  ctx.fillRect(dx, dy, dw, dh);
+  ctx.strokeStyle = '#2a1808';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(dx, dy, dw, dh);
+  ctx.fillStyle = '#4a3020';
+  ctx.beginPath();
+  ctx.arc(dx + 14, dy + dh/2, 4, 0, Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(180,60,40,0.35)';
+  ctx.fillRect(dx, dy + 4, 3, dh - 8);
+
+  /* 暗角 */
+  const vg = ctx.createRadialGradient(W/2, H/2, H*0.30, W/2, H/2, H*0.95);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(0,0,0,0.72)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawNeighborDynamic(t, dt){
+  /* 破洞漏雨 */
+  ctx.strokeStyle = 'rgba(200,140,140,0.45)';
+  ctx.lineWidth = 1;
+  for(let i = 0; i < 8; i++){
+    const y = ((t * 200 + i * 60) % 380) + 60;
+    if(y > 450) continue;
+    const rx = 400 + i * 16 - 56 + Math.sin(t * 0.8) * 30;
+    ctx.beginPath();
+    ctx.moveTo(rx, y);
+    ctx.lineTo(rx - 2, y + 14);
+    ctx.stroke();
+  }
+
+  /* 窗外雨丝 */
+  ctx.strokeStyle = 'rgba(180,120,120,0.35)';
+  ctx.lineWidth = 1;
+  for(let i = 0; i < 12; i++){
+    const x = 300 + ((i * 27 + t * 100) % 300);
+    const y = ((i * 47 + t * 150) % 220) + 170;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x - 2, y + 10);
+    ctx.stroke();
+  }
+
+  /* 窗外红屋顶·暗红灯闪烁 */
+  const blink = 0.6 + 0.4 * Math.sin(t * 2.2);
+  ctx.fillStyle = `rgba(220, 70, 50, ${0.6 * blink})`;
+  ctx.fillRect(440, 348, 30, 32);
+}
+
+/* =========================================================
    场景 SPOTS 定义
-   ★ 已移除所有 arrows
-   ★ 暗色分支 spot 只根据 bloodMode 出现，与主播模式无关
    ========================================================= */
 const SCENES = {
   alley: {
@@ -2499,8 +2688,6 @@ const SCENES = {
       { id:'stairs', x:250, y:36,  w:120, h:180, label:'消防梯' },
       { id:'mold',   x:556, y:262, w:70,  h:70,  label:'墙上的霉斑' },
       { id:'box',    x:166, y:312, w:184, h:170, label:'纸箱' },
-      /* ★ 修复：去掉 !bloodMode，支线也保留该热区；
-         label 改为函数，支线显示"干涸的水渍" */
       { id:'cat',    x:196, y:288, w:150, h:84,
         label: () => flags().bloodMode ? '干涸的水渍' : '大橘',
         cond: () => !flags().catGone },
@@ -2517,7 +2704,6 @@ const SCENES = {
       { id:'shelf',   x:100, y:148, w:340, h:266, label:'货架' },
       { id:'floor',   x:360, y:440, w:220, h:80,  label:'地板' },
       { id:'window',  x:16,  y:244, w:52,  h:52,  label:'后窗' },
-      /* ★ 新增：左下角回到后巷 */
       { id:'back',    x:16,  y:456, w:88,  h:72,  label:'回到后巷' }
     ]
   },
@@ -2598,6 +2784,17 @@ const SCENES = {
       { id:'umbrella',x:660, y:440, w:100, h:80,  label:'丢弃的伞' },
       { id:'river',   x:400, y:470, w:200, h:60,  label:'河面' },
       { id:'back',    x:16,  y:244, w:52,  h:52,  label:'回到街道' }
+    ]
+  },
+  /* ★ 新增：邻屋（支线·主流程必经） */
+  neighbor: {
+    draw: drawNeighborStatic, dynamic: drawNeighborDynamic, rain: false,
+    spots: [
+      { id:'neighborWindow',   x:300, y:150, w:300, h:260, label:'窗户' },
+      { id:'neighborCalendar', x:92,  y:162, w:86,  h:108, label:'日历' },
+      { id:'neighborFloor',    x:260, y:462, w:280, h:76,  label:'地板上的爪印' },
+      { id:'neighborBed',      x:672, y:314, w:256, h:172, label:'小床' },
+      { id:'exit',             x:856, y:236, w:96,  h:138, label:'通向院子的门' }
     ]
   }
 };
