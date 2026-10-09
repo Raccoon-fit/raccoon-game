@@ -2,6 +2,7 @@
    common.js — 引擎核心
    + 修复：手电筒开关状态在主线/支线里都正确识别
    + 修复：支线里手电筒光圈减半、雨色偏红、余烬粒子、心跳脉动
+   + 支持 spot.label 为函数（可随状态改变显示文案）
    ========================================================= */
 (function(){
 'use strict';
@@ -49,6 +50,12 @@ let touchMode = false;
 let inputMode = 'mouse';
 let lastTouchTime = 0;
 let vcHintTimer = 0;
+
+/* ★ 新增：解析 label（支持字符串 / 函数） */
+function resolveLabel(sp){
+  if(!sp || !sp.label) return null;
+  return typeof sp.label === 'function' ? sp.label() : sp.label;
+}
 
 function isTouchDevice(){
   try{
@@ -396,10 +403,12 @@ function drawHighlight(t){
     mainCtx.stroke();
     mainCtx.restore();
 
-    if(sp.label){
+    /* ★ 修复：label 支持函数 */
+    const labelText = resolveLabel(sp);
+    if(labelText){
       mainCtx.save();
       mainCtx.font = 'bold 14px "PingFang SC","Microsoft YaHei",sans-serif';
-      const tw = mainCtx.measureText(sp.label).width;
+      const tw = mainCtx.measureText(labelText).width;
       let lx = cx;
       let ly = sp.y - 12;
       lx = Math.max(tw/2 + 18, Math.min(W - tw/2 - 18, lx));
@@ -415,7 +424,7 @@ function drawHighlight(t){
       mainCtx.fillStyle = `rgba(180,255,210,${fade.toFixed(3)})`;
       mainCtx.textAlign = 'center';
       mainCtx.textBaseline = 'middle';
-      mainCtx.fillText(sp.label, lx, ly - 8);
+      mainCtx.fillText(labelText, lx, ly - 8);
       mainCtx.restore();
     }
   }
@@ -432,10 +441,12 @@ function drawHover(t){
   mainCtx.stroke();
   mainCtx.setLineDash([]);
 
-  if(hoverSpot.label){
+  /* ★ 修复：label 支持函数 */
+  const labelText = resolveLabel(hoverSpot);
+  if(labelText){
     mainCtx.save();
     mainCtx.font = 'bold 15px "PingFang SC","Microsoft YaHei",sans-serif';
-    const tw = mainCtx.measureText(hoverSpot.label).width;
+    const tw = mainCtx.measureText(labelText).width;
     const gx = hoverSpot.x + hoverSpot.w/2;
     let lx = gx, ly = hoverSpot.y - 12;
     lx = Math.max(tw/2 + 18, Math.min(W - tw/2 - 18, lx));
@@ -448,7 +459,7 @@ function drawHover(t){
     mainCtx.fillStyle = '#ffd98f';
     mainCtx.textAlign = 'center';
     mainCtx.textBaseline = 'middle';
-    mainCtx.fillText(hoverSpot.label, lx, ly - 9);
+    mainCtx.fillText(labelText, lx, ly - 9);
     mainCtx.restore();
   }
   mainCtx.restore();
@@ -518,7 +529,6 @@ function isDarkScene(){
 
 function renderDynamicLayer(scene, t, dt){
   if(!scene.dynamic) return;
-  /* ★ 修复：用 isTorchOn() 而不是 f.torchOn */
   const torchOn = isTorchOn();
   const dark = isDarkScene();
   if(!dark || !torchOn){
@@ -939,7 +949,6 @@ window.addEventListener('pagehide', () => { stopped = true; });
 window.addEventListener('beforeunload', () => { stopped = true; });
 
 function drawTorchBackground(t){
-  /* ★ 修复：用 isTorchOn() 而不是直接读 f.torchOn */
   const on = isTorchOn();
   if(!on) return;
 
@@ -1026,7 +1035,6 @@ function drawTorchBackground(t){
 }
 
 function drawTorchDarknessOverlay(){
-  /* ★ 修复：用 isTorchOn() */
   if(isTorchOn()) return;
   if(!isDarkScene()) return;
   mainCtx.fillStyle = 'rgba(0,0,0,0.55)';
