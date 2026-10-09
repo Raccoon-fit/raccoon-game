@@ -12,6 +12,11 @@ function getCtx(){ return ctx; }
 
 function flags(){ return (window.S && window.S.flags) || {}; }
 function isPowerCut(){ return !!flags().powerCut; }
+/* ★ 血腥模式：bloodMode 为 true，且非主播模式 */
+function isBloodMode(){
+  const f = flags();
+  return !!(f.bloodMode && !f.streamerMode);
+}
 
 /* ================== 工具 ================== */
 function rrect(x,y,w,h,r){
@@ -59,15 +64,11 @@ function woodGrain(x, y, w, h, baseColor, lineColor, vertical){
   ctx.lineWidth = 1;
   if(vertical){
     for(let xx = x + 6; xx < x + w; xx += 10){
-      ctx.beginPath();
-      ctx.moveTo(xx, y); ctx.lineTo(xx, y + h);
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(xx, y); ctx.lineTo(xx, y + h); ctx.stroke();
     }
   } else {
     for(let yy = y + 6; yy < y + h; yy += 10){
-      ctx.beginPath();
-      ctx.moveTo(x, yy); ctx.lineTo(x + w, yy);
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x + w, yy); ctx.stroke();
     }
   }
 }
@@ -77,34 +78,39 @@ function woodGrain(x, y, w, h, baseColor, lineColor, vertical){
    ========================================================= */
 function drawAlleyStatic(){
   const cut = isPowerCut();
-  const f = flags();
-  ctx.fillStyle = grad(0,0,0,440, [
+  const blood = isBloodMode();
+
+  ctx.fillStyle = grad(0,0,0,440, blood ? [
+    [0,'#0a0308'],[0.35,'#160810'],[0.7,'#1c0a14'],[1,'#1c0e18']
+  ] : [
     [0,'#040710'],[0.35,'#0a1420'],[0.7,'#101c2c'],[1,'#1a2534']
   ]);
   ctx.fillRect(0,0,W,440);
 
   for(let i=0;i<5;i++){
     const cx = 100 + i*180, cy = 26 + Math.sin(i*1.3)*18;
-    ctx.fillStyle = `rgba(28,42,62,${0.25 + 0.08*(i%2)})`;
+    ctx.fillStyle = blood
+      ? `rgba(70,20,30,${0.25 + 0.08*(i%2)})`
+      : `rgba(28,42,62,${0.25 + 0.08*(i%2)})`;
     ctx.beginPath();
     ctx.ellipse(cx, cy, 240 - i*10, 32 + (i%3)*4, 0, 0, Math.PI*2);
     ctx.fill();
   }
 
   const skyline = [
-    { x:0,   y:200, w:120, h:250, c:'#060a10' },
-    { x:140, y:230, w:130, h:210, c:'#070c14' },
-    { x:290, y:180, w:140, h:260, c:'#060a10' },
-    { x:450, y:210, w:120, h:230, c:'#070c14' },
-    { x:590, y:160, w:150, h:280, c:'#060a10' },
-    { x:760, y:200, w:130, h:240, c:'#070c14' },
-    { x:900, y:230, w:80,  h:210, c:'#060a10' }
+    { x:0,   y:200, w:120, h:250 },
+    { x:140, y:230, w:130, h:210 },
+    { x:290, y:180, w:140, h:260 },
+    { x:450, y:210, w:120, h:230 },
+    { x:590, y:160, w:150, h:280 },
+    { x:760, y:200, w:130, h:240 },
+    { x:900, y:230, w:80,  h:210 }
   ];
   skyline.forEach(b => {
-    ctx.fillStyle = b.c;
+    ctx.fillStyle = blood ? '#120610' : '#060a10';
     ctx.fillRect(b.x, b.y, b.w, b.h);
     if(b.w > 120){
-      ctx.fillStyle = '#040810';
+      ctx.fillStyle = blood ? '#0a0308' : '#040810';
       ctx.fillRect(b.x + 12, b.y - 16, 24, 16);
       ctx.fillRect(b.x + 44, b.y - 10, 18, 10);
     }
@@ -128,37 +134,40 @@ function drawAlleyStatic(){
     const lit = !cut && (i*13 + 7) % 9 === 0;
     const emLit = cut && (i*13 + 7) % 31 === 0;
     if(lit){
-      ctx.fillStyle = 'rgba(255,190,110,0.5)';
+      ctx.fillStyle = blood ? 'rgba(220,80,90,0.55)' : 'rgba(255,190,110,0.5)';
       ctx.fillRect(w0[0], w0[1], 12, 18);
-      const wg = ctx.createRadialGradient(w0[0]+6, w0[1]+9, 0, w0[0]+6, w0[1]+9, 28);
-      wg.addColorStop(0,'rgba(255,200,130,0.18)');
-      wg.addColorStop(1,'rgba(255,200,130,0)');
-      ctx.fillStyle = wg;
-      ctx.fillRect(w0[0]-20, w0[1]-20, 52, 58);
     } else if(emLit){
-      ctx.fillStyle = 'rgba(255,180,90,0.4)';
+      ctx.fillStyle = blood ? 'rgba(180,50,60,0.45)' : 'rgba(255,180,90,0.4)';
       ctx.fillRect(w0[0], w0[1], 12, 18);
     } else {
-      ctx.fillStyle = 'rgba(20,28,40,0.85)';
+      ctx.fillStyle = blood ? 'rgba(30,10,20,0.9)' : 'rgba(20,28,40,0.85)';
       ctx.fillRect(w0[0], w0[1], 12, 18);
     }
   });
 
+  /* 远处红屋顶：血腥模式下变成烧焦的黑屋顶 */
   const hx = 780, hy = 210;
-  ctx.fillStyle = '#2c1414';
+  ctx.fillStyle = blood ? '#180808' : '#2c1414';
   ctx.beginPath();
   ctx.moveTo(hx-28, hy); ctx.lineTo(hx+42, hy-78); ctx.lineTo(hx+112, hy);
   ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#3a1c1c';
+  ctx.fillStyle = blood ? '#0c0404' : '#3a1c1c';
   ctx.beginPath();
   ctx.moveTo(hx-22, hy); ctx.lineTo(hx+42, hy-72); ctx.lineTo(hx+106, hy);
   ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#101820';
+  ctx.fillStyle = blood ? '#050202' : '#101820';
   ctx.fillRect(hx, hy, 84, 82);
-  if(cut){
-    ctx.fillStyle = 'rgba(30,40,55,0.9)';
-    ctx.fillRect(hx+28, hy+28, 28, 34);
-  } else {
+  if(blood){
+    /* 烟囱冒黑烟 */
+    ctx.fillStyle = 'rgba(30,10,15,0.7)';
+    ctx.beginPath();
+    ctx.ellipse(hx+42, hy-100, 20, 8, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(hx+42, hy-120, 32, 10, 0, 0, Math.PI*2);
+    ctx.fill();
+  }
+  if(!cut && !blood){
     ctx.fillStyle = 'rgba(255,200,120,0.75)';
     ctx.fillRect(hx+28, hy+28, 28, 34);
     const hg = ctx.createRadialGradient(hx+42, hy+45, 0, hx+42, hy+45, 90);
@@ -166,9 +175,19 @@ function drawAlleyStatic(){
     hg.addColorStop(1,'rgba(255,200,120,0)');
     ctx.fillStyle = hg;
     ctx.fillRect(hx-60, hy-60, 210, 210);
+  } else if(blood){
+    /* 血窗 */
+    ctx.fillStyle = 'rgba(180,30,40,0.75)';
+    ctx.fillRect(hx+28, hy+28, 28, 34);
+    const hg = ctx.createRadialGradient(hx+42, hy+45, 0, hx+42, hy+45, 90);
+    hg.addColorStop(0,'rgba(220,40,50,0.35)');
+    hg.addColorStop(1,'rgba(200,20,30,0)');
+    ctx.fillStyle = hg;
+    ctx.fillRect(hx-60, hy-60, 210, 210);
   }
 
-  if(!cut){
+  /* 霓虹招牌 */
+  if(!cut && !blood){
     ctx.fillStyle = 'rgba(70,220,255,0.55)';
     ctx.fillRect(380, 130, 44, 5);
     ctx.fillRect(380, 142, 30, 5);
@@ -182,7 +201,7 @@ function drawAlleyStatic(){
     ctx.fillRect(452, 148, 36, 5);
     ctx.fillRect(452, 160, 24, 5);
   } else {
-    ctx.fillStyle = 'rgba(40,50,60,0.6)';
+    ctx.fillStyle = blood ? 'rgba(80,20,30,0.7)' : 'rgba(40,50,60,0.6)';
     ctx.fillRect(380, 130, 44, 5);
     ctx.fillRect(380, 142, 30, 5);
     ctx.fillRect(380, 154, 38, 5);
@@ -190,52 +209,74 @@ function drawAlleyStatic(){
     ctx.fillRect(452, 160, 24, 5);
   }
 
-  brickWall(0, 16, 160, 524, 60, 22, '#131a23', 'rgba(0,0,0,0.35)');
+  /* 左墙 */
+  brickWall(0, 16, 160, 524, 60, 22,
+    blood ? '#1a0a14' : '#131a23',
+    blood ? 'rgba(60,10,20,0.35)' : 'rgba(0,0,0,0.35)');
   ctx.fillStyle = grad(0, 380, 0, 540, [
-    [0,'rgba(0,0,0,0)'],[1,'rgba(0,0,0,0.6)']
+    [0,'rgba(0,0,0,0)'],[1, blood ? 'rgba(40,5,10,0.7)' : 'rgba(0,0,0,0.6)']
   ]);
   ctx.fillRect(0, 380, 160, 160);
+
+  /* 墙上的苔痕：血腥模式下变成红色斑 */
   for(let i=0;i<20;i++){
     const mx = 6 + (i*43)%148;
     const my = 60 + (i*67)%430;
-    ctx.fillStyle = `rgba(70,110,80,${0.08 + (i%4)*0.03})`;
+    ctx.fillStyle = blood
+      ? `rgba(140,20,30,${0.10 + (i%4)*0.04})`
+      : `rgba(70,110,80,${0.08 + (i%4)*0.03})`;
     ctx.beginPath();
     ctx.ellipse(mx, my, 6 + (i%4)*3, 4 + (i%3)*2, 0, 0, Math.PI*2);
     ctx.fill();
   }
-  ctx.fillStyle = '#0a0f15'; ctx.fillRect(126, 40, 14, 480);
-  ctx.fillStyle = '#181f28'; ctx.fillRect(128, 40, 10, 480);
-  for(let y = 80; y < 520; y += 70){
-    ctx.fillStyle = '#0e141c';
-    ctx.fillRect(122, y, 22, 6);
+
+  /* 墙上的字 */
+  if(blood){
+    ctx.save();
+    ctx.translate(38, 220); ctx.rotate(-0.05);
+    ctx.fillStyle = 'rgba(200,30,40,0.4)';
+    ctx.fillRect(0, 0, 48, 64);
+    ctx.fillStyle = 'rgba(140,15,25,0.55)';
+    ctx.fillRect(6, 8, 36, 26);
+    ctx.restore();
+    /* 血字 */
+    ctx.save();
+    ctx.translate(36, 400); ctx.rotate(-0.08);
+    ctx.strokeStyle = 'rgba(200,30,40,0.55)';
+    ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0,0); ctx.quadraticCurveTo(22,-14,44,2);
+    ctx.moveTo(6,12); ctx.lineTo(38,16);
+    ctx.stroke();
+    ctx.restore();
+  } else {
+    ctx.save();
+    ctx.translate(38, 220); ctx.rotate(-0.05);
+    ctx.fillStyle = 'rgba(160,140,110,0.15)';
+    ctx.fillRect(0, 0, 48, 64);
+    ctx.fillStyle = 'rgba(100,90,75,0.22)';
+    ctx.fillRect(6, 8, 36, 26);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(36, 400); ctx.rotate(-0.08);
+    ctx.strokeStyle = 'rgba(200,90,120,0.22)';
+    ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0,0); ctx.quadraticCurveTo(22,-14,44,2);
+    ctx.moveTo(6,12); ctx.lineTo(38,16);
+    ctx.stroke();
+    ctx.restore();
   }
 
-  ctx.save();
-  ctx.translate(38, 220); ctx.rotate(-0.05);
-  ctx.fillStyle = 'rgba(160,140,110,0.15)';
-  ctx.fillRect(0, 0, 48, 64);
-  ctx.fillStyle = 'rgba(100,90,75,0.22)';
-  ctx.fillRect(6, 8, 36, 26);
-  ctx.restore();
-
-  ctx.save();
-  ctx.translate(36, 400); ctx.rotate(-0.08);
-  ctx.strokeStyle = 'rgba(200,90,120,0.22)';
-  ctx.lineWidth = 3; ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(0,0); ctx.quadraticCurveTo(22,-14,44,2);
-  ctx.moveTo(6,12); ctx.lineTo(38,16);
-  ctx.stroke();
-  ctx.restore();
-
-  ctx.fillStyle = '#141b25'; ctx.fillRect(164, 116, 9, 336);
-  ctx.fillStyle = '#1c2531';
+  /* 路灯柱 */
+  ctx.fillStyle = blood ? '#1a0c0c' : '#141b25'; ctx.fillRect(164, 116, 9, 336);
+  ctx.fillStyle = blood ? '#241414' : '#1c2531';
   ctx.beginPath();
   ctx.moveTo(146, 120); ctx.lineTo(190, 120);
   ctx.lineTo(182, 96); ctx.lineTo(154, 96);
   ctx.closePath(); ctx.fill();
-  if(cut){
-    ctx.fillStyle = '#2a2a2a';
+  if(cut || blood){
+    ctx.fillStyle = blood ? '#180808' : '#2a2a2a';
     ctx.beginPath(); ctx.ellipse(168, 124, 8, 4.5, 0, 0, Math.PI*2); ctx.fill();
   } else {
     ctx.fillStyle = 'rgba(255,214,140,0.95)';
@@ -248,18 +289,19 @@ function drawAlleyStatic(){
     ctx.fillRect(-180,-220,700,700);
   }
 
+  /* 垃圾桶 */
   const bx = 618, by = 314, bw = 126, bh = 180;
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.beginPath();
   ctx.ellipse(bx+bw/2, by+bh+2, bw*0.6, 15, 0, 0, Math.PI*2);
   ctx.fill();
-  ctx.fillStyle = '#1e2631';
+  ctx.fillStyle = blood ? '#1a0a0e' : '#1e2631';
   ctx.beginPath();
   ctx.moveTo(bx+7, by+16); ctx.lineTo(bx+bw-7, by+16);
   ctx.lineTo(bx+bw-16, by+bh); ctx.lineTo(bx+16, by+bh);
   ctx.closePath(); ctx.fill();
   for(let i=1;i<4;i++){
-    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 2;
+    ctx.strokeStyle = blood ? 'rgba(80,15,25,0.5)' : 'rgba(0,0,0,0.35)'; ctx.lineWidth = 2;
     const x = bx + 12 + i*27;
     ctx.beginPath();
     ctx.moveTo(x, by+24); ctx.lineTo(x-4, by+bh-8);
@@ -267,14 +309,15 @@ function drawAlleyStatic(){
   }
   ctx.fillStyle = 'rgba(180,210,240,0.08)';
   ctx.fillRect(bx+18, by+30, 12, 128);
-  ctx.fillStyle = '#252e3a';
+  ctx.fillStyle = blood ? '#2a1218' : '#252e3a';
   ctx.beginPath(); ctx.ellipse(bx+bw/2, by+14, bw/2, 15, 0, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#364352';
+  ctx.fillStyle = blood ? '#3a1a22' : '#364352';
   ctx.beginPath(); ctx.ellipse(bx+bw/2, by+10, bw/2-10, 9, 0, 0, Math.PI*2); ctx.fill();
 
-  ctx.fillStyle = grad(0, 440, 0, H, [
-    [0,'#121a24'],[1,'#04070b']
-  ]);
+  /* 地面 */
+  ctx.fillStyle = grad(0, 440, 0, H, blood
+    ? [[0,'#1a0810'],[1,'#0a040a']]
+    : [[0,'#121a24'],[1,'#04070b']]);
   ctx.fillRect(0, 440, W, 100);
   ctx.strokeStyle = 'rgba(255,255,255,0.025)'; ctx.lineWidth = 1;
   for(let x = -60; x < W+80; x += 120){
@@ -283,15 +326,21 @@ function drawAlleyStatic(){
     ctx.stroke();
   }
 
+  /* 水洼（普通） */
   ctx.save();
   ctx.beginPath();
   ctx.ellipse(330, 492, 100, 22, 0, 0, Math.PI*2);
   const pg = ctx.createRadialGradient(330, 492, 0, 330, 492, 100);
-  pg.addColorStop(0,'rgba(100,140,190,0.22)');
-  pg.addColorStop(1,'rgba(60,90,130,0)');
+  if(blood){
+    pg.addColorStop(0,'rgba(120,15,25,0.45)');
+    pg.addColorStop(1,'rgba(80,5,15,0)');
+  } else {
+    pg.addColorStop(0,'rgba(100,140,190,0.22)');
+    pg.addColorStop(1,'rgba(60,90,130,0)');
+  }
   ctx.fillStyle = pg;
   ctx.fill();
-  if(!cut){
+  if(!cut && !blood){
     ctx.fillStyle = 'rgba(255,200,120,0.30)';
     ctx.beginPath();
     ctx.ellipse(300, 492, 26, 4, 0, 0, Math.PI*2);
@@ -299,18 +348,30 @@ function drawAlleyStatic(){
   }
   ctx.restore();
 
+  /* 血腥模式的额外暗红水渍 */
+  if(blood){
+    ctx.fillStyle = 'rgba(140,20,30,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(330, 492, 70, 16, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(280, 505, 30, 8, 0, 0, Math.PI*2);
+    ctx.fill();
+  }
+
   const eg = ctx.createLinearGradient(856, 0, W, 0);
   eg.addColorStop(0,'rgba(3,6,10,0)');
-  eg.addColorStop(1,'rgba(3,6,10,0.96)');
+  eg.addColorStop(1, blood ? 'rgba(20,2,6,0.96)' : 'rgba(3,6,10,0.96)');
   ctx.fillStyle = eg;
   ctx.fillRect(856, 0, 104, H);
 }
 
 function drawAlleyDynamic(t, dt){
   const cut = isPowerCut();
+  const blood = isBloodMode();
   const f = flags();
   const sway = Math.sin(t*0.9)*3;
-  ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+  ctx.strokeStyle = blood ? 'rgba(60,15,20,0.7)' : 'rgba(0,0,0,0.6)';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(0, 30);
@@ -323,7 +384,7 @@ function drawAlleyDynamic(t, dt){
   ctx.quadraticCurveTo(560, 6, 720, 48);
   ctx.stroke();
 
-  if(!f.photo1Taken){
+  if(!f.photo1Taken && !blood){
     ctx.save();
     ctx.translate(474, 498); ctx.rotate(-0.17);
     ctx.fillStyle = '#b9b3a0';
@@ -337,14 +398,14 @@ function drawAlleyDynamic(t, dt){
 
   ctx.save();
   ctx.globalAlpha = 0.06 + 0.03*Math.sin(t*1.3);
-  ctx.fillStyle = '#cfe0f0';
+  ctx.fillStyle = blood ? '#ffb8b8' : '#cfe0f0';
   const steamY = 314 - (t*30 % 100);
   ctx.beginPath();
   ctx.ellipse(680 + Math.sin(t)*6, steamY, 22, 10, 0, 0, Math.PI*2);
   ctx.fill();
   ctx.restore();
 
-  if(!cut && Math.random() < 0.008){
+  if(!cut && !blood && Math.random() < 0.008){
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.beginPath();
     ctx.arc(168, 124, 44, 0, Math.PI*2);
@@ -357,21 +418,29 @@ function drawAlleyDynamic(t, dt){
    ========================================================= */
 function drawBackstreetStatic(){
   const cut = isPowerCut();
+  const blood = isBloodMode();
   const f = flags();
-  ctx.fillStyle = grad(0,0,0,470, [
+
+  ctx.fillStyle = grad(0,0,0,470, blood ? [
+    [0,'#0a0308'],[0.4,'#160810'],[1,'#1c0a14']
+  ] : [
     [0,'#03060c'],[0.4,'#0a1018'],[1,'#131c26']
   ]);
   ctx.fillRect(0,0,W,470);
-  brickWall(0, 36, W, 434, 68, 24, '#0f1620', 'rgba(0,0,0,0.28)');
+  brickWall(0, 36, W, 434, 68, 24,
+    blood ? '#1a0a10' : '#0f1620',
+    blood ? 'rgba(60,10,20,0.3)' : 'rgba(0,0,0,0.28)');
   ctx.fillStyle = grad(0, 300, 0, 470, [
-    [0,'rgba(0,0,0,0)'],[1,'rgba(0,0,0,0.55)']
+    [0,'rgba(0,0,0,0)'],[1, blood ? 'rgba(40,5,10,0.65)' : 'rgba(0,0,0,0.55)']
   ]);
   ctx.fillRect(0, 300, W, 170);
 
   for(let i=0;i<24;i++){
     const mx = (i*53 + 30) % W;
     const my = 80 + (i*67) % 380;
-    ctx.fillStyle = i % 3 === 0 ? 'rgba(50,80,60,0.18)' : 'rgba(20,30,40,0.24)';
+    ctx.fillStyle = blood
+      ? (i%3===0 ? 'rgba(120,20,30,0.22)' : 'rgba(40,10,20,0.28)')
+      : (i % 3 === 0 ? 'rgba(50,80,60,0.18)' : 'rgba(20,30,40,0.24)');
     ctx.beginPath();
     ctx.ellipse(mx, my, 6 + (i%5)*4, 4 + (i%4)*3, i*0.3, 0, Math.PI*2);
     ctx.fill();
@@ -379,44 +448,43 @@ function drawBackstreetStatic(){
 
   ctx.save();
   ctx.translate(260, 190); ctx.rotate(-0.06);
-  ctx.strokeStyle = 'rgba(200,140,80,0.18)';
+  ctx.strokeStyle = blood ? 'rgba(220,60,60,0.25)' : 'rgba(200,140,80,0.18)';
   ctx.lineWidth = 5; ctx.lineCap = 'round';
   ctx.beginPath();
   ctx.moveTo(0,0); ctx.lineTo(30,-8); ctx.lineTo(60,4); ctx.lineTo(90,-6);
   ctx.stroke();
   ctx.restore();
 
-  ctx.fillStyle = '#1a222c';
+  ctx.fillStyle = blood ? '#1a0a0e' : '#1a222c';
   ctx.fillRect(428, 36, 18, 300);
-  ctx.fillStyle = '#242e3a';
+  ctx.fillStyle = blood ? '#241014' : '#242e3a';
   ctx.fillRect(430, 36, 14, 300);
-  ctx.fillStyle = 'rgba(180,210,240,0.10)';
-  ctx.fillRect(432, 36, 2, 300);
 
+  /* 后门 */
   const dx = 580, dy = 130, dw = 184, dh = 334;
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
   ctx.fillRect(dx - 10, dy - 10, dw + 20, dh + 14);
-  ctx.fillStyle = '#1a222c';
+  ctx.fillStyle = blood ? '#1a0a0e' : '#1a222c';
   ctx.fillRect(dx - 7, dy - 7, dw + 14, dh + 14);
-  ctx.fillStyle = '#232e3a';
+  ctx.fillStyle = blood ? '#241014' : '#232e3a';
   ctx.fillRect(dx - 6, dy - 6, dw + 12, dh + 12);
-  ctx.fillStyle = '#1a222c';
+  ctx.fillStyle = blood ? '#1a0a0e' : '#1a222c';
   ctx.fillRect(dx, dy, dw, dh);
   for(let y = dy + 14; y < dy + dh; y += 16){
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillStyle = blood ? 'rgba(60,10,20,0.55)' : 'rgba(0,0,0,0.45)';
     ctx.fillRect(dx + 4, y, dw - 8, 2);
   }
-  ctx.strokeStyle = '#28333f'; ctx.lineWidth = 7;
+  ctx.strokeStyle = blood ? '#3a1418' : '#28333f'; ctx.lineWidth = 7;
   ctx.strokeRect(dx, dy, dw, dh);
-  ctx.fillStyle = '#212c37'; ctx.fillRect(dx - 12, dy - 22, dw + 24, 24);
+  ctx.fillStyle = blood ? '#2a1218' : '#212c37'; ctx.fillRect(dx - 12, dy - 22, dw + 24, 24);
   ctx.fillStyle = 'rgba(200,180,140,0.5)';
   ctx.font = 'bold 12px "PingFang SC",sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('后 门', dx + dw/2, dy - 31);
 
-  if(cut){
-    ctx.fillStyle = '#2a2a2a';
+  if(cut || blood){
+    ctx.fillStyle = blood ? '#3a0f12' : '#2a2a2a';
     ctx.beginPath(); ctx.ellipse(dx + dw/2, dy - 24, 8, 4, 0, 0, Math.PI*2); ctx.fill();
   } else {
     ctx.fillStyle = 'rgba(255,215,140,0.95)';
@@ -428,26 +496,18 @@ function drawBackstreetStatic(){
     ctx.fillRect(dx + dw/2 - 270, dy - 290, 540, 560);
   }
 
-  /* 巷子尽头：配电房入口 */
+  /* 配电房门 */
   const ox = 400, oy = 300, ow = 160, oh = 150;
-
-  /* 洞口阴影 */
   ctx.fillStyle = 'rgba(0,0,0,0.72)';
   ctx.fillRect(ox, oy, ow, oh);
-
-  /* 门框 */
-  ctx.fillStyle = '#3a4552';
+  ctx.fillStyle = blood ? '#3a1418' : '#3a4552';
   ctx.fillRect(ox, oy, ow, 6);
   ctx.fillRect(ox, oy + oh - 6, ow, 6);
   ctx.fillRect(ox, oy, 6, oh);
   ctx.fillRect(ox + ow - 6, oy, 6, oh);
-
-  /* 门板 */
-  ctx.fillStyle = '#1b222c';
+  ctx.fillStyle = blood ? '#1a0a0e' : '#1b222c';
   ctx.fillRect(ox + 10, oy + 10, ow - 20, oh - 20);
-
-  /* 门板横向纹理 */
-  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.strokeStyle = blood ? 'rgba(60,10,20,0.55)' : 'rgba(0,0,0,0.5)';
   ctx.lineWidth = 1;
   for(let yy = oy + 26; yy < oy + oh - 10; yy += 14){
     ctx.beginPath();
@@ -455,21 +515,16 @@ function drawBackstreetStatic(){
     ctx.lineTo(ox + ow - 12, yy);
     ctx.stroke();
   }
-
-  /* 铰链 */
   ctx.fillStyle = '#0e141c';
   ctx.fillRect(ox + 10, oy + 24, 6, 12);
   ctx.fillRect(ox + 10, oy + oh - 36, 6, 12);
-
-  /* 门把手 */
-  ctx.fillStyle = '#5a6878';
+  ctx.fillStyle = blood ? '#5a3038' : '#5a6878';
   ctx.beginPath();
   ctx.arc(ox + ow - 26, oy + oh / 2 + 6, 5, 0, Math.PI * 2);
   ctx.fill();
 
-  /* 红牌子"配电" */
   const sx = ox + 42, sy = oy + 30;
-  ctx.fillStyle = 'rgba(200,50,40,0.95)';
+  ctx.fillStyle = blood ? 'rgba(140,20,30,0.95)' : 'rgba(200,50,40,0.95)';
   ctx.fillRect(sx, sy, 78, 26);
   ctx.strokeStyle = 'rgba(255,220,180,0.6)';
   ctx.lineWidth = 1;
@@ -480,8 +535,7 @@ function drawBackstreetStatic(){
   ctx.textBaseline = 'middle';
   ctx.fillText('配 电', sx + 39, sy + 14);
 
-  /* 门缝冷光 */
-  if(!cut){
+  if(!cut && !blood){
     ctx.fillStyle = 'rgba(140,200,240,0.45)';
     ctx.fillRect(ox + 10, oy + oh - 10, ow - 20, 4);
     const gl = ctx.createRadialGradient(ox + ow/2, oy + oh, 0, ox + ow/2, oy + oh, 110);
@@ -490,53 +544,54 @@ function drawBackstreetStatic(){
     ctx.fillStyle = gl;
     ctx.fillRect(ox - 70, oy + oh - 50, ow + 140, 140);
   } else {
-    ctx.fillStyle = 'rgba(60,90,120,0.18)';
+    ctx.fillStyle = blood ? 'rgba(120,20,30,0.35)' : 'rgba(60,90,120,0.18)';
     ctx.fillRect(ox + 10, oy + oh - 10, ow - 20, 4);
   }
 
-  /* 门下方文字提示 */
   ctx.fillStyle = 'rgba(200,220,240,0.72)';
   ctx.font = 'bold 11px "PingFang SC",sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('配电房 ↓', ox + ow / 2, oy + oh + 20);
 
-  ctx.fillStyle = grad(0, 470, 0, H, [
-    [0,'#101822'],[1,'#04070b']
-  ]);
+  ctx.fillStyle = grad(0, 470, 0, H, blood
+    ? [[0,'#1a0810'],[1,'#0a040a']]
+    : [[0,'#101822'],[1,'#04070b']]);
   ctx.fillRect(0, 470, W, 70);
-  ctx.fillStyle = '#0a1018'; ctx.fillRect(0, 480, W, 8);
+  ctx.fillStyle = blood ? '#160812' : '#0a1018'; ctx.fillRect(0, 480, W, 8);
 
+  /* 纸箱 */
   const c1x = 166, c1y = 370, c1w = 160, c1h = 106;
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.beginPath();
   ctx.ellipse(c1x + c1w/2, c1y + c1h + 3, c1w*0.6, 12, 0, 0, Math.PI*2);
   ctx.fill();
-  ctx.fillStyle = '#28221a'; ctx.fillRect(c1x, c1y, c1w, c1h);
-  ctx.fillStyle = '#38301f'; ctx.fillRect(c1x, c1y, c1w, 15);
-  ctx.fillStyle = 'rgba(190,180,150,0.25)';
+  ctx.fillStyle = blood ? '#1a0c08' : '#28221a'; ctx.fillRect(c1x, c1y, c1w, c1h);
+  ctx.fillStyle = blood ? '#221008' : '#38301f'; ctx.fillRect(c1x, c1y, c1w, 15);
+  ctx.fillStyle = blood ? 'rgba(120,30,30,0.35)' : 'rgba(190,180,150,0.25)';
   ctx.fillRect(c1x + c1w/2 - 9, c1y, 18, c1h);
-  ctx.fillStyle = '#252019'; ctx.fillRect(c1x + 42, c1y - 58, 122, 60);
-  ctx.fillStyle = '#332c20'; ctx.fillRect(c1x + 42, c1y - 58, 122, 12);
-  ctx.fillStyle = '#2a2419'; ctx.fillRect(c1x - 46, c1y + 18, 52, 88);
+  ctx.fillStyle = blood ? '#150a06' : '#252019'; ctx.fillRect(c1x + 42, c1y - 58, 122, 60);
+  ctx.fillStyle = blood ? '#1e0c08' : '#332c20'; ctx.fillRect(c1x + 42, c1y - 58, 122, 12);
+  ctx.fillStyle = blood ? '#150a06' : '#2a2419'; ctx.fillRect(c1x - 46, c1y + 18, 52, 88);
 
   const eg2 = ctx.createLinearGradient(W-70, 0, W, 0);
-  eg2.addColorStop(0, 'rgba(3,6,10,0)');
-  eg2.addColorStop(1, 'rgba(3,6,10,0.85)');
+  eg2.addColorStop(0, blood ? 'rgba(20,2,6,0)' : 'rgba(3,6,10,0)');
+  eg2.addColorStop(1, blood ? 'rgba(20,2,6,0.85)' : 'rgba(3,6,10,0.85)');
   ctx.fillStyle = eg2;
   ctx.fillRect(W-70, 0, 70, H);
   const eg = ctx.createLinearGradient(0, 0, 96, 0);
-  eg.addColorStop(0, 'rgba(3,6,10,0.94)');
-  eg.addColorStop(1, 'rgba(3,6,10,0)');
+  eg.addColorStop(0, blood ? 'rgba(20,2,6,0.94)' : 'rgba(3,6,10,0.94)');
+  eg.addColorStop(1, blood ? 'rgba(20,2,6,0)' : 'rgba(3,6,10,0)');
   ctx.fillStyle = eg;
   ctx.fillRect(0, 0, 96, H);
 }
 
 function drawBackstreetDynamic(t, dt){
   const cut = isPowerCut();
+  const blood = isBloodMode();
   const f = flags();
   const dropY = 400 + ((t*160) % 80);
   if(dropY < 470){
-    ctx.fillStyle = 'rgba(180,215,245,0.55)';
+    ctx.fillStyle = blood ? 'rgba(220,150,150,0.6)' : 'rgba(180,215,245,0.55)';
     ctx.beginPath();
     ctx.ellipse(438, dropY, 2.2, 5, 0, 0, Math.PI*2);
     ctx.fill();
@@ -547,7 +602,7 @@ function drawBackstreetDynamic(t, dt){
     const sy = 430 - ((t*30 + i*35) % 130);
     const sa = Math.max(0, 1 - (430-sy)/140) * 0.10;
     ctx.globalAlpha = sa;
-    ctx.fillStyle = '#cfe0f0';
+    ctx.fillStyle = blood ? '#ffb8b8' : '#cfe0f0';
     ctx.beginPath();
     ctx.ellipse(258 + Math.sin(t*0.8 + i)*10, sy,
                 24 + i*6, 12 + i*4, 0, 0, Math.PI*2);
@@ -559,14 +614,14 @@ function drawBackstreetDynamic(t, dt){
     const dx = 580, dy = 130, dw = 184, dh = 334;
     ctx.fillStyle = 'rgba(0,0,0,0.9)';
     ctx.fillRect(dx + 4, dy + 6, 10, dh - 12);
-    if(!cut){
+    if(!cut && !blood){
       const glow = ctx.createRadialGradient(dx + 24, dy + dh/2, 0, dx + 24, dy + dh/2, 240);
       glow.addColorStop(0, 'rgba(255,200,120,0.20)');
       glow.addColorStop(1, 'rgba(255,200,120,0)');
       ctx.fillStyle = glow;
       ctx.fillRect(dx - 200, dy - 100, 460, dh + 200);
     }
-  } else {
+  } else if(!blood){
     const dx = 580, dy = 130, dw = 184, dh = 334;
     ctx.fillStyle = '#8f7736';
     ctx.beginPath(); ctx.arc(dx + dw/2, dy + dh/2, 10, 0, Math.PI*2); ctx.fill();
@@ -574,7 +629,8 @@ function drawBackstreetDynamic(t, dt){
     ctx.beginPath(); ctx.arc(dx + dw/2, dy + dh/2, 8, 0, Math.PI*2); ctx.fill();
   }
 
-  if(!f.catGone) drawCat(246, 354, t);
+  /* 猫：血腥模式下不绘制 */
+  if(!f.catGone && !blood) drawCat(246, 354, t);
 }
 
 function drawCat(x, y, t){
@@ -619,15 +675,16 @@ function drawCat(x, y, t){
    ========================================================= */
 function drawShopStatic(){
   const cut = isPowerCut();
+  const blood = isBloodMode();
   const f = flags();
-  const lit = !!f.lightsOn && !cut;
+  const lit = !!f.lightsOn && !cut && !blood;
 
-  ctx.fillStyle = '#02050a';
+  ctx.fillStyle = blood ? '#0a0306' : '#02050a';
   ctx.fillRect(0,0,W,H);
 
-  const wallC  = lit ? '#121a24' : '#05090f';
-  const shelfC = lit ? '#1c2631' : '#090e15';
-  const itemC  = lit ? '#2d3b4a' : '#0d141c';
+  const wallC  = blood ? '#1a0a10' : (lit ? '#121a24' : '#05090f');
+  const shelfC = blood ? '#23121a' : (lit ? '#1c2631' : '#090e15');
+  const itemC  = blood ? '#3a1a22' : (lit ? '#2d3b4a' : '#0d141c');
 
   ctx.fillStyle = wallC;
   ctx.fillRect(0,0,W,H);
@@ -639,14 +696,15 @@ function drawShopStatic(){
     ctx.stroke();
   }
 
-  ctx.fillStyle = lit ? '#080d14' : '#03060a';
+  ctx.fillStyle = blood ? '#0a0306' : (lit ? '#080d14' : '#03060a');
   ctx.fillRect(0, 0, W, 44);
 
-  ctx.fillStyle = grad(0, 430, 0, H, [
-    [0, lit ? '#0e141c' : '#04070b'],[1, '#020406']
-  ]);
+  ctx.fillStyle = grad(0, 430, 0, H, blood
+    ? [[0,'#1a0810'],[1,'#0a040a']]
+    : [[0, lit ? '#0e141c' : '#04070b'],[1, '#020406']]);
   ctx.fillRect(0, 430, W, 110);
 
+  /* 货架 */
   const shelfYs = [168, 256, 344];
   shelfYs.forEach((y) => {
     ctx.fillStyle = 'rgba(0,0,0,0.45)';
@@ -660,7 +718,11 @@ function drawShopStatic(){
       const h0 = 26 + ((j*7) % 16);
       ctx.fillStyle = itemC;
       ctx.fillRect(126 + j*42, y - h0, w0, h0);
-      if(lit){
+      if(blood){
+        /* 血腥模式：罐头标签是暗红的 */
+        ctx.fillStyle = 'rgba(200,30,40,0.55)';
+        ctx.fillRect(126 + j*42, y - h0 + 4, w0 - 2, h0 - 10);
+      } else if(lit){
         ctx.fillStyle = 'rgba(255,240,200,0.10)';
         ctx.fillRect(126 + j*42, y - h0, 3, h0);
       }
@@ -675,35 +737,40 @@ function drawShopStatic(){
   ctx.fillRect(616, 334, 304, 8);
   ctx.fillStyle = shelfC;
   ctx.fillRect(618, 320, 300, 148);
-  ctx.fillStyle = lit ? '#25303d' : '#0b1118';
+  ctx.fillStyle = blood ? '#23121a' : (lit ? '#25303d' : '#0b1118');
   ctx.fillRect(618, 320, 300, 16);
-  ctx.fillStyle = lit ? '#28323e' : '#0c131b';
+  ctx.fillStyle = blood ? '#2a1218' : (lit ? '#28323e' : '#0c131b');
   ctx.fillRect(680, 256, 96, 66);
-  ctx.fillStyle = lit ? '#1c2631' : '#091018';
+  ctx.fillStyle = blood ? '#1a0a10' : (lit ? '#1c2631' : '#091018');
   ctx.fillRect(692, 266, 72, 34);
   if(lit){
     ctx.fillStyle = 'rgba(120,200,255,0.22)';
     ctx.fillRect(694, 268, 68, 30);
   }
+  if(blood){
+    ctx.fillStyle = 'rgba(180,20,30,0.35)';
+    ctx.fillRect(694, 268, 68, 30);
+  }
 
-  if(!cut){
+  if(!cut && !blood){
     const blink = 0.5 + 0.5 * Math.sin(performance.now()/300 * 3.2);
     ctx.fillStyle = `rgba(255,64,64,${0.4 + blink * 0.5})`;
     ctx.beginPath(); ctx.arc(700, 332, 4, 0, Math.PI*2); ctx.fill();
   }
 
+  /* 后窗 */
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
   ctx.fillRect(46, 184, 142, 162);
-  ctx.fillStyle = lit ? '#1a2838' : '#050c12';
+  ctx.fillStyle = blood ? '#1a0a10' : (lit ? '#1a2838' : '#050c12');
   ctx.fillRect(52, 190, 130, 150);
-  ctx.strokeStyle = '#28343f'; ctx.lineWidth = 5;
+  ctx.strokeStyle = blood ? '#3a1418' : '#28343f'; ctx.lineWidth = 5;
   ctx.strokeRect(52, 190, 130, 150);
   ctx.beginPath();
   ctx.moveTo(117, 190); ctx.lineTo(117, 340);
   ctx.moveTo(52, 265); ctx.lineTo(182, 265);
   ctx.stroke();
 
-  if(!lit){
+  if(!lit && !blood){
     ctx.strokeStyle = 'rgba(140,180,220,0.22)';
     ctx.lineWidth = 1;
     for(let i = 0; i < 18; i++){
@@ -715,11 +782,19 @@ function drawShopStatic(){
       ctx.stroke();
     }
   }
+  if(blood){
+    /* 玻璃上的血手印 */
+    ctx.fillStyle = 'rgba(180,20,30,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(120, 260, 22, 28, -0.2, 0, Math.PI*2);
+    ctx.fill();
+  }
 }
 
 function drawShopDynamic(t, dt){
   const cut = isPowerCut();
-  const lit = !!flags().lightsOn && !cut;
+  const blood = isBloodMode();
+  const lit = !!flags().lightsOn && !cut && !blood;
 
   if(lit){
     ctx.fillStyle = '#d8e0e8';
@@ -729,6 +804,13 @@ function drawShopDynamic(t, dt){
     const g2 = ctx.createRadialGradient(470, 400, 0, 470, 400, 640);
     g2.addColorStop(0, `rgba(255,238,196,${0.24 * flick})`);
     g2.addColorStop(1, 'rgba(255,210,150,0)');
+    ctx.fillStyle = g2;
+    ctx.fillRect(0, 0, W, H);
+  } else if(blood){
+    /* 血腥模式下的暗红氛围 */
+    const g2 = ctx.createRadialGradient(470, 400, 0, 470, 400, 640);
+    g2.addColorStop(0, 'rgba(140,15,25,0.22)');
+    g2.addColorStop(1, 'rgba(80,5,15,0)');
     ctx.fillStyle = g2;
     ctx.fillRect(0, 0, W, H);
   } else {
@@ -986,11 +1068,10 @@ function drawStreetDynamic(t, dt){
 }
 
 /* =========================================================
-   门前（街道与红屋顶之间）
+   门前
    ========================================================= */
 function drawDoorstepStatic(){
   const cut = isPowerCut();
-
   ctx.fillStyle = grad(0, 0, 0, 400, [
     [0, '#0a1018'], [0.35, '#141c2a'], [0.7, '#1c2836'], [1, '#242f3e']
   ]);
@@ -1243,7 +1324,6 @@ function drawDoorstepStatic(){
 
 function drawDoorstepDynamic(t, dt){
   const cut = isPowerCut();
-
   ctx.save();
   ctx.strokeStyle = 'rgba(168, 205, 240, 0.45)';
   ctx.lineWidth = 1;
@@ -1256,7 +1336,6 @@ function drawDoorstepDynamic(t, dt){
     ctx.stroke();
   }
   ctx.restore();
-
   if(!cut){
     const pulse = 0.95 + 0.05 * Math.sin(t * 1.8);
     ctx.save();
@@ -1665,7 +1744,6 @@ function drawPowerStationStatic(){
 
 function drawPowerStationDynamic(t, dt){
   const cut = isPowerCut();
-
   if(!cut){
     ctx.fillStyle = '#d8e0e8';
     ctx.fillRect(480, 20, 60, 4);
@@ -1681,7 +1759,6 @@ function drawPowerStationDynamic(t, dt){
     ctx.arc(60 + 110, 200 + 10 + 3*38, 3, 0, Math.PI*2);
     ctx.fill();
   }
-
   const dy = 200 + ((t*80) % 200);
   if(dy < 420){
     ctx.fillStyle = 'rgba(180,215,245,0.4)';
@@ -1696,7 +1773,6 @@ function drawPowerStationDynamic(t, dt){
    ========================================================= */
 function drawRooftopStatic(){
   const cut = isPowerCut();
-
   ctx.fillStyle = grad(0,0,0,420, [
     [0,'#02040a'],[0.4,'#0a1420'],[0.75,'#152030'],[1,'#1a2534']
   ]);
@@ -1767,11 +1843,6 @@ function drawRooftopStatic(){
         if(lit){
           ctx.fillStyle = 'rgba(255,190,110,0.55)';
           ctx.fillRect(wx, wy, 12, 18);
-          const wg = ctx.createRadialGradient(wx+6, wy+9, 0, wx+6, wy+9, 26);
-          wg.addColorStop(0,'rgba(255,200,130,0.15)');
-          wg.addColorStop(1,'rgba(255,200,130,0)');
-          ctx.fillStyle = wg;
-          ctx.fillRect(wx-20, wy-20, 52, 58);
         } else if(emLit){
           ctx.fillStyle = 'rgba(255,180,90,0.4)';
           ctx.fillRect(wx, wy, 12, 18);
@@ -1947,7 +2018,6 @@ function drawRooftopDynamic(t, dt){
    ========================================================= */
 function drawUnderpassStatic(){
   const cut = isPowerCut();
-
   ctx.fillStyle = '#050810';
   ctx.fillRect(0, 0, W, H);
 
@@ -2172,7 +2242,6 @@ function drawUnderpassDynamic(t, dt){
    ========================================================= */
 function drawRiversideStatic(){
   const cut = isPowerCut();
-
   ctx.fillStyle = grad(0,0,0,440, [
     [0,'#040710'],[0.4,'#0a1420'],[0.75,'#101c2c'],[1,'#1a2534']
   ]);
@@ -2380,7 +2449,9 @@ function drawRiversideDynamic(t, dt){
 }
 
 /* =========================================================
-   场景 SPOTS 定义（已移除所有 arrows 箭头）
+   场景 SPOTS 定义
+   ★ 已移除所有 arrows
+   ★ 血腥分支相关 spot 用 cond 条件控制可见性
    ========================================================= */
 const SCENES = {
   alley: {
@@ -2391,8 +2462,11 @@ const SCENES = {
       { id:'graffiti', x:28,  y:250, w:84,  h:70,  label:'墙上的字' },
       { id:'trash',    x:610, y:294, w:144, h:212, label:'垃圾桶' },
       { id:'photo1',   x:442, y:470, w:70,  h:56,  label:'湿透的纸片',
-        cond: () => !flags().photo1Taken },
+        cond: () => !flags().photo1Taken && !flags().bloodMode },
       { id:'puddle',   x:236, y:466, w:190, h:56,  label:'水洼' },
+      /* ★ 血腥分支：墙根窄缝（只在 bloodMode 且非主播模式时出现） */
+      { id:'bloodExit', x:170, y:520, w:60, h:20, label:'墙根窄缝',
+        cond: () => flags().bloodMode && !flags().streamerMode },
       { id:'exit',     x:892, y:244, w:52,  h:52,  label:'巷子深处' }
     ]
   },
