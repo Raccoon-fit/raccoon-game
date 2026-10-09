@@ -2,6 +2,7 @@
    scenes.js — 10 场景绘制 + 定义
    依赖 window.S（游戏状态）
    + 新增：邻屋（支线·主流程必经）
+   + 邻屋加入「来的路」出口
    ========================================================= */
 (function(){
 'use strict';
@@ -2623,6 +2624,22 @@ function drawNeighborStatic(){
   ctx.fillStyle = 'rgba(180,60,40,0.35)';
   ctx.fillRect(dx, dy + 4, 3, dh - 8);
 
+  /* ★ 左下角：来的路（通向街道） */
+  const bx2 = 16, by2 = 456, bw2 = 100, bh2 = 84;
+  ctx.fillStyle = '#050302';
+  ctx.fillRect(bx2, by2, bw2, bh2);
+  ctx.strokeStyle = '#2a1808';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(bx2, by2, bw2, bh2);
+  /* 门下透出的一线暗红 */
+  ctx.fillStyle = 'rgba(160, 70, 50, 0.28)';
+  ctx.fillRect(bx2 + 4, by2 + 4, bw2 - 8, 4);
+  /* 门上的把手 */
+  ctx.fillStyle = '#4a3020';
+  ctx.beginPath();
+  ctx.arc(bx2 + bw2 - 16, by2 + bh2 / 2, 4, 0, Math.PI * 2);
+  ctx.fill();
+
   /* 暗角 */
   const vg = ctx.createRadialGradient(W/2, H/2, H*0.30, W/2, H/2, H*0.95);
   vg.addColorStop(0, 'rgba(0,0,0,0)');
@@ -2786,7 +2803,7 @@ const SCENES = {
       { id:'back',    x:16,  y:244, w:52,  h:52,  label:'回到街道' }
     ]
   },
-  /* ★ 新增：邻屋（支线·主流程必经） */
+  /* ★ 邻屋（支线·主流程必经）+ 来的路出口 */
   neighbor: {
     draw: drawNeighborStatic, dynamic: drawNeighborDynamic, rain: false,
     spots: [
@@ -2794,6 +2811,7 @@ const SCENES = {
       { id:'neighborCalendar', x:92,  y:162, w:86,  h:108, label:'日历' },
       { id:'neighborFloor',    x:260, y:462, w:280, h:76,  label:'地板上的爪印' },
       { id:'neighborBed',      x:672, y:314, w:256, h:172, label:'小床' },
+      { id:'back',             x:16,  y:456, w:100, h:84,  label:'来的路' },
       { id:'exit',             x:856, y:236, w:96,  h:138, label:'通向院子的门' }
     ]
   }
