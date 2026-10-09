@@ -286,13 +286,13 @@ body.streamer-mode #btnTempLight{display:inline-flex;}
   box-shadow:0 4px 20px rgba(220,50,60,.5),0 0 24px rgba(180,20,30,.35);}
 #bloodConfirm:hover{background:linear-gradient(180deg,#ff5a60,#a8242a);}
 
-/* ★ 主播模式冲突提醒弹窗 */
+/* ★ 主播模式冲突提醒弹窗（仅提醒，不影响任何状态） */
 #streamerWarnMask{position:absolute;inset:0;background:rgba(2,8,10,.72);
   display:flex;align-items:center;justify-content:center;
   opacity:0;pointer-events:none;transition:opacity .2s;
   backdrop-filter:blur(3px);z-index:42;}
 #streamerWarnMask.show{opacity:1;pointer-events:auto;}
-#streamerWarnBox{width:440px;padding:24px 26px 20px;border-radius:16px;
+#streamerWarnBox{width:460px;padding:24px 26px 20px;border-radius:16px;
   background:linear-gradient(180deg,rgba(14,26,20,.985),rgba(6,14,10,.995));
   border:1px solid rgba(127,240,176,.42);
   box-shadow:0 24px 70px rgba(0,0,0,.9),0 0 40px rgba(80,240,150,.16);
@@ -301,10 +301,12 @@ body.streamer-mode #btnTempLight{display:inline-flex;}
 #streamerWarnBox .warn-ic{font-size:44px;margin-bottom:6px;
   filter:drop-shadow(0 4px 12px rgba(80,240,150,.4));}
 #streamerWarnBox h4{margin:0 0 10px;font-size:20px;letter-spacing:5px;
-  color:#7ff0b0;font-weight:700;padding-left:5px;}
-#streamerWarnBox p{margin:0 0 6px;font-size:14.5px;line-height:1.9;letter-spacing:1px;
+  color:#7ff0b0;font-weight:700;padding-left:5px;
+  text-shadow:0 0 16px rgba(80,240,150,.4);}
+#streamerWarnBox p{margin:0 0 6px;font-size:14px;line-height:1.85;letter-spacing:1px;
   color:#c2d8c8;text-align:center;}
-#streamerWarnBox p .hl{color:#7ff0b0;font-weight:700;}
+#streamerWarnBox p .hl{color:#7ff0b0;font-weight:700;
+  text-shadow:0 0 10px rgba(80,240,150,.5);}
 #streamerWarnBox .warn-btns{display:flex;gap:12px;margin-top:18px;}
 #streamerWarnBox button{flex:1;padding:11px 0;font-size:14.5px;letter-spacing:3px;
   cursor:pointer;font-family:inherit;border-radius:10px;transition:.15s;}
@@ -312,6 +314,35 @@ body.streamer-mode #btnTempLight{display:inline-flex;}
 #streamerOkBtn{color:#0d1a14;background:linear-gradient(180deg,#7ff0b0,#4fd18b);
   border:1px solid #7ff0b0;font-weight:700;
   box-shadow:0 4px 16px rgba(80,240,150,.35);}
+
+/* ★ 主播模式拦截弹窗（拦截进入暗色支线） */
+#streamerBlockMask{position:absolute;inset:0;background:rgba(6,2,2,.78);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+  backdrop-filter:blur(3px);z-index:43;}
+#streamerBlockMask.show{opacity:1;pointer-events:auto;}
+#streamerBlockBox{width:480px;padding:24px 26px 20px;border-radius:16px;
+  background:linear-gradient(180deg,rgba(30,14,8,.985),rgba(16,6,4,.995));
+  border:1px solid rgba(255,170,90,.42);
+  box-shadow:0 24px 70px rgba(0,0,0,.9),0 0 40px rgba(255,140,60,.18);
+  transform:scale(.9);transition:transform .22s cubic-bezier(.2,1.4,.5,1);text-align:center;}
+#streamerBlockMask.show #streamerBlockBox{transform:scale(1);}
+#streamerBlockBox .warn-ic{font-size:44px;margin-bottom:6px;
+  filter:drop-shadow(0 4px 12px rgba(255,150,80,.5));}
+#streamerBlockBox h4{margin:0 0 12px;font-size:20px;letter-spacing:5px;
+  color:#ffb070;font-weight:700;padding-left:5px;
+  text-shadow:0 0 16px rgba(255,150,80,.5);}
+#streamerBlockBox p{margin:0 0 6px;font-size:14px;line-height:1.85;letter-spacing:1px;
+  color:#e2cbb8;text-align:center;}
+#streamerBlockBox p .hl{color:#ffb070;font-weight:700;
+  text-shadow:0 0 10px rgba(255,150,80,.5);}
+#streamerBlockBox .warn-btns{display:flex;gap:12px;margin-top:18px;}
+#streamerBlockBox button{flex:1;padding:11px 0;font-size:14.5px;letter-spacing:3px;
+  cursor:pointer;font-family:inherit;border-radius:10px;transition:.15s;
+  color:#1a0e06;background:linear-gradient(180deg,#ffc890,#e09244);
+  border:1px solid #ffc890;font-weight:700;
+  box-shadow:0 4px 16px rgba(255,150,80,.35);}
+#streamerBlockBox button:active{transform:scale(.96);}
 
 #ending{position:absolute;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:20px;
@@ -416,7 +447,6 @@ body.streamer-mode #btnTempLight{display:inline-flex;}
         <button id="warnCancel">取 消</button>
         <button id="warnConfirm">确 认 清 除</button>
       </div></div></div>
-    <!-- ★ 血腥分支确认弹窗 -->
     <div id="bloodWarnMask"><div id="bloodWarnBox">
       <div class="warn-ic">🩸</div><h4>暗 色 分 支</h4>
       <p>即将进入<span class="hl">暗色分支</span>。</p>
@@ -428,15 +458,26 @@ body.streamer-mode #btnTempLight{display:inline-flex;}
         <button id="bloodConfirm">继 续 深 入</button>
       </div>
     </div></div>
-    <!-- ★ 主播模式冲突提醒弹窗 -->
     <div id="streamerWarnMask"><div id="streamerWarnBox">
-      <div class="warn-ic">⚠️</div><h4>主 播 模 式</h4>
-      <p>当前处于<span class="hl">暗色分支</span>。</p>
-      <p>主播模式<span class="hl">不含此内容</span>——</p>
-      <p>暗色的画面与文字，将被替换为普通版本。</p>
-      <p>（存档中的分支状态会保留，关闭主播模式后可恢复。）</p>
+      <div class="warn-ic">ℹ️</div><h4>主 播 模 式 提 醒</h4>
+      <p>当前已处于<span class="hl">暗色支线</span>。</p>
+      <p>主播模式的各项权益<span class="hl">依然生效</span>——</p>
+      <p>物品名称常显、粉丝团提示、临时点亮全局、状态徽标。</p>
+      <p>暗色支线的画面与文字也会<span class="hl">完整保留</span>。</p>
+      <p>如果不想看到暗色内容，请到雨巷墙根处退出支线。</p>
       <div class="warn-btns">
         <button id="streamerOkBtn">知 道 了</button>
+      </div>
+    </div></div>
+    <div id="streamerBlockMask"><div id="streamerBlockBox">
+      <div class="warn-ic">🚫</div><h4>暂 时 无 法 进 入</h4>
+      <p>当前处于<span class="hl">主播模式</span>，</p>
+      <p>暗色支线<span class="hl">已被拦截</span>。</p>
+      <p>如果你想体验这段内容，可以：</p>
+      <p>① 先关闭主播模式 → ② 进入暗色支线 → ③ 再开启主播模式。</p>
+      <p>（暗色内容会保留，主播模式的各项权益也会生效。）</p>
+      <div class="warn-btns">
+        <button id="streamerBlockOk">知 道 了</button>
       </div>
     </div></div>
     <div id="ending">
@@ -509,7 +550,7 @@ try{
 }catch(e){}
 function saveSettings(){ try{ localStorage.setItem(SET_KEY, JSON.stringify(settings)); }catch(e){} }
 
-/* ★ 主播模式切换时的冲突检测：只弹一次 */
+/* ★ 主播模式切换时的冲突检测：只弹一次提醒，不改变任何状态 */
 var streamerWarnShownThisSession = false;
 
 function applySettings(){
@@ -523,12 +564,12 @@ function applySettings(){
       b.classList.toggle('on', b.dataset.v === cur);
     });
   });
-  /* 同步 streamerMode 到 S.flags，供 common.js 的 spot cond 使用 */
+  /* 同步 streamerMode 到 S.flags */
   if(S && S.flags){
     S.flags.streamerMode = isStreamer;
   }
   syncState();
-  /* 进入主播模式时，如果处于血腥分支 → 弹提醒（每会话一次） */
+  /* 若已处于暗色支线且开启主播模式 → 仅弹提醒，支线与主播权益都保留 */
   if(isStreamer && S && S.flags && S.flags.bloodMode && !streamerWarnShownThisSession){
     streamerWarnShownThisSession = true;
     setTimeout(function(){
@@ -554,7 +595,6 @@ var ITEMS = {
 var S = null;
 var endingShown = false;
 var endingLock = false;
-/* ★ 血腥分支：水洼点击计数（用于递进式描写） */
 var bloodPuddleCount = 0;
 
 function torchLit(){
@@ -581,20 +621,17 @@ function loadSave(){
 }
 
 /* ========================================================
-   血腥分支
+   血腥分支弹窗
    ======================================================== */
 var bloodWarnMask = document.getElementById('bloodWarnMask');
 var streamerWarnMask = document.getElementById('streamerWarnMask');
+var streamerBlockMask = document.getElementById('streamerBlockMask');
 
 function showBloodWarn(){
   bloodWarnMask.classList.add('show');
 }
 function enterBloodMode(){
   if(!S) return;
-  if(isStreamer()){
-    toast('主播模式下无法进入暗色分支');
-    return;
-  }
   S.flags.bloodMode = true;
   S.flags.bloodEnteredOnce = true;
   bloodPuddleCount = 0;
@@ -634,19 +671,21 @@ streamerWarnMask.addEventListener('click', function(e){
 document.getElementById('streamerOkBtn').addEventListener('click', function(){
   streamerWarnMask.classList.remove('show');
 });
+streamerBlockMask.addEventListener('click', function(e){
+  if(e.target === streamerBlockMask) streamerBlockMask.classList.remove('show');
+});
+document.getElementById('streamerBlockOk').addEventListener('click', function(){
+  streamerBlockMask.classList.remove('show');
+});
 
 /* ========================================================
    场景定义
    ======================================================== */
 var SCENES = {
-
-  /* =====================================================
-     雨巷
-     ===================================================== */
+  /* ===================== 雨巷 ===================== */
   alley: {
     url:'assets/scene1.html', label:'雨 巷',
     acts: {
-      /* 垃圾桶 */
       trash: function(){
         if(isBloodMode()){
           say('垃圾桶还在原来的位置。');
@@ -667,7 +706,6 @@ var SCENES = {
           say('那张报纸还黏在桶底，像一层剥不下来的皮。');
         }
       },
-      /* 墙上的湿透纸片 */
       photo1: function(){
         if(isBloodMode()){
           say('墙上那张纸片还在。');
@@ -688,11 +726,9 @@ var SCENES = {
       },
       /* ★ 水洼：血腥分支入口 */
       puddle: function(){
-        /* 主播模式拦截 */
+        /* 主播模式 + 未进入暗色支线 → 拦截 */
         if(isStreamer() && !isBloodMode()){
-          say('水洼里倒映着路灯。');
-          say('——只是很普通的一滩水。');
-          say('（主播模式下，这段内容已被隐藏。）');
+          document.getElementById('streamerBlockMask').classList.add('show');
           return;
         }
         /* 已进入分支 */
@@ -729,7 +765,6 @@ var SCENES = {
           setTimeout(showBloodWarn, 320);
         });
       },
-      /* 路灯 */
       lamp: function(){
         if(isBloodMode()){
           say('路灯灭了。');
@@ -746,7 +781,6 @@ var SCENES = {
           say('它忽然想起，以前有一盏灯，也是这样昏黄的。');
         }
       },
-      /* 电线 */
       wires: function(){
         if(isBloodMode()){
           say('电线上挂着一只塑料袋。');
@@ -761,7 +795,6 @@ var SCENES = {
         say('灰豆伸出爪子去接水珠——');
         say('什么都没接住。');
       },
-      /* 墙上的粉笔字 */
       graffiti: function(){
         if(isBloodMode()){
           say('墙上那行粉笔字，被雨冲得更淡了。');
@@ -777,7 +810,7 @@ var SCENES = {
         say('——是新的。');
         say('——粉笔的味道里，混着一点淡淡的铁锈味。');
       },
-      /* ★ 血腥分支：墙根的窄缝（回归主线） */
+      /* ★ 血腥分支：墙根窄缝（回归主线） */
       bloodExit: function(){
         if(!isBloodMode()) return;
         say('墙根处，有一道细得像线的缝。');
@@ -793,7 +826,6 @@ var SCENES = {
           say('——像是什么都没发生过。');
         });
       },
-      /* 走到巷子深处 */
       exit: function(){
         if(isBloodMode()){
           say('巷子深处更暗了。');
@@ -806,13 +838,10 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     后巷
-     ===================================================== */
+  /* ===================== 后巷 ===================== */
   backstreet: {
     url:'assets/scene2.html', label:'后 巷',
     acts: {
-      /* 纸箱 */
       box: function(){
         if(isBloodMode()){
           say('三个纸箱还在。');
@@ -836,7 +865,6 @@ var SCENES = {
           say('和那张旧报纸的一角。');
         }
       },
-      /* 大橘 */
       cat: function(){
         if(isBloodMode()){
           say('纸箱上，什么都没有。');
@@ -874,7 +902,6 @@ var SCENES = {
           say('“别进去。”');
         }
       },
-      /* 后门 */
       door: function(){
         if(S.flags.doorOpen){
           say('门开着一条缝。');
@@ -921,7 +948,6 @@ var SCENES = {
           say('灰豆侧着身子钻了进去。');
         }, 220);
       },
-      /* 巷子尽头的配电房门 */
       powerDoor: function(){
         if(!S.flags.powerDoorSeen){
           S.flags.powerDoorSeen = true; save(); syncState();
@@ -942,7 +968,6 @@ var SCENES = {
           });
         }
       },
-      /* 消防梯 */
       stairs: function(){
         if(isBloodMode()){
           say('头顶那架消防梯，锈得更厉害了。');
@@ -965,7 +990,6 @@ var SCENES = {
         }
         changeScene('rooftop', '屋 顶');
       },
-      /* 墙上的霉斑 */
       mold: function(){
         if(isBloodMode()){
           say('霉斑变成了深红色。');
@@ -980,7 +1004,6 @@ var SCENES = {
         say('——其中一块的形状，有点像一栋房子。');
         say('**红屋顶**。');
       },
-      /* 回到雨巷 */
       back: function(){
         if(isBloodMode()){
           say('灰豆退回到雨巷。');
@@ -991,13 +1014,10 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     便利店
-     ===================================================== */
+  /* ===================== 便利店 ===================== */
   shop: {
     url:'assets/scene3.html', label:'便 利 店',
     acts: {
-      /* 收银台 */
       counter: function(){
         if(isBloodMode()){
           say('收银台上，落了一层灰。');
@@ -1033,7 +1053,6 @@ var SCENES = {
           say('便签还在那里，字迹有点被水洇糊了。');
         }
       },
-      /* 货架 */
       shelf: function(){
         if(isBloodMode()){
           say('货架上，所有的商品都蒙了一层灰。');
@@ -1055,7 +1074,6 @@ var SCENES = {
           say('只剩那几罐过期的罐头。');
         }
       },
-      /* 后窗 */
       window: function(){
         if(isBloodMode()){
           say('后窗外，是一片黑。');
@@ -1072,7 +1090,6 @@ var SCENES = {
           say('窗台太高，回不去了。');
         }
       },
-      /* 地板 */
       floor: function(){
         if(isBloodMode()){
           say('地板上，有一串湿漉漉的脚印。');
@@ -1089,7 +1106,6 @@ var SCENES = {
           say('“11月14日，晴。”');
         }else{ say('地板太黑，什么也看不见。'); }
       },
-      /* 海报 */
       poster: function(){
         if(isBloodMode()){
           say('海报还在墙上。');
@@ -1109,9 +1125,7 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     街道（保持原样）
-     ===================================================== */
+  /* ===================== 街道 ===================== */
   street: {
     url:'assets/scene4.html', label:'街 道',
     acts: {
@@ -1229,9 +1243,7 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     门前
-     ===================================================== */
+  /* ===================== 门前 ===================== */
   doorstep: {
     url:'assets/scene10.html', label:'门 前',
     acts: {
@@ -1287,9 +1299,7 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     红屋顶
-     ===================================================== */
+  /* ===================== 红屋顶 ===================== */
   house: {
     url:'assets/scene5.html', label:'红 屋 顶',
     acts: {
@@ -1387,9 +1397,7 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     配电房
-     ===================================================== */
+  /* ===================== 配电房 ===================== */
   powerstation: {
     url:'assets/scene6.html', label:'配 电 房',
     acts: {
@@ -1472,9 +1480,7 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     屋顶
-     ===================================================== */
+  /* ===================== 屋顶 ===================== */
   rooftop: {
     url:'assets/scene7.html', label:'屋 顶',
     acts: {
@@ -1527,9 +1533,7 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     地下通道
-     ===================================================== */
+  /* ===================== 地下通道 ===================== */
   underpass: {
     url:'assets/scene8.html', label:'地 下 通 道',
     acts: {
@@ -1588,9 +1592,7 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     河堤
-     ===================================================== */
+  /* ===================== 河堤 ===================== */
   riverside: {
     url:'assets/scene9.html', label:'河 堤',
     acts: {
@@ -2078,8 +2080,9 @@ try{ history.pushState({ page:'game' }, '', location.href); historyOk = true; }c
 function handleBack(){
   if(loadingActive) return true;
   if(currentDlg){ advanceDialog(); return true; }
-  if(bloodWarnMask.classList.contains('show')){ bloodWarnMask.classList.remove('show'); return true; }
+  if(streamerBlockMask.classList.contains('show')){ streamerBlockMask.classList.remove('show'); return true; }
   if(streamerWarnMask.classList.contains('show')){ streamerWarnMask.classList.remove('show'); return true; }
+  if(bloodWarnMask.classList.contains('show')){ bloodWarnMask.classList.remove('show'); return true; }
   if(warnMask.classList.contains('show')){ warnMask.classList.remove('show'); return true; }
   if(setEl.classList.contains('show')){ setEl.classList.remove('show'); return true; }
   if(endingShown) return true;
@@ -2092,8 +2095,9 @@ window.addEventListener('popstate', function(){
 });
 document.addEventListener('keydown', function(e){
   if(e.key === 'Escape'){
-    if(bloodWarnMask.classList.contains('show')){ bloodWarnMask.classList.remove('show'); return; }
+    if(streamerBlockMask.classList.contains('show')){ streamerBlockMask.classList.remove('show'); return; }
     if(streamerWarnMask.classList.contains('show')){ streamerWarnMask.classList.remove('show'); return; }
+    if(bloodWarnMask.classList.contains('show')){ bloodWarnMask.classList.remove('show'); return; }
     if(warnMask.classList.contains('show')){ warnMask.classList.remove('show'); return; }
     if(setEl.classList.contains('show')){ setEl.classList.remove('show'); return; }
     if(currentDlg){ advanceDialog(); return; }
