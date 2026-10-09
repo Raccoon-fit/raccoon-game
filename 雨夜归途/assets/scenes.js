@@ -155,7 +155,6 @@ function drawAlleyStatic(){
   ctx.fillStyle = blood ? '#050202' : '#101820';
   ctx.fillRect(hx, hy, 84, 82);
   if(blood){
-    /* 烟囱冒黑烟 */
     ctx.fillStyle = 'rgba(30,10,15,0.7)';
     ctx.beginPath();
     ctx.ellipse(hx+42, hy-100, 20, 8, 0, 0, Math.PI*2);
@@ -173,7 +172,6 @@ function drawAlleyStatic(){
     ctx.fillStyle = hg;
     ctx.fillRect(hx-60, hy-60, 210, 210);
   } else if(blood){
-    /* 血窗 */
     ctx.fillStyle = 'rgba(180,30,40,0.75)';
     ctx.fillRect(hx+28, hy+28, 28, 34);
     const hg = ctx.createRadialGradient(hx+42, hy+45, 0, hx+42, hy+45, 90);
@@ -215,7 +213,6 @@ function drawAlleyStatic(){
   ]);
   ctx.fillRect(0, 380, 160, 160);
 
-  /* 墙上的苔痕：暗色模式下变成红色斑 */
   for(let i=0;i<20;i++){
     const mx = 6 + (i*43)%148;
     const my = 60 + (i*67)%430;
@@ -227,7 +224,6 @@ function drawAlleyStatic(){
     ctx.fill();
   }
 
-  /* 墙上的字 */
   if(blood){
     ctx.save();
     ctx.translate(38, 220); ctx.rotate(-0.05);
@@ -236,7 +232,6 @@ function drawAlleyStatic(){
     ctx.fillStyle = 'rgba(140,15,25,0.55)';
     ctx.fillRect(6, 8, 36, 26);
     ctx.restore();
-    /* 血字 */
     ctx.save();
     ctx.translate(36, 400); ctx.rotate(-0.08);
     ctx.strokeStyle = 'rgba(200,30,40,0.55)';
@@ -265,7 +260,6 @@ function drawAlleyStatic(){
     ctx.restore();
   }
 
-  /* 路灯柱 */
   ctx.fillStyle = blood ? '#1a0c0c' : '#141b25'; ctx.fillRect(164, 116, 9, 336);
   ctx.fillStyle = blood ? '#241414' : '#1c2531';
   ctx.beginPath();
@@ -286,7 +280,6 @@ function drawAlleyStatic(){
     ctx.fillRect(-180,-220,700,700);
   }
 
-  /* 垃圾桶 */
   const bx = 618, by = 314, bw = 126, bh = 180;
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.beginPath();
@@ -311,7 +304,6 @@ function drawAlleyStatic(){
   ctx.fillStyle = blood ? '#3a1a22' : '#364352';
   ctx.beginPath(); ctx.ellipse(bx+bw/2, by+10, bw/2-10, 9, 0, 0, Math.PI*2); ctx.fill();
 
-  /* 地面 */
   ctx.fillStyle = grad(0, 440, 0, H, blood
     ? [[0,'#1a0810'],[1,'#0a040a']]
     : [[0,'#121a24'],[1,'#04070b']]);
@@ -323,7 +315,6 @@ function drawAlleyStatic(){
     ctx.stroke();
   }
 
-  /* 水洼 */
   ctx.save();
   ctx.beginPath();
   ctx.ellipse(330, 492, 100, 22, 0, 0, Math.PI*2);
@@ -345,7 +336,6 @@ function drawAlleyStatic(){
   }
   ctx.restore();
 
-  /* 暗色模式下额外暗红水渍 */
   if(blood){
     ctx.fillStyle = 'rgba(140,20,30,0.35)';
     ctx.beginPath();
@@ -457,7 +447,6 @@ function drawBackstreetStatic(){
   ctx.fillStyle = blood ? '#241014' : '#242e3a';
   ctx.fillRect(430, 36, 14, 300);
 
-  /* 后门 */
   const dx = 580, dy = 130, dw = 184, dh = 334;
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
   ctx.fillRect(dx - 10, dy - 10, dw + 20, dh + 14);
@@ -493,7 +482,6 @@ function drawBackstreetStatic(){
     ctx.fillRect(dx + dw/2 - 270, dy - 290, 540, 560);
   }
 
-  /* 配电房门 */
   const ox = 400, oy = 300, ow = 160, oh = 150;
   ctx.fillStyle = 'rgba(0,0,0,0.72)';
   ctx.fillRect(ox, oy, ow, oh);
@@ -556,7 +544,6 @@ function drawBackstreetStatic(){
   ctx.fillRect(0, 470, W, 70);
   ctx.fillStyle = blood ? '#160812' : '#0a1018'; ctx.fillRect(0, 480, W, 8);
 
-  /* 纸箱 */
   const c1x = 166, c1y = 370, c1w = 160, c1h = 106;
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.beginPath();
@@ -626,8 +613,14 @@ function drawBackstreetDynamic(t, dt){
     ctx.beginPath(); ctx.arc(dx + dw/2, dy + dh/2, 8, 0, Math.PI*2); ctx.fill();
   }
 
-  /* 猫：暗色模式下不绘制 */
-  if(!f.catGone && !blood) drawCat(246, 354, t);
+  /* ★ 修复：
+     主线：有猫就画猫
+     支线：未拿 photo1 时画猫形水渍 + 三爪划痕 */
+  if(!blood){
+    if(!f.catGone) drawCat(246, 354, t);
+  } else if(!f.photo1Taken){
+    drawBloodStain(246, 354, t);
+  }
 }
 
 function drawCat(x, y, t){
@@ -667,6 +660,45 @@ function drawCat(x, y, t){
   ctx.restore();
 }
 
+/* ★ 新增：支线的猫形水渍（替代大橘的视觉占位） */
+function drawBloodStain(x, y, t){
+  ctx.save();
+  ctx.translate(x, y);
+
+  /* 蜷着的猫形水渍 */
+  ctx.fillStyle = 'rgba(70, 6, 12, 0.55)';
+  ctx.beginPath();
+  ctx.ellipse(0, 18, 56, 15, -0.08, 0, Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(120, 15, 22, 0.42)';
+  ctx.beginPath();
+  ctx.ellipse(-6, 14, 40, 10, -0.08, 0, Math.PI*2);
+  ctx.fill();
+
+  /* 三只爪的划痕（暗示第四条腿被拖走） */
+  ctx.strokeStyle = 'rgba(50, 4, 9, 0.75)';
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = 'round';
+  for(let i = 0; i < 3; i++){
+    const sx = -38 + i * 22;
+    ctx.beginPath();
+    ctx.moveTo(sx, 6);
+    ctx.lineTo(sx + 4, 22);
+    ctx.stroke();
+  }
+
+  /* 极淡反光，暗示"还没干" */
+  const g = ctx.createRadialGradient(-4, 12, 0, -4, 12, 32);
+  g.addColorStop(0, 'rgba(255,180,180,0.14)');
+  g.addColorStop(1, 'rgba(255,180,180,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(-4, 12, 32, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
 /* =========================================================
    便利店
    ========================================================= */
@@ -701,7 +733,6 @@ function drawShopStatic(){
     : [[0, lit ? '#0e141c' : '#04070b'],[1, '#020406']]);
   ctx.fillRect(0, 430, W, 110);
 
-  /* 货架 */
   const shelfYs = [168, 256, 344];
   shelfYs.forEach((y) => {
     ctx.fillStyle = 'rgba(0,0,0,0.45)';
@@ -716,7 +747,6 @@ function drawShopStatic(){
       ctx.fillStyle = itemC;
       ctx.fillRect(126 + j*42, y - h0, w0, h0);
       if(blood){
-        /* 暗色模式下：罐头标签是暗红的 */
         ctx.fillStyle = 'rgba(200,30,40,0.55)';
         ctx.fillRect(126 + j*42, y - h0 + 4, w0 - 2, h0 - 10);
       } else if(lit){
@@ -755,7 +785,6 @@ function drawShopStatic(){
     ctx.beginPath(); ctx.arc(700, 332, 4, 0, Math.PI*2); ctx.fill();
   }
 
-  /* 后窗 */
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
   ctx.fillRect(46, 184, 142, 162);
   ctx.fillStyle = blood ? '#1a0a10' : (lit ? '#1a2838' : '#050c12');
@@ -780,7 +809,6 @@ function drawShopStatic(){
     }
   }
   if(blood){
-    /* 玻璃上的血手印 */
     ctx.fillStyle = 'rgba(180,20,30,0.35)';
     ctx.beginPath();
     ctx.ellipse(120, 260, 22, 28, -0.2, 0, Math.PI*2);
@@ -804,7 +832,6 @@ function drawShopDynamic(t, dt){
     ctx.fillStyle = g2;
     ctx.fillRect(0, 0, W, H);
   } else if(blood){
-    /* 暗色模式下的暗红氛围 */
     const g2 = ctx.createRadialGradient(470, 400, 0, 470, 400, 640);
     g2.addColorStop(0, 'rgba(140,15,25,0.22)');
     g2.addColorStop(1, 'rgba(80,5,15,0)');
@@ -2461,7 +2488,6 @@ const SCENES = {
       { id:'photo1',   x:442, y:470, w:70,  h:56,  label:'湿透的纸片',
         cond: () => !flags().photo1Taken && !flags().bloodMode },
       { id:'puddle',   x:236, y:466, w:190, h:56,  label:'水洼' },
-      /* ★ 暗色分支：墙根窄缝（只要处于 bloodMode 就出现） */
       { id:'bloodExit', x:170, y:520, w:60, h:20, label:'墙根窄缝',
         cond: () => flags().bloodMode },
       { id:'exit',     x:892, y:244, w:52,  h:52,  label:'巷子深处' }
@@ -2473,8 +2499,11 @@ const SCENES = {
       { id:'stairs', x:250, y:36,  w:120, h:180, label:'消防梯' },
       { id:'mold',   x:556, y:262, w:70,  h:70,  label:'墙上的霉斑' },
       { id:'box',    x:166, y:312, w:184, h:170, label:'纸箱' },
-      { id:'cat',    x:196, y:288, w:150, h:84,  label:'大橘',
-        cond: () => !flags().catGone && !flags().bloodMode },
+      /* ★ 修复：去掉 !bloodMode，支线也保留该热区；
+         label 改为函数，支线显示"干涸的水渍" */
+      { id:'cat',    x:196, y:288, w:150, h:84,
+        label: () => flags().bloodMode ? '干涸的水渍' : '大橘',
+        cond: () => !flags().catGone },
       { id:'door',   x:566, y:130, w:210, h:340, label:'后门' },
       { id:'powerDoor', x:390, y:290, w:180, h:170, label:'配电房' },
       { id:'back',   x:16,  y:244, w:52,  h:52,  label:'回到雨巷' }
@@ -2487,7 +2516,9 @@ const SCENES = {
       { id:'counter', x:618, y:248, w:300, h:220, label:'收银台' },
       { id:'shelf',   x:100, y:148, w:340, h:266, label:'货架' },
       { id:'floor',   x:360, y:440, w:220, h:80,  label:'地板' },
-      { id:'window',  x:16,  y:244, w:52,  h:52,  label:'后窗' }
+      { id:'window',  x:16,  y:244, w:52,  h:52,  label:'后窗' },
+      /* ★ 新增：左下角回到后巷 */
+      { id:'back',    x:16,  y:456, w:88,  h:72,  label:'回到后巷' }
     ]
   },
   street: {
