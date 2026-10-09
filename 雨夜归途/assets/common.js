@@ -3,7 +3,7 @@
    状态 / 雨 / 涟漪 / 光尘 / 箭头 / 环境灯 / 渲染 / 通信
    + 移动端触控板式虚拟光标
    + 主播模式"临时点亮全局"
-   + ★ 暗色分支 overlay
+   + ★ 暗色分支 overlay（独立于主播模式）
    ========================================================= */
 (function(){
 'use strict';
@@ -82,8 +82,8 @@ function setSceneCtx(c){
 }
 
 function isPowerCut(){ return !!(window.S.flags && window.S.flags.powerCut); }
+/* ★ 暗色分支：只判断 bloodMode，与主播模式无关 */
 function isBloodMode(){ return !!(window.S.flags && window.S.flags.bloodMode); }
-function isStreamerMode(){ return !!(window.S.flags && window.S.flags.streamerMode); }
 
 function rrectOn(c,x,y,w,h,r){
   c.beginPath();
@@ -109,8 +109,8 @@ function rebuildRain(){
 function drawRain(dt){
   if(!rain.length) return;
   mainCtx.save();
-  /* 血腥模式下，雨的颜色偏红 */
-  mainCtx.strokeStyle = isBloodMode() && !isStreamerMode()
+  /* 暗色分支：雨色偏红 */
+  mainCtx.strokeStyle = isBloodMode()
     ? 'rgba(220,150,150,0.85)'
     : 'rgba(168,205,240,0.9)';
   mainCtx.lineWidth = 1;
@@ -143,7 +143,7 @@ function updateRipples(dt){
 function drawRipples(){
   if(!ripples.length) return;
   mainCtx.save();
-  mainCtx.strokeStyle = isBloodMode() && !isStreamerMode()
+  mainCtx.strokeStyle = isBloodMode()
     ? 'rgba(220,150,150,0.55)'
     : 'rgba(170,205,240,0.55)';
   mainCtx.lineWidth = 1.2;
@@ -190,7 +190,8 @@ function cacheKey(){
   const f = window.S.flags || {};
   const b = n => n ? '1' : '0';
   const p = b(f.powerCut);
-  const bl = b(f.bloodMode && !f.streamerMode);
+  /* ★ bl 只考虑 bloodMode，与主播模式无关 */
+  const bl = b(f.bloodMode);
   switch(currentSceneKey){
     case 'alley':       return b(f.trash) + b(f.photo1Taken) + p + bl;
     case 'backstreet':  return b(f.catfoodTaken) + b(f.catGone) + b(f.doorOpen) + p + bl;
@@ -236,7 +237,7 @@ function getLitBg(){
   const cctx = c.getContext('2d');
   cctx.clearRect(0, 0, W, H);
 
-  /* 使用 globalCompositeOperation 加半透明白色叠加来提亮（最兼容） */
+  /* 使用 globalCompositeOperation 加半透明白色叠加来提亮（兼容所有安卓 WebView） */
   cctx.drawImage(src, 0, 0);
   cctx.globalCompositeOperation = 'lighter';
   cctx.fillStyle = 'rgba(240, 224, 200, 0.55)';
@@ -267,8 +268,8 @@ function getDynamicCanvas(){
   return dynamicCanvas;
 }
 
+/* 已不使用箭头，保留函数以防老代码调用 */
 function drawArrow(dir, x, y, t){
-  /* 已不使用箭头，保留函数以防老代码调用 */
   const pulse = 0.55 + 0.45 * Math.sin(t * 2.2);
   const bob = Math.sin(t * 2.2) * 3;
   const sign = dir === 'left' ? -1 : 1;
@@ -310,7 +311,8 @@ function drawAmbientLights(t){
   if(!spots.length) return;
 
   const cut = isPowerCut();
-  const blood = isBloodMode() && !isStreamerMode();
+  /* ★ 只根据 bloodMode 判断，与主播模式无关 */
+  const blood = isBloodMode();
   const baseAlpha = blood ? 0.16 : (cut ? 0.10 : 0.18);
   const pulse = 0.75 + 0.25 * Math.sin(t * 1.6);
 
@@ -524,10 +526,9 @@ function renderDynamicLayer(scene, t, dt){
   mainCtx.drawImage(dcv, 0, 0);
 }
 
-/* ★ 暗色分支 overlay */
+/* ★ 暗色分支 overlay —— 只要处于 bloodMode 就绘制，与主播模式无关 */
 function drawBloodOverlay(){
   if(!isBloodMode()) return;
-  if(isStreamerMode()) return; /* 主播模式下不显示 */
   mainCtx.save();
   /* 暗红薄雾 */
   mainCtx.fillStyle = 'rgba(60, 8, 12, 0.26)';
@@ -543,7 +544,7 @@ function drawBloodOverlay(){
   mainCtx.restore();
 }
 
-/* ★ 临时点亮 */
+/* ★ 主播模式：临时点亮全局（渐亮 → 保持 → 渐暗） */
 function drawTempLight(dt){
   if(tempLightTimer <= 0) return;
   tempLightTimer = Math.max(0, tempLightTimer - dt);
@@ -605,15 +606,15 @@ function render(dt, t){
 
   drawTorchDarknessOverlay();
 
-  /* ★ 暗色分支：叠加红光 + 重暗角 */
+  /* ★ 暗色分支：叠加红光 + 重暗角（与主播模式无关） */
   drawBloodOverlay();
 
-  /* 临时点亮 */
+  /* 临时点亮（主播模式权益，独立运作） */
   drawTempLight(dt);
 
   drawAmbientLights(t);
 
-  /* 已不使用箭头，这里保留兼容 */
+  /* 已不使用箭头，但保留兼容 */
   if(scene.arrows){
     for(let i = 0; i < scene.arrows.length; i++){
       const a = scene.arrows[i];
