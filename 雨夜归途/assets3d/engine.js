@@ -1,6 +1,6 @@
 /* =========================================================
    engine.js — 真 3D 引擎（基于 r3d.js）
-   含对话冷却 + 靠墙自动加碰撞半径
+   精灵纹理走 dataURL → Image 异步路径（iOS 友好）
    ========================================================= */
 (function(){
 'use strict';
@@ -33,6 +33,7 @@ let lastDlgOpen = false;
 
 const texCache = {};
 const spriteTexCache = {};
+const spritePendings = {};
 
 const F = () => (window.S && window.S.flags) || {};
 function isPowerCut(){ return !!F().powerCut; }
@@ -47,7 +48,7 @@ function isDarkScene(){
       || (sceneKey === 'powerstation' && f.powerCut);
 }
 
-/* ================= 纹理生成 ================= */
+/* ================= 墙壁纹理生成 ================= */
 function makeWallTextureCanvas(spec){
   const c = document.createElement('canvas');
   c.width = 64; c.height = 64;
@@ -163,23 +164,41 @@ function getWallTextureCanvas(spec, key){
   return cv;
 }
 
+/* 精灵纹理：canvas → dataURL → Image → 上传。异步返回 null 直到就绪 */
 function getSpriteTexture(icon){
-  if(spriteTexCache[icon]) return spriteTexCache[icon];
+  if(spriteTexCache[icon] !== undefined) return spriteTexCache[icon];
+  if(spritePendings[icon]) return null;
+  spritePendings[icon] = true;
+
   const c = document.createElement('canvas');
   c.width = 128; c.height = 128;
   const x = c.getContext('2d');
+  x.fillStyle = '#ffffff';
   x.font = 'bold 96px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
   x.textAlign = 'center';
   x.textBaseline = 'middle';
   x.fillText(icon || '❓', 64, 64);
-  let tex = null;
-  try{
-    tex = renderer.textureFromCanvas(c, {});
-  }catch(e){
-    console.warn('[3D] 精灵纹理失败:', icon, e.message);
-  }
-  spriteTexCache[icon] = tex;
-  return tex;
+
+  const dataURL = c.toDataURL('image/png');
+  const img = new Image();
+
+  img.onload = function(){
+    delete spritePendings[icon];
+    try{
+      spriteTexCache[icon] = renderer.textureFromCanvas(img, {});
+    }catch(e){
+      console.error('[3D] 精灵纹理创建失败:', icon, e.message);
+      spriteTexCache[icon] = null;
+    }
+  };
+  img.onerror = function(){
+    delete spritePendings[icon];
+    spriteTexCache[icon] = null;
+    console.warn('[3D] 精灵图加载失败:', icon);
+  };
+  img.src = dataURL;
+
+  return null;
 }
 
 /* ================= 场景加载 ================= */
@@ -214,12 +233,15 @@ function loadScene(key){
 
 function buildWorld(){
   const wallH = 2.5;
-  const wallTexCanvas = getWallTextureCanvas(map.wallTex || { type: 'brick' }, sceneKey);
+  const wallTexSource = getWallTextureCanvas(
+    map.wallTex || { type: 'brick' },
+    sceneKey
+  );
 
   renderer.buildWorld({
     grid: map.grid,
     wallHeight: wallH,
-    wallTexCanvas: wallTexCanvas
+    wallTexSource: wallTexSource
   });
 }
 
@@ -292,15 +314,12 @@ function update(dt){
     }
   }
 
-  /* 检测主 HTML 的对话框状态 */
   let dlgOpen = false;
   try{
     const pel = window.parent && window.parent.document.getElementById('dlg');
     if(pel && pel.classList.contains('show')) dlgOpen = true;
   }catch(e){}
-  if(dlgOpen !== lastDlgOpen){
-    lastDlgOpen = dlgOpen;
-  }
+  if(dlgOpen !== lastDlgOpen) lastDlgOpen = dlgOpen;
 
   let best = null, bestD = 2.0;
   if(!dlgOpen){
@@ -330,7 +349,6 @@ function triggerNearby(){
   try{
     window.parent.postMessage({ type:'hit', spotId: nearby.id }, '*');
   }catch(e){}
-  /* 触发后立即隐藏按钮，对话结束后 3 秒内不再弹 */
   nearby = null;
   updateButton();
 }
@@ -407,6 +425,7 @@ function render(dt, t){
     if(th.cond && !th.cond()) continue;
     const icon = th.icon || '❓';
     const tex = getSpriteTexture(icon);
+    if(!tex) continue;   /* 还在加载中的精灵跳过这一帧 */
     const h = (th.scale || 0.85) * 1.15;
     const w = h * 0.75;
     let baseY = 0;
