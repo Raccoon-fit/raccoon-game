@@ -1,7 +1,6 @@
 /* =========================================================
-   engine.js — 真 3D 引擎 v3
-   纯键盘视角（WASD 移动 / 方向键转向）
-   自动焦点 / 恐怖层 / 精细纹理
+   engine.js — 真 3D 引擎 v4
+   Props 几何体 + 恐怖层 + 纯键盘视角
    ========================================================= */
 (function(){
 'use strict';
@@ -19,7 +18,6 @@ let sceneEnterTime = 0;
 
 const cam = { x:1.5, z:9.5, yaw:-Math.PI/2, pitch:0, eye:1.3 };
 
-/* 恐怖层 */
 let camDriftYaw = 0, camDriftPitch = 0, camDriftT = 0, nextDriftAt = 0;
 const keys = {};
 let isTouch = false;
@@ -179,7 +177,7 @@ function ensureAudio(){
   HorrorAudio.resume();
 }
 
-/* ==================== 纹理生成（128） ==================== */
+/* ==================== 纹理 ==================== */
 const TEX_SIZE = 128;
 
 function makeWallTextureCanvas(spec){
@@ -266,8 +264,6 @@ function makeWallTextureCanvas(spec){
       x.beginPath(); x.moveTo(i, 0); x.lineTo(i, S); x.stroke();
       x.beginPath(); x.moveTo(0, i); x.lineTo(S, i); x.stroke();
     }
-    x.fillStyle = 'rgba(0,0,0,0.10)';
-    for(let i = 0; i < 30; i++) x.fillRect(Math.random()*S, Math.random()*S, 2, 1);
   }
   else if(type === 'wood'){
     const base = spec.base || '#5a3a20';
@@ -288,13 +284,6 @@ function makeWallTextureCanvas(spec){
         x.stroke();
       }
     }
-    x.fillStyle = 'rgba(0,0,0,0.28)';
-    for(let i = 0; i < 4; i++){
-      const px = Math.random()*S, py = Math.random()*S;
-      x.beginPath();
-      x.ellipse(px, py, 3 + Math.random()*3, 5 + Math.random()*4, 0, 0, Math.PI*2);
-      x.fill();
-    }
   }
   else if(type === 'metal'){
     const base = spec.base || '#3a4048';
@@ -311,17 +300,6 @@ function makeWallTextureCanvas(spec){
         x.beginPath(); x.arc(xx + 0.5, yy + 0.5, 1.6, 0, Math.PI*2); x.fill();
       }
     }
-    x.strokeStyle = 'rgba(0,0,0,0.15)'; x.lineWidth = 1;
-    for(let i = 0; i < 24; i++){
-      const yy = Math.random()*S;
-      x.beginPath(); x.moveTo(0, yy); x.lineTo(S, yy + (Math.random()-0.5)*2); x.stroke();
-    }
-    x.fillStyle = 'rgba(120,60,20,0.15)';
-    for(let i = 0; i < 10; i++){
-      x.beginPath();
-      x.arc(Math.random()*S, Math.random()*S, 3 + Math.random()*6, 0, Math.PI*2);
-      x.fill();
-    }
   }
 
   if(spec.skirting !== false && type !== 'tile'){
@@ -334,7 +312,6 @@ function makeWallTextureCanvas(spec){
     x.fillStyle = 'rgba(255,255,255,0.06)';
     x.fillRect(0, S - skH, S, 1);
   }
-
   return c;
 }
 
@@ -454,7 +431,6 @@ function getSpriteTexture(icon){
   x.font = 'bold 96px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
   x.textAlign = 'center'; x.textBaseline = 'middle';
   x.fillText(icon || '❓', 64, 64);
-
   const img = new Image();
   img.onload = function(){
     delete spritePendings[icon];
@@ -517,6 +493,10 @@ function buildWorld(){
     floorTexSource: getFloorTextureCanvas(floorSpec, sceneKey),
     ceilTexSource:  getCeilTextureCanvas(ceilSpec,  sceneKey)
   });
+
+  /* ★ 构建 Props */
+  const props = (typeof map.props === 'function') ? map.props() : (map.props || []);
+  renderer.buildProps(props);
 }
 
 function shadeHex(hex, amount){
@@ -655,9 +635,7 @@ function update(dt){
       nextDriftAt = nowSec + 20 + Math.random()*18;
     }
     if(camDriftT > 0) camDriftT = Math.max(0, camDriftT - dt);
-    if(silenceT > 0 && silenceT - dt <= 0){
-      HorrorAudio.footstepBehind();
-    }
+    if(silenceT > 0 && silenceT - dt <= 0) HorrorAudio.footstepBehind();
     if(Math.random() < 0.004 + 0.008*getPanic()){
       bloodDrops.push({
         x: Math.random(), y: -0.02,
@@ -731,7 +709,6 @@ function computeLights(){
         : (cut ? [0.15, 0.16, 0.20] : [0.35, 0.34, 0.36])
     });
   }
-
   while(list.length < 3) list.push({ x: 0, y: -999, z: 0, color: [0,0,0] });
   return list;
 }
@@ -766,28 +743,8 @@ function render(dt, t){
     fov: Math.PI / 3.1, near: 0.06, far: 60
   });
 
-  const list = [];
-  for(let i = 0; i < map.things.length; i++){
-    const th = map.things[i];
-    if(th.cond && !th.cond()) continue;
-    const icon = resolveIcon(th);
-    const tex = getSpriteTexture(icon);
-    if(!tex) continue;
-    const h = (th.scale || 0.85) * 1.15;
-    const w = h * 0.75;
-    let baseY = 0;
-    if(th.id === 'wires' || th.id === 'hang') baseY = 1.8;
-    else if(th.id === 'lamp' || th.id === 'emergency') baseY = 0.6;
-    else if(th.id.indexOf('Window') >= 0 || th.id === 'window') baseY = 0.9;
-    else if(th.id === 'clock' || th.id === 'books') baseY = 1.0;
-    else if(th.id === 'photo1' || th.id === 'photo2' || th.id === 'frame') baseY = 0.9;
-    list.push({
-      x: th.x, y: baseY, z: th.y,
-      w: w, h: h, tex: tex,
-      color: th.decor ? [0.85, 0.85, 0.9] : [1.0, 1.0, 1.0]
-    });
-  }
-  renderer.setBillboards(list);
+  /* ★ 物件全部用 prop 渲染。billboard 留给装饰用（比如飘落物） */
+  renderer.setBillboards([]);
   renderer.render();
 
   updateOverlayFilter();
@@ -827,17 +784,13 @@ function drawHorror(dt, t){
     return;
   }
   if(fxCanvas.style.display !== 'block') fxCanvas.style.display = 'block';
-
   const w = fxCanvas.width, h = fxCanvas.height;
   fxCtx.clearRect(0, 0, w, h);
   const panic = getPanic();
   const silent = silenceT > 0;
 
   const breathe = 0.5 + 0.5 * Math.sin(t * 1.1);
-  const vg = fxCtx.createRadialGradient(
-    w/2, h/2, Math.min(w,h)*0.06,
-    w/2, h/2, Math.max(w,h)*0.78
-  );
+  const vg = fxCtx.createRadialGradient(w/2, h/2, Math.min(w,h)*0.06, w/2, h/2, Math.max(w,h)*0.78);
   vg.addColorStop(0, 'rgba(0,0,0,0)');
   vg.addColorStop(0.42, 'rgba(70,0,10,' + (0.30 + 0.26*panic + 0.12*breathe) + ')');
   vg.addColorStop(1, 'rgba(8,0,1,' + (0.90 + 0.10*panic) + ')');
@@ -877,16 +830,8 @@ function drawHorror(dt, t){
     fxCtx.fillStyle = 'rgba(200,0,0,' + (b.a*0.7) + ')';
     fxCtx.beginPath(); fxCtx.arc(x, y + b.len*h, 2.5, 0, Math.PI*2); fxCtx.fill();
   }
-
-  if(silent){
-    fxCtx.fillStyle = 'rgba(0,0,0,0.18)';
-    fxCtx.fillRect(0, 0, w, h);
-  }
-  if(nearby){
-    fxCtx.fillStyle = 'rgba(120,0,10,0.10)';
-    fxCtx.fillRect(0, 0, w, h);
-  }
-
+  if(silent){ fxCtx.fillStyle = 'rgba(0,0,0,0.18)'; fxCtx.fillRect(0,0,w,h); }
+  if(nearby){ fxCtx.fillStyle = 'rgba(120,0,10,0.10)'; fxCtx.fillRect(0,0,w,h); }
   if(scareTime > 0){
     scareTime = Math.max(0, scareTime - dt);
     drawScare(w, h, scareTime / 0.55);
@@ -898,17 +843,14 @@ function drawIntrusion(w, h, k, rx, ry, seed){
   if(alpha <= 0.01) return;
   const cx = rx * w, cy = ry * h;
   const scale = 1.4 + 0.6 * Math.sin(seed);
-
   fxCtx.save();
   fxCtx.globalAlpha = alpha;
   fxCtx.translate(cx, cy);
   fxCtx.rotate(seed % 6.28);
-
   fxCtx.fillStyle = 'rgba(60,0,0,0.72)';
   fxCtx.beginPath();
   fxCtx.ellipse(0, 0, 42*scale, 55*scale, 0, 0, Math.PI*2);
   fxCtx.fill();
-
   const fingers = [
     { x:-30, y:-50, a:-0.35 }, { x:-12, y:-62, a:-0.18 },
     { x:6, y:-64, a:0.05 }, { x:24, y:-58, a:0.22 },
@@ -924,7 +866,6 @@ function drawIntrusion(w, h, k, rx, ry, seed){
     fxCtx.fill();
     fxCtx.restore();
   }
-
   fxCtx.strokeStyle = 'rgba(90,0,0,0.55)';
   fxCtx.lineWidth = 6*scale;
   fxCtx.lineCap = 'round';
@@ -941,20 +882,14 @@ function drawScare(w, h, k){
   const fade = Math.min(1, k * 2.8);
   fxCtx.save();
   fxCtx.globalAlpha = fade;
-
   fxCtx.fillStyle = 'rgba(0,0,0,0.97)';
   fxCtx.fillRect(0, 0, w, h);
-
   const cx = w * 0.5, cy = h * 0.5;
   const fs = 1.0 + (1 - k) * 0.4;
-
   fxCtx.save();
-  fxCtx.translate(cx, cy);
-  fxCtx.scale(fs, fs);
-
+  fxCtx.translate(cx, cy); fxCtx.scale(fs, fs);
   const fW = Math.min(w, h) * 0.32;
   const fH = Math.min(w, h) * 0.42;
-
   fxCtx.fillStyle = 'rgba(180,150,140,0.35)';
   fxCtx.beginPath();
   fxCtx.moveTo(-fW*0.55, -fH*0.7);
@@ -962,9 +897,7 @@ function drawScare(w, h, k){
   fxCtx.bezierCurveTo(-fW*0.2, fH*1.05, fW*0.3, fH*1.0, fW*0.65, fH*0.7);
   fxCtx.bezierCurveTo(fW*0.98, fH*0.3, fW*0.85, -fH*0.5, fW*0.4, -fH*0.75);
   fxCtx.bezierCurveTo(fW*0.1, -fH*0.9, -fW*0.2, -fH*0.9, -fW*0.55, -fH*0.7);
-  fxCtx.closePath();
-  fxCtx.fill();
-
+  fxCtx.closePath(); fxCtx.fill();
   fxCtx.fillStyle = 'rgba(0,0,0,0.98)';
   fxCtx.beginPath();
   fxCtx.ellipse(-fW*0.32, -fH*0.15, fW*0.22, fH*0.14, -0.15, 0, Math.PI*2);
@@ -972,19 +905,15 @@ function drawScare(w, h, k){
   fxCtx.beginPath();
   fxCtx.ellipse(fW*0.36, -fH*0.18, fW*0.26, fH*0.17, 0.2, 0, Math.PI*2);
   fxCtx.fill();
-
   fxCtx.fillStyle = 'rgba(255,20,20,0.95)';
   fxCtx.beginPath(); fxCtx.arc(-fW*0.30, -fH*0.10, fW*0.025, 0, Math.PI*2); fxCtx.fill();
   fxCtx.beginPath(); fxCtx.arc(fW*0.34, -fH*0.15, fW*0.03, 0, Math.PI*2); fxCtx.fill();
-
   fxCtx.strokeStyle = 'rgba(120,0,0,0.85)';
-  fxCtx.lineWidth = fW*0.03;
-  fxCtx.lineCap = 'round';
+  fxCtx.lineWidth = fW*0.03; fxCtx.lineCap = 'round';
   fxCtx.beginPath();
   fxCtx.moveTo(-fW*0.30, -fH*0.05); fxCtx.lineTo(-fW*0.28, fH*0.30); fxCtx.stroke();
   fxCtx.beginPath();
   fxCtx.moveTo(fW*0.34, -fH*0.08); fxCtx.lineTo(fW*0.32, fH*0.42); fxCtx.stroke();
-
   fxCtx.fillStyle = 'rgba(0,0,0,0.98)';
   fxCtx.beginPath();
   fxCtx.moveTo(-fW*0.35, fH*0.45);
@@ -999,15 +928,11 @@ function drawScare(w, h, k){
     const py = fH*0.72 + (i % 2 === 0 ? -fH*0.03 : 0);
     fxCtx.lineTo(px, py);
   }
-  fxCtx.closePath();
-  fxCtx.fill();
-
+  fxCtx.closePath(); fxCtx.fill();
   fxCtx.fillStyle = 'rgba(200,190,170,0.75)';
   for(let i = 0; i < 7; i++) fxCtx.fillRect(-fW*0.30 + i*fW*0.10, fH*0.46, fW*0.04, fH*0.05);
   for(let i = 0; i < 6; i++) fxCtx.fillRect(-fW*0.28 + i*fW*0.10, fH*0.65, fW*0.04, fH*0.05);
-
   fxCtx.restore();
-
   fxCtx.fillStyle = 'rgba(180,0,0,' + (fade*0.25) + ')';
   fxCtx.fillRect(0, 0, w, h);
   fxCtx.restore();
@@ -1069,10 +994,7 @@ function bindKeys(){
   window.addEventListener('keydown', e => {
     const k = e.key.toLowerCase();
     keys[k] = true;
-    if((k === 'e' || k === ' ') && nearby){
-      e.preventDefault();
-      triggerNearby();
-    }
+    if((k === 'e' || k === ' ') && nearby){ e.preventDefault(); triggerNearby(); }
     if(k.indexOf('arrow') === 0 || k === ' ') e.preventDefault();
     ensureAudio();
   });
@@ -1080,14 +1002,9 @@ function bindKeys(){
 }
 
 function bindPointer(){
-  /* 点击画布只做两件事：获取焦点 / 启动音频 —— 不再有鼠标转视角 */
-  canvas.addEventListener('click', function(){
-    ensureAudio();
-    forceFocus();
-  });
+  canvas.addEventListener('click', function(){ ensureAudio(); forceFocus(); });
   canvas.addEventListener('mousedown', function(){ ensureAudio(); });
 
-  /* 触屏：左半屏移动，右半屏看 */
   canvas.addEventListener('touchstart', e => {
     ensureAudio();
     if(!e.touches.length) return;
@@ -1137,14 +1054,12 @@ function bindPointer(){
   window.addEventListener('keydown', ensureAudio, { once:true });
 }
 
-/* 强制把焦点拿到 iframe 里 —— 让键盘立即可用 */
 function forceFocus(){
   try{ window.focus(); }catch(e){}
   try{ if(document.body) document.body.focus(); }catch(e){}
   try{
     if(window.parent && window.parent !== window){
-      window.parent.focus();
-      window.focus();
+      window.parent.focus(); window.focus();
     }
   }catch(e){}
 }
@@ -1162,6 +1077,8 @@ function bindMessage(){
         if(!window.S.inv) window.S.inv = [];
         if(!window.S.invBlood) window.S.invBlood = [];
         updateButton();
+        /* 状态变了重建 props（有些 prop 依赖 flags） */
+        if(map) buildWorld();
       }
     }
   });
@@ -1204,21 +1121,15 @@ function boot(){
   overlayName = document.getElementById('ibName');
   overlayHint = document.getElementById('ibHint');
   if(overlayBtn){
-    overlayBtn.addEventListener('click', e => {
-      e.stopPropagation();
-      triggerNearby();
-    });
+    overlayBtn.addEventListener('click', e => { e.stopPropagation(); triggerNearby(); });
   }
 
-  /* ★ 右上角键位提示 —— 常显 */
   var helpEl = document.getElementById('ctrlHelp');
+  isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
   if(helpEl){
-    isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
     helpEl.innerHTML = isTouch
       ? '<b>移动</b> 左侧拖动　<b>视角</b> 右侧拖动　<b>互动</b> 轻点按钮'
       : '<b>移动</b> WASD　<b>视角</b> ↑ ↓ ← →　<b>互动</b> E / 空格';
-  } else {
-    isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
   }
 
   resize();
@@ -1232,11 +1143,9 @@ function boot(){
   bindPointer();
   bindMessage();
 
-  /* ★ 自动聚焦 */
   forceFocus();
   setTimeout(forceFocus, 120);
   setTimeout(forceFocus, 420);
-  /* 点击任意位置也聚焦 */
   window.addEventListener('click', forceFocus);
 
   lastFrame = performance.now();
