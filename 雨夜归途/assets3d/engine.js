@@ -1,6 +1,6 @@
 /* =========================================================
    engine.js — 真 3D 引擎（基于 r3d.js）
-   精灵纹理走 dataURL → Image 异步路径（iOS 友好）
+   暗夜模式：恐怖层（心跳 / 噪点 / jump scare / 血红色脉动）
    ========================================================= */
 (function(){
 'use strict';
@@ -8,11 +8,13 @@
 const W = 960, H = 540;
 
 let viewport, canvas, renderer;
+let fxCanvas, fxCtx;
 let sceneKey = null, map = null;
 
 let stopped = false;
 let lastFrame = performance.now();
 let time = 0;
+let sceneEnterTime = 0;
 
 const cam = {
   x: 1.5, z: 9.5,
@@ -26,6 +28,7 @@ let isTouch = false;
 let mouseDrag = null;
 let touchLook = null;
 let touchMove = null;
+let isMoving = false;
 
 let nearby = null;
 const triggerTime = {};
@@ -34,6 +37,16 @@ let lastDlgOpen = false;
 const texCache = {};
 const spriteTexCache = {};
 const spritePendings = {};
+
+/* jump scare */
+let scareTime = 0;
+let scareSeed = 0;
+let nextScareAt = 0;
+let shakeTime = 0;
+let shakeAmp = 0;
+
+/* 音频状态 */
+let audioReady = false;
 
 const F = () => (window.S && window.S.flags) || {};
 function isPowerCut(){ return !!F().powerCut; }
@@ -48,7 +61,145 @@ function isDarkScene(){
       || (sceneKey === 'powerstation' && f.powerCut);
 }
 
-/* ================= 墙壁纹理生成 ================= */
+/* ================= 紧张度 ================= */
+function getPanic(){
+  if(!isBloodMode()) return 0;
+  let p = 0.28;
+  p += Math.min(0.22, (performance.now() - sceneEnterTime) / 1000 / 260);
+  if(nearby) p += 0.18;
+  if(isMoving) p += 0.08;
+  if(isTorchOn()) p += 0.05;
+  if(scareTime > 0) p += 0.4;
+  return Math.min(1, p);
+}
+
+/* ================= 恐怖音频 ================= */
+const HorrorAudio = (function(){
+  let ctx = null, master = null;
+  let rainGain = null, rumbleGain = null;
+  let heartInterval = 1.1;
+  let lastBeat = 0;
+  let heartLoop = null;
+
+  function init(){
+    if(ctx) return;
+    try{
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if(!AC){ console.warn('[音频] 浏览器不支持 Web Audio'); return; }
+      ctx = new AC();
+      master = ctx.createGain();
+      master.gain.value = 0.5;
+      master.connect(ctx.destination);
+
+      /* 雨声：白噪声 + 低通 */
+      const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for(let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      const filt = ctx.createBiquadFilter();
+      filt.type = 'lowpass';
+      filt.frequency.value = 480;
+      filt.Q.value = 0.7;
+      rainGain = ctx.createGain();
+      rainGain.gain.value = 0.14;
+      src.connect(filt).connect(rainGain).connect(master);
+      src.start();
+
+      /* 低频轰鸣 */
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = 32;
+      rumbleGain = ctx.createGain();
+      rumbleGain.gain.value = 0.045;
+      osc.connect(rumbleGain).connect(master);
+      osc.start();
+
+      heartLoop = setInterval(heartTick, 100);
+    }catch(e){
+      console.warn('[音频] 初始化失败:', e);
+    }
+  }
+
+  function thump(when, freq, volume){
+    if(!ctx) return;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, when);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.6, when + 0.22);
+    g.gain.setValueAtTime(0, when);
+    g.gain.linearRampToValueAtTime(volume, when + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 0.24);
+    osc.connect(g).connect(master);
+    osc.start(when);
+    osc.stop(when + 0.3);
+  }
+
+  function heartTick(){
+    if(!ctx || ctx.state !== 'running') return;
+    const blood = isBloodMode();
+    if(blood){
+      heartInterval = 1.15 - 0.65 * getPanic();
+    } else {
+      heartInterval = 1.8;
+    }
+    const now = performance.now() / 1000;
+    if(now - lastBeat > heartInterval){
+      lastBeat = now;
+      const vol = blood ? (0.22 + 0.28 * getPanic()) : 0.06;
+      const t0 = ctx.currentTime;
+      thump(t0, 68, vol);
+      thump(t0 + 0.28, 55, vol * 0.72);
+    }
+  }
+
+  function impact(){
+    if(!ctx || ctx.state !== 'running') return;
+    const t0 = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(190, t0);
+    osc.frequency.exponentialRampToValueAtTime(24, t0 + 0.55);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(0.55, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.95);
+    osc.connect(g).connect(master);
+    osc.start(t0);
+    osc.stop(t0 + 1);
+  }
+
+  function updateMix(){
+    if(!ctx) return;
+    const blood = isBloodMode();
+    const target = blood ? 0.18 : 0.06;
+    if(rainGain){
+      rainGain.gain.value += (target - rainGain.gain.value) * 0.05;
+    }
+    if(rumbleGain){
+      const r = blood ? 0.06 : 0.02;
+      rumbleGain.gain.value += (r - rumbleGain.gain.value) * 0.05;
+    }
+  }
+
+  function resume(){
+    if(ctx && ctx.state === 'suspended') ctx.resume();
+  }
+
+  return { init, resume, impact, updateMix };
+})();
+
+function ensureAudio(){
+  if(!audioReady){
+    audioReady = true;
+    HorrorAudio.init();
+  }
+  HorrorAudio.resume();
+}
+
+/* ================= 纹理生成 ================= */
 function makeWallTextureCanvas(spec){
   const c = document.createElement('canvas');
   c.width = 64; c.height = 64;
@@ -164,7 +315,6 @@ function getWallTextureCanvas(spec, key){
   return cv;
 }
 
-/* 精灵纹理：canvas → dataURL → Image → 上传。异步返回 null 直到就绪 */
 function getSpriteTexture(icon){
   if(spriteTexCache[icon] !== undefined) return spriteTexCache[icon];
   if(spritePendings[icon]) return null;
@@ -181,7 +331,6 @@ function getSpriteTexture(icon){
 
   const dataURL = c.toDataURL('image/png');
   const img = new Image();
-
   img.onload = function(){
     delete spritePendings[icon];
     try{
@@ -197,7 +346,6 @@ function getSpriteTexture(icon){
     console.warn('[3D] 精灵图加载失败:', icon);
   };
   img.src = dataURL;
-
   return null;
 }
 
@@ -226,6 +374,8 @@ function loadScene(key){
 
   nearby = null;
   for(const k in triggerTime) delete triggerTime[k];
+  sceneEnterTime = performance.now();
+  nextScareAt = performance.now() / 1000 + 6 + Math.random() * 8;
 
   resize();
   buildWorld();
@@ -237,7 +387,6 @@ function buildWorld(){
     map.wallTex || { type: 'brick' },
     sceneKey
   );
-
   renderer.buildWorld({
     grid: map.grid,
     wallHeight: wallH,
@@ -267,6 +416,7 @@ function canStand(x, z){
 /* ================= 更新 ================= */
 function update(dt){
   if(!map) return;
+  isMoving = false;
 
   const rotSpeed = 2.4;
   if(keys['arrowleft'])  cam.yaw -= rotSpeed * dt;
@@ -284,6 +434,7 @@ function update(dt){
   if(keys['d']) str += 1;
 
   if(fwd !== 0 || str !== 0){
+    isMoving = true;
     const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
     let dx = cy * fwd - sy * str;
     let dz = sy * fwd + cy * str;
@@ -300,6 +451,7 @@ function update(dt){
     const len = Math.hypot(dxs, dys);
     const dead = 8;
     if(len > dead){
+      isMoving = true;
       const mag = Math.min(1, (len - dead) / 60);
       const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
       const fwd2 = -dys / len * mag;
@@ -339,6 +491,15 @@ function update(dt){
     nearby = best;
     updateButton();
   }
+
+  /* jump scare 计时 */
+  if(isBloodMode()){
+    const nowSec = performance.now() / 1000;
+    if(scareTime <= 0 && nowSec >= nextScareAt){
+      triggerScare();
+      nextScareAt = nowSec + 12 + Math.random() * 13;
+    }
+  }
 }
 
 function triggerNearby(){
@@ -353,6 +514,14 @@ function triggerNearby(){
   updateButton();
 }
 
+function triggerScare(){
+  scareTime = 0.32;
+  scareSeed = Math.random() * 1000;
+  shakeTime = 0.42;
+  shakeAmp = 10;
+  HorrorAudio.impact();
+}
+
 /* ================= 光照计算 ================= */
 function computeAmbient(){
   const cut = isPowerCut();
@@ -360,7 +529,7 @@ function computeAmbient(){
   const torch = isTorchOn();
 
   if(blood){
-    return torch ? [0.42, 0.16, 0.14] : [0.16, 0.06, 0.07];
+    return torch ? [0.36, 0.10, 0.10] : [0.10, 0.03, 0.04];
   }
   if(cut){
     return torch ? [0.36, 0.34, 0.30] : [0.10, 0.11, 0.15];
@@ -377,14 +546,23 @@ function computeLight(){
       x: cam.x + Math.cos(cam.yaw) * 3,
       y: cam.eye + 1.2,
       z: cam.z + Math.sin(cam.yaw) * 3,
-      color: blood ? [0.55 * a, 0.20 * a, 0.18 * a] : [0.5 * a, 0.46 * a, 0.42 * a]
+      color: blood ? [0.45 * a, 0.12 * a, 0.12 * a] : [0.5 * a, 0.46 * a, 0.42 * a]
     };
+  }
+  /* 暗夜模式手电偏冷、有闪烁 */
+  let flick = 1;
+  if(blood){
+    const p = getPanic();
+    flick = 0.82 + 0.18 * Math.sin(time * 19) * (Math.random() > 0.82 ? 1.6 : 1);
+    flick *= 0.9 + 0.15 * p;
   }
   return {
     x: cam.x,
     y: cam.eye - 0.05,
     z: cam.z,
-    color: blood ? [1.5, 0.65, 0.55] : [1.6, 1.45, 1.2]
+    color: blood
+      ? [1.6 * flick, 0.55 * flick, 0.45 * flick]
+      : [1.6 * flick, 1.45 * flick, 1.2 * flick]
   };
 }
 
@@ -398,14 +576,15 @@ function render(dt, t){
   const cut = isPowerCut();
   const blood = isBloodMode();
   let fogColor;
-  if(blood) fogColor = [0.06, 0.02, 0.03];
+  if(blood) fogColor = [0.04, 0.012, 0.02];
   else if(cut) fogColor = [0.03, 0.04, 0.06];
   else fogColor = [0.05, 0.06, 0.09];
 
+  const dark = isDarkScene();
   renderer.setFog({
     color: fogColor,
-    near: isDarkScene() ? 3 : 5,
-    far:  isDarkScene() ? 12 : 20
+    near: dark ? (blood ? 2 : 3) : 5,
+    far:  dark ? (blood ? 9 : 12) : 20
   });
 
   renderer.setCamera({
@@ -425,7 +604,7 @@ function render(dt, t){
     if(th.cond && !th.cond()) continue;
     const icon = th.icon || '❓';
     const tex = getSpriteTexture(icon);
-    if(!tex) continue;   /* 还在加载中的精灵跳过这一帧 */
+    if(!tex) continue;
     const h = (th.scale || 0.85) * 1.15;
     const w = h * 0.75;
     let baseY = 0;
@@ -446,25 +625,156 @@ function render(dt, t){
 
   renderer.render();
   updateOverlayFilter();
+
+  /* 恐怖层 */
+  drawHorror(dt, t);
+  applyShake(dt);
 }
 
-let lastFilterKey = '';
 function updateOverlayFilter(){
   const blood = isBloodMode();
   const dark = isDarkScene() && !isTorchOn();
-  let key = '';
-  if(blood) key = 'blood';
-  else if(dark) key = 'dark';
-  if(key === lastFilterKey) return;
-  lastFilterKey = key;
-
-  if(key === 'blood'){
-    canvas.style.filter = 'hue-rotate(-25deg) saturate(1.15) contrast(1.05) brightness(0.92)';
-  } else if(key === 'dark'){
-    canvas.style.filter = 'brightness(0.6) contrast(1.1)';
-  } else {
-    canvas.style.filter = 'none';
+  let f = 'none';
+  if(blood){
+    f = 'saturate(0.7) contrast(1.12) brightness(0.85) hue-rotate(-8deg)';
+  } else if(dark){
+    f = 'brightness(0.6) contrast(1.1)';
   }
+  if(canvas.style.filter !== f) canvas.style.filter = f;
+}
+
+function applyShake(dt){
+  if(shakeTime <= 0){
+    if(viewport.style.transform !== '' && viewport.style.transform !== 'none'){
+      viewport.style.transform = '';
+    }
+    return;
+  }
+  shakeTime = Math.max(0, shakeTime - dt);
+  const k = shakeTime / 0.42;
+  const amp = shakeAmp * k;
+  const dx = (Math.random() * 2 - 1) * amp;
+  const dy = (Math.random() * 2 - 1) * amp;
+  viewport.style.transform = 'translate(' + dx.toFixed(2) + 'px,' + dy.toFixed(2) + 'px)';
+}
+
+/* ================= 恐怖层 ================= */
+function drawHorror(dt, t){
+  if(!fxCanvas || !fxCtx) return;
+
+  if(!isBloodMode()){
+    if(fxCanvas.style.display !== 'none'){
+      fxCanvas.style.display = 'none';
+      if(scareTime > 0) scareTime = 0;
+    }
+    return;
+  }
+  if(fxCanvas.style.display !== 'block') fxCanvas.style.display = 'block';
+
+  const w = fxCanvas.width;
+  const h = fxCanvas.height;
+  fxCtx.clearRect(0, 0, w, h);
+
+  const panic = getPanic();
+
+  /* 1. 血红色 vignette —— 屏幕边缘在"呼吸" */
+  const breathe = 0.5 + 0.5 * Math.sin(t * 0.9);
+  const vg = fxCtx.createRadialGradient(
+    w/2, h/2, Math.min(w, h) * 0.10,
+    w/2, h/2, Math.max(w, h) * 0.72
+  );
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(0.55, 'rgba(58,0,8,' + (0.30 + 0.22 * panic + 0.10 * breathe) + ')');
+  vg.addColorStop(1, 'rgba(18,0,3,' + (0.82 + 0.12 * panic) + ')');
+  fxCtx.fillStyle = vg;
+  fxCtx.fillRect(0, 0, w, h);
+
+  /* 2. 心跳脉冲 —— 中心随心跳泛红 */
+  const heartFreq = 1.1 + 0.9 * panic;
+  const pulse = 0.5 + 0.5 * Math.sin(t * 2 * Math.PI * heartFreq);
+  const pAlpha = 0.03 + 0.10 * pulse * (0.4 + 0.6 * panic);
+  const cg = fxCtx.createRadialGradient(w/2, h/2, 0, w/2, h/2, Math.min(w, h) * 0.6);
+  cg.addColorStop(0, 'rgba(150,0,10,' + pAlpha + ')');
+  cg.addColorStop(1, 'rgba(0,0,0,0)');
+  fxCtx.fillStyle = cg;
+  fxCtx.fillRect(0, 0, w, h);
+
+  /* 3. 胶片噪点 */
+  const count = 220 + Math.floor(panic * 480);
+  fxCtx.fillStyle = 'rgba(255,255,255,0.05)';
+  for(let i = 0; i < count; i++){
+    fxCtx.fillRect(Math.random() * w, Math.random() * h, 1, 1);
+  }
+  fxCtx.fillStyle = 'rgba(255,40,40,' + (0.06 + 0.06 * panic) + ')';
+  const redCount = Math.floor(count * 0.35);
+  for(let i = 0; i < redCount; i++){
+    fxCtx.fillRect(Math.random() * w, Math.random() * h, 1, 1);
+  }
+
+  /* 4. 扫描线 */
+  const scanY = (t * 90) % h;
+  fxCtx.fillStyle = 'rgba(255,255,255,0.012)';
+  fxCtx.fillRect(0, scanY, w, 2);
+
+  /* 5. jump scare 脸 */
+  if(scareTime > 0){
+    scareTime = Math.max(0, scareTime - dt);
+    drawScareFace(w, h, scareTime / 0.32);
+  }
+
+  /* 6. 靠近物件时，屏幕更红、更颤 */
+  if(nearby){
+    fxCtx.fillStyle = 'rgba(120,0,10,0.10)';
+    fxCtx.fillRect(0, 0, w, h);
+  }
+}
+
+function drawScareFace(w, h, k){
+  /* k: 1 → 0（从刚触发到结束） */
+  const fade = Math.min(1, k * 2.4);
+  const cx = w * 0.5 + Math.sin(scareSeed) * 26;
+  const cy = h * 0.5;
+
+  fxCtx.save();
+  fxCtx.globalAlpha = fade;
+
+  /* 满屏黑 */
+  fxCtx.fillStyle = 'rgba(0,0,0,0.94)';
+  fxCtx.fillRect(0, 0, w, h);
+
+  /* 模糊轮廓 —— 让"脸"看起来不是画出来的，而是被看到的 */
+  const blur = fxCtx.filter;
+  try{ fxCtx.filter = 'blur(6px)'; }catch(e){}
+
+  /* 眼窝阴影 */
+  fxCtx.fillStyle = 'rgba(30,0,0,0.9)';
+  fxCtx.beginPath();
+  fxCtx.ellipse(cx - w*0.09, cy - h*0.04, w*0.055, h*0.038, 0, 0, Math.PI*2);
+  fxCtx.fill();
+  fxCtx.beginPath();
+  fxCtx.ellipse(cx + w*0.09, cy - h*0.04, w*0.055, h*0.038, 0, 0, Math.PI*2);
+  fxCtx.fill();
+
+  /* 眼 —— 血红 */
+  fxCtx.fillStyle = 'rgba(220,20,20,0.85)';
+  fxCtx.beginPath();
+  fxCtx.arc(cx - w*0.09, cy - h*0.04, w*0.012, 0, Math.PI*2);
+  fxCtx.fill();
+  fxCtx.beginPath();
+  fxCtx.arc(cx + w*0.09, cy - h*0.04, w*0.012, 0, Math.PI*2);
+  fxCtx.fill();
+
+  /* 嘴 */
+  fxCtx.strokeStyle = 'rgba(180,20,20,0.7)';
+  fxCtx.lineWidth = 3;
+  fxCtx.beginPath();
+  fxCtx.moveTo(cx - w*0.06, cy + h*0.09);
+  fxCtx.lineTo(cx + w*0.06, cy + h*0.09);
+  fxCtx.stroke();
+
+  try{ fxCtx.filter = blur; }catch(e){}
+
+  fxCtx.restore();
 }
 
 /* ================= 互动按钮 ================= */
@@ -496,6 +806,10 @@ function loop(now){
 
   update(dt);
   render(dt, time);
+
+  /* 音频混音跟随状态 */
+  if(audioReady) HorrorAudio.updateMix();
+
   requestAnimationFrame(loop);
 }
 
@@ -517,6 +831,20 @@ function resize(){
   const dpr = Math.min(window.devicePixelRatio || 1, dprLimit);
 
   renderer.resize(cssW, cssH, dpr);
+
+  /* fx canvas 同步尺寸 */
+  if(fxCanvas && fxCtx){
+    const fw = canvas.width;
+    const fh = canvas.height;
+    if(fxCanvas.width !== fw || fxCanvas.height !== fh){
+      fxCanvas.width = fw;
+      fxCanvas.height = fh;
+    }
+    fxCanvas.style.width  = canvas.style.width;
+    fxCanvas.style.height = canvas.style.height;
+    fxCanvas.style.left   = canvas.style.left;
+    fxCanvas.style.top    = canvas.style.top;
+  }
 }
 
 /* ================= 输入 ================= */
@@ -526,6 +854,7 @@ function bindKeys(){
     keys[k] = true;
     if(k === 'e' && nearby) triggerNearby();
     if(k.indexOf('arrow') === 0 || k === ' ') e.preventDefault();
+    ensureAudio();
   });
   window.addEventListener('keyup', e => {
     keys[e.key.toLowerCase()] = false;
@@ -534,6 +863,7 @@ function bindKeys(){
 
 function bindPointer(){
   canvas.addEventListener('mousedown', e => {
+    ensureAudio();
     if(isTouch) return;
     mouseDrag = { x: e.clientX, y: e.clientY };
     e.preventDefault();
@@ -552,6 +882,7 @@ function bindPointer(){
   window.addEventListener('mouseup', () => { mouseDrag = null; });
 
   canvas.addEventListener('touchstart', e => {
+    ensureAudio();
     if(!e.touches.length) return;
     e.preventDefault();
     isTouch = true;
@@ -599,6 +930,10 @@ function bindPointer(){
     touchMove = null;
     touchLook = null;
   });
+
+  window.addEventListener('touchstart', ensureAudio, { once: true, passive: true });
+  window.addEventListener('mousedown', ensureAudio, { once: true });
+  window.addEventListener('keydown', ensureAudio, { once: true });
 }
 
 /* ================= 消息 ================= */
@@ -628,6 +963,15 @@ function boot(){
   canvas = document.getElementById('cv');
   if(!canvas){ console.error('[3D] 缺少 #cv'); return; }
 
+  /* 从 URL 快速获取初始暗夜状态 */
+  if(!window.S) window.S = { flags: {} };
+  if(!window.S.flags) window.S.flags = {};
+  try{
+    if(new URLSearchParams(location.search).get('blood') === '1'){
+      window.S.flags.bloodMode = true;
+    }
+  }catch(e){}
+
   try{
     renderer = R3D.create(canvas);
   }catch(e){
@@ -640,6 +984,14 @@ function boot(){
     document.body.appendChild(msg);
     return;
   }
+
+  /* 创建特效层 */
+  fxCanvas = document.createElement('canvas');
+  fxCanvas.id = 'fx';
+  fxCanvas.style.cssText =
+    'position:absolute;pointer-events:none;z-index:6;display:none;';
+  viewport.appendChild(fxCanvas);
+  fxCtx = fxCanvas.getContext('2d');
 
   overlayBtn  = document.getElementById('interactBtn');
   overlayIcon = document.getElementById('ibIcon');
@@ -686,6 +1038,8 @@ window.__engineStop = function(){
   stopped = true;
   try{
     if(canvas) canvas.style.visibility = 'hidden';
+    if(fxCanvas) fxCanvas.style.display = 'none';
+    if(viewport) viewport.style.transform = '';
   }catch(e){}
 };
 window.addEventListener('pagehide', () => { stopped = true; });
