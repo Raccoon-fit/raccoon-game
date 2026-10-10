@@ -12,6 +12,31 @@
     font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;}
   #viewport{position:absolute;overflow:hidden;background:#000;}
   #cv{display:block;width:100%;height:100%;}
+
+  /* 右上角键位提示 —— 常显 */
+  #ctrlHelp{
+    position:absolute;right:14px;top:14px;
+    padding:10px 16px;
+    border-radius:12px;
+    background:rgba(6,10,16,0.72);
+    border:1px solid rgba(120,160,200,0.22);
+    color:rgba(200,220,240,0.78);
+    font-size:12.5px;
+    letter-spacing:0.4px;
+    line-height:1.7;
+    pointer-events:none;
+    z-index:8;
+    box-shadow:0 4px 20px rgba(0,0,0,0.6);
+    backdrop-filter:blur(6px);
+    white-space:nowrap;
+  }
+  #ctrlHelp b{
+    color:#9ad7ff;
+    font-weight:700;
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    margin-right:4px;
+  }
+
   #interactBtn{
     position:absolute;left:3.2%;bottom:14%;
     display:none;align-items:center;gap:12px;
@@ -45,7 +70,11 @@
     text-shadow:0 0 12px rgba(255,190,100,0.45);
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
-  #interactBtn .hint{font-size:12px;color:rgba(180,210,240,0.78);letter-spacing:0.5px;white-space:nowrap;}
+  #interactBtn .hint{
+    font-size:12px;color:rgba(180,210,240,0.78);
+    letter-spacing:0.5px;white-space:nowrap;
+  }
+
   #hint{
     position:absolute;left:0;right:0;bottom:14px;text-align:center;
     font-size:12px;letter-spacing:1px;
@@ -53,6 +82,7 @@
     pointer-events:none;
     transition:opacity 1s ease;
   }
+
   #fatal{
     position:absolute;inset:0;display:none;
     align-items:center;justify-content:center;
@@ -69,14 +99,19 @@
 <body>
 <div id="viewport">
   <canvas id="cv"></canvas>
+
+  <div id="ctrlHelp"></div>
+
   <button id="interactBtn">
     <span class="icon" id="ibIcon"></span>
     <span class="txt">
       <span class="name" id="ibName"></span>
-      <span class="hint" id="ibHint">点击查看</span>
+      <span class="hint" id="ibHint">按 E / 空格 查看</span>
     </span>
   </button>
-  <div id="hint">WASD / 方向键 · 鼠标拖动看 · E 互动</div>
+
+  <div id="hint">按 E 互动</div>
+
   <div id="fatal">
     <div class="box">
       <h2>3D 场景无法启动</h2>
@@ -92,14 +127,10 @@
 
 <script>
 (function(){
-  /* 捕获引擎错误 —— 只向主页面汇报，不在屏幕上显示诊断信息 */
   window.addEventListener('error', function(ev){
     var msg = (ev.message || '未知错误') + ' @' + (ev.filename || '') + ':' + (ev.lineno || 0);
     console.error('[3D ERROR]', msg);
-    try{
-      window.parent.postMessage({ type:'engineError', message: msg }, '*');
-    }catch(e){}
-    /* 只在明确的致命错误时显示友好提示 */
+    try{ window.parent.postMessage({ type:'engineError', message: msg }, '*'); }catch(e){}
     var fatal = document.getElementById('fatal');
     var fatalMsg = document.getElementById('fatalMsg');
     if(fatal && fatalMsg && !fatal.classList.contains('show')){
@@ -115,9 +146,7 @@
     Engine3D.boot();
   }catch(e){
     console.error('[3D BOOT]', e);
-    try{
-      window.parent.postMessage({ type:'engineError', message: e.message || String(e) }, '*');
-    }catch(_){}
+    try{ window.parent.postMessage({ type:'engineError', message: e.message || String(e) }, '*'); }catch(_){}
     var fatal = document.getElementById('fatal');
     var fatalMsg = document.getElementById('fatalMsg');
     if(fatal && fatalMsg){
