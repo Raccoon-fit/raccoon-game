@@ -617,7 +617,7 @@ var ITEMS = {
   hook:{name:'生锈的挂钩',icon:'🪝',desc:'从垃圾桶里翻出来的，弯得像一个问号。'},
   catfood:{name:'半罐猫粮',icon:'🥫',desc:'还剩一半。铁皮边缘被啃得参差不齐。'},
   key:{name:'黄铜钥匙',icon:'🗝️',desc:'大橘从身下扒出来的，还带着猫毛。'},
-  torch:{name:'手电筒',icon:'🔦',desc:'外壳上有牙印。没电。'},
+  torch:{name:'手电筒',icon:'🔦',desc:'外壳上有牙印。摇一摇，里面有东西松了。'},
   battery:{name:'电池',icon:'🔋',desc:'还剩一点电。'},
   torchOn:{name:'亮着的手电筒',icon:'🔦',desc:'一道细细的、温暖的光柱。'},
   rope:{name:'晾衣绳',icon:'🧵',desc:'晾衣绳，上面还夹着两个塑料夹子。'},
@@ -640,9 +640,6 @@ function sceneURL(name){
   return SCENES[name].url;
 }
 
-/* ========================================================
-   ★ 主线 / 支线 分离工具函数
-   ======================================================== */
 function getInv(){
   if(!S) return [];
   if(S.flags && S.flags.bloodMode){
@@ -701,7 +698,6 @@ var streamerBlockMask = document.getElementById('streamerBlockMask');
 
 function showBloodWarn(){ bloodWarnMask.classList.add('show'); }
 
-/* ★ 进入暗夜模式：立刻切到 3D 场景 */
 function enterBloodMode(){
   if(!S) return;
   S.flags.bloodMode = true;
@@ -710,7 +706,6 @@ function enterBloodMode(){
   save(); syncState();
   renderInv();
 
-  /* 切 3D */
   if(SCENES[S.scene]){
     showLoading(SCENES[S.scene].label);
     createGameFrame(sceneURL(S.scene));
@@ -731,7 +726,6 @@ function enterBloodMode(){
   toast('🩸 暗夜模式 · 3D 场景');
 }
 
-/* ★ 退出暗夜模式：立刻切回 2D */
 function exitBloodMode(){
   if(!S) return;
   S.flags.bloodMode = false;
@@ -776,7 +770,6 @@ document.getElementById('streamerBlockOk').addEventListener('click', function(){
    ======================================================== */
 var SCENES = {
 
-  /* ===================== 雨巷 ===================== */
   alley: {
     url:'assets/scene1.html', label:'雨 巷',
     acts: {
@@ -983,7 +976,6 @@ var SCENES = {
     }
   },
 
-  /* ===================== 后巷 ===================== */
   backstreet: {
     url:'assets/scene2.html', label:'后 巷',
     acts: {
@@ -1240,12 +1232,12 @@ var SCENES = {
     }
   },
 
-  /* ===================== 便利店 ===================== */
   shop: {
     url:'assets/scene3.html', label:'便 利 店',
     acts: {
       counter: function(){
         var myInv = getInv();
+
         if(isBloodMode()){
           if(myInv.indexOf('torch') === -1 && myInv.indexOf('torchOn') === -1){
             say('收银台抽屉里，滚出一个**手电筒**。');
@@ -1259,7 +1251,7 @@ var SCENES = {
             say('里面是空的。');
             return;
           }
-          if(!torchLit()){
+          if(myInv.indexOf('battery') === -1){
             say('抽屉里只剩下一些硬币和过期的会员卡。');
             say('——还有那张便签。');
             say('“老周，电闸不要再关了。”');
@@ -1267,9 +1259,12 @@ var SCENES = {
             say('灰豆把目光移开了。');
             return;
           }
-          say('手电的光扫过抽屉底板。');
-          say('有一块木板是松的。');
-          say('灰豆用爪子把它撬开——');
+          say('灰豆把坏掉的手电筒放在收银台上。');
+          say('——没用。');
+          say('');
+          say('它用爪子去抠那个抽屉的底板。');
+          say('——有一块木板是松的。');
+          say('它用牙咬住边缘，一点点往上掀。');
           say('木板下面，藏着一张照片。');
           say('照片上，红屋顶的房子，门口的台阶。');
           say('台阶上站着一个女孩，举着一把**蓝伞**。');
@@ -1279,10 +1274,18 @@ var SCENES = {
           });
           return;
         }
-        if(torchLit() && myInv.indexOf('photo2') === -1){
-          say('光柱扫过墙壁，停住了。');
-          say('墙上贴着一张照片，边角卷了起来。');
-          say('红屋顶的房子，门口的台阶，还有{{半只浣熊的影子}}。', function(){
+
+        if(myInv.indexOf('photo2') !== -1){
+          say('收银台上落了一层薄灰。');
+          say('便签还在那里，字迹有点被水洇糊了。');
+          return;
+        }
+        if(myInv.indexOf('torch') !== -1 && myInv.indexOf('battery') !== -1){
+          say('灰豆把坏掉的手电筒放在收银台上。');
+          say('它用爪子去撬抽屉的底板。');
+          say('——木板翘起一条边。');
+          say('里面藏着一张照片。');
+          say('照片上，红屋顶的房子，门口的台阶，还有{{半只浣熊的影子}}。', function(){
             pickup('photo2'); save(); syncState();
           });
           say('和刚才那半张，**正好能拼上**。');
@@ -1297,14 +1300,11 @@ var SCENES = {
           say('一个**手电筒**滚了出来。外壳上有牙印——不是它的。', function(){
             pickup('torch'); save(); syncState();
           });
-        }else if(!torchLit()){
-          say('抽屉里只剩下一些硬币和过期的会员卡。');
-          say('——还有那张便签。');
-          say('“老周，电闸不要再关了。”');
-        }else{
-          say('收银台上落了一层薄灰。');
-          say('便签还在那里，字迹有点被水洇糊了。');
+          return;
         }
+        say('抽屉里只剩下一些硬币和过期的会员卡。');
+        say('——还有那张便签。');
+        say('“老周，电闸不要再关了。”');
       },
 
       shelf: function(){
@@ -1350,13 +1350,17 @@ var SCENES = {
           say('后窗外，是一片黑。');
           say('——那种连雨都照不亮的黑。');
           say('灰豆不想往里钻。');
+          say('');
           say('——但后窗玻璃上，有一层**水汽**。');
           say('水汽上，画着一只很小的手印。');
-          say('——五个指头。');
-          say('——浣熊只有四个。');
+          say('——五根指头。');
+          say('——太小了。');
+          say('——小得，像是刚出生不久。');
+          say('');
           say('手印旁边，又慢慢浮出第二只。');
-          say('——五个指头。');
+          say('——五根指头。');
           say('——和灰豆的爪子，**一样大**。');
+          say('');
           say('灰豆往后退了一步。');
           say('——窗户自己开了。');
           say('雨声涌了进来。', function(){
@@ -1367,14 +1371,14 @@ var SCENES = {
           });
           return;
         }
-        if(!torchLit()){
-          say('后窗外一片漆黑。');
-          say('灰豆不想在{{什么都看不见}}的时候往里钻。');
-        }else{
-          changeScene('street', '街 道');
-          say('灰豆从后窗翻了出去。');
-          say('窗台太高，回不去了。');
-        }
+        changeScene('street', '街 道');
+        say('后窗外一片漆黑。');
+        say('灰豆探头往外看了看。');
+        say('——什么都看不见。');
+        say('');
+        say('但它知道，这条街，它必须走完。');
+        say('它从后窗翻了出去。');
+        say('窗台太高，回不去了。');
       },
 
       back: function(){
@@ -1400,13 +1404,12 @@ var SCENES = {
           say('——脚趾头，有**六个**。');
           return;
         }
-        if(torchLit()){
-          say('手电的光扫过地板。');
-          say('有一张落满灰的收据，字迹看不清了。');
-          say('日期是……三个月前。');
-          say('收据背面，有一行小字：');
-          say('“11月14日，晴。”');
-        }else{ say('地板太黑，什么也看不见。'); }
+        say('地板很黑。灰豆用爪子一点一点摸过去。');
+        say('——摸到一张落满灰的收据。');
+        say('字迹看不清了。');
+        say('日期是……三个月前。');
+        say('收据背面，有一行小字，是用圆珠笔写的：');
+        say('“11月14日，晴。”');
       },
 
       poster: function(){
@@ -1420,18 +1423,17 @@ var SCENES = {
           say('是**人的眼睛**。');
           return;
         }
-        if(torchLit()){
-          say('墙上贴着一张促销海报。');
-          say('“本店特惠 · 罐头半价”。');
-          say('海报右下角用圆珠笔画了一只小小的浣熊。');
-          say('画得不太像。但画得很认真。');
-          say('海报最下面印着日期——是三个月前。');
-        }else{ say('黑暗中，看不清墙上有什么。'); }
+        say('墙上贴着一张促销海报。');
+        say('——灰豆其实看不清。');
+        say('它只是借着窗外的微光，勉强看到了一个轮廓。');
+        say('“本店特惠 · 罐头半价”。');
+        say('海报右下角用圆珠笔画了一只小小的浣熊。');
+        say('画得不太像。但画得很认真。');
+        say('海报最下面印着日期——是三个月前。');
       }
     }
   },
 
-  /* ===================== 街道 ===================== */
   street: {
     url:'assets/scene4.html', label:'街 道',
     acts: {
@@ -1630,7 +1632,6 @@ var SCENES = {
     }
   },
 
-  /* ===================== 门前 ===================== */
   doorstep: {
     url:'assets/scene10.html', label:'门 前',
     acts: {
@@ -1733,7 +1734,6 @@ var SCENES = {
     }
   },
 
-  /* ===================== 红屋顶 ===================== */
   house: {
     url:'assets/scene5.html', label:'红 屋 顶',
     acts: {
@@ -1928,7 +1928,6 @@ var SCENES = {
     }
   },
 
-  /* ===================== 配电房 ===================== */
   powerstation: {
     url:'assets/scene6.html', label:'配 电 房',
     acts: {
@@ -2011,7 +2010,6 @@ var SCENES = {
     }
   },
 
-  /* ===================== 屋顶 ===================== */
   rooftop: {
     url:'assets/scene7.html', label:'屋 顶',
     acts: {
@@ -2073,7 +2071,6 @@ var SCENES = {
     }
   },
 
-  /* ===================== 地下通道 ===================== */
   underpass: {
     url:'assets/scene8.html', label:'地 下 通 道',
     acts: {
@@ -2132,7 +2129,6 @@ var SCENES = {
     }
   },
 
-  /* ===================== 河堤 ===================== */
   riverside: {
     url:'assets/scene9.html', label:'河 堤',
     acts: {
@@ -2181,7 +2177,6 @@ var SCENES = {
     }
   },
 
-  /* ===================== 邻屋（暗夜模式·主流程必经） ===================== */
   neighbor: {
     url:'assets/scene11.html', label:'邻 屋',
     acts: {
@@ -2424,6 +2419,10 @@ window.addEventListener('message', function(e){
   if(d.type === 'ready'){
     syncState();
     finishLoading(function(){
+      /* ★ 加载完毕，通知 iframe 抢焦点 */
+      try{
+        gameFrame.contentWindow.postMessage({ type:'refocus' }, '*');
+      }catch(err){}
       if(pendingOpeningMonologue){
         pendingOpeningMonologue = false;
         setTimeout(function(){
@@ -2461,7 +2460,6 @@ function triggerTempLight(){
   try{ gameFrame.contentWindow.postMessage({ type: 'tempLight' }, '*'); }catch(e){}
 }
 
-/* ★ 临时点亮：暗夜模式里禁用 */
 btnTempLightEl.addEventListener('click', function(e){
   e.stopPropagation();
   if(settings.streamerMode !== 'on') return;
@@ -2538,18 +2536,32 @@ function tickTyping(){
   if(typing.idx >= typing.spans.length) typing.active = false;
 }
 setInterval(tickTyping, 30);
+
 function say(text, cb){ queue.push({text:text, cb:cb}); if(!currentDlg) nextDlg(); }
+
 function nextDlg(){
   if(queue.length === 0){
     currentDlg = null;
     dlgEl.classList.remove('show');
     dlgMaskEl.classList.remove('show');
+    /* ★ 对话结束，通知 iframe 拿回焦点 */
+    try{
+      if(gameFrame && gameFrame.contentWindow){
+        gameFrame.contentWindow.postMessage({ type:'dlgClosed' }, '*');
+      }
+    }catch(err){}
     checkCombos();
     return;
   }
   currentDlg = queue.shift();
   dlgEl.classList.add('show');
   dlgMaskEl.classList.add('show');
+  /* ★ 对话开始，通知 iframe 暂停键盘 */
+  try{
+    if(gameFrame && gameFrame.contentWindow){
+      gameFrame.contentWindow.postMessage({ type:'dlgOpen' }, '*');
+    }
+  }catch(err){}
   typeLine(currentDlg.text);
 }
 function advanceDialog(){
@@ -2569,28 +2581,37 @@ function checkCombos(){
   if(comboLock || !S) return;
   comboLock = true;
   var myInv = getInv();
+
+  /* ★ 手电筒坏了 —— 拿到电池后只提示一次，永不合成 torchOn */
   if(myInv.indexOf('torch') !== -1 && myInv.indexOf('battery') !== -1){
-    var n = myInv.filter(function(i){ return i!=='torch' && i!=='battery'; });
-    n.push('torchOn');
-    setInv(n);
-    if(!is('torchTutorialShown')){
-      set('torchTutorialShown', true);
-      set('torchOn', true);
-    } else if(!is('torchOn')){
-      set('torchOn', true);
+    if(!is('torchBrokenTold')){
+      set('torchBrokenTold', true);
+      save();
+      comboLock = false;
+      say('灰豆把电池塞进手电筒，用牙咬住尾部转了一圈。');
+      say('啪。');
+      say('——什么都没发生。');
+      say('');
+      say('它又试了一次。');
+      say('——灯，还是不亮。');
+      say('');
+      say('灰豆把电池取出来，翻过来，再塞进去。');
+      say('这次它咬得很紧。');
+      say('——还是黑的。');
+      say('');
+      say('它把手电筒贴在耳朵上，摇了摇。');
+      say('里面有什么东西，**松了**。');
+      say('——像是一个早就坏掉的东西。');
+      say('');
+      say('灰豆把坏掉的手电筒放在地上，用爪子按了按。');
+      say('（手电筒坏了。这一路，只能摸黑走。）');
+      return;
     }
-    if(!isBloodMode()) S.flags.lightsOn = true;
-    renderInv('torchOn'); save(); syncState();
     comboLock = false;
-    say('灰豆把电池塞进手电筒，用牙咬住尾部转了一圈。');
-    say('啪。');
-    say('一道{{细细的光柱}}亮了起来，照亮了它脚下的一小块地方。');
-    say('');
-    say('（💡 提示：点击物品栏里的 **🔦** 图标，可以随时打开 / 关闭手电筒。）');
-    say('（打开后，光圈会**跟随你的手指 / 光标**移动，照亮周围的场景。）');
-    say('（在黑暗的地方 —— 比如断电后的街道、漆黑的便利店 —— 它会更有用。）');
     return;
   }
+
+  /* 挂钩 + 晾衣绳 → 钩爪 */
   if(myInv.indexOf('hook') !== -1 && myInv.indexOf('rope') !== -1 && myInv.indexOf('grapnel') === -1){
     var n = myInv.filter(function(i){ return i!=='hook' && i!=='rope'; });
     n.push('grapnel');
