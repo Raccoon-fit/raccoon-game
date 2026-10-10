@@ -632,7 +632,6 @@ var endingShown = false;
 var endingLock = false;
 var bloodPuddleCount = 0;
 
-/* ★ 暗夜模式走 3D，主线走 2D */
 function sceneURL(name){
   if(S && S.flags && S.flags.bloodMode){
     return 'assets3d/scene.html?id=' + name + '&blood=1';
@@ -719,7 +718,9 @@ function enterBloodMode(){
   say('远处那栋红屋顶房子，变成了一片焦黑。');
   say('（暗夜模式已开启。）');
   say('（视图切换为**第一人称**。）');
-  say('（**WASD / 方向键** 移动，**鼠标拖动 / 右侧拖动** 环视四周。）');
+  say('（**WASD** 前后左右移动。）');
+  say('（**↑ ↓ ← →** 转动视角。）');
+  say('（**E / 空格** 与物件互动。）');
   say('（靠近物件，左下角会出现互动按钮。）');
   say('（主线里的东西，在这里**带不进来**。）');
   say('（雨巷墙根处，有一道窄缝，似乎能回去。）');
@@ -765,9 +766,6 @@ document.getElementById('streamerBlockOk').addEventListener('click', function(){
   streamerBlockMask.classList.remove('show');
 });
 
-/* ========================================================
-   场景定义
-   ======================================================== */
 var SCENES = {
 
   alley: {
@@ -2274,9 +2272,6 @@ var SCENES = {
   }
 };
 
-/* ========================================================
-   iframe 生命周期
-   ======================================================== */
 var expectingLoad = false;
 function destroyFrame(){
   if(!gameFrame) return;
@@ -2396,9 +2391,6 @@ function changeScene(name, label){
   createGameFrame(sceneURL(name));
 }
 
-/* ========================================================
-   iframe 通信
-   ======================================================== */
 var pendingOpeningMonologue = false;
 window.addEventListener('message', function(e){
   var d = e.data;
@@ -2419,7 +2411,6 @@ window.addEventListener('message', function(e){
   if(d.type === 'ready'){
     syncState();
     finishLoading(function(){
-      /* ★ 加载完毕，通知 iframe 抢焦点 */
       try{
         gameFrame.contentWindow.postMessage({ type:'refocus' }, '*');
       }catch(err){}
@@ -2471,9 +2462,6 @@ btnTempLightEl.addEventListener('click', function(e){
   toast('✨ 全局点亮 · 3 秒');
 });
 
-/* ========================================================
-   对话系统
-   ======================================================== */
 var SPEEDS = { slow: 58, normal: 30, fast: 14, instant: 0 };
 var typing = { active:false, spans:[], idx:0, acc:0 };
 var queue = [];
@@ -2544,7 +2532,6 @@ function nextDlg(){
     currentDlg = null;
     dlgEl.classList.remove('show');
     dlgMaskEl.classList.remove('show');
-    /* ★ 对话结束，通知 iframe 拿回焦点 */
     try{
       if(gameFrame && gameFrame.contentWindow){
         gameFrame.contentWindow.postMessage({ type:'dlgClosed' }, '*');
@@ -2556,7 +2543,6 @@ function nextDlg(){
   currentDlg = queue.shift();
   dlgEl.classList.add('show');
   dlgMaskEl.classList.add('show');
-  /* ★ 对话开始，通知 iframe 暂停键盘 */
   try{
     if(gameFrame && gameFrame.contentWindow){
       gameFrame.contentWindow.postMessage({ type:'dlgOpen' }, '*');
@@ -2582,7 +2568,6 @@ function checkCombos(){
   comboLock = true;
   var myInv = getInv();
 
-  /* ★ 手电筒坏了 —— 拿到电池后只提示一次，永不合成 torchOn */
   if(myInv.indexOf('torch') !== -1 && myInv.indexOf('battery') !== -1){
     if(!is('torchBrokenTold')){
       set('torchBrokenTold', true);
@@ -2611,7 +2596,6 @@ function checkCombos(){
     return;
   }
 
-  /* 挂钩 + 晾衣绳 → 钩爪 */
   if(myInv.indexOf('hook') !== -1 && myInv.indexOf('rope') !== -1 && myInv.indexOf('grapnel') === -1){
     var n = myInv.filter(function(i){ return i!=='hook' && i!=='rope'; });
     n.push('grapnel');
@@ -2625,9 +2609,6 @@ function checkCombos(){
   comboLock = false;
 }
 
-/* ========================================================
-   物品栏 / 提示
-   ======================================================== */
 function renderInv(newId){
   invEl.innerHTML = '';
   if(!S) return;
@@ -2692,9 +2673,6 @@ function pickup(id){
   save();
 }
 
-/* ========================================================
-   结局
-   ======================================================== */
 function startEnding(){
   if(endingLock) return;
   endingLock = true;
@@ -2735,9 +2713,6 @@ document.getElementById('btnBloodAgain').addEventListener('click', function(){
   beginGame(freshState(), true); save();
 });
 
-/* ========================================================
-   设置 / 警告
-   ======================================================== */
 document.getElementById('btnSet').addEventListener('click', function(){ setEl.classList.add('show'); applySettings(); });
 document.getElementById('btnCloseSet').addEventListener('click', function(){ setEl.classList.remove('show'); });
 document.getElementById('btnHighlight').addEventListener('click', function(){
@@ -2771,9 +2746,6 @@ warnConfirm.addEventListener('click', function(){
 });
 warnMask.addEventListener('click', function(e){ if(e.target === warnMask) warnMask.classList.remove('show'); });
 
-/* ========================================================
-   返回键拦截
-   ======================================================== */
 var historyOk = false;
 try{ history.pushState({ page:'game' }, '', location.href); historyOk = true; }catch(e){}
 function handleBack(){
@@ -2803,9 +2775,6 @@ document.addEventListener('keydown', function(e){
   }
 });
 
-/* ========================================================
-   开始游戏 / 初始化
-   ======================================================== */
 function beginGame(state, isNew){
   S = state;
   if(S.flags){ S.flags.ended = false; }
