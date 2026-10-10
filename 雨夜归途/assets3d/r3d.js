@@ -1,16 +1,7 @@
 /* =========================================================
    r3d.js — 极简真 3D 引擎
    纯 WebGL 1.0，零依赖，单文件
-   API:
-     const R = R3D.create(canvas);
-     R.resize(w, h, dpr);
-     R.setCamera({x, y, z, yaw, pitch, fov, near, far});
-     R.setLight({x, y, z, color});
-     R.setAmbient([r, g, b]);
-     R.setFog({color, near, far});
-     R.buildWorld({grid, wallHeight, wallTex, floorTex, ceilTex, floorColor, ceilColor});
-     R.setBillboards([{x, y, z, w, h, tex, alphaTest}]);
-     R.render();
+   iOS WebKit 兼容：纹理用 ImageData 而非 canvas
    ========================================================= */
 (function(global){
 'use strict';
@@ -59,6 +50,18 @@ const M4 = {
     out[13]=-(yx*eye[0]+yy*eye[1]+yz*eye[2]);
     out[14]=-(zx*eye[0]+zy*eye[1]+zz*eye[2]);
     out[15]=1;
+    return out;
+  },
+  multiply(out, a, b){
+    for(let r = 0; r < 4; r++){
+      for(let c = 0; c < 4; c++){
+        let s = 0;
+        for(let k = 0; k < 4; k++){
+          s += a[k*4 + r] * b[c*4 + k];
+        }
+        out[c*4 + r] = s;
+      }
+    }
     return out;
   }
 };
@@ -123,14 +126,13 @@ const FRAG_SRC = [
 '}'
 ].join('\n');
 
-/* ==================== 编译 ==================== */
 function compile(gl, type, src){
   const s = gl.createShader(type);
   gl.shaderSource(s, src);
   gl.compileShader(s);
   if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)){
     const log = gl.getShaderInfoLog(s);
-    console.error('[R3D] shader error:', log, src);
+    console.error('[R3D] shader error:', log);
     gl.deleteShader(s);
     return null;
   }
@@ -157,18 +159,40 @@ function linkProgram(gl){
 /* ==================== 纹理 ==================== */
 function isPOT(n){ return (n & (n-1)) === 0; }
 
-function makeTexture(gl, source, opts){
+/* 从 canvas 中抽出 ImageData —— 这是 iOS WebKit 最稳的上传路径 */
+function canvasToImageData(canvas){
+  const w = canvas.width;
+  const h = canvas.height;
+  const c2d = canvas.getContext('2d');
+  return c2d.getImageData(0, 0, w, h);
+}
+
+function makeTextureFromCanvas(gl, canvas, opts){
   opts = opts || {};
+  if(!canvas) throw new Error('纹理源为空');
+  const w = canvas.width;
+  const h = canvas.height;
+  if(!w || !h) throw new Error('纹理尺寸无效 ' + w + 'x' + h);
+
+  const data = canvasToImageData(canvas);
+
   const t = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, t);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, opts.flipY ? 1 : 0);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
+
+  /* 关键：传 ImageData 而不是 canvas —— iOS WebKit 兼容 */
+  gl.texImage2D(
+    gl.TEXTURE_2D, 0, gl.RGBA,
+    w, h, 0,
+    gl.RGBA, gl.UNSIGNED_BYTE, data
+  );
 
   const wrap = opts.repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE;
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
 
-  if(isPOT(source.width) && isPOT(source.height) && !opts.noMip){
+  if(isPOT(w) && isPOT(h) && !opts.noMip){
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.generateMipmap(gl.TEXTURE_2D);
@@ -176,6 +200,7 @@ function makeTexture(gl, source, opts){
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   }
+
   return t;
 }
 
@@ -183,7 +208,7 @@ function makeTexture(gl, source, opts){
 function createMesh(gl){
   const vbo = gl.createBuffer();
   const ibo = gl.createBuffer();
-  return { vbo, ibo, indexCount: 0, vertexCount: 0, stride: 32, dynamic: false };
+  return { vbo, ibo, indexCount: 0, vertexCount: 0, stride: 32 };
 }
 
 function uploadMesh(gl, mesh, positions, normals, uvs, indices, dynamic){
@@ -203,11 +228,11 @@ function uploadMesh(gl, mesh, positions, normals, uvs, indices, dynamic){
   gl.bufferData(gl.ARRAY_BUFFER, data, dynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW);
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ibo);
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), dynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices),
+                dynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW);
 
   mesh.indexCount = indices.length;
   mesh.vertexCount = n;
-  mesh.dynamic = !!dynamic;
 }
 
 /* ==================== 渲染器 ==================== */
@@ -216,6 +241,7 @@ function Renderer(canvas){
     antialias: true,
     alpha: false,
     depth: true,
+    preserveDrawingBuffer: false,
     powerPreference: 'high-performance'
   }) || canvas.getContext('experimental-webgl');
 
@@ -249,7 +275,6 @@ function Renderer(canvas){
     uFogFar:     gl.getUniformLocation(program, 'uFogFar')
   };
 
-  /* 相机 */
   this.camera = {
     x: 0, y: 1.6, z: 0,
     yaw: 0, pitch: 0,
@@ -258,56 +283,48 @@ function Renderer(canvas){
     far: 60
   };
 
-  /* 光照 */
   this.light = { x: 0, y: 3, z: 0, r: 1, g: 0.92, b: 0.78 };
   this.ambient = [0.12, 0.14, 0.18];
-
-  /* 雾 */
   this.fog = { r: 0.04, g: 0.05, b: 0.08, near: 6, far: 22 };
 
-  /* 世界 */
   this.worldMesh = null;
   this.worldTex = null;
   this.worldHasTex = false;
 
-  /* Billboard */
   this.bbMesh = createMesh(gl);
   gl.bindBuffer(gl.ARRAY_BUFFER, this.bbMesh.vbo);
   gl.bufferData(gl.ARRAY_BUFFER, 4 * 8 * 4, gl.DYNAMIC_DRAW);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.bbMesh.ibo);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array([0,1,2, 0,2,3]), gl.STATIC_DRAW);
   this.bbMesh.indexCount = 6;
-  this.bbMesh.stride = 32;
 
   this.billboards = [];
   this._bbData = new Float32Array(4 * 8);
 
-  /* VP 矩阵缓存 */
   this._vp = M4.create();
   this._proj = M4.create();
   this._view = M4.create();
 
-  /* GL 状态 */
   gl.enable(gl.DEPTH_TEST);
   gl.depthFunc(gl.LEQUAL);
   gl.disable(gl.CULL_FACE);
   gl.clearColor(this.fog.r, this.fog.g, this.fog.b, 1);
+
+  this.aspect = 1;
 }
 
-/* ---------- 尺寸 ---------- */
 Renderer.prototype.resize = function(cssW, cssH, dpr){
   const gl = this.gl;
-  const w = Math.round(cssW * dpr);
-  const h = Math.round(cssH * dpr);
+  const w = Math.max(1, Math.round(cssW * dpr));
+  const h = Math.max(1, Math.round(cssH * dpr));
   if(this.canvas.width !== w || this.canvas.height !== h){
     this.canvas.width = w;
     this.canvas.height = h;
   }
   gl.viewport(0, 0, w, h);
-  this.aspect = cssW / cssH;
+  this.aspect = cssW / Math.max(1, cssH);
 };
 
-/* ---------- 相机 ---------- */
 Renderer.prototype.setCamera = function(c){
   const cam = this.camera;
   if(c.x !== undefined) cam.x = c.x;
@@ -320,7 +337,6 @@ Renderer.prototype.setCamera = function(c){
   if(c.far !== undefined) cam.far = c.far;
 };
 
-/* ---------- 光照 ---------- */
 Renderer.prototype.setLight = function(l){
   if(l.x !== undefined) this.light.x = l.x;
   if(l.y !== undefined) this.light.y = l.y;
@@ -331,6 +347,7 @@ Renderer.prototype.setLight = function(l){
     this.light.b = l.color[2];
   }
 };
+
 Renderer.prototype.setAmbient = function(rgb){
   if(Array.isArray(rgb)){
     this.ambient[0] = rgb[0];
@@ -339,7 +356,6 @@ Renderer.prototype.setAmbient = function(rgb){
   }
 };
 
-/* ---------- 雾 ---------- */
 Renderer.prototype.setFog = function(f){
   if(f.color){
     this.fog.r = f.color[0];
@@ -351,12 +367,15 @@ Renderer.prototype.setFog = function(f){
   if(f.far !== undefined) this.fog.far = f.far;
 };
 
-/* ---------- 纹理工厂 ---------- */
-Renderer.prototype.texture = function(source, opts){
-  return makeTexture(this.gl, source, opts);
+/* 从 canvas 创建纹理 —— iOS 安全 */
+Renderer.prototype.textureFromCanvas = function(canvas, opts){
+  return makeTextureFromCanvas(this.gl, canvas, opts);
 };
 
-/* ---------- 从 grid 建墙 ---------- */
+Renderer.prototype.deleteTexture = function(tex){
+  if(tex) this.gl.deleteTexture(tex);
+};
+
 Renderer.prototype.buildWorld = function(cfg){
   const gl = this.gl;
   const grid = cfg.grid;
@@ -374,7 +393,6 @@ Renderer.prototype.buildWorld = function(cfg){
     I.push(base, base+1, base+2, base, base+2, base+3);
   }
 
-  /* 遍历格子 */
   for(let y = 0; y < rows; y++){
     for(let x = 0; x < cols; x++){
       if(grid[y][x] !== '1') continue;
@@ -383,43 +401,38 @@ Renderer.prototype.buildWorld = function(cfg){
       const z0 = y, z1 = y + 1;
       const y0 = 0, y1 = wallH;
 
-      /* 顶面 */
       pushQuad(
         [x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1],
         [0, 1, 0],
         [[0,0],[1,0],[1,1],[0,1]]
       );
 
-      /* -z 面（前面） */
       if(y - 1 < 0 || grid[y-1][x] !== '1'){
         pushQuad(
           [x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0],
           [0, 0, -1],
-          [[0,wallH],[1,wallH],[1,0],[0,0]]
+          [[0,1],[1,1],[1,0],[0,0]]
         );
       }
-      /* +z 面（后面） */
       if(y + 1 >= rows || grid[y+1][x] !== '1'){
         pushQuad(
           [x1, y0, z1], [x0, y0, z1], [x0, y1, z1], [x1, y1, z1],
           [0, 0, 1],
-          [[0,wallH],[1,wallH],[1,0],[0,0]]
+          [[0,1],[1,1],[1,0],[0,0]]
         );
       }
-      /* -x 面（左面） */
       if(x - 1 < 0 || grid[y][x-1] !== '1'){
         pushQuad(
           [x0, y0, z1], [x0, y0, z0], [x0, y1, z0], [x0, y1, z1],
           [-1, 0, 0],
-          [[0,wallH],[1,wallH],[1,0],[0,0]]
+          [[0,1],[1,1],[1,0],[0,0]]
         );
       }
-      /* +x 面（右面） */
       if(x + 1 >= cols || grid[y][x+1] !== '1'){
         pushQuad(
           [x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0],
           [1, 0, 0],
-          [[0,wallH],[1,wallH],[1,0],[0,0]]
+          [[0,1],[1,1],[1,0],[0,0]]
         );
       }
     }
@@ -445,29 +458,32 @@ Renderer.prototype.buildWorld = function(cfg){
   if(!this.worldMesh) this.worldMesh = createMesh(gl);
   uploadMesh(gl, this.worldMesh, P, N, U, I, false);
 
-  /* 纹理 */
-  if(this.worldTex){ gl.deleteTexture(this.worldTex); this.worldTex = null; }
+  if(this.worldTex){
+    try{ gl.deleteTexture(this.worldTex); }catch(e){}
+    this.worldTex = null;
+  }
   this.worldHasTex = false;
-  if(cfg.wallTex){
-    this.worldTex = makeTexture(gl, cfg.wallTex, { repeat: true });
-    this.worldHasTex = true;
+  if(cfg.wallTexCanvas){
+    try{
+      this.worldTex = makeTextureFromCanvas(gl, cfg.wallTexCanvas, { repeat: true });
+      this.worldHasTex = true;
+    }catch(e){
+      console.warn('[R3D] 纹理上传失败，降级为纯色:', e.message);
+      this.worldHasTex = false;
+    }
   }
 
   this.worldMeta = {
     wallHeight: wallH,
     cols: cols,
-    rows: rows,
-    floorColor: cfg.floorColor || [0.06, 0.07, 0.10],
-    ceilColor:  cfg.ceilColor  || [0.03, 0.03, 0.05]
+    rows: rows
   };
 };
 
-/* ---------- Billboard ---------- */
 Renderer.prototype.setBillboards = function(list){
   this.billboards = list || [];
 };
 
-/* ---------- 渲染 ---------- */
 Renderer.prototype.render = function(){
   const gl = this.gl;
   const cam = this.camera;
@@ -480,7 +496,6 @@ Renderer.prototype.render = function(){
   gl.enableVertexAttribArray(this.attr.normal);
   gl.enableVertexAttribArray(this.attr.uv);
 
-  /* 计算 VP 矩阵 */
   const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
   const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
   const dir = [cy * cp, sp, sy * cp];
@@ -488,22 +503,10 @@ Renderer.prototype.render = function(){
 
   M4.perspective(this._proj, cam.fov, this.aspect || 1, cam.near, cam.far);
   M4.lookAt(this._view, [cam.x, cam.y, cam.z], target, [0, 1, 0]);
+  M4.multiply(this._vp, this._proj, this._view);
 
-  /* VP = proj * view —— 用一个额外临时矩阵 */
-  const vp = new Float32Array(16);
-  // 手写矩阵乘 proj * view
-  for(let r = 0; r < 4; r++){
-    for(let c = 0; c < 4; c++){
-      let s = 0;
-      for(let k = 0; k < 4; k++){
-        s += this._proj[k*4 + r] * this._view[c*4 + k];
-      }
-      vp[c*4 + r] = s;
-    }
-  }
-  gl.uniformMatrix4fv(this.uni.uVP, false, vp);
+  gl.uniformMatrix4fv(this.uni.uVP, false, this._vp);
 
-  /* 相机 & 光照 & 雾 */
   gl.uniform3f(this.uni.uCamPos, cam.x, cam.y, cam.z);
   gl.uniform3f(this.uni.uLightPos, this.light.x, this.light.y, this.light.z);
   gl.uniform3f(this.uni.uLightColor, this.light.r, this.light.g, this.light.b);
@@ -512,7 +515,6 @@ Renderer.prototype.render = function(){
   gl.uniform1f(this.uni.uFogNear, this.fog.near);
   gl.uniform1f(this.uni.uFogFar, this.fog.far);
 
-  /* 世界 */
   if(this.worldMesh && this.worldMeta){
     gl.uniform1f(this.uni.uAlphaTest, 0.0);
     gl.uniform1f(this.uni.uHasTex, this.worldHasTex ? 1 : 0);
@@ -533,45 +535,39 @@ Renderer.prototype.render = function(){
     gl.drawElements(gl.TRIANGLES, this.worldMesh.indexCount, gl.UNSIGNED_SHORT, 0);
   }
 
-  /* Billboards */
   if(this.billboards.length){
     gl.uniform1f(this.uni.uAlphaTest, 1.0);
 
-    /* 相机水平朝向 */
     const camX = cam.x, camZ = cam.z;
     for(let i = 0; i < this.billboards.length; i++){
       const bb = this.billboards[i];
-      /* 朝向 */
       let dx = camX - bb.x, dz = camZ - bb.z;
       const dl = Math.hypot(dx, dz) || 1;
       dx /= dl; dz /= dl;
-      /* 水平右向量 */
       const rx = -dz, rz = dx;
       const hw = (bb.w || 0.8) * 0.5;
       const bx = bb.x, by = bb.y, bz = bb.z;
       const bh = bb.h || 1.0;
 
       const d = this._bbData;
-      const off = 0;
-      /* 4 个顶点：左下、右下、右上、左上 */
       const cx0 = bx - rx * hw, cz0 = bz - rz * hw;
       const cx1 = bx + rx * hw, cz1 = bz + rz * hw;
 
-      d[0]  = cx0; d[1]  = by;       d[2]  = cz0;
-      d[3]  = -dx; d[4]  = 0;        d[5]  = -dz;
-      d[6]  = 0;   d[7]  = 1;
+      d[0]=cx0; d[1]=by;      d[2]=cz0;
+      d[3]=-dx; d[4]=0;       d[5]=-dz;
+      d[6]=0;   d[7]=1;
 
-      d[8]  = cx1; d[9]  = by;       d[10] = cz1;
-      d[11] = -dx; d[12] = 0;        d[13] = -dz;
-      d[14] = 1;   d[15] = 1;
+      d[8]=cx1; d[9]=by;      d[10]=cz1;
+      d[11]=-dx; d[12]=0;     d[13]=-dz;
+      d[14]=1;   d[15]=1;
 
-      d[16] = cx1; d[17] = by + bh;  d[18] = cz1;
-      d[19] = -dx; d[20] = 0;        d[21] = -dz;
-      d[22] = 1;   d[23] = 0;
+      d[16]=cx1; d[17]=by+bh; d[18]=cz1;
+      d[19]=-dx; d[20]=0;     d[21]=-dz;
+      d[22]=1;   d[23]=0;
 
-      d[24] = cx0; d[25] = by + bh;  d[26] = cz0;
-      d[27] = -dx; d[28] = 0;        d[29] = -dz;
-      d[30] = 0;   d[31] = 0;
+      d[24]=cx0; d[25]=by+bh; d[26]=cz0;
+      d[27]=-dx; d[28]=0;     d[29]=-dz;
+      d[30]=0;   d[31]=0;
 
       gl.bindBuffer(gl.ARRAY_BUFFER, this.bbMesh.vbo);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, d);
@@ -599,7 +595,6 @@ Renderer.prototype.render = function(){
   }
 };
 
-/* ---------- 释放 ---------- */
 Renderer.prototype.dispose = function(){
   const gl = this.gl;
   if(this.worldMesh){
@@ -622,7 +617,6 @@ Renderer.prototype.dispose = function(){
   }
 };
 
-/* ==================== 导出 ==================== */
 global.R3D = {
   create(canvas){
     return new Renderer(canvas);
