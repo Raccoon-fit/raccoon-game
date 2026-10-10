@@ -1,6 +1,6 @@
 /* =========================================================
-   r3d.js — 极简真 3D 引擎 v2
-   多光源（3 个点光源）+ 三贴图（墙/地/天）+ iOS 兼容
+   r3d.js — 极简真 3D 引擎 v3
+   多光源 + 三贴图 + Prop 几何体（盒体/柱体）
    ========================================================= */
 (function(global){
 'use strict';
@@ -97,9 +97,7 @@ const FRAG_SRC = [
 'uniform float uFogFar;',
 'void main(){',
 '  vec4 base = vec4(uColor, 1.0);',
-'  if(uHasTex > 0.5){',
-'    base *= texture2D(uTex, vUV);',
-'  }',
+'  if(uHasTex > 0.5){ base *= texture2D(uTex, vUV); }',
 '  if(uAlphaTest > 0.5 && base.a < 0.35) discard;',
 '  vec3 N = normalize(vNormal);',
 '  vec3 V = normalize(uCamPos - vWorldPos);',
@@ -143,16 +141,13 @@ const FRAG_SRC = [
 
 function compile(gl, type, src){
   const s = gl.createShader(type);
-  gl.shaderSource(s, src);
-  gl.compileShader(s);
+  gl.shaderSource(s, src); gl.compileShader(s);
   if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)){
     console.error('[R3D] shader:', gl.getShaderInfoLog(s));
-    gl.deleteShader(s);
-    return null;
+    gl.deleteShader(s); return null;
   }
   return s;
 }
-
 function linkProgram(gl){
   const vs = compile(gl, gl.VERTEX_SHADER, VERT_SRC);
   const fs = compile(gl, gl.FRAGMENT_SHADER, FRAG_SRC);
@@ -167,7 +162,6 @@ function linkProgram(gl){
   gl.deleteShader(vs); gl.deleteShader(fs);
   return p;
 }
-
 function isPOT(n){ return (n & (n-1)) === 0; }
 
 function makeTexture(gl, source, opts){
@@ -177,23 +171,19 @@ function makeTexture(gl, source, opts){
   const w = isImg ? source.naturalWidth : source.width;
   const h = isImg ? source.naturalHeight : source.height;
   if(!w || !h) throw new Error('尺寸无效 ' + w + 'x' + h);
-
   const t = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, t);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, opts.flipY ? 1 : 0);
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
-
   if(isImg){
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
   } else {
     const data = source.getContext('2d').getImageData(0, 0, w, h);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
   }
-
   const wrap = opts.repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE;
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
-
   if(isPOT(w) && isPOT(h) && !opts.noMip){
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -206,10 +196,9 @@ function makeTexture(gl, source, opts){
 }
 
 function createMesh(gl){
-  return { vbo: gl.createBuffer(), ibo: gl.createBuffer(), indexCount: 0, vertexCount: 0 };
+  return { vbo: gl.createBuffer(), ibo: gl.createBuffer(), indexCount: 0 };
 }
-
-function uploadMesh(gl, mesh, P, N, U, I, dynamic){
+function uploadMesh(gl, mesh, P, N, U, I){
   const n = P.length / 3;
   const data = new Float32Array(n * 8);
   for(let i = 0; i < n; i++){
@@ -218,20 +207,72 @@ function uploadMesh(gl, mesh, P, N, U, I, dynamic){
     data[i*8+6]=U[i*2+0]; data[i*8+7]=U[i*2+1];
   }
   gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vbo);
-  gl.bufferData(gl.ARRAY_BUFFER, data, dynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ibo);
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(I), dynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(I), gl.STATIC_DRAW);
   mesh.indexCount = I.length;
-  mesh.vertexCount = n;
 }
 
+/* ============ 几何体生成器 ============ */
+function pushQuad(P, N, U, I, v0, v1, v2, v3, n){
+  const base = P.length / 3;
+  P.push(v0[0],v0[1],v0[2], v1[0],v1[1],v1[2], v2[0],v2[1],v2[2], v3[0],v3[1],v3[2]);
+  for(let k = 0; k < 4; k++) N.push(n[0], n[1], n[2]);
+  U.push(0,0, 1,0, 1,1, 0,1);
+  I.push(base, base+1, base+2, base, base+2, base+3);
+}
+
+function buildBox(P, N, U, I, cx, y0, cz, w, h, d){
+  const hw = w/2, hd = d/2;
+  const x0 = cx-hw, x1 = cx+hw;
+  const y1 = y0 + h;
+  const z0 = cz-hd, z1 = cz+hd;
+  /* 前 (+z) */
+  pushQuad(P,N,U,I,[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1],[0,0,1]);
+  /* 后 (-z) */
+  pushQuad(P,N,U,I,[x1,y0,z0],[x0,y0,z0],[x0,y1,z0],[x1,y1,z0],[0,0,-1]);
+  /* 左 (-x) */
+  pushQuad(P,N,U,I,[x0,y0,z0],[x0,y0,z1],[x0,y1,z1],[x0,y1,z0],[-1,0,0]);
+  /* 右 (+x) */
+  pushQuad(P,N,U,I,[x1,y0,z1],[x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[1,0,0]);
+  /* 顶 (+y) */
+  pushQuad(P,N,U,I,[x0,y1,z1],[x1,y1,z1],[x1,y1,z0],[x0,y1,z0],[0,1,0]);
+  /* 底 (-y) */
+  pushQuad(P,N,U,I,[x0,y0,z0],[x1,y0,z0],[x1,y0,z1],[x0,y0,z1],[0,-1,0]);
+}
+
+function buildCylinder(P, N, U, I, cx, y0, cz, r, h, seg){
+  seg = seg || 10;
+  const y1 = y0 + h;
+  for(let i = 0; i < seg; i++){
+    const a0 = (i / seg) * Math.PI * 2;
+    const a1 = ((i+1) / seg) * Math.PI * 2;
+    const x0 = cx + Math.cos(a0)*r, z0 = cz + Math.sin(a0)*r;
+    const x1 = cx + Math.cos(a1)*r, z1 = cz + Math.sin(a1)*r;
+    /* 侧 */
+    pushQuad(P,N,U,I,
+      [x0,y0,z0],[x1,y0,z1],[x1,y1,z1],[x0,y1,z0],
+      [Math.cos((a0+a1)/2), 0, Math.sin((a0+a1)/2)]);
+    /* 顶 */
+    if(i === 0 || true){
+      const base = P.length / 3;
+      P.push(cx, y1, cz, x0, y1, z0, x1, y1, z1, cx, y1, cz);
+      for(let k=0;k<4;k++) N.push(0,1,0);
+      U.push(0.5,0.5, 0,0, 1,0, 0.5,0.5);
+      I.push(base, base+1, base+2, base, base+2, base+3);
+    }
+  }
+}
+
+/* =========================================================
+   Renderer
+   ========================================================= */
 function Renderer(canvas){
   const gl = canvas.getContext('webgl', {
     antialias: true, alpha: false, depth: true,
     powerPreference: 'high-performance'
   }) || canvas.getContext('experimental-webgl');
   if(!gl) throw new Error('WebGL 不可用');
-
   this.gl = gl; this.canvas = canvas;
 
   const program = linkProgram(gl);
@@ -263,6 +304,9 @@ function Renderer(canvas){
   this.wallMesh = null;  this.wallTex = null;  this.wallHasTex = false;
   this.floorMesh = null; this.floorTex = null; this.floorHasTex = false;
   this.ceilMesh = null;  this.ceilTex = null;  this.ceilHasTex = false;
+
+  /* props */
+  this.props = [];
 
   this.bbMesh = createMesh(gl);
   gl.bindBuffer(gl.ARRAY_BUFFER, this.bbMesh.vbo);
@@ -298,21 +342,15 @@ Renderer.prototype.setCamera = function(c){
     if(c[k] !== undefined) cam[k] = c[k];
   }
 };
-
 Renderer.prototype.setLights = function(list){
   for(let i = 0; i < 3; i++){
-    if(list && list[i]){
-      this.lights[i] = list[i];
-    } else {
-      this.lights[i] = { x:0, y:-999, z:0, color:[0,0,0] };
-    }
+    if(list && list[i]) this.lights[i] = list[i];
+    else this.lights[i] = { x:0, y:-999, z:0, color:[0,0,0] };
   }
 };
-
 Renderer.prototype.setAmbient = function(rgb){
   if(Array.isArray(rgb)) this.ambient = [rgb[0], rgb[1], rgb[2]];
 };
-
 Renderer.prototype.setFog = function(f){
   if(f.color){
     this.fog.r = f.color[0]; this.fog.g = f.color[1]; this.fog.b = f.color[2];
@@ -321,11 +359,9 @@ Renderer.prototype.setFog = function(f){
   if(f.near !== undefined) this.fog.near = f.near;
   if(f.far !== undefined) this.fog.far = f.far;
 };
-
 Renderer.prototype.textureFromCanvas = function(source, opts){
   return makeTexture(this.gl, source, opts);
 };
-
 Renderer.prototype._loadTex = function(existing, source, opts){
   const gl = this.gl;
   if(existing){ try{ gl.deleteTexture(existing); }catch(e){} }
@@ -342,69 +378,41 @@ Renderer.prototype.buildWorld = function(cfg){
   const cols = grid[0].length;
 
   const WP=[], WN=[], WU=[], WI=[];
-
-  function pushQuad(P, N, U, I, v0, v1, v2, v3, n, uv){
-    const base = P.length / 3;
-    P.push(v0[0],v0[1],v0[2], v1[0],v1[1],v1[2], v2[0],v2[1],v2[2], v3[0],v3[1],v3[2]);
-    for(let k = 0; k < 4; k++) N.push(n[0], n[1], n[2]);
-    U.push(uv[0][0],uv[0][1], uv[1][0],uv[1][1], uv[2][0],uv[2][1], uv[3][0],uv[3][1]);
-    I.push(base, base+1, base+2, base, base+2, base+3);
+  function wq(v0,v1,v2,v3,n){
+    const base = WP.length/3;
+    WP.push(v0[0],v0[1],v0[2], v1[0],v1[1],v1[2], v2[0],v2[1],v2[2], v3[0],v3[1],v3[2]);
+    for(let k=0;k<4;k++) WN.push(n[0],n[1],n[2]);
+    WU.push(0,1, 1,1, 1,0, 0,0);
+    WI.push(base, base+1, base+2, base, base+2, base+3);
   }
 
   for(let y = 0; y < rows; y++){
     for(let x = 0; x < cols; x++){
       if(grid[y][x] !== '1') continue;
-      const x0 = x, x1 = x + 1;
-      const z0 = y, z1 = y + 1;
-      const y0 = 0, y1 = wallH;
-
-      pushQuad(WP, WN, WU, WI,
-        [x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1],
-        [0, 1, 0], [[0,0],[1,0],[1,1],[0,1]]);
-
-      if(y - 1 < 0 || grid[y-1][x] !== '1'){
-        pushQuad(WP, WN, WU, WI,
-          [x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0],
-          [0, 0, -1], [[0,1],[1,1],[1,0],[0,0]]);
-      }
-      if(y + 1 >= rows || grid[y+1][x] !== '1'){
-        pushQuad(WP, WN, WU, WI,
-          [x1, y0, z1], [x0, y0, z1], [x0, y1, z1], [x1, y1, z1],
-          [0, 0, 1], [[0,1],[1,1],[1,0],[0,0]]);
-      }
-      if(x - 1 < 0 || grid[y][x-1] !== '1'){
-        pushQuad(WP, WN, WU, WI,
-          [x0, y0, z1], [x0, y0, z0], [x0, y1, z0], [x0, y1, z1],
-          [-1, 0, 0], [[0,1],[1,1],[1,0],[0,0]]);
-      }
-      if(x + 1 >= cols || grid[y][x+1] !== '1'){
-        pushQuad(WP, WN, WU, WI,
-          [x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0],
-          [1, 0, 0], [[0,1],[1,1],[1,0],[0,0]]);
-      }
+      const x0=x, x1=x+1, z0=y, z1=y+1, y0=0, y1=wallH;
+      wq([x0,y1,z0],[x1,y1,z0],[x1,y1,z1],[x0,y1,z1],[0,1,0]);
+      if(y-1<0 || grid[y-1][x] !== '1')
+        wq([x0,y0,z0],[x1,y0,z0],[x1,y1,z0],[x0,y1,z0],[0,0,-1]);
+      if(y+1>=rows || grid[y+1][x] !== '1')
+        wq([x1,y0,z1],[x0,y0,z1],[x0,y1,z1],[x1,y1,z1],[0,0,1]);
+      if(x-1<0 || grid[y][x-1] !== '1')
+        wq([x0,y0,z1],[x0,y0,z0],[x0,y1,z0],[x0,y1,z1],[-1,0,0]);
+      if(x+1>=cols || grid[y][x+1] !== '1')
+        wq([x1,y0,z0],[x1,y0,z1],[x1,y1,z1],[x1,y1,z0],[1,0,0]);
     }
   }
 
-  /* 地板 */
   const FP=[], FN=[], FU=[], FI=[];
-  pushQuad(FP, FN, FU, FI,
-    [0,0,0], [cols,0,0], [cols,0,rows], [0,0,rows],
-    [0,1,0],
-    [[0,0],[cols,0],[cols,rows],[0,rows]]);
-
-  /* 天花板 */
+  pushQuad(FP,FN,FU,FI,[0,0,0],[cols,0,0],[cols,0,rows],[0,0,rows],[0,1,0]);
   const CP=[], CN=[], CU=[], CI=[];
-  pushQuad(CP, CN, CU, CI,
-    [0,wallH,0], [cols,wallH,0], [cols,wallH,rows], [0,wallH,rows],
-    [0,-1,0],
-    [[0,0],[cols,0],[cols,rows],[0,rows]]);
+  pushQuad(CP,CN,CU,CI,[0,wallH,0],[cols,wallH,0],[cols,wallH,rows],[0,wallH,rows],[0,-1,0]);
 
   if(!this.wallMesh)  this.wallMesh  = createMesh(gl);
   if(!this.floorMesh) this.floorMesh = createMesh(gl);
   if(!this.ceilMesh)  this.ceilMesh  = createMesh(gl);
-  uploadMesh(gl, this.wallMesh,  WP, WN, WU, WI, false);
-  uploadMesh(gl, this.floorMesh, FP, FN, FU, FI, false);
-  uploadMesh(gl, this.ceilMesh,  CP, CN, CU, CI, false);
+  uploadMesh(gl, this.wallMesh,  WP, WN, WU, WI);
+  uploadMesh(gl, this.floorMesh, FP, FN, FU, FI);
+  uploadMesh(gl, this.ceilMesh,  CP, CN, CU, CI);
 
   const wt = this._loadTex(this.wallTex,  cfg.wallTexSource,  { repeat: true });
   const ft = this._loadTex(this.floorTex, cfg.floorTexSource, { repeat: true });
@@ -412,6 +420,51 @@ Renderer.prototype.buildWorld = function(cfg){
   this.wallTex = wt.tex;   this.wallHasTex  = wt.ok;
   this.floorTex = ft.tex;  this.floorHasTex = ft.ok;
   this.ceilTex = ct.tex;   this.ceilHasTex  = ct.ok;
+};
+
+/* ============ Prop 构建 ============ */
+Renderer.prototype.buildProps = function(list){
+  const gl = this.gl;
+  /* 清掉旧的 */
+  for(const p of this.props){
+    try{ gl.deleteBuffer(p.mesh.vbo); gl.deleteBuffer(p.mesh.ibo); }catch(e){}
+  }
+  this.props = [];
+  if(!list || !list.length) return;
+
+  for(const p of list){
+    const P=[], N=[], U=[], I=[];
+    const shape = p.shape || 'box';
+    const w = p.w !== undefined ? p.w : 0.6;
+    const h = p.h !== undefined ? p.h : 0.6;
+    const d = p.d !== undefined ? p.d : (p.w || 0.6);
+    const cx = p.x, y0 = p.y !== undefined ? p.y : 0, cz = p.z;
+
+    if(shape === 'box'){
+      buildBox(P, N, U, I, cx, y0, cz, w, h, d);
+    }
+    else if(shape === 'cyl'){
+      buildCylinder(P, N, U, I, cx, y0, cz, w/2, h, 10);
+    }
+    else if(shape === 'plate'){
+      /* 薄板（贴在墙上）：默认朝 +z */
+      buildBox(P, N, U, I, cx, y0, cz, w, h, 0.06);
+    }
+    else if(shape === 'low'){
+      /* 矮盘（碗、水洼） */
+      buildCylinder(P, N, U, I, cx, y0, cz, w/2, h, 8);
+    }
+
+    const mesh = createMesh(gl);
+    uploadMesh(gl, mesh, P, N, U, I);
+
+    const c = p.color || '#888888';
+    const r = parseInt(c.slice(1,3),16)/255;
+    const g = parseInt(c.slice(3,5),16)/255;
+    const b = parseInt(c.slice(5,7),16)/255;
+
+    this.props.push({ mesh: mesh, color: [r, g, b] });
+  }
 };
 
 Renderer.prototype.setBillboards = function(list){ this.billboards = list || []; };
@@ -470,6 +523,13 @@ Renderer.prototype.render = function(){
   this._drawMesh(this.floorMesh, this.floorTex, this.floorHasTex, 1,1,1, 0);
   this._drawMesh(this.ceilMesh,  this.ceilTex,  this.ceilHasTex,  1,1,1, 0);
 
+  /* Props */
+  for(let i = 0; i < this.props.length; i++){
+    const p = this.props[i];
+    this._drawMesh(p.mesh, null, false, p.color[0], p.color[1], p.color[2], 0);
+  }
+
+  /* Billboards */
   if(this.billboards.length){
     gl.uniform1f(this.uni.uAlphaTest, 1.0);
     const camX = cam.x, camZ = cam.z;
@@ -480,23 +540,17 @@ Renderer.prototype.render = function(){
       dx /= dl; dz /= dl;
       const rx = -dz, rz = dx;
       const hw = (bb.w || 0.8) * 0.5;
-      const bx = bb.x, by = bb.y, bz = bb.z;
-      const bh = bb.h || 1.0;
       const d = this._bbData;
-      const cx0 = bx - rx*hw, cz0 = bz - rz*hw;
-      const cx1 = bx + rx*hw, cz1 = bz + rz*hw;
-      d[0]=cx0; d[1]=by;      d[2]=cz0;
-      d[3]=-dx; d[4]=0;       d[5]=-dz;
-      d[6]=0;   d[7]=1;
-      d[8]=cx1; d[9]=by;      d[10]=cz1;
-      d[11]=-dx; d[12]=0;     d[13]=-dz;
-      d[14]=1;  d[15]=1;
-      d[16]=cx1; d[17]=by+bh; d[18]=cz1;
-      d[19]=-dx; d[20]=0;     d[21]=-dz;
-      d[22]=1;  d[23]=0;
-      d[24]=cx0; d[25]=by+bh; d[26]=cz0;
-      d[27]=-dx; d[28]=0;     d[29]=-dz;
-      d[30]=0;  d[31]=0;
+      const cx0 = bb.x - rx*hw, cz0 = bb.z - rz*hw;
+      const cx1 = bb.x + rx*hw, cz1 = bb.z + rz*hw;
+      d[0]=cx0; d[1]=bb.y; d[2]=cz0;
+      d[3]=-dx; d[4]=0; d[5]=-dz; d[6]=0; d[7]=1;
+      d[8]=cx1; d[9]=bb.y; d[10]=cz1;
+      d[11]=-dx; d[12]=0; d[13]=-dz; d[14]=1; d[15]=1;
+      d[16]=cx1; d[17]=bb.y+bb.h; d[18]=cz1;
+      d[19]=-dx; d[20]=0; d[21]=-dz; d[22]=1; d[23]=0;
+      d[24]=cx0; d[25]=bb.y+bb.h; d[26]=cz0;
+      d[27]=-dx; d[28]=0; d[29]=-dz; d[30]=0; d[31]=0;
 
       gl.bindBuffer(gl.ARRAY_BUFFER, this.bbMesh.vbo);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, d);
@@ -525,6 +579,9 @@ Renderer.prototype.dispose = function(){
   [this.wallMesh, this.floorMesh, this.ceilMesh, this.bbMesh].forEach(m => {
     if(m){ try{ gl.deleteBuffer(m.vbo); gl.deleteBuffer(m.ibo); }catch(e){} }
   });
+  for(const p of this.props){
+    try{ gl.deleteBuffer(p.mesh.vbo); gl.deleteBuffer(p.mesh.ibo); }catch(e){}
+  }
   [this.wallTex, this.floorTex, this.ceilTex].forEach(t => {
     if(t){ try{ gl.deleteTexture(t); }catch(e){} }
   });
