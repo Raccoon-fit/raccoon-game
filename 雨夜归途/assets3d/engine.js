@@ -1,6 +1,6 @@
 /* =========================================================
-   engine.js — 真 3D 引擎 v5
-   焦点持续保持 / 大地图 / Props 几何体 / 恐怖层
+   engine.js — 真 3D 引擎 v7
+   断电后：场景灯全部转为红色应急灯（闪烁）
    ========================================================= */
 (function(){
 'use strict';
@@ -44,6 +44,7 @@ let lastExternalFocus = 0;
 
 const F = () => (window.S && window.S.flags) || {};
 function isBloodMode(){ return !!F().bloodMode; }
+function isPowerCut(){ return !!F().powerCut; }
 function isTorchOn(){ return isBloodMode() ? !!F().b_torchOn : !!F().torchOn; }
 
 function getPanic(){
@@ -225,7 +226,6 @@ function makeWallTextureCanvas(spec){
     for(let row = 0; row <= rows; row++){
       x.beginPath(); x.moveTo(0, row*bh); x.lineTo(S, row*bh); x.stroke();
     }
-    /* 污渍 —— 焦黑模式加血渍色 */
     for(let i = 0; i < 22; i++){
       const px = Math.random()*S, py = Math.random()*S;
       const r = 4 + Math.random()*14;
@@ -248,14 +248,12 @@ function makeWallTextureCanvas(spec){
       for(let i = 0; i < 5; i++) x.fillRect(0, 4 + i*26, S, 2);
     }
     if(isBurnt){
-      /* 焦痕 */
       x.fillStyle = 'rgba(0,0,0,0.6)';
       for(let i = 0; i < 60; i++){
         x.beginPath();
         x.arc(Math.random()*S, Math.random()*S, 1 + Math.random()*4, 0, Math.PI*2);
         x.fill();
       }
-      /* 墙上的血滴（从上往下淌） */
       x.fillStyle = 'rgba(90,5,5,0.5)';
       for(let i = 0; i < 14; i++){
         const bx = Math.random()*S;
@@ -379,7 +377,6 @@ function makeFloorTextureCanvas(spec){
       x.fillRect(xx + 1, yy + 1, t - 2, t - 2);
     }
   }
-  /* 地面上的血渍 */
   for(let i = 0; i < 8; i++){
     const px = Math.random()*S, py = Math.random()*S;
     const r = 6 + Math.random()*18;
@@ -418,7 +415,6 @@ function makeCeilTextureCanvas(spec){
     x.fillStyle = grd;
     x.beginPath(); x.arc(px, py, r, 0, Math.PI*2); x.fill();
   }
-  /* 天花板的血滴 */
   x.fillStyle = 'rgba(90,5,5,0.5)';
   for(let i = 0; i < 10; i++){
     const bx = Math.random()*S;
@@ -496,7 +492,6 @@ function buildWorld(){
     ceilTexSource:  getCeilTextureCanvas(ceilSpec,  sceneKey)
   });
 
-  /* 构建 Props */
   const props = (typeof map.props === 'function') ? map.props() : (map.props || []);
   renderer.buildProps(props);
 }
@@ -570,7 +565,6 @@ function update(dt){
     }
   }
 
-  /* 对话状态 */
   let dlgOpen = false;
   try{
     const pel = window.parent && window.parent.document.getElementById('dlg');
@@ -591,7 +585,6 @@ function update(dt){
   }
   if(best !== nearby){ nearby = best; updateButton(); }
 
-  /* 恐怖事件调度 */
   if(isBloodMode()){
     const nowSec = performance.now()/1000;
     if(scareTime <= 0 && nowSec >= nextScareAt){
@@ -655,20 +648,31 @@ function triggerNearby(){
 /* ==================== 光照 ==================== */
 function computeAmbient(){
   const blood = isBloodMode();
+  const cut = isPowerCut();
+  const torch = isTorchOn();
+
+  /* 暗夜模式 */
   if(blood){
-    return isTorchOn() ? [0.16, 0.05, 0.05] : [0.04, 0.012, 0.015];
+    /* 断电后：环境光微微偏红（应急灯余晖） */
+    if(cut) return torch ? [0.18, 0.06, 0.06] : [0.07, 0.02, 0.02];
+    return torch ? [0.16, 0.05, 0.05] : [0.04, 0.012, 0.015];
   }
-  const cut = F().powerCut;
-  if(cut) return isTorchOn() ? [0.20, 0.19, 0.18] : [0.05, 0.06, 0.08];
-  return isTorchOn() ? [0.28, 0.26, 0.24] : [0.14, 0.15, 0.18];
+
+  /* 主线 */
+  if(cut){
+    /* 断电后：不是全黑，有一层冷调的应急余光 */
+    return torch ? [0.22, 0.20, 0.20] : [0.09, 0.09, 0.11];
+  }
+  return torch ? [0.28, 0.26, 0.24] : [0.14, 0.15, 0.18];
 }
 
 function computeLights(){
   const blood = isBloodMode();
   const torch = isTorchOn();
-  const cut = F().powerCut;
+  const cut = isPowerCut();
   const list = [];
 
+  /* 手电筒优先 */
   if(torch){
     let flick = blood
       ? 0.86 + 0.14*Math.sin(time*22) * (Math.random() > 0.8 ? 1.5 : 1)
@@ -682,24 +686,60 @@ function computeLights(){
   }
 
   const sceneLights = (map && map.lights) || [];
+
+  /* ★ 断电后：场景灯变成红色应急灯，微微闪烁 */
   for(let i = 0; i < sceneLights.length && list.length < 3; i++){
     const l = sceneLights[i];
-    let color = l.color || [0.6, 0.5, 0.4];
-    if(cut && l.conditional !== false) color = [color[0]*0.15, color[1]*0.15, color[2]*0.15];
-    if(blood) color = [color[0]*0.55, color[1]*0.18, color[2]*0.18];
+    let color;
+
+    if(cut && l.conditional !== false){
+      /* 应急灯色：暗红，闪烁 */
+      const blink = 0.75 + 0.25 * Math.sin(time * 3.2 + i * 1.7);
+      const strobe = (Math.random() > 0.965) ? 0.45 : 1.0;
+      color = [
+        1.55 * blink * strobe,
+        0.18 * blink * strobe,
+        0.14 * blink * strobe
+      ];
+    } else {
+      color = (l.color || [0.6, 0.5, 0.4]).slice();
+      if(blood) color = [color[0]*0.55, color[1]*0.18, color[2]*0.18];
+    }
+
     list.push({ x: l.x, y: l.y || 2.0, z: l.z, color: color });
   }
 
+  /* 如果没手电、没场景灯，加一点方向光 */
   if(!torch && list.length < 3){
+    let col;
+    if(cut){
+      /* 断电后的柔红余光（应急灯散射） */
+      col = blood ? [0.35, 0.08, 0.08] : [0.32, 0.14, 0.10];
+    } else if(blood){
+      col = [0.20, 0.05, 0.05];
+    } else {
+      col = [0.35, 0.34, 0.36];
+    }
     list.push({
       x: cam.x + Math.cos(cam.yaw) * 3,
       y: cam.eye + 1.5,
       z: cam.z + Math.sin(cam.yaw) * 3,
-      color: blood
-        ? [0.20, 0.05, 0.05]
-        : (cut ? [0.15, 0.16, 0.20] : [0.35, 0.34, 0.36])
+      color: col
     });
   }
+
+  /* 断电后额外在玩家附近放一盏红色泛光 —— 保证任何场景都有光 */
+  if(cut && list.length < 3){
+    list.push({
+      x: cam.x,
+      y: 1.6,
+      z: cam.z,
+      color: blood
+        ? [0.55, 0.10, 0.10]
+        : [0.48, 0.16, 0.12]
+    });
+  }
+
   while(list.length < 3) list.push({ x: 0, y: -999, z: 0, color: [0,0,0] });
   return list;
 }
@@ -712,7 +752,12 @@ function render(dt, t){
   renderer.setLights(computeLights());
 
   const blood = isBloodMode();
-  const fogColor = blood ? [0.025, 0.006, 0.012] : [0.04, 0.05, 0.08];
+  const cut = isPowerCut();
+  let fogColor;
+  if(blood) fogColor = [0.025, 0.006, 0.012];
+  else if(cut) fogColor = [0.06, 0.03, 0.025];     /* 断电：雾偏红棕 */
+  else fogColor = [0.04, 0.05, 0.08];
+
   renderer.setFog({
     color: fogColor,
     near: blood ? 2.2 : 5,
@@ -744,12 +789,18 @@ function render(dt, t){
 
 function updateOverlayFilter(){
   const blood = isBloodMode();
+  const cut = isPowerCut();
   let f = 'none';
+
   if(blood){
     if(invertT > 0) f = 'invert(1) contrast(1.4)';
     else if(silenceT > 0) f = 'saturate(0.2) contrast(1.4) brightness(0.55)';
     else f = 'saturate(0.7) contrast(1.25) brightness(0.82) hue-rotate(-12deg)';
+  } else if(cut){
+    /* 断电后的主线：色调偏红 —— 应急灯氛围 */
+    f = 'saturate(1.05) contrast(1.05) brightness(0.95) hue-rotate(-6deg)';
   }
+
   if(canvas.style.filter !== f) canvas.style.filter = f;
 }
 
@@ -992,17 +1043,14 @@ function forceFocus(){
   }catch(e){}
 }
 
-/* ★ 焦点持续保持：如果焦点不在 iframe，强制拿回来 */
 function startFocusKeeper(){
   if(focusCheckTimer) clearInterval(focusCheckTimer);
   focusCheckTimer = setInterval(function(){
     if(stopped) return;
-    /* 每 300ms 检查一次，如果焦点不在本 iframe，尝试拿回来 */
     try{
       const active = document.activeElement;
       const inFrame = active && active.tagName !== 'IFRAME' && document.hasFocus();
       if(!inFrame){
-        /* 只在最近没被用户主动切出去的情况下抢焦点 */
         if(performance.now() - lastExternalFocus > 400){
           window.focus();
           if(document.body) document.body.focus();
@@ -1076,7 +1124,6 @@ function bindPointer(){
   window.addEventListener('mousedown', ensureAudio, { once:true });
   window.addEventListener('keydown', ensureAudio, { once:true });
 
-  /* ★ 窗口失焦时记录时间，让 focus keeper 知道用户可能主动切出去了 */
   window.addEventListener('blur', function(){
     lastExternalFocus = performance.now();
   });
@@ -1101,14 +1148,11 @@ function bindMessage(){
         if(map) buildWorld();
       }
     }
-    /* ★ 对话结束通知 —— 主页面发来的 */
     if(d.type === 'dlgClosed'){
-      /* 立刻抢回焦点 */
       setTimeout(forceFocus, 20);
       setTimeout(forceFocus, 150);
       setTimeout(forceFocus, 500);
     }
-    /* ★ 场景切换后通知 */
     if(d.type === 'refocus'){
       forceFocus();
     }
@@ -1174,17 +1218,12 @@ function boot(){
   bindPointer();
   bindMessage();
 
-  /* 初始 focus：立刻 + 几个延迟点 */
   forceFocus();
   setTimeout(forceFocus, 100);
   setTimeout(forceFocus, 300);
   setTimeout(forceFocus, 800);
   setTimeout(forceFocus, 1500);
-
-  /* 点击任何位置 → focus */
   window.addEventListener('click', forceFocus);
-
-  /* 启动持续 focus keeper */
   startFocusKeeper();
 
   lastFrame = performance.now();
