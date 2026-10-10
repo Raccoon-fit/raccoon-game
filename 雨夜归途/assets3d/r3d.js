@@ -159,7 +159,6 @@ function linkProgram(gl){
 /* ==================== 纹理 ==================== */
 function isPOT(n){ return (n & (n-1)) === 0; }
 
-/* 从 canvas 中抽出 ImageData —— 这是 iOS WebKit 最稳的上传路径 */
 function canvasToImageData(canvas){
   const w = canvas.width;
   const h = canvas.height;
@@ -181,7 +180,6 @@ function makeTextureFromCanvas(gl, canvas, opts){
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, opts.flipY ? 1 : 0);
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
 
-  /* 关键：传 ImageData 而不是 canvas —— iOS WebKit 兼容 */
   gl.texImage2D(
     gl.TEXTURE_2D, 0, gl.RGBA,
     w, h, 0,
@@ -367,7 +365,6 @@ Renderer.prototype.setFog = function(f){
   if(f.far !== undefined) this.fog.far = f.far;
 };
 
-/* 从 canvas 创建纹理 —— iOS 安全 */
 Renderer.prototype.textureFromCanvas = function(canvas, opts){
   return makeTextureFromCanvas(this.gl, canvas, opts);
 };
@@ -438,7 +435,6 @@ Renderer.prototype.buildWorld = function(cfg){
     }
   }
 
-  /* 地板 */
   {
     const base = P.length / 3;
     P.push(0,0,0, cols,0,0, cols,0,rows, 0,0,rows);
@@ -446,7 +442,6 @@ Renderer.prototype.buildWorld = function(cfg){
     U.push(0,0, cols,0, cols,rows, 0,rows);
     I.push(base, base+1, base+2, base, base+2, base+3);
   }
-  /* 天花板 */
   {
     const base = P.length / 3;
     P.push(0,wallH,0, cols,wallH,0, cols,wallH,rows, 0,wallH,rows);
