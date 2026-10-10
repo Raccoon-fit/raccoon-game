@@ -1,6 +1,6 @@
 /* =========================================================
-   engine.js — 真 3D 引擎 v4
-   Props 几何体 + 恐怖层 + 纯键盘视角
+   engine.js — 真 3D 引擎 v5
+   焦点持续保持 / 大地图 / Props 几何体 / 恐怖层
    ========================================================= */
 (function(){
 'use strict';
@@ -37,6 +37,10 @@ let bloodDrops = [];
 let shakeTime = 0, shakeAmp = 0;
 let breathPhase = 0;
 let audioReady = false;
+
+/* 焦点保持 */
+let focusCheckTimer = null;
+let lastExternalFocus = 0;
 
 const F = () => (window.S && window.S.flags) || {};
 function isBloodMode(){ return !!F().bloodMode; }
@@ -221,12 +225,21 @@ function makeWallTextureCanvas(spec){
     for(let row = 0; row <= rows; row++){
       x.beginPath(); x.moveTo(0, row*bh); x.lineTo(S, row*bh); x.stroke();
     }
+    /* 污渍 —— 焦黑模式加血渍色 */
     for(let i = 0; i < 22; i++){
       const px = Math.random()*S, py = Math.random()*S;
       const r = 4 + Math.random()*14;
       const grd = x.createRadialGradient(px, py, 0, px, py, r);
-      grd.addColorStop(0, isWet ? 'rgba(140,180,220,0.28)' : 'rgba(0,0,0,0.22)');
-      grd.addColorStop(1, 'rgba(0,0,0,0)');
+      if(isBurnt){
+        grd.addColorStop(0, 'rgba(70,10,10,0.35)');
+        grd.addColorStop(1, 'rgba(70,10,10,0)');
+      } else if(isWet){
+        grd.addColorStop(0, 'rgba(140,180,220,0.28)');
+        grd.addColorStop(1, 'rgba(0,0,0,0)');
+      } else {
+        grd.addColorStop(0, 'rgba(0,0,0,0.22)');
+        grd.addColorStop(1, 'rgba(0,0,0,0)');
+      }
       x.fillStyle = grd;
       x.beginPath(); x.arc(px, py, r, 0, Math.PI*2); x.fill();
     }
@@ -235,14 +248,27 @@ function makeWallTextureCanvas(spec){
       for(let i = 0; i < 5; i++) x.fillRect(0, 4 + i*26, S, 2);
     }
     if(isBurnt){
+      /* 焦痕 */
       x.fillStyle = 'rgba(0,0,0,0.6)';
       for(let i = 0; i < 60; i++){
         x.beginPath();
         x.arc(Math.random()*S, Math.random()*S, 1 + Math.random()*4, 0, Math.PI*2);
         x.fill();
       }
-      x.fillStyle = 'rgba(120,50,20,0.20)';
-      for(let i = 0; i < 24; i++) x.fillRect(Math.random()*S, Math.random()*S, 1, 3 + Math.random()*4);
+      /* 墙上的血滴（从上往下淌） */
+      x.fillStyle = 'rgba(90,5,5,0.5)';
+      for(let i = 0; i < 14; i++){
+        const bx = Math.random()*S;
+        const by = Math.random()*S*0.7;
+        const bl = 8 + Math.random()*20;
+        x.fillRect(bx, by, 1.4, bl);
+      }
+      x.fillStyle = 'rgba(140,10,10,0.35)';
+      for(let i = 0; i < 6; i++){
+        x.beginPath();
+        x.arc(Math.random()*S, Math.random()*S, 1.5 + Math.random()*2, 0, Math.PI*2);
+        x.fill();
+      }
     }
   }
   else if(type === 'tile'){
@@ -353,12 +379,13 @@ function makeFloorTextureCanvas(spec){
       x.fillRect(xx + 1, yy + 1, t - 2, t - 2);
     }
   }
-  for(let i = 0; i < 14; i++){
+  /* 地面上的血渍 */
+  for(let i = 0; i < 8; i++){
     const px = Math.random()*S, py = Math.random()*S;
     const r = 6 + Math.random()*18;
     const grd = x.createRadialGradient(px, py, 0, px, py, r);
-    grd.addColorStop(0, 'rgba(100,140,180,0.18)');
-    grd.addColorStop(1, 'rgba(100,140,180,0)');
+    grd.addColorStop(0, 'rgba(80,10,10,0.35)');
+    grd.addColorStop(1, 'rgba(80,10,10,0)');
     x.fillStyle = grd;
     x.beginPath(); x.arc(px, py, r, 0, Math.PI*2); x.fill();
   }
@@ -391,6 +418,14 @@ function makeCeilTextureCanvas(spec){
     x.fillStyle = grd;
     x.beginPath(); x.arc(px, py, r, 0, Math.PI*2); x.fill();
   }
+  /* 天花板的血滴 */
+  x.fillStyle = 'rgba(90,5,5,0.5)';
+  for(let i = 0; i < 10; i++){
+    const bx = Math.random()*S;
+    const by = Math.random()*S*0.6;
+    const bl = 6 + Math.random()*16;
+    x.fillRect(bx, by, 1.2, bl);
+  }
   for(let i = 0; i < 300; i++){
     x.fillStyle = 'rgba(255,255,255,0.025)';
     x.fillRect(Math.random()*S, Math.random()*S, 1, 1);
@@ -418,39 +453,6 @@ function getCeilTextureCanvas(spec, key){
   const cv = makeCeilTextureCanvas(spec);
   texCache[k] = cv;
   return cv;
-}
-
-function getSpriteTexture(icon){
-  if(spriteTexCache[icon] !== undefined) return spriteTexCache[icon];
-  if(spritePendings[icon]) return null;
-  spritePendings[icon] = true;
-  const c = document.createElement('canvas');
-  c.width = 128; c.height = 128;
-  const x = c.getContext('2d');
-  x.fillStyle = '#ffffff';
-  x.font = 'bold 96px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
-  x.textAlign = 'center'; x.textBaseline = 'middle';
-  x.fillText(icon || '❓', 64, 64);
-  const img = new Image();
-  img.onload = function(){
-    delete spritePendings[icon];
-    try{ spriteTexCache[icon] = renderer.textureFromCanvas(img, {}); }
-    catch(e){ spriteTexCache[icon] = null; }
-  };
-  img.onerror = function(){
-    delete spritePendings[icon];
-    spriteTexCache[icon] = null;
-  };
-  img.src = c.toDataURL('image/png');
-  return null;
-}
-
-function resolveIcon(th){
-  const raw = th.icon;
-  if(typeof raw === 'function'){
-    try{ return raw() || '❓'; }catch(e){ return '❓'; }
-  }
-  return raw || '❓';
 }
 
 /* ==================== 场景 ==================== */
@@ -483,33 +485,20 @@ function loadScene(key){
 }
 
 function buildWorld(){
-  const wallSpec  = map.wallTex  || { type: 'brick' };
-  const floorSpec = map.floorTex || { base: shadeHex(map.wallTex && map.wallTex.base || '#1a1018', -0.4) };
-  const ceilSpec  = map.ceilTex  || { base: shadeHex(map.wallTex && map.wallTex.base || '#1a1018', -0.6) };
+  const wallSpec  = map.wallTex  || { type: 'burnt', base: '#150c0a' };
+  const floorSpec = map.floorTex || { base: '#0a0806' };
+  const ceilSpec  = map.ceilTex  || { base: '#050303' };
   renderer.buildWorld({
     grid: map.grid,
-    wallHeight: 2.5,
+    wallHeight: 2.6,
     wallTexSource:  getWallTextureCanvas(wallSpec,  sceneKey),
     floorTexSource: getFloorTextureCanvas(floorSpec, sceneKey),
     ceilTexSource:  getCeilTextureCanvas(ceilSpec,  sceneKey)
   });
 
-  /* ★ 构建 Props */
+  /* 构建 Props */
   const props = (typeof map.props === 'function') ? map.props() : (map.props || []);
   renderer.buildProps(props);
-}
-
-function shadeHex(hex, amount){
-  if(!hex || hex.charAt(0) !== '#') return hex || '#0a0d12';
-  let r = parseInt(hex.slice(1,3), 16);
-  let g = parseInt(hex.slice(3,5), 16);
-  let b = parseInt(hex.slice(5,7), 16);
-  if(amount < 0){
-    r = Math.max(0, r * (1 + amount));
-    g = Math.max(0, g * (1 + amount));
-    b = Math.max(0, b * (1 + amount));
-  }
-  return '#' + [r,g,b].map(v => ('0'+(v|0).toString(16)).slice(-2)).join('');
 }
 
 /* ==================== 碰撞 ==================== */
@@ -581,13 +570,14 @@ function update(dt){
     }
   }
 
+  /* 对话状态 */
   let dlgOpen = false;
   try{
     const pel = window.parent && window.parent.document.getElementById('dlg');
     if(pel && pel.classList.contains('show')) dlgOpen = true;
   }catch(e){}
 
-  let best = null, bestD = 2.0;
+  let best = null, bestD = 2.2;
   if(!dlgOpen){
     for(let i = 0; i < map.things.length; i++){
       const th = map.things[i];
@@ -601,22 +591,23 @@ function update(dt){
   }
   if(best !== nearby){ nearby = best; updateButton(); }
 
+  /* 恐怖事件调度 */
   if(isBloodMode()){
     const nowSec = performance.now()/1000;
     if(scareTime <= 0 && nowSec >= nextScareAt){
       scareTime = 0.55; scareSeed = Math.random()*1000;
       shakeTime = 0.5; shakeAmp = 16;
       HorrorAudio.scareScream();
-      nextScareAt = nowSec + 14 + Math.random()*14;
+      nextScareAt = nowSec + 12 + Math.random()*12;
     }
     if(silenceT <= 0 && nowSec >= nextSilenceAt){
       silenceT = 1.6;
-      nextSilenceAt = nowSec + 20 + Math.random()*18;
+      nextSilenceAt = nowSec + 18 + Math.random()*16;
     }
     if(silenceT > 0) silenceT = Math.max(0, silenceT - dt);
     if(invertT <= 0 && nowSec >= nextInvertAt){
       invertT = 0.08;
-      nextInvertAt = nowSec + 16 + Math.random()*20;
+      nextInvertAt = nowSec + 14 + Math.random()*18;
     }
     if(invertT > 0) invertT = Math.max(0, invertT - dt);
     if(intrudeT <= 0 && nowSec >= nextIntrudeAt){
@@ -624,7 +615,7 @@ function update(dt){
       intrudeX = 0.15 + Math.random()*0.7;
       intrudeY = 0.15 + Math.random()*0.7;
       intrudeSeed = Math.random()*1000;
-      nextIntrudeAt = nowSec + 12 + Math.random()*14;
+      nextIntrudeAt = nowSec + 10 + Math.random()*12;
     }
     if(intrudeT > 0) intrudeT = Math.max(0, intrudeT - dt);
     if(camDriftT <= 0 && nowSec >= nextDriftAt){
@@ -632,7 +623,7 @@ function update(dt){
       const dir = Math.random() < 0.5 ? -1 : 1;
       camDriftYaw = dir * (0.35 + Math.random()*0.5);
       camDriftPitch = (Math.random()-0.5) * 0.4;
-      nextDriftAt = nowSec + 20 + Math.random()*18;
+      nextDriftAt = nowSec + 18 + Math.random()*16;
     }
     if(camDriftT > 0) camDriftT = Math.max(0, camDriftT - dt);
     if(silenceT > 0 && silenceT - dt <= 0) HorrorAudio.footstepBehind();
@@ -724,8 +715,8 @@ function render(dt, t){
   const fogColor = blood ? [0.025, 0.006, 0.012] : [0.04, 0.05, 0.08];
   renderer.setFog({
     color: fogColor,
-    near: blood ? 1.8 : 5,
-    far:  blood ? 7.5 : 20
+    near: blood ? 2.2 : 5,
+    far:  blood ? 9.5 : 24
   });
 
   let yaw = cam.yaw, pitch = cam.pitch;
@@ -743,7 +734,6 @@ function render(dt, t){
     fov: Math.PI / 3.1, near: 0.06, far: 60
   });
 
-  /* ★ 物件全部用 prop 渲染。billboard 留给装饰用（比如飘落物） */
   renderer.setBillboards([]);
   renderer.render();
 
@@ -758,7 +748,7 @@ function updateOverlayFilter(){
   if(blood){
     if(invertT > 0) f = 'invert(1) contrast(1.4)';
     else if(silenceT > 0) f = 'saturate(0.2) contrast(1.4) brightness(0.55)';
-    else f = 'saturate(0.65) contrast(1.22) brightness(0.82) hue-rotate(-10deg)';
+    else f = 'saturate(0.7) contrast(1.25) brightness(0.82) hue-rotate(-12deg)';
   }
   if(canvas.style.filter !== f) canvas.style.filter = f;
 }
@@ -784,6 +774,7 @@ function drawHorror(dt, t){
     return;
   }
   if(fxCanvas.style.display !== 'block') fxCanvas.style.display = 'block';
+
   const w = fxCanvas.width, h = fxCanvas.height;
   fxCtx.clearRect(0, 0, w, h);
   const panic = getPanic();
@@ -946,7 +937,7 @@ function updateButton(){
   if(!nearby){ overlayBtn.classList.remove('show'); return; }
   const label = typeof nearby.label === 'function' ? nearby.label() : nearby.label;
   if(!label){ overlayBtn.classList.remove('show'); return; }
-  overlayIcon.textContent = resolveIcon(nearby);
+  overlayIcon.textContent = (typeof nearby.icon === 'function') ? (nearby.icon() || '❓') : (nearby.icon || '❓');
   overlayName.textContent = label;
   overlayHint.textContent = isTouch ? '轻点查看' : '按 E / 空格 查看';
   overlayBtn.classList.add('show');
@@ -987,6 +978,38 @@ function resize(){
     fxCanvas.style.left   = canvas.style.left;
     fxCanvas.style.top    = canvas.style.top;
   }
+}
+
+/* ==================== 焦点 ==================== */
+function forceFocus(){
+  try{ window.focus(); }catch(e){}
+  try{ if(document.body) document.body.focus(); }catch(e){}
+  try{
+    if(window.parent && window.parent !== window){
+      window.parent.focus();
+      window.focus();
+    }
+  }catch(e){}
+}
+
+/* ★ 焦点持续保持：如果焦点不在 iframe，强制拿回来 */
+function startFocusKeeper(){
+  if(focusCheckTimer) clearInterval(focusCheckTimer);
+  focusCheckTimer = setInterval(function(){
+    if(stopped) return;
+    /* 每 300ms 检查一次，如果焦点不在本 iframe，尝试拿回来 */
+    try{
+      const active = document.activeElement;
+      const inFrame = active && active.tagName !== 'IFRAME' && document.hasFocus();
+      if(!inFrame){
+        /* 只在最近没被用户主动切出去的情况下抢焦点 */
+        if(performance.now() - lastExternalFocus > 400){
+          window.focus();
+          if(document.body) document.body.focus();
+        }
+      }
+    }catch(e){}
+  }, 300);
 }
 
 /* ==================== 输入 ==================== */
@@ -1052,16 +1075,14 @@ function bindPointer(){
   window.addEventListener('touchstart', ensureAudio, { once:true, passive:true });
   window.addEventListener('mousedown', ensureAudio, { once:true });
   window.addEventListener('keydown', ensureAudio, { once:true });
-}
 
-function forceFocus(){
-  try{ window.focus(); }catch(e){}
-  try{ if(document.body) document.body.focus(); }catch(e){}
-  try{
-    if(window.parent && window.parent !== window){
-      window.parent.focus(); window.focus();
-    }
-  }catch(e){}
+  /* ★ 窗口失焦时记录时间，让 focus keeper 知道用户可能主动切出去了 */
+  window.addEventListener('blur', function(){
+    lastExternalFocus = performance.now();
+  });
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden) lastExternalFocus = performance.now();
+  });
 }
 
 /* ==================== 消息 ==================== */
@@ -1077,9 +1098,19 @@ function bindMessage(){
         if(!window.S.inv) window.S.inv = [];
         if(!window.S.invBlood) window.S.invBlood = [];
         updateButton();
-        /* 状态变了重建 props（有些 prop 依赖 flags） */
         if(map) buildWorld();
       }
+    }
+    /* ★ 对话结束通知 —— 主页面发来的 */
+    if(d.type === 'dlgClosed'){
+      /* 立刻抢回焦点 */
+      setTimeout(forceFocus, 20);
+      setTimeout(forceFocus, 150);
+      setTimeout(forceFocus, 500);
+    }
+    /* ★ 场景切换后通知 */
+    if(d.type === 'refocus'){
+      forceFocus();
     }
   });
   try{ window.parent.postMessage({ type:'ready' }, '*'); }catch(e){}
@@ -1143,10 +1174,18 @@ function boot(){
   bindPointer();
   bindMessage();
 
+  /* 初始 focus：立刻 + 几个延迟点 */
   forceFocus();
-  setTimeout(forceFocus, 120);
-  setTimeout(forceFocus, 420);
+  setTimeout(forceFocus, 100);
+  setTimeout(forceFocus, 300);
+  setTimeout(forceFocus, 800);
+  setTimeout(forceFocus, 1500);
+
+  /* 点击任何位置 → focus */
   window.addEventListener('click', forceFocus);
+
+  /* 启动持续 focus keeper */
+  startFocusKeeper();
 
   lastFrame = performance.now();
   requestAnimationFrame(loop);
@@ -1156,6 +1195,7 @@ window.Engine3D = { boot };
 window.__engineStop = function(){
   stopped = true;
   try{
+    if(focusCheckTimer) clearInterval(focusCheckTimer);
     if(canvas) canvas.style.visibility = 'hidden';
     if(fxCanvas) fxCanvas.style.display = 'none';
     if(viewport) viewport.style.transform = '';
