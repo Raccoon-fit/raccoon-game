@@ -1,12 +1,10 @@
 /* =========================================================
-   r3d.js — 极简真 3D 引擎
-   纯 WebGL 1.0，零依赖，单文件
-   iOS WebKit 兼容：纹理优先走 Image，其次 ImageData
+   r3d.js — 极简真 3D 引擎 v2
+   多光源（3 个点光源）+ 三贴图（墙/地/天）+ iOS 兼容
    ========================================================= */
 (function(global){
 'use strict';
 
-/* ==================== 数学 ==================== */
 const M4 = {
   create(){
     const m = new Float32Array(16);
@@ -16,33 +14,26 @@ const M4 = {
   perspective(out, fovy, aspect, near, far){
     const f = 1 / Math.tan(fovy / 2);
     const nf = 1 / (near - far);
-    out[0] = f / aspect;
-    out[5] = f;
-    out[10] = (far + near) * nf;
-    out[11] = -1;
+    out[0] = f / aspect; out[5] = f;
+    out[10] = (far + near) * nf; out[11] = -1;
     out[14] = 2 * far * near * nf;
-    out[1] = out[2] = out[3] = out[4] = 0;
-    out[6] = out[7] = out[8] = out[9] = 0;
-    out[12] = out[13] = 0;
-    out[15] = 0;
+    out[1]=out[2]=out[3]=out[4]=0;
+    out[6]=out[7]=out[8]=out[9]=0;
+    out[12]=out[13]=0; out[15]=0;
     return out;
   },
   lookAt(out, eye, center, up){
-    let zx = eye[0] - center[0], zy = eye[1] - center[1], zz = eye[2] - center[2];
-    let len = Math.hypot(zx, zy, zz) || 1;
-    zx /= len; zy /= len; zz /= len;
-
+    let zx = eye[0]-center[0], zy = eye[1]-center[1], zz = eye[2]-center[2];
+    let len = Math.hypot(zx,zy,zz) || 1;
+    zx/=len; zy/=len; zz/=len;
     let xx = up[1]*zz - up[2]*zy;
     let xy = up[2]*zx - up[0]*zz;
     let xz = up[0]*zy - up[1]*zx;
-    len = Math.hypot(xx, xy, xz);
-    if(len < 1e-6){ xx = 1; xy = 0; xz = 0; }
-    else { xx /= len; xy /= len; xz /= len; }
-
+    len = Math.hypot(xx,xy,xz);
+    if(len < 1e-6){ xx=1; xy=0; xz=0; } else { xx/=len; xy/=len; xz/=len; }
     const yx = zy*xz - zz*xy;
     const yy = zz*xx - zx*xz;
     const yz = zx*xy - zy*xx;
-
     out[0]=xx; out[1]=yx; out[2]=zx; out[3]=0;
     out[4]=xy; out[5]=yy; out[6]=zy; out[7]=0;
     out[8]=xz; out[9]=yz; out[10]=zz; out[11]=0;
@@ -53,20 +44,17 @@ const M4 = {
     return out;
   },
   multiply(out, a, b){
-    for(let r = 0; r < 4; r++){
-      for(let c = 0; c < 4; c++){
-        let s = 0;
-        for(let k = 0; k < 4; k++){
-          s += a[k*4 + r] * b[c*4 + k];
-        }
-        out[c*4 + r] = s;
+    for(let r=0;r<4;r++){
+      for(let c=0;c<4;c++){
+        let s=0;
+        for(let k=0;k<4;k++) s += a[k*4+r] * b[c*4+k];
+        out[c*4+r] = s;
       }
     }
     return out;
   }
 };
 
-/* ==================== 着色器 ==================== */
 const VERT_SRC = [
 'attribute vec3 aPos;',
 'attribute vec3 aNormal;',
@@ -96,8 +84,12 @@ const FRAG_SRC = [
 'uniform float uHasTex;',
 'uniform float uAlphaTest;',
 'uniform vec3 uColor;',
-'uniform vec3 uLightPos;',
-'uniform vec3 uLightColor;',
+'uniform vec3 uLP0;',
+'uniform vec3 uLP1;',
+'uniform vec3 uLP2;',
+'uniform vec3 uLC0;',
+'uniform vec3 uLC1;',
+'uniform vec3 uLC2;',
 'uniform vec3 uAmbient;',
 'uniform vec3 uCamPos;',
 'uniform vec3 uFogColor;',
@@ -110,16 +102,39 @@ const FRAG_SRC = [
 '  }',
 '  if(uAlphaTest > 0.5 && base.a < 0.35) discard;',
 '  vec3 N = normalize(vNormal);',
-'  vec3 toL = uLightPos - vWorldPos;',
-'  float d = length(toL);',
-'  vec3 L = toL / max(d, 0.001);',
-'  float diff = max(dot(N, L), 0.0);',
-'  float atten = 1.0 / (1.0 + 0.18*d + 0.06*d*d);',
-'  vec3 lit = uAmbient + uLightColor * diff * atten * 8.0;',
 '  vec3 V = normalize(uCamPos - vWorldPos);',
-'  vec3 H = normalize(L + V);',
-'  float spec = pow(max(dot(N, H), 0.0), 24.0) * 0.14;',
-'  vec3 color = base.rgb * lit + spec * uLightColor;',
+'  vec3 lit = uAmbient;',
+'  {',
+'    vec3 tL = uLP0 - vWorldPos;',
+'    float d = length(tL);',
+'    vec3 L = tL / max(d, 0.001);',
+'    float df = max(dot(N, L), 0.0);',
+'    float at = 1.0 / (1.0 + 0.20*d + 0.08*d*d);',
+'    vec3 H = normalize(L + V);',
+'    float sp = pow(max(dot(N, H), 0.0), 32.0) * 0.12;',
+'    lit += uLC0 * (df * at * 6.0 + sp * at);',
+'  }',
+'  {',
+'    vec3 tL = uLP1 - vWorldPos;',
+'    float d = length(tL);',
+'    vec3 L = tL / max(d, 0.001);',
+'    float df = max(dot(N, L), 0.0);',
+'    float at = 1.0 / (1.0 + 0.20*d + 0.08*d*d);',
+'    vec3 H = normalize(L + V);',
+'    float sp = pow(max(dot(N, H), 0.0), 32.0) * 0.12;',
+'    lit += uLC1 * (df * at * 6.0 + sp * at);',
+'  }',
+'  {',
+'    vec3 tL = uLP2 - vWorldPos;',
+'    float d = length(tL);',
+'    vec3 L = tL / max(d, 0.001);',
+'    float df = max(dot(N, L), 0.0);',
+'    float at = 1.0 / (1.0 + 0.20*d + 0.08*d*d);',
+'    vec3 H = normalize(L + V);',
+'    float sp = pow(max(dot(N, H), 0.0), 32.0) * 0.12;',
+'    lit += uLC2 * (df * at * 6.0 + sp * at);',
+'  }',
+'  vec3 color = base.rgb * lit;',
 '  float fogF = clamp((vDist - uFogNear) / max(uFogFar - uFogNear, 0.01), 0.0, 1.0);',
 '  color = mix(color, uFogColor, fogF);',
 '  gl_FragColor = vec4(color, base.a);',
@@ -131,8 +146,7 @@ function compile(gl, type, src){
   gl.shaderSource(s, src);
   gl.compileShader(s);
   if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)){
-    const log = gl.getShaderInfoLog(s);
-    console.error('[R3D] shader error:', log);
+    console.error('[R3D] shader:', gl.getShaderInfoLog(s));
     gl.deleteShader(s);
     return null;
   }
@@ -144,48 +158,36 @@ function linkProgram(gl){
   const fs = compile(gl, gl.FRAGMENT_SHADER, FRAG_SRC);
   if(!vs || !fs) return null;
   const p = gl.createProgram();
-  gl.attachShader(p, vs);
-  gl.attachShader(p, fs);
+  gl.attachShader(p, vs); gl.attachShader(p, fs);
   gl.linkProgram(p);
   if(!gl.getProgramParameter(p, gl.LINK_STATUS)){
-    console.error('[R3D] link error:', gl.getProgramInfoLog(p));
+    console.error('[R3D] link:', gl.getProgramInfoLog(p));
     return null;
   }
-  gl.deleteShader(vs);
-  gl.deleteShader(fs);
+  gl.deleteShader(vs); gl.deleteShader(fs);
   return p;
 }
 
-/* ==================== 纹理 ==================== */
 function isPOT(n){ return (n & (n-1)) === 0; }
 
-/* 接受 Image 或 Canvas
-   - Image：直接上传，iOS 最稳
-   - Canvas：走 ImageData，避开 WebKit 的 canvas 直传兼容问题 */
-function makeTextureFromCanvas(gl, source, opts){
+function makeTexture(gl, source, opts){
   opts = opts || {};
   if(!source) throw new Error('纹理源为空');
-
-  const isImage = (typeof HTMLImageElement !== 'undefined') && (source instanceof HTMLImageElement);
-  const w = isImage ? source.naturalWidth : source.width;
-  const h = isImage ? source.naturalHeight : source.height;
-  if(!w || !h) throw new Error('纹理尺寸无效 ' + w + 'x' + h);
+  const isImg = (typeof HTMLImageElement !== 'undefined') && (source instanceof HTMLImageElement);
+  const w = isImg ? source.naturalWidth : source.width;
+  const h = isImg ? source.naturalHeight : source.height;
+  if(!w || !h) throw new Error('尺寸无效 ' + w + 'x' + h);
 
   const t = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, t);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, opts.flipY ? 1 : 0);
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
 
-  if(isImage){
+  if(isImg){
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
   } else {
-    const c2d = source.getContext('2d');
-    const data = c2d.getImageData(0, 0, w, h);
-    gl.texImage2D(
-      gl.TEXTURE_2D, 0, gl.RGBA,
-      w, h, 0,
-      gl.RGBA, gl.UNSIGNED_BYTE, data
-    );
+    const data = source.getContext('2d').getImageData(0, 0, w, h);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
   }
 
   const wrap = opts.repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE;
@@ -200,58 +202,40 @@ function makeTextureFromCanvas(gl, source, opts){
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   }
-
   return t;
 }
 
-/* ==================== 网格 ==================== */
 function createMesh(gl){
-  const vbo = gl.createBuffer();
-  const ibo = gl.createBuffer();
-  return { vbo, ibo, indexCount: 0, vertexCount: 0, stride: 32 };
+  return { vbo: gl.createBuffer(), ibo: gl.createBuffer(), indexCount: 0, vertexCount: 0 };
 }
 
-function uploadMesh(gl, mesh, positions, normals, uvs, indices, dynamic){
-  const n = positions.length / 3;
+function uploadMesh(gl, mesh, P, N, U, I, dynamic){
+  const n = P.length / 3;
   const data = new Float32Array(n * 8);
   for(let i = 0; i < n; i++){
-    data[i*8+0] = positions[i*3+0];
-    data[i*8+1] = positions[i*3+1];
-    data[i*8+2] = positions[i*3+2];
-    data[i*8+3] = normals[i*3+0];
-    data[i*8+4] = normals[i*3+1];
-    data[i*8+5] = normals[i*3+2];
-    data[i*8+6] = uvs[i*2+0];
-    data[i*8+7] = uvs[i*2+1];
+    data[i*8+0]=P[i*3+0]; data[i*8+1]=P[i*3+1]; data[i*8+2]=P[i*3+2];
+    data[i*8+3]=N[i*3+0]; data[i*8+4]=N[i*3+1]; data[i*8+5]=N[i*3+2];
+    data[i*8+6]=U[i*2+0]; data[i*8+7]=U[i*2+1];
   }
   gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vbo);
   gl.bufferData(gl.ARRAY_BUFFER, data, dynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW);
-
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ibo);
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices),
-                dynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW);
-
-  mesh.indexCount = indices.length;
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(I), dynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW);
+  mesh.indexCount = I.length;
   mesh.vertexCount = n;
 }
 
-/* ==================== 渲染器 ==================== */
 function Renderer(canvas){
   const gl = canvas.getContext('webgl', {
-    antialias: true,
-    alpha: false,
-    depth: true,
-    preserveDrawingBuffer: false,
+    antialias: true, alpha: false, depth: true,
     powerPreference: 'high-performance'
   }) || canvas.getContext('experimental-webgl');
-
   if(!gl) throw new Error('WebGL 不可用');
 
-  this.gl = gl;
-  this.canvas = canvas;
+  this.gl = gl; this.canvas = canvas;
 
   const program = linkProgram(gl);
-  if(!program) throw new Error('着色器编译失败');
+  if(!program) throw new Error('着色器失败');
   this.program = program;
 
   this.attr = {
@@ -259,37 +243,26 @@ function Renderer(canvas){
     normal: gl.getAttribLocation(program, 'aNormal'),
     uv:     gl.getAttribLocation(program, 'aUV')
   };
+  this.uni = {};
+  const names = ['uVP','uTex','uHasTex','uAlphaTest','uColor',
+    'uLP0','uLP1','uLP2','uLC0','uLC1','uLC2',
+    'uAmbient','uCamPos','uFogColor','uFogNear','uFogFar'];
+  for(let i = 0; i < names.length; i++){
+    this.uni[names[i]] = gl.getUniformLocation(program, names[i]);
+  }
 
-  this.uni = {
-    uVP:         gl.getUniformLocation(program, 'uVP'),
-    uTex:        gl.getUniformLocation(program, 'uTex'),
-    uHasTex:     gl.getUniformLocation(program, 'uHasTex'),
-    uAlphaTest:  gl.getUniformLocation(program, 'uAlphaTest'),
-    uColor:      gl.getUniformLocation(program, 'uColor'),
-    uLightPos:   gl.getUniformLocation(program, 'uLightPos'),
-    uLightColor: gl.getUniformLocation(program, 'uLightColor'),
-    uAmbient:    gl.getUniformLocation(program, 'uAmbient'),
-    uCamPos:     gl.getUniformLocation(program, 'uCamPos'),
-    uFogColor:   gl.getUniformLocation(program, 'uFogColor'),
-    uFogNear:    gl.getUniformLocation(program, 'uFogNear'),
-    uFogFar:     gl.getUniformLocation(program, 'uFogFar')
-  };
-
-  this.camera = {
-    x: 0, y: 1.6, z: 0,
-    yaw: 0, pitch: 0,
-    fov: Math.PI / 3,
-    near: 0.05,
-    far: 60
-  };
-
-  this.light = { x: 0, y: 3, z: 0, r: 1, g: 0.92, b: 0.78 };
+  this.camera = { x:0, y:1.6, z:0, yaw:0, pitch:0, fov: Math.PI/3, near:0.05, far:60 };
+  this.lights = [
+    { x:0, y:-100, z:0, color:[0,0,0] },
+    { x:0, y:-100, z:0, color:[0,0,0] },
+    { x:0, y:-100, z:0, color:[0,0,0] }
+  ];
   this.ambient = [0.12, 0.14, 0.18];
-  this.fog = { r: 0.04, g: 0.05, b: 0.08, near: 6, far: 22 };
+  this.fog = { r:0.04, g:0.05, b:0.08, near:6, far:22 };
 
-  this.worldMesh = null;
-  this.worldTex = null;
-  this.worldHasTex = false;
+  this.wallMesh = null;  this.wallTex = null;  this.wallHasTex = false;
+  this.floorMesh = null; this.floorTex = null; this.floorHasTex = false;
+  this.ceilMesh = null;  this.ceilTex = null;  this.ceilHasTex = false;
 
   this.bbMesh = createMesh(gl);
   gl.bindBuffer(gl.ARRAY_BUFFER, this.bbMesh.vbo);
@@ -300,16 +273,11 @@ function Renderer(canvas){
 
   this.billboards = [];
   this._bbData = new Float32Array(4 * 8);
+  this._vp = M4.create(); this._proj = M4.create(); this._view = M4.create();
 
-  this._vp = M4.create();
-  this._proj = M4.create();
-  this._view = M4.create();
-
-  gl.enable(gl.DEPTH_TEST);
-  gl.depthFunc(gl.LEQUAL);
+  gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL);
   gl.disable(gl.CULL_FACE);
   gl.clearColor(this.fog.r, this.fog.g, this.fog.b, 1);
-
   this.aspect = 1;
 }
 
@@ -318,8 +286,7 @@ Renderer.prototype.resize = function(cssW, cssH, dpr){
   const w = Math.max(1, Math.round(cssW * dpr));
   const h = Math.max(1, Math.round(cssH * dpr));
   if(this.canvas.width !== w || this.canvas.height !== h){
-    this.canvas.width = w;
-    this.canvas.height = h;
+    this.canvas.width = w; this.canvas.height = h;
   }
   gl.viewport(0, 0, w, h);
   this.aspect = cssW / Math.max(1, cssH);
@@ -327,40 +294,28 @@ Renderer.prototype.resize = function(cssW, cssH, dpr){
 
 Renderer.prototype.setCamera = function(c){
   const cam = this.camera;
-  if(c.x !== undefined) cam.x = c.x;
-  if(c.y !== undefined) cam.y = c.y;
-  if(c.z !== undefined) cam.z = c.z;
-  if(c.yaw !== undefined) cam.yaw = c.yaw;
-  if(c.pitch !== undefined) cam.pitch = c.pitch;
-  if(c.fov !== undefined) cam.fov = c.fov;
-  if(c.near !== undefined) cam.near = c.near;
-  if(c.far !== undefined) cam.far = c.far;
+  for(const k of ['x','y','z','yaw','pitch','fov','near','far']){
+    if(c[k] !== undefined) cam[k] = c[k];
+  }
 };
 
-Renderer.prototype.setLight = function(l){
-  if(l.x !== undefined) this.light.x = l.x;
-  if(l.y !== undefined) this.light.y = l.y;
-  if(l.z !== undefined) this.light.z = l.z;
-  if(l.color){
-    this.light.r = l.color[0];
-    this.light.g = l.color[1];
-    this.light.b = l.color[2];
+Renderer.prototype.setLights = function(list){
+  for(let i = 0; i < 3; i++){
+    if(list && list[i]){
+      this.lights[i] = list[i];
+    } else {
+      this.lights[i] = { x:0, y:-999, z:0, color:[0,0,0] };
+    }
   }
 };
 
 Renderer.prototype.setAmbient = function(rgb){
-  if(Array.isArray(rgb)){
-    this.ambient[0] = rgb[0];
-    this.ambient[1] = rgb[1];
-    this.ambient[2] = rgb[2];
-  }
+  if(Array.isArray(rgb)) this.ambient = [rgb[0], rgb[1], rgb[2]];
 };
 
 Renderer.prototype.setFog = function(f){
   if(f.color){
-    this.fog.r = f.color[0];
-    this.fog.g = f.color[1];
-    this.fog.b = f.color[2];
+    this.fog.r = f.color[0]; this.fog.g = f.color[1]; this.fog.b = f.color[2];
     this.gl.clearColor(f.color[0], f.color[1], f.color[2], 1);
   }
   if(f.near !== undefined) this.fog.near = f.near;
@@ -368,11 +323,15 @@ Renderer.prototype.setFog = function(f){
 };
 
 Renderer.prototype.textureFromCanvas = function(source, opts){
-  return makeTextureFromCanvas(this.gl, source, opts);
+  return makeTexture(this.gl, source, opts);
 };
 
-Renderer.prototype.deleteTexture = function(tex){
-  if(tex) this.gl.deleteTexture(tex);
+Renderer.prototype._loadTex = function(existing, source, opts){
+  const gl = this.gl;
+  if(existing){ try{ gl.deleteTexture(existing); }catch(e){} }
+  if(!source) return { tex: null, ok: false };
+  try{ return { tex: makeTexture(gl, source, opts), ok: true }; }
+  catch(e){ console.warn('[R3D] 纹理失败:', e.message); return { tex: null, ok: false }; }
 };
 
 Renderer.prototype.buildWorld = function(cfg){
@@ -382,9 +341,9 @@ Renderer.prototype.buildWorld = function(cfg){
   const rows = grid.length;
   const cols = grid[0].length;
 
-  const P = [], N = [], U = [], I = [];
+  const WP=[], WN=[], WU=[], WI=[];
 
-  function pushQuad(v0, v1, v2, v3, n, uv){
+  function pushQuad(P, N, U, I, v0, v1, v2, v3, n, uv){
     const base = P.length / 3;
     P.push(v0[0],v0[1],v0[2], v1[0],v1[1],v1[2], v2[0],v2[1],v2[2], v3[0],v3[1],v3[2]);
     for(let k = 0; k < 4; k++) N.push(n[0], n[1], n[2]);
@@ -395,90 +354,85 @@ Renderer.prototype.buildWorld = function(cfg){
   for(let y = 0; y < rows; y++){
     for(let x = 0; x < cols; x++){
       if(grid[y][x] !== '1') continue;
-
       const x0 = x, x1 = x + 1;
       const z0 = y, z1 = y + 1;
       const y0 = 0, y1 = wallH;
 
-      pushQuad(
+      pushQuad(WP, WN, WU, WI,
         [x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1],
-        [0, 1, 0],
-        [[0,0],[1,0],[1,1],[0,1]]
-      );
+        [0, 1, 0], [[0,0],[1,0],[1,1],[0,1]]);
 
       if(y - 1 < 0 || grid[y-1][x] !== '1'){
-        pushQuad(
+        pushQuad(WP, WN, WU, WI,
           [x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0],
-          [0, 0, -1],
-          [[0,1],[1,1],[1,0],[0,0]]
-        );
+          [0, 0, -1], [[0,1],[1,1],[1,0],[0,0]]);
       }
       if(y + 1 >= rows || grid[y+1][x] !== '1'){
-        pushQuad(
+        pushQuad(WP, WN, WU, WI,
           [x1, y0, z1], [x0, y0, z1], [x0, y1, z1], [x1, y1, z1],
-          [0, 0, 1],
-          [[0,1],[1,1],[1,0],[0,0]]
-        );
+          [0, 0, 1], [[0,1],[1,1],[1,0],[0,0]]);
       }
       if(x - 1 < 0 || grid[y][x-1] !== '1'){
-        pushQuad(
+        pushQuad(WP, WN, WU, WI,
           [x0, y0, z1], [x0, y0, z0], [x0, y1, z0], [x0, y1, z1],
-          [-1, 0, 0],
-          [[0,1],[1,1],[1,0],[0,0]]
-        );
+          [-1, 0, 0], [[0,1],[1,1],[1,0],[0,0]]);
       }
       if(x + 1 >= cols || grid[y][x+1] !== '1'){
-        pushQuad(
+        pushQuad(WP, WN, WU, WI,
           [x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0],
-          [1, 0, 0],
-          [[0,1],[1,1],[1,0],[0,0]]
-        );
+          [1, 0, 0], [[0,1],[1,1],[1,0],[0,0]]);
       }
     }
   }
 
-  {
-    const base = P.length / 3;
-    P.push(0,0,0, cols,0,0, cols,0,rows, 0,0,rows);
-    for(let k = 0; k < 4; k++) N.push(0, 1, 0);
-    U.push(0,0, cols,0, cols,rows, 0,rows);
-    I.push(base, base+1, base+2, base, base+2, base+3);
-  }
-  {
-    const base = P.length / 3;
-    P.push(0,wallH,0, cols,wallH,0, cols,wallH,rows, 0,wallH,rows);
-    for(let k = 0; k < 4; k++) N.push(0, -1, 0);
-    U.push(0,0, cols,0, cols,rows, 0,rows);
-    I.push(base, base+1, base+2, base, base+2, base+3);
-  }
+  /* 地板 */
+  const FP=[], FN=[], FU=[], FI=[];
+  pushQuad(FP, FN, FU, FI,
+    [0,0,0], [cols,0,0], [cols,0,rows], [0,0,rows],
+    [0,1,0],
+    [[0,0],[cols,0],[cols,rows],[0,rows]]);
 
-  if(!this.worldMesh) this.worldMesh = createMesh(gl);
-  uploadMesh(gl, this.worldMesh, P, N, U, I, false);
+  /* 天花板 */
+  const CP=[], CN=[], CU=[], CI=[];
+  pushQuad(CP, CN, CU, CI,
+    [0,wallH,0], [cols,wallH,0], [cols,wallH,rows], [0,wallH,rows],
+    [0,-1,0],
+    [[0,0],[cols,0],[cols,rows],[0,rows]]);
 
-  if(this.worldTex){
-    try{ gl.deleteTexture(this.worldTex); }catch(e){}
-    this.worldTex = null;
-  }
-  this.worldHasTex = false;
-  if(cfg.wallTexSource){
-    try{
-      this.worldTex = makeTextureFromCanvas(gl, cfg.wallTexSource, { repeat: true });
-      this.worldHasTex = true;
-    }catch(e){
-      console.warn('[R3D] 纹理上传失败，降级为纯色:', e.message);
-      this.worldHasTex = false;
-    }
-  }
+  if(!this.wallMesh)  this.wallMesh  = createMesh(gl);
+  if(!this.floorMesh) this.floorMesh = createMesh(gl);
+  if(!this.ceilMesh)  this.ceilMesh  = createMesh(gl);
+  uploadMesh(gl, this.wallMesh,  WP, WN, WU, WI, false);
+  uploadMesh(gl, this.floorMesh, FP, FN, FU, FI, false);
+  uploadMesh(gl, this.ceilMesh,  CP, CN, CU, CI, false);
 
-  this.worldMeta = {
-    wallHeight: wallH,
-    cols: cols,
-    rows: rows
-  };
+  const wt = this._loadTex(this.wallTex,  cfg.wallTexSource,  { repeat: true });
+  const ft = this._loadTex(this.floorTex, cfg.floorTexSource, { repeat: true });
+  const ct = this._loadTex(this.ceilTex,  cfg.ceilTexSource,  { repeat: true });
+  this.wallTex = wt.tex;   this.wallHasTex  = wt.ok;
+  this.floorTex = ft.tex;  this.floorHasTex = ft.ok;
+  this.ceilTex = ct.tex;   this.ceilHasTex  = ct.ok;
 };
 
-Renderer.prototype.setBillboards = function(list){
-  this.billboards = list || [];
+Renderer.prototype.setBillboards = function(list){ this.billboards = list || []; };
+
+Renderer.prototype._drawMesh = function(mesh, tex, hasTex, r, g, b, alphaTest){
+  const gl = this.gl;
+  if(!mesh || mesh.indexCount === 0) return;
+  gl.uniform1f(this.uni.uAlphaTest, alphaTest || 0);
+  gl.uniform1f(this.uni.uHasTex, hasTex ? 1 : 0);
+  gl.uniform3f(this.uni.uColor, r, g, b);
+  if(hasTex && tex){
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.uniform1i(this.uni.uTex, 0);
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vbo);
+  gl.vertexAttribPointer(this.attr.pos,    3, gl.FLOAT, false, 32, 0);
+  gl.vertexAttribPointer(this.attr.normal, 3, gl.FLOAT, false, 32, 12);
+  gl.vertexAttribPointer(this.attr.uv,     2, gl.FLOAT, false, 32, 24);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ibo);
+  gl.drawElements(gl.TRIANGLES, mesh.indexCount, gl.UNSIGNED_SHORT, 0);
 };
 
 Renderer.prototype.render = function(){
@@ -486,55 +440,38 @@ Renderer.prototype.render = function(){
   const cam = this.camera;
 
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
   gl.useProgram(this.program);
-
   gl.enableVertexAttribArray(this.attr.pos);
   gl.enableVertexAttribArray(this.attr.normal);
   gl.enableVertexAttribArray(this.attr.uv);
 
   const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
   const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
-  const dir = [cy * cp, sp, sy * cp];
-  const target = [cam.x + dir[0], cam.y + dir[1], cam.z + dir[2]];
+  const dir = [cy*cp, sp, sy*cp];
+  const target = [cam.x+dir[0], cam.y+dir[1], cam.z+dir[2]];
 
   M4.perspective(this._proj, cam.fov, this.aspect || 1, cam.near, cam.far);
-  M4.lookAt(this._view, [cam.x, cam.y, cam.z], target, [0, 1, 0]);
+  M4.lookAt(this._view, [cam.x, cam.y, cam.z], target, [0,1,0]);
   M4.multiply(this._vp, this._proj, this._view);
-
   gl.uniformMatrix4fv(this.uni.uVP, false, this._vp);
 
   gl.uniform3f(this.uni.uCamPos, cam.x, cam.y, cam.z);
-  gl.uniform3f(this.uni.uLightPos, this.light.x, this.light.y, this.light.z);
-  gl.uniform3f(this.uni.uLightColor, this.light.r, this.light.g, this.light.b);
+  for(let i = 0; i < 3; i++){
+    const l = this.lights[i];
+    gl.uniform3f(this.uni['uLP'+i], l.x, l.y, l.z);
+    gl.uniform3f(this.uni['uLC'+i], l.color[0], l.color[1], l.color[2]);
+  }
   gl.uniform3f(this.uni.uAmbient, this.ambient[0], this.ambient[1], this.ambient[2]);
   gl.uniform3f(this.uni.uFogColor, this.fog.r, this.fog.g, this.fog.b);
   gl.uniform1f(this.uni.uFogNear, this.fog.near);
   gl.uniform1f(this.uni.uFogFar, this.fog.far);
 
-  if(this.worldMesh && this.worldMeta){
-    gl.uniform1f(this.uni.uAlphaTest, 0.0);
-    gl.uniform1f(this.uni.uHasTex, this.worldHasTex ? 1 : 0);
-    gl.uniform3f(this.uni.uColor, 1, 1, 1);
-
-    if(this.worldHasTex){
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, this.worldTex);
-      gl.uniform1i(this.uni.uTex, 0);
-    }
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.worldMesh.vbo);
-    gl.vertexAttribPointer(this.attr.pos, 3, gl.FLOAT, false, 32, 0);
-    gl.vertexAttribPointer(this.attr.normal, 3, gl.FLOAT, false, 32, 12);
-    gl.vertexAttribPointer(this.attr.uv, 2, gl.FLOAT, false, 32, 24);
-
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.worldMesh.ibo);
-    gl.drawElements(gl.TRIANGLES, this.worldMesh.indexCount, gl.UNSIGNED_SHORT, 0);
-  }
+  this._drawMesh(this.wallMesh,  this.wallTex,  this.wallHasTex,  1,1,1, 0);
+  this._drawMesh(this.floorMesh, this.floorTex, this.floorHasTex, 1,1,1, 0);
+  this._drawMesh(this.ceilMesh,  this.ceilTex,  this.ceilHasTex,  1,1,1, 0);
 
   if(this.billboards.length){
     gl.uniform1f(this.uni.uAlphaTest, 1.0);
-
     const camX = cam.x, camZ = cam.z;
     for(let i = 0; i < this.billboards.length; i++){
       const bb = this.billboards[i];
@@ -545,34 +482,27 @@ Renderer.prototype.render = function(){
       const hw = (bb.w || 0.8) * 0.5;
       const bx = bb.x, by = bb.y, bz = bb.z;
       const bh = bb.h || 1.0;
-
       const d = this._bbData;
-      const cx0 = bx - rx * hw, cz0 = bz - rz * hw;
-      const cx1 = bx + rx * hw, cz1 = bz + rz * hw;
-
+      const cx0 = bx - rx*hw, cz0 = bz - rz*hw;
+      const cx1 = bx + rx*hw, cz1 = bz + rz*hw;
       d[0]=cx0; d[1]=by;      d[2]=cz0;
       d[3]=-dx; d[4]=0;       d[5]=-dz;
       d[6]=0;   d[7]=1;
-
       d[8]=cx1; d[9]=by;      d[10]=cz1;
       d[11]=-dx; d[12]=0;     d[13]=-dz;
-      d[14]=1;   d[15]=1;
-
+      d[14]=1;  d[15]=1;
       d[16]=cx1; d[17]=by+bh; d[18]=cz1;
       d[19]=-dx; d[20]=0;     d[21]=-dz;
-      d[22]=1;   d[23]=0;
-
+      d[22]=1;  d[23]=0;
       d[24]=cx0; d[25]=by+bh; d[26]=cz0;
       d[27]=-dx; d[28]=0;     d[29]=-dz;
-      d[30]=0;   d[31]=0;
+      d[30]=0;  d[31]=0;
 
       gl.bindBuffer(gl.ARRAY_BUFFER, this.bbMesh.vbo);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, d);
-
       gl.vertexAttribPointer(this.attr.pos,    3, gl.FLOAT, false, 32, 0);
       gl.vertexAttribPointer(this.attr.normal, 3, gl.FLOAT, false, 32, 12);
       gl.vertexAttribPointer(this.attr.uv,     2, gl.FLOAT, false, 32, 24);
-
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.bbMesh.ibo);
 
       if(bb.tex){
@@ -583,10 +513,8 @@ Renderer.prototype.render = function(){
       } else {
         gl.uniform1f(this.uni.uHasTex, 0.0);
       }
-
-      const c = bb.color || [1, 1, 1];
+      const c = bb.color || [1,1,1];
       gl.uniform3f(this.uni.uColor, c[0], c[1], c[2]);
-
       gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
     }
   }
@@ -594,30 +522,15 @@ Renderer.prototype.render = function(){
 
 Renderer.prototype.dispose = function(){
   const gl = this.gl;
-  if(this.worldMesh){
-    gl.deleteBuffer(this.worldMesh.vbo);
-    gl.deleteBuffer(this.worldMesh.ibo);
-    this.worldMesh = null;
-  }
-  if(this.bbMesh){
-    gl.deleteBuffer(this.bbMesh.vbo);
-    gl.deleteBuffer(this.bbMesh.ibo);
-    this.bbMesh = null;
-  }
-  if(this.worldTex){
-    gl.deleteTexture(this.worldTex);
-    this.worldTex = null;
-  }
-  if(this.program){
-    gl.deleteProgram(this.program);
-    this.program = null;
-  }
+  [this.wallMesh, this.floorMesh, this.ceilMesh, this.bbMesh].forEach(m => {
+    if(m){ try{ gl.deleteBuffer(m.vbo); gl.deleteBuffer(m.ibo); }catch(e){} }
+  });
+  [this.wallTex, this.floorTex, this.ceilTex].forEach(t => {
+    if(t){ try{ gl.deleteTexture(t); }catch(e){} }
+  });
+  if(this.program){ try{ gl.deleteProgram(this.program); }catch(e){} }
 };
 
-global.R3D = {
-  create(canvas){
-    return new Renderer(canvas);
-  }
-};
+global.R3D = { create(canvas){ return new Renderer(canvas); } };
 
 })(window);
