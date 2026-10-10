@@ -1,7 +1,7 @@
 /* =========================================================
-   engine.js — 真 3D 引擎 v2
-   精细纹理（128×128，踢脚线、污渍、砖块凹凸）
-   多光源（手电 + 场景灯）
+   engine.js — 真 3D 引擎 v3
+   纯键盘视角（WASD 移动 / 方向键转向）
+   自动焦点 / 恐怖层 / 精细纹理
    ========================================================= */
 (function(){
 'use strict';
@@ -19,9 +19,8 @@ let sceneEnterTime = 0;
 
 const cam = { x:1.5, z:9.5, yaw:-Math.PI/2, pitch:0, eye:1.3 };
 
+/* 恐怖层 */
 let camDriftYaw = 0, camDriftPitch = 0, camDriftT = 0, nextDriftAt = 0;
-let pointerLocked = false;
-let mouseDrag = null;
 const keys = {};
 let isTouch = false;
 let touchLook = null, touchMove = null;
@@ -180,7 +179,7 @@ function ensureAudio(){
   HorrorAudio.resume();
 }
 
-/* ==================== 纹理生成（128×128，精细） ==================== */
+/* ==================== 纹理生成（128） ==================== */
 const TEX_SIZE = 128;
 
 function makeWallTextureCanvas(spec){
@@ -195,14 +194,11 @@ function makeWallTextureCanvas(spec){
     const isBurnt = type === 'burnt';
     const base = spec.base || (isBurnt ? '#120806' : (isWet ? '#1a1018' : '#2a1a1a'));
 
-    /* 底色渐变 */
     const bg = x.createLinearGradient(0, 0, 0, S);
     bg.addColorStop(0, base);
     bg.addColorStop(1, shade(base, -0.25));
-    x.fillStyle = bg;
-    x.fillRect(0, 0, S, S);
+    x.fillStyle = bg; x.fillRect(0, 0, S, S);
 
-    /* 砖块 —— 每一块单独加高光和阴影 */
     const bw = 32, bh = 16;
     const rows = S / bh;
     for(let row = 0; row < rows; row++){
@@ -211,59 +207,35 @@ function makeWallTextureCanvas(spec){
       for(let xx = off - bw; xx < S; xx += bw){
         const bx = xx + 1, by = yy + 1;
         const cellW = bw - 2, cellH = bh - 2;
-
-        /* 每块砖有轻微的色差 */
         const seed = (row * 31 + xx * 17) % 100;
         const tint = (seed - 50) / 400;
         x.fillStyle = shade(base, tint * 0.6);
         x.fillRect(bx, by, cellW, cellH);
-
-        /* 顶部高光 */
         x.fillStyle = 'rgba(255,255,255,' + (0.05 + Math.random()*0.04) + ')';
         x.fillRect(bx, by, cellW, 1);
-
-        /* 底部阴影 */
         x.fillStyle = 'rgba(0,0,0,0.35)';
         x.fillRect(bx, by + cellH - 1, cellW, 1);
         x.fillRect(bx + cellW - 1, by, 1, cellH);
       }
     }
-
-    /* 砖缝 —— 深色 */
     x.strokeStyle = isBurnt ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.55)';
     x.lineWidth = 1;
     for(let row = 0; row <= rows; row++){
-      x.beginPath();
-      x.moveTo(0, row*bh);
-      x.lineTo(S, row*bh);
-      x.stroke();
+      x.beginPath(); x.moveTo(0, row*bh); x.lineTo(S, row*bh); x.stroke();
     }
-
-    /* 污渍 */
-    x.fillStyle = isWet ? 'rgba(120,160,200,0.10)' : 'rgba(0,0,0,0.12)';
     for(let i = 0; i < 22; i++){
-      const px = Math.random() * S;
-      const py = Math.random() * S;
-      const r = 4 + Math.random() * 14;
+      const px = Math.random()*S, py = Math.random()*S;
+      const r = 4 + Math.random()*14;
       const grd = x.createRadialGradient(px, py, 0, px, py, r);
       grd.addColorStop(0, isWet ? 'rgba(140,180,220,0.28)' : 'rgba(0,0,0,0.22)');
       grd.addColorStop(1, 'rgba(0,0,0,0)');
       x.fillStyle = grd;
-      x.beginPath();
-      x.arc(px, py, r, 0, Math.PI * 2);
-      x.fill();
+      x.beginPath(); x.arc(px, py, r, 0, Math.PI*2); x.fill();
     }
-
-    /* 湿砖：反光条 */
     if(isWet){
       x.fillStyle = 'rgba(140,180,220,0.06)';
-      for(let i = 0; i < 5; i++){
-        const yy = 4 + i * 26;
-        x.fillRect(0, yy, S, 2);
-      }
+      for(let i = 0; i < 5; i++) x.fillRect(0, 4 + i*26, S, 2);
     }
-
-    /* 烧焦：焦痕 */
     if(isBurnt){
       x.fillStyle = 'rgba(0,0,0,0.6)';
       for(let i = 0; i < 60; i++){
@@ -272,15 +244,12 @@ function makeWallTextureCanvas(spec){
         x.fill();
       }
       x.fillStyle = 'rgba(120,50,20,0.20)';
-      for(let i = 0; i < 24; i++){
-        x.fillRect(Math.random()*S, Math.random()*S, 1, 3 + Math.random()*4);
-      }
+      for(let i = 0; i < 24; i++) x.fillRect(Math.random()*S, Math.random()*S, 1, 3 + Math.random()*4);
     }
   }
   else if(type === 'tile'){
     const base = spec.base || '#c8d0d8';
-    x.fillStyle = base;
-    x.fillRect(0, 0, S, S);
+    x.fillStyle = base; x.fillRect(0, 0, S, S);
     const t = 32;
     for(let yy = 0; yy < S; yy += t){
       for(let xx = 0; xx < S; xx += t){
@@ -288,39 +257,28 @@ function makeWallTextureCanvas(spec){
         const tint = (seed - 50) / 500;
         x.fillStyle = shade(base, tint);
         x.fillRect(xx + 1, yy + 1, t - 2, t - 2);
-        x.fillStyle = 'rgba(255,255,255,0.10)';
-        x.fillRect(xx + 1, yy + 1, t - 2, 1);
-        x.fillStyle = 'rgba(0,0,0,0.10)';
-        x.fillRect(xx + 1, yy + t - 2, t - 2, 1);
+        x.fillStyle = 'rgba(255,255,255,0.10)'; x.fillRect(xx + 1, yy + 1, t - 2, 1);
+        x.fillStyle = 'rgba(0,0,0,0.10)'; x.fillRect(xx + 1, yy + t - 2, t - 2, 1);
       }
     }
-    x.strokeStyle = 'rgba(0,0,0,0.28)';
-    x.lineWidth = 1;
+    x.strokeStyle = 'rgba(0,0,0,0.28)'; x.lineWidth = 1;
     for(let i = 0; i <= S; i += t){
       x.beginPath(); x.moveTo(i, 0); x.lineTo(i, S); x.stroke();
       x.beginPath(); x.moveTo(0, i); x.lineTo(S, i); x.stroke();
     }
-    /* 地砖缝里的污点 */
     x.fillStyle = 'rgba(0,0,0,0.10)';
-    for(let i = 0; i < 30; i++){
-      x.fillRect(Math.random()*S, Math.random()*S, 2, 1);
-    }
+    for(let i = 0; i < 30; i++) x.fillRect(Math.random()*S, Math.random()*S, 2, 1);
   }
   else if(type === 'wood'){
     const base = spec.base || '#5a3a20';
-    x.fillStyle = base;
-    x.fillRect(0, 0, S, S);
-    /* 木板 */
+    x.fillStyle = base; x.fillRect(0, 0, S, S);
     const pw = 16;
     for(let xx = 0; xx < S; xx += pw){
       const tint = ((xx * 13) % 40 - 20) / 200;
       x.fillStyle = shade(base, tint);
       x.fillRect(xx + 1, 0, pw - 1, S);
-      x.strokeStyle = 'rgba(0,0,0,0.45)';
-      x.lineWidth = 1;
+      x.strokeStyle = 'rgba(0,0,0,0.45)'; x.lineWidth = 1;
       x.beginPath(); x.moveTo(xx, 0); x.lineTo(xx, S); x.stroke();
-
-      /* 木纹 */
       x.strokeStyle = 'rgba(0,0,0,0.14)';
       for(let i = 0; i < 4; i++){
         const py = 4 + i * 32 + Math.random() * 4;
@@ -330,10 +288,9 @@ function makeWallTextureCanvas(spec){
         x.stroke();
       }
     }
-    /* 木节 */
     x.fillStyle = 'rgba(0,0,0,0.28)';
     for(let i = 0; i < 4; i++){
-      const px = Math.random() * S, py = Math.random() * S;
+      const px = Math.random()*S, py = Math.random()*S;
       x.beginPath();
       x.ellipse(px, py, 3 + Math.random()*3, 5 + Math.random()*4, 0, 0, Math.PI*2);
       x.fill();
@@ -341,16 +298,11 @@ function makeWallTextureCanvas(spec){
   }
   else if(type === 'metal'){
     const base = spec.base || '#3a4048';
-    x.fillStyle = base;
-    x.fillRect(0, 0, S, S);
-    /* 面板 */
-    x.strokeStyle = 'rgba(0,0,0,0.45)';
-    x.lineWidth = 2;
+    x.fillStyle = base; x.fillRect(0, 0, S, S);
+    x.strokeStyle = 'rgba(0,0,0,0.45)'; x.lineWidth = 2;
     x.strokeRect(2, 2, S-4, S-4);
     x.beginPath(); x.moveTo(0, S/2); x.lineTo(S, S/2); x.stroke();
     x.beginPath(); x.moveTo(S/2, 0); x.lineTo(S/2, S); x.stroke();
-
-    /* 铆钉 */
     for(let yy = 12; yy < S; yy += 24){
       for(let xx = 12; xx < S; xx += 24){
         x.fillStyle = 'rgba(255,255,255,0.28)';
@@ -359,17 +311,11 @@ function makeWallTextureCanvas(spec){
         x.beginPath(); x.arc(xx + 0.5, yy + 0.5, 1.6, 0, Math.PI*2); x.fill();
       }
     }
-    /* 拉丝 */
-    x.strokeStyle = 'rgba(0,0,0,0.15)';
-    x.lineWidth = 1;
+    x.strokeStyle = 'rgba(0,0,0,0.15)'; x.lineWidth = 1;
     for(let i = 0; i < 24; i++){
-      const yy = Math.random() * S;
-      x.beginPath();
-      x.moveTo(0, yy);
-      x.lineTo(S, yy + (Math.random()-0.5)*2);
-      x.stroke();
+      const yy = Math.random()*S;
+      x.beginPath(); x.moveTo(0, yy); x.lineTo(S, yy + (Math.random()-0.5)*2); x.stroke();
     }
-    /* 锈迹 */
     x.fillStyle = 'rgba(120,60,20,0.15)';
     for(let i = 0; i < 10; i++){
       x.beginPath();
@@ -378,7 +324,6 @@ function makeWallTextureCanvas(spec){
     }
   }
 
-  /* 踢脚线 —— 底部 12% 的深色带 */
   if(spec.skirting !== false && type !== 'tile'){
     const skH = Math.floor(S * 0.12);
     const sgrad = x.createLinearGradient(0, S - skH, 0, S);
@@ -393,7 +338,6 @@ function makeWallTextureCanvas(spec){
   return c;
 }
 
-/* 颜色调整工具 */
 function shade(hex, amount){
   if(hex.charAt(0) !== '#') return hex;
   let r = parseInt(hex.slice(1,3), 16);
@@ -411,27 +355,19 @@ function shade(hex, amount){
   return 'rgb(' + (r|0) + ',' + (g|0) + ',' + (b|0) + ')';
 }
 
-/* 地板纹理 —— 湿漉漉的水泥地 */
 function makeFloorTextureCanvas(spec){
   const S = TEX_SIZE;
   const c = document.createElement('canvas');
   c.width = S; c.height = S;
   const x = c.getContext('2d');
   const base = (spec && spec.base) || '#0d1218';
-
-  x.fillStyle = base;
-  x.fillRect(0, 0, S, S);
-
-  /* 石板缝 —— 32x32 格子 */
-  x.strokeStyle = 'rgba(0,0,0,0.5)';
-  x.lineWidth = 1;
+  x.fillStyle = base; x.fillRect(0, 0, S, S);
+  x.strokeStyle = 'rgba(0,0,0,0.5)'; x.lineWidth = 1;
   const t = 32;
   for(let i = 0; i <= S; i += t){
     x.beginPath(); x.moveTo(i, 0); x.lineTo(i, S); x.stroke();
     x.beginPath(); x.moveTo(0, i); x.lineTo(S, i); x.stroke();
   }
-
-  /* 每格轻微色差 */
   for(let yy = 0; yy < S; yy += t){
     for(let xx = 0; xx < S; xx += t){
       const seed = (xx*7 + yy*13) % 100;
@@ -440,52 +376,35 @@ function makeFloorTextureCanvas(spec){
       x.fillRect(xx + 1, yy + 1, t - 2, t - 2);
     }
   }
-
-  /* 水渍 */
   for(let i = 0; i < 14; i++){
-    const px = Math.random() * S, py = Math.random() * S;
-    const r = 6 + Math.random() * 18;
+    const px = Math.random()*S, py = Math.random()*S;
+    const r = 6 + Math.random()*18;
     const grd = x.createRadialGradient(px, py, 0, px, py, r);
     grd.addColorStop(0, 'rgba(100,140,180,0.18)');
     grd.addColorStop(1, 'rgba(100,140,180,0)');
     x.fillStyle = grd;
     x.beginPath(); x.arc(px, py, r, 0, Math.PI*2); x.fill();
   }
-
-  /* 细碎砂砾 */
   x.fillStyle = 'rgba(255,255,255,0.04)';
-  for(let i = 0; i < 200; i++){
-    x.fillRect(Math.random()*S, Math.random()*S, 1, 1);
-  }
+  for(let i = 0; i < 200; i++) x.fillRect(Math.random()*S, Math.random()*S, 1, 1);
   x.fillStyle = 'rgba(0,0,0,0.12)';
-  for(let i = 0; i < 200; i++){
-    x.fillRect(Math.random()*S, Math.random()*S, 1, 1);
-  }
-
+  for(let i = 0; i < 200; i++) x.fillRect(Math.random()*S, Math.random()*S, 1, 1);
   return c;
 }
 
-/* 天花板纹理 —— 粗糙的水泥板 */
 function makeCeilTextureCanvas(spec){
   const S = TEX_SIZE;
   const c = document.createElement('canvas');
   c.width = S; c.height = S;
   const x = c.getContext('2d');
   const base = (spec && spec.base) || '#0a0d12';
-
-  x.fillStyle = base;
-  x.fillRect(0, 0, S, S);
-
-  /* 水泥板缝 */
-  x.strokeStyle = 'rgba(0,0,0,0.5)';
-  x.lineWidth = 1;
+  x.fillStyle = base; x.fillRect(0, 0, S, S);
+  x.strokeStyle = 'rgba(0,0,0,0.5)'; x.lineWidth = 1;
   const t = 64;
   for(let i = 0; i <= S; i += t){
     x.beginPath(); x.moveTo(i, 0); x.lineTo(i, S); x.stroke();
     x.beginPath(); x.moveTo(0, i); x.lineTo(S, i); x.stroke();
   }
-
-  /* 污渍 */
   for(let i = 0; i < 8; i++){
     const px = Math.random()*S, py = Math.random()*S;
     const r = 8 + Math.random()*20;
@@ -495,13 +414,10 @@ function makeCeilTextureCanvas(spec){
     x.fillStyle = grd;
     x.beginPath(); x.arc(px, py, r, 0, Math.PI*2); x.fill();
   }
-
-  /* 颗粒 */
   for(let i = 0; i < 300; i++){
     x.fillStyle = 'rgba(255,255,255,0.025)';
     x.fillRect(Math.random()*S, Math.random()*S, 1, 1);
   }
-
   return c;
 }
 
@@ -553,6 +469,14 @@ function getSpriteTexture(icon){
   return null;
 }
 
+function resolveIcon(th){
+  const raw = th.icon;
+  if(typeof raw === 'function'){
+    try{ return raw() || '❓'; }catch(e){ return '❓'; }
+  }
+  return raw || '❓';
+}
+
 /* ==================== 场景 ==================== */
 function getQueryScene(){
   try{
@@ -586,7 +510,6 @@ function buildWorld(){
   const wallSpec  = map.wallTex  || { type: 'brick' };
   const floorSpec = map.floorTex || { base: shadeHex(map.wallTex && map.wallTex.base || '#1a1018', -0.4) };
   const ceilSpec  = map.ceilTex  || { base: shadeHex(map.wallTex && map.wallTex.base || '#1a1018', -0.6) };
-
   renderer.buildWorld({
     grid: map.grid,
     wallHeight: 2.5,
@@ -605,12 +528,8 @@ function shadeHex(hex, amount){
     r = Math.max(0, r * (1 + amount));
     g = Math.max(0, g * (1 + amount));
     b = Math.max(0, b * (1 + amount));
-  } else {
-    r = Math.min(255, r + amount*255);
-    g = Math.min(255, g + amount*255);
-    b = Math.min(255, b + amount*255);
   }
-  return '#' + [r,g,b].map(v => ('0'+ (v|0).toString(16)).slice(-2)).join('');
+  return '#' + [r,g,b].map(v => ('0'+(v|0).toString(16)).slice(-2)).join('');
 }
 
 /* ==================== 碰撞 ==================== */
@@ -636,11 +555,11 @@ function update(dt){
   if(!map) return;
   isMoving = false;
 
-  const rotSpeed = 2.4;
+  const rotSpeed = 2.2;
   if(keys['arrowleft'])  cam.yaw -= rotSpeed*dt;
   if(keys['arrowright']) cam.yaw += rotSpeed*dt;
-  if(keys['arrowup'])    cam.pitch += rotSpeed*0.6*dt;
-  if(keys['arrowdown'])  cam.pitch -= rotSpeed*0.6*dt;
+  if(keys['arrowup'])    cam.pitch += rotSpeed*0.55*dt;
+  if(keys['arrowdown'])  cam.pitch -= rotSpeed*0.55*dt;
   if(cam.pitch >  1.35) cam.pitch =  1.35;
   if(cam.pitch < -1.35) cam.pitch = -1.35;
 
@@ -705,8 +624,7 @@ function update(dt){
   if(isBloodMode()){
     const nowSec = performance.now()/1000;
     if(scareTime <= 0 && nowSec >= nextScareAt){
-      scareTime = 0.55;
-      scareSeed = Math.random()*1000;
+      scareTime = 0.55; scareSeed = Math.random()*1000;
       shakeTime = 0.5; shakeAmp = 16;
       HorrorAudio.scareScream();
       nextScareAt = nowSec + 14 + Math.random()*14;
@@ -716,13 +634,11 @@ function update(dt){
       nextSilenceAt = nowSec + 20 + Math.random()*18;
     }
     if(silenceT > 0) silenceT = Math.max(0, silenceT - dt);
-
     if(invertT <= 0 && nowSec >= nextInvertAt){
       invertT = 0.08;
       nextInvertAt = nowSec + 16 + Math.random()*20;
     }
     if(invertT > 0) invertT = Math.max(0, invertT - dt);
-
     if(intrudeT <= 0 && nowSec >= nextIntrudeAt){
       intrudeT = 0.9;
       intrudeX = 0.15 + Math.random()*0.7;
@@ -731,7 +647,6 @@ function update(dt){
       nextIntrudeAt = nowSec + 12 + Math.random()*14;
     }
     if(intrudeT > 0) intrudeT = Math.max(0, intrudeT - dt);
-
     if(camDriftT <= 0 && nowSec >= nextDriftAt){
       camDriftT = 0.7;
       const dir = Math.random() < 0.5 ? -1 : 1;
@@ -740,11 +655,9 @@ function update(dt){
       nextDriftAt = nowSec + 20 + Math.random()*18;
     }
     if(camDriftT > 0) camDriftT = Math.max(0, camDriftT - dt);
-
     if(silenceT > 0 && silenceT - dt <= 0){
       HorrorAudio.footstepBehind();
     }
-
     if(Math.random() < 0.004 + 0.008*getPanic()){
       bloodDrops.push({
         x: Math.random(), y: -0.02,
@@ -770,7 +683,7 @@ function triggerNearby(){
   updateButton();
 }
 
-/* ==================== 光照计算 ==================== */
+/* ==================== 光照 ==================== */
 function computeAmbient(){
   const blood = isBloodMode();
   if(blood){
@@ -787,7 +700,6 @@ function computeLights(){
   const cut = F().powerCut;
   const list = [];
 
-  /* 手电筒优先占第 1 位 */
   if(torch){
     let flick = blood
       ? 0.86 + 0.14*Math.sin(time*22) * (Math.random() > 0.8 ? 1.5 : 1)
@@ -800,24 +712,15 @@ function computeLights(){
     });
   }
 
-  /* 场景灯 —— 从 map.lights 读取 */
   const sceneLights = (map && map.lights) || [];
   for(let i = 0; i < sceneLights.length && list.length < 3; i++){
     const l = sceneLights[i];
     let color = l.color || [0.6, 0.5, 0.4];
-    /* 断电时场景灯全灭 */
     if(cut && l.conditional !== false) color = [color[0]*0.15, color[1]*0.15, color[2]*0.15];
-    /* 暗夜模式：加一点血红 */
-    if(blood){
-      color = [color[0]*0.55, color[1]*0.18, color[2]*0.18];
-    }
-    list.push({
-      x: l.x, y: l.y || 2.0, z: l.z,
-      color: color
-    });
+    if(blood) color = [color[0]*0.55, color[1]*0.18, color[2]*0.18];
+    list.push({ x: l.x, y: l.y || 2.0, z: l.z, color: color });
   }
 
-  /* 如果没手电，加一点"月光"（很弱的方向光） */
   if(!torch && list.length < 3){
     list.push({
       x: cam.x + Math.cos(cam.yaw) * 3,
@@ -867,7 +770,8 @@ function render(dt, t){
   for(let i = 0; i < map.things.length; i++){
     const th = map.things[i];
     if(th.cond && !th.cond()) continue;
-    const tex = getSpriteTexture(th.icon || '❓');
+    const icon = resolveIcon(th);
+    const tex = getSpriteTexture(icon);
     if(!tex) continue;
     const h = (th.scale || 0.85) * 1.15;
     const w = h * 0.75;
@@ -960,9 +864,7 @@ function drawHorror(dt, t){
   fxCtx.fillStyle = 'rgba(255,255,255,0.014)';
   fxCtx.fillRect(0, scanY, w, 2);
 
-  if(intrudeT > 0){
-    drawIntrusion(w, h, intrudeT/0.9, intrudeX, intrudeY, intrudeSeed);
-  }
+  if(intrudeT > 0) drawIntrusion(w, h, intrudeT/0.9, intrudeX, intrudeY, intrudeSeed);
 
   for(let i = 0; i < bloodDrops.length; i++){
     const b = bloodDrops[i];
@@ -1101,12 +1003,8 @@ function drawScare(w, h, k){
   fxCtx.fill();
 
   fxCtx.fillStyle = 'rgba(200,190,170,0.75)';
-  for(let i = 0; i < 7; i++){
-    fxCtx.fillRect(-fW*0.30 + i*fW*0.10, fH*0.46, fW*0.04, fH*0.05);
-  }
-  for(let i = 0; i < 6; i++){
-    fxCtx.fillRect(-fW*0.28 + i*fW*0.10, fH*0.65, fW*0.04, fH*0.05);
-  }
+  for(let i = 0; i < 7; i++) fxCtx.fillRect(-fW*0.30 + i*fW*0.10, fH*0.46, fW*0.04, fH*0.05);
+  for(let i = 0; i < 6; i++) fxCtx.fillRect(-fW*0.28 + i*fW*0.10, fH*0.65, fW*0.04, fH*0.05);
 
   fxCtx.restore();
 
@@ -1123,13 +1021,9 @@ function updateButton(){
   if(!nearby){ overlayBtn.classList.remove('show'); return; }
   const label = typeof nearby.label === 'function' ? nearby.label() : nearby.label;
   if(!label){ overlayBtn.classList.remove('show'); return; }
-  overlayIcon.textContent = nearby.icon || '❓';
+  overlayIcon.textContent = resolveIcon(nearby);
   overlayName.textContent = label;
-  let hintText;
-  if(isTouch) hintText = '轻点查看';
-  else if(pointerLocked) hintText = '按 E / 空格 查看';
-  else hintText = '点击 / 按 E 查看';
-  overlayHint.textContent = hintText;
+  overlayHint.textContent = isTouch ? '轻点查看' : '按 E / 空格 查看';
   overlayBtn.classList.add('show');
 }
 
@@ -1158,7 +1052,6 @@ function resize(){
   viewport.style.top  = Math.round((vh - cssH)/2) + 'px';
   const dpr = Math.min(window.devicePixelRatio || 1, isBloodMode() ? 1.4 : 1.5);
   renderer.resize(cssW, cssH, dpr);
-
   if(fxCanvas && fxCtx){
     const fw = canvas.width, fh = canvas.height;
     if(fxCanvas.width !== fw || fxCanvas.height !== fh){
@@ -1176,7 +1069,10 @@ function bindKeys(){
   window.addEventListener('keydown', e => {
     const k = e.key.toLowerCase();
     keys[k] = true;
-    if((k === 'e' || k === ' ') && nearby) triggerNearby();
+    if((k === 'e' || k === ' ') && nearby){
+      e.preventDefault();
+      triggerNearby();
+    }
     if(k.indexOf('arrow') === 0 || k === ' ') e.preventDefault();
     ensureAudio();
   });
@@ -1184,42 +1080,14 @@ function bindKeys(){
 }
 
 function bindPointer(){
-  canvas.addEventListener('click', e => {
+  /* 点击画布只做两件事：获取焦点 / 启动音频 —— 不再有鼠标转视角 */
+  canvas.addEventListener('click', function(){
     ensureAudio();
-    if(isTouch) return;
-    if(!pointerLocked && canvas.requestPointerLock) canvas.requestPointerLock();
+    forceFocus();
   });
-  document.addEventListener('pointerlockchange', function(){
-    pointerLocked = (document.pointerLockElement === canvas);
-    updateButton();
-  });
+  canvas.addEventListener('mousedown', function(){ ensureAudio(); });
 
-  canvas.addEventListener('mousedown', e => {
-    ensureAudio();
-    if(pointerLocked || isTouch) return;
-    mouseDrag = { x: e.clientX, y: e.clientY };
-    e.preventDefault();
-  });
-  window.addEventListener('mouseup', () => { mouseDrag = null; });
-
-  window.addEventListener('mousemove', e => {
-    if(pointerLocked){
-      cam.yaw += (e.movementX || 0) * 0.0024;
-      cam.pitch -= (e.movementY || 0) * 0.0024;
-      if(cam.pitch >  1.35) cam.pitch =  1.35;
-      if(cam.pitch < -1.35) cam.pitch = -1.35;
-      return;
-    }
-    if(!mouseDrag) return;
-    const dx = e.clientX - mouseDrag.x;
-    const dy = e.clientY - mouseDrag.y;
-    mouseDrag.x = e.clientX; mouseDrag.y = e.clientY;
-    cam.yaw += dx * 0.0032;
-    cam.pitch -= dy * 0.0032;
-    if(cam.pitch >  1.35) cam.pitch =  1.35;
-    if(cam.pitch < -1.35) cam.pitch = -1.35;
-  });
-
+  /* 触屏：左半屏移动，右半屏看 */
   canvas.addEventListener('touchstart', e => {
     ensureAudio();
     if(!e.touches.length) return;
@@ -1267,6 +1135,18 @@ function bindPointer(){
   window.addEventListener('touchstart', ensureAudio, { once:true, passive:true });
   window.addEventListener('mousedown', ensureAudio, { once:true });
   window.addEventListener('keydown', ensureAudio, { once:true });
+}
+
+/* 强制把焦点拿到 iframe 里 —— 让键盘立即可用 */
+function forceFocus(){
+  try{ window.focus(); }catch(e){}
+  try{ if(document.body) document.body.focus(); }catch(e){}
+  try{
+    if(window.parent && window.parent !== window){
+      window.parent.focus();
+      window.focus();
+    }
+  }catch(e){}
 }
 
 /* ==================== 消息 ==================== */
@@ -1330,14 +1210,15 @@ function boot(){
     });
   }
 
-  isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-
-  const hint = document.getElementById('hint');
-  if(hint){
-    hint.textContent = isTouch
-      ? '左侧拖动移动 · 右侧拖动看 · 靠近物件点按钮'
-      : '点击画面锁定鼠标 · WASD 移动 · 鼠标转动 · E 互动';
-    setTimeout(() => { hint.style.opacity = '0.25'; }, 9000);
+  /* ★ 右上角键位提示 —— 常显 */
+  var helpEl = document.getElementById('ctrlHelp');
+  if(helpEl){
+    isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+    helpEl.innerHTML = isTouch
+      ? '<b>移动</b> 左侧拖动　<b>视角</b> 右侧拖动　<b>互动</b> 轻点按钮'
+      : '<b>移动</b> WASD　<b>视角</b> ↑ ↓ ← →　<b>互动</b> E / 空格';
+  } else {
+    isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
   }
 
   resize();
@@ -1351,6 +1232,13 @@ function boot(){
   bindPointer();
   bindMessage();
 
+  /* ★ 自动聚焦 */
+  forceFocus();
+  setTimeout(forceFocus, 120);
+  setTimeout(forceFocus, 420);
+  /* 点击任意位置也聚焦 */
+  window.addEventListener('click', forceFocus);
+
   lastFrame = performance.now();
   requestAnimationFrame(loop);
 }
@@ -1359,7 +1247,6 @@ window.Engine3D = { boot };
 window.__engineStop = function(){
   stopped = true;
   try{
-    if(pointerLocked && document.exitPointerLock) document.exitPointerLock();
     if(canvas) canvas.style.visibility = 'hidden';
     if(fxCanvas) fxCanvas.style.display = 'none';
     if(viewport) viewport.style.transform = '';
