@@ -21,24 +21,49 @@
     border:2px solid rgba(255,214,140,0.6);
     color:#e8eef7;font-family:inherit;cursor:pointer;
     text-align:left;max-width:70%;
+    transition:transform .14s ease, box-shadow .2s ease;
+    box-shadow:0 6px 28px rgba(0,0,0,0.65),
+               0 0 36px rgba(255,200,120,0.22),
+               inset 0 1px 0 rgba(255,255,255,0.08);
+    animation:btnPulse 2s ease-in-out infinite;
+  }
+  @keyframes btnPulse{
+    0%,100%{box-shadow:0 6px 28px rgba(0,0,0,0.65), 0 0 28px rgba(255,200,120,0.18), inset 0 1px 0 rgba(255,255,255,0.08);}
+    50%    {box-shadow:0 6px 28px rgba(0,0,0,0.65), 0 0 44px rgba(255,210,140,0.34), inset 0 1px 0 rgba(255,255,255,0.10);}
   }
   #interactBtn.show{display:inline-flex;}
-  #interactBtn .icon{font-size:34px;line-height:1;}
-  #interactBtn .name{font-size:18px;font-weight:800;color:#ffd98f;}
-  #interactBtn .hint{font-size:12px;color:rgba(180,210,240,0.78);}
+  #interactBtn:active{transform:scale(0.95);}
+  #interactBtn .icon{
+    font-size:34px;line-height:1;
+    filter:drop-shadow(0 3px 8px rgba(0,0,0,0.75));
+    flex:0 0 auto;
+  }
+  #interactBtn .txt{display:flex;flex-direction:column;gap:3px;min-width:0;}
+  #interactBtn .name{
+    font-size:18px;font-weight:800;color:#ffd98f;
+    letter-spacing:0.5px;
+    text-shadow:0 0 12px rgba(255,190,100,0.45);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  #interactBtn .hint{font-size:12px;color:rgba(180,210,240,0.78);letter-spacing:0.5px;white-space:nowrap;}
   #hint{
     position:absolute;left:0;right:0;bottom:14px;text-align:center;
-    font-size:12px;color:rgba(140,170,200,0.5);pointer-events:none;
+    font-size:12px;letter-spacing:1px;
+    color:rgba(140,170,200,0.5);
+    pointer-events:none;
+    transition:opacity 1s ease;
   }
-  #__diag{
-    position:fixed;left:8px;top:8px;right:8px;
-    color:#9fefff;font-family:monospace;font-size:11px;
-    z-index:99999;background:rgba(0,0,0,0.88);
-    padding:10px 12px;border-radius:8px;line-height:1.65;
-    border:1px solid rgba(80,200,255,0.4);
-    white-space:pre-wrap;pointer-events:none;
-    max-height:80vh;overflow:auto;
+  #fatal{
+    position:absolute;inset:0;display:none;
+    align-items:center;justify-content:center;
+    background:rgba(4,6,10,0.95);z-index:10;
+    color:#e8eef7;font-size:14px;line-height:1.9;
+    text-align:center;padding:40px;
   }
+  #fatal.show{display:flex;}
+  #fatal .box{max-width:460px;}
+  #fatal h2{color:#ff6a5a;font-size:18px;margin-bottom:14px;letter-spacing:1px;}
+  #fatal p{color:#8b98a8;font-size:13px;}
 </style>
 </head>
 <body>
@@ -52,94 +77,55 @@
     </span>
   </button>
   <div id="hint">WASD / 方向键 · 鼠标拖动看 · E 互动</div>
+  <div id="fatal">
+    <div class="box">
+      <h2>3D 场景无法启动</h2>
+      <p id="fatalMsg"></p>
+      <p style="margin-top:14px;color:#6a7a8a">可以在设置里切回 2D 继续游戏。</p>
+    </div>
+  </div>
 </div>
 
-<script>
-window.__DIAG_LOGS = [];
-window.__DIAG_ERRORS = [];
-window.addEventListener('error', function(e){
-  window.__DIAG_ERRORS.push(
-    (e.message || '?') + '\n  @ ' + (e.filename || '?') + ':' + (e.lineno || 0)
-  );
-});
-function diag(msg){ window.__DIAG_LOGS.push('· ' + msg); }
-</script>
-
-<script src="scenes.js" onerror="window.__DIAG_ERRORS.push('scenes.js 加载失败')"></script>
-<script src="r3d.js"    onerror="window.__DIAG_ERRORS.push('r3d.js 加载失败')"></script>
-<script src="engine.js" onerror="window.__DIAG_ERRORS.push('engine.js 加载失败')"></script>
+<script src="scenes.js"></script>
+<script src="r3d.js"></script>
+<script src="engine.js"></script>
 
 <script>
-diag('三个 js 的 script 标签已执行');
-diag('typeof R3D = ' + (typeof window.R3D));
-diag('typeof Engine3D = ' + (typeof window.Engine3D));
-diag('typeof __SCENES_3D__ = ' + (typeof window.__SCENES_3D__));
-if(window.__SCENES_3D__){
-  var keys = Object.keys(window.__SCENES_3D__);
-  diag('场景 keys: ' + keys.join(', '));
-  var qid = new URLSearchParams(location.search).get('id');
-  diag('URL 里的 id = ' + qid);
-  diag('id 是否在场景里 = ' + (qid && window.__SCENES_3D__[qid] ? '是' : '否'));
-}
-try {
-  if(typeof Engine3D !== 'undefined'){
-    Engine3D.boot();
-    diag('Engine3D.boot() 正常返回');
-  } else {
-    diag('❌ Engine3D 未定义，无法启动');
-  }
-} catch(e) {
-  diag('❌ Engine3D.boot() 抛错: ' + (e.message || e));
-}
-
-setTimeout(function(){
-  var lines = [];
-  lines.push('══════ 3D 场景诊断 ══════');
-  lines.push('URL: ' + location.href);
-  lines.push('innerW×H: ' + window.innerWidth + ' × ' + window.innerHeight);
-
-  var cv = document.getElementById('cv');
-  if(cv){
-    lines.push('canvas 物理尺寸: ' + cv.width + '×' + cv.height);
-    lines.push('canvas CSS 尺寸: ' + cv.clientWidth + '×' + cv.clientHeight);
-    try {
-      var gl = cv.getContext('webgl') || cv.getContext('experimental-webgl');
-      lines.push('再次取 WebGL: ' + (gl ? '成功' : '失败'));
-      if(gl){
-        lines.push('  VERSION: ' + gl.getParameter(gl.VERSION));
-        lines.push('  RENDERER: ' + gl.getParameter(gl.RENDERER));
-      }
-    } catch(e){
-      lines.push('取 WebGL 抛错: ' + (e.message || e));
+(function(){
+  /* 捕获引擎错误 —— 只向主页面汇报，不在屏幕上显示诊断信息 */
+  window.addEventListener('error', function(ev){
+    var msg = (ev.message || '未知错误') + ' @' + (ev.filename || '') + ':' + (ev.lineno || 0);
+    console.error('[3D ERROR]', msg);
+    try{
+      window.parent.postMessage({ type:'engineError', message: msg }, '*');
+    }catch(e){}
+    /* 只在明确的致命错误时显示友好提示 */
+    var fatal = document.getElementById('fatal');
+    var fatalMsg = document.getElementById('fatalMsg');
+    if(fatal && fatalMsg && !fatal.classList.contains('show')){
+      fatalMsg.textContent = ev.message || '未知错误';
+      fatal.classList.add('show');
     }
-  } else {
-    lines.push('❌ 找不到 #cv');
+  });
+
+  try{
+    if(typeof Engine3D === 'undefined'){
+      throw new Error('Engine3D 未加载（engine.js 可能缺失或路径错误）');
+    }
+    Engine3D.boot();
+  }catch(e){
+    console.error('[3D BOOT]', e);
+    try{
+      window.parent.postMessage({ type:'engineError', message: e.message || String(e) }, '*');
+    }catch(_){}
+    var fatal = document.getElementById('fatal');
+    var fatalMsg = document.getElementById('fatalMsg');
+    if(fatal && fatalMsg){
+      fatalMsg.textContent = e.message || String(e);
+      fatal.classList.add('show');
+    }
   }
-
-  var vp = document.getElementById('viewport');
-  if(vp){
-    lines.push('viewport CSS: ' + vp.style.width + ' × ' + vp.style.height
-             + '  left=' + vp.style.left + '  top=' + vp.style.top);
-  }
-
-  lines.push('');
-  lines.push('───── 执行日志 ─────');
-  if(window.__DIAG_LOGS.length === 0) lines.push('（空）');
-  else Array.prototype.push.apply(lines, window.__DIAG_LOGS);
-
-  lines.push('');
-  lines.push('───── 捕获的错误 ─────');
-  if(window.__DIAG_ERRORS.length === 0) lines.push('（无）');
-  else Array.prototype.push.apply(lines, window.__DIAG_ERRORS);
-
-  lines.push('');
-  lines.push('把这段贴给助手。');
-
-  var d = document.createElement('div');
-  d.id = '__diag';
-  d.textContent = lines.join('\n');
-  document.body.appendChild(d);
-}, 2000);
+})();
 </script>
 </body>
 </html>
