@@ -1,5 +1,6 @@
 /* =========================================================
    engine.js — 真 3D 引擎（基于 r3d.js）
+   含对话冷却 + 靠墙自动加碰撞半径
    ========================================================= */
 (function(){
 'use strict';
@@ -28,6 +29,7 @@ let touchMove = null;
 
 let nearby = null;
 const triggerTime = {};
+let lastDlgOpen = false;
 
 const texCache = {};
 const spriteTexCache = {};
@@ -45,7 +47,7 @@ function isDarkScene(){
       || (sceneKey === 'powerstation' && f.powerCut);
 }
 
-/* ================= 纹理生成（canvas 作为源） ================= */
+/* ================= 纹理生成 ================= */
 function makeWallTextureCanvas(spec){
   const c = document.createElement('canvas');
   c.width = 64; c.height = 64;
@@ -290,15 +292,29 @@ function update(dt){
     }
   }
 
+  /* 检测主 HTML 的对话框状态 */
+  let dlgOpen = false;
+  try{
+    const pel = window.parent && window.parent.document.getElementById('dlg');
+    if(pel && pel.classList.contains('show')) dlgOpen = true;
+  }catch(e){}
+  if(dlgOpen !== lastDlgOpen){
+    lastDlgOpen = dlgOpen;
+  }
+
   let best = null, bestD = 2.0;
-  for(let i = 0; i < map.things.length; i++){
-    const th = map.things[i];
-    if(th.decor) continue;
-    if(th.cond && !th.cond()) continue;
-    const dx = th.x - cam.x;
-    const dz = th.y - cam.z;
-    const d = Math.sqrt(dx*dx + dz*dz);
-    if(d < bestD){ bestD = d; best = th; }
+  if(!dlgOpen){
+    for(let i = 0; i < map.things.length; i++){
+      const th = map.things[i];
+      if(th.decor) continue;
+      if(th.cond && !th.cond()) continue;
+      const lastAt = triggerTime[th.id] || 0;
+      if(performance.now() - lastAt < 3000) continue;
+      const dx = th.x - cam.x;
+      const dz = th.y - cam.z;
+      const d = Math.sqrt(dx*dx + dz*dz);
+      if(d < bestD){ bestD = d; best = th; }
+    }
   }
   if(best !== nearby){
     nearby = best;
@@ -314,6 +330,9 @@ function triggerNearby(){
   try{
     window.parent.postMessage({ type:'hit', spotId: nearby.id }, '*');
   }catch(e){}
+  /* 触发后立即隐藏按钮，对话结束后 3 秒内不再弹 */
+  nearby = null;
+  updateButton();
 }
 
 /* ================= 光照计算 ================= */
@@ -625,7 +644,6 @@ function boot(){
     setTimeout(() => { hint.style.opacity = '0.25'; }, 8000);
   }
 
-  /* 先定尺寸，再加载场景 */
   resize();
   window.addEventListener('resize', resize);
   window.addEventListener('orientationchange', () => setTimeout(resize, 200));
