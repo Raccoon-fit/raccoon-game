@@ -1,25 +1,39 @@
 /* =========================================================
-   3D 场景定义
+   3D 场景定义 —— 暗夜模式专属
+   暗夜 = 灰豆的"真相记忆"，一切都指向火灾那晚
    grid: '1'=墙 '0'=地
-   spawn: {x, y, dir}  dir = 弧度，0 = +x 方向
-   wallTex: 墙壁纹理参数（程序生成）
-   lights: 场景灯光（最多 3 盏，手电筒占用第 1 个槽）
-   things: {id, x, y, icon, label, scale, cond, decor}
+   spawn: {x, y, dir}
+   lights: 场景灯光（最多 3 盏）
+   props: 3D 物件（盒体/柱体/板）
+   things: 互动点（靠近显示按钮）
    ========================================================= */
 (function(){
 'use strict';
 
 const F = () => (window.S && window.S.flags) || {};
 
+/* 便捷函数：生成一组小物件 */
+function clutter(baseX, baseZ, items){
+  return items.map(function(it){
+    return { shape: it.s || 'box', x: baseX + it.dx, y: it.y || 0, z: baseZ + it.dz,
+             w: it.w, h: it.h, d: it.d, color: it.c };
+  });
+}
+
 window.__SCENES_3D__ = {
 
+  /* =====================================================
+     雨巷 —— 焦黑的窄巷，地上有一串很旧的爪印
+     ===================================================== */
   alley: {
-    wallTex: { type:'wetBrick', base:'#1a1018', mortar:'rgba(0,0,0,0.6)' },
+    wallTex: { type:'burnt', base:'#150c0a' },
+    floorTex: { base: '#0a0607' },
+    ceilTex: { base: '#050303' },
     spawn: { x:1.5, y:9.5, dir:-Math.PI/2 },
     rain: true,
     lights: [
-      { x:1.7, y:1.9, z:1.7, color: [1.6, 1.1, 0.5] },
-      { x:5.5, y:1.4, z:5.5, color: [0.4, 0.5, 0.7] }
+      { x:1.7, y:2.2, z:1.7, color: [1.0, 0.35, 0.15] },   /* 烧了一半的路灯 */
+      { x:5.5, y:0.4, z:9.5, color: [0.8, 0.15, 0.15] }    /* 地面上的一滩暗红 */
     ],
     grid: [
       '1111111',
@@ -35,29 +49,55 @@ window.__SCENES_3D__ = {
       '1000001',
       '1111111'
     ],
+    props: [
+      /* 路灯杆（烧黑） */
+      { shape:'cyl', x:1.7, y:0, z:1.7, w:0.16, h:2.3, color:'#1a1410' },
+      { shape:'box', x:1.7, y:2.3, z:1.7, w:0.35, h:0.1, d:0.35, color:'#0f0a06' },
+      /* 垃圾桶（翻倒、烧焦） */
+      { shape:'cyl', x:5.4, y:0, z:5.5, w:0.7, h:0.95, color:'#1a1510' },
+      { shape:'cyl', x:5.55, y:0.05, z:6.3, w:0.65, h:0.4, color:'#140f0a' },
+      /* 电线杆 / 电线 */
+      { shape:'cyl', x:3.5, y:0, z:1.7, w:0.2, h:2.3, color:'#14100c' },
+      /* 墙上那半行字的“位置”（一块石砖） */
+      { shape:'plate', x:1.6, y:1.0, z:5.5, w:0.8, h:0.5, color:'#1c1614' },
+      /* 地上一串小爪印 —— 用几个矮圆盘表示 */
+      { shape:'low', x:3.0, y:0.01, z:9.5, w:0.14, h:0.02, color:'#1a0808' },
+      { shape:'low', x:3.3, y:0.01, z:9.3, w:0.14, h:0.02, color:'#1a0808' },
+      { shape:'low', x:3.6, y:0.01, z:9.5, w:0.14, h:0.02, color:'#1a0808' },
+      { shape:'low', x:3.9, y:0.01, z:9.3, w:0.14, h:0.02, color:'#1a0808' },
+      { shape:'low', x:4.2, y:0.01, z:9.5, w:0.14, h:0.02, color:'#1a0808' },
+      /* 水洼（暗红色） */
+      { shape:'low', x:3.5, y:0.005, z:9.5, w:1.4, h:0.02, color:'#280404' },
+      /* 墙根窄缝的“门”（一块凹进去的黑） */
+      { shape:'plate', x:1.6, y:0.0, z:11.3, w:0.7, h:1.6, color:'#050303' },
+      /* 巷子深处的光 */
+      { shape:'plate', x:5.5, y:0.0, z:1.5, w:1.6, h:2.0, color:'#12080a' }
+    ],
     things: [
-      { id:'lamp',      x:1.7, y:1.7,  icon:'🏮', label:'路灯',       scale:0.9 },
-      { id:'wires',     x:3.5, y:1.7,  icon:'⚡', label:'电线',       scale:0.7 },
-      { id:'graffiti',  x:1.7, y:5.5,  icon:'🖍', label:'墙上的字',   scale:0.8 },
-      { id:'trash',     x:5.5, y:5.5,  icon:'🗑', label:'垃圾桶',     scale:1.0 },
-      { id:'photo1',    x:5.5, y:9.5,  icon:'📄', label:'湿透的纸片', scale:0.7,
-        cond: () => !F().photo1Taken && !F().bloodMode },
-      { id:'puddle',    x:3.5, y:9.5,  icon:'💧', label:'水洼',       scale:0.6 },
-      { id:'bloodExit', x:1.7, y:11.3, icon:'🚪', label:'墙根窄缝',   scale:0.8,
-        cond: () => F().bloodMode },
-      { id:'exit',      x:5.5, y:1.5,  icon:'➡',  label:'巷子深处',   scale:0.9 },
-      { id:'d_bucket',  x:1.6, y:3.3,  icon:'🪣', decor:true, scale:0.7 },
-      { id:'d_rat',     x:5.6, y:7.3,  icon:'🐀', decor:true, scale:0.5 }
+      { id:'lamp',      x:1.7, y:1.7,  icon:'🕯', label:'烧了一半的路灯', scale:0.9 },
+      { id:'wires',     x:3.5, y:1.7,  icon:'⚡', label:'垂下的电线',     scale:0.7 },
+      { id:'graffiti',  x:1.7, y:5.5,  icon:'🖍', label:'墙上那半句话',   scale:0.8 },
+      { id:'trash',     x:5.5, y:5.5,  icon:'🔥', label:'烧过的垃圾桶',   scale:1.0 },
+      { id:'photo1',    x:5.5, y:9.5,  icon:'📄', label:'湿透的纸片',     scale:0.7,
+        cond: () => !F().photo1Taken },
+      { id:'puddle',    x:3.5, y:9.5,  icon:'🩸', label:'水洼',           scale:0.6 },
+      { id:'bloodExit', x:1.7, y:11.3, icon:'🚪', label:'墙根窄缝',       scale:0.8 },
+      { id:'exit',      x:5.5, y:1.5,  icon:'➡',  label:'巷子深处',       scale:0.9 }
     ]
   },
 
+  /* =====================================================
+     后巷 —— 灾后的巷子，消防梯上挂着一根断绳
+     ===================================================== */
   backstreet: {
-    wallTex: { type:'brick', base:'#1a1414', mortar:'rgba(0,0,0,0.5)', accent:'rgba(255,255,255,0.03)' },
+    wallTex: { type:'burnt', base:'#100806' },
+    floorTex: { base: '#080505' },
+    ceilTex: { base: '#040202' },
     spawn: { x:1.5, y:5.5, dir:0 },
     rain: true,
     lights: [
-      { x:3.5, y:2.2, z:1.7, color: [1.4, 0.9, 0.4] },
-      { x:10.5, y:1.8, z:5.5, color: [0.6, 1.2, 1.5] }
+      { x:3.5, y:2.4, z:1.7, color: [0.9, 0.35, 0.15] },
+      { x:10.5, y:1.8, z:5.5, color: [0.4, 0.6, 0.9] }
     ],
     grid: [
       '111111111111111',
@@ -72,28 +112,50 @@ window.__SCENES_3D__ = {
       '100000000000001',
       '111111111111111'
     ],
+    props: [
+      /* 消防梯 */
+      { shape:'box', x:3.5, y:0, z:1.4, w:2.0, h:0.1, d:0.2, color:'#0f0a08' },
+      { shape:'cyl', x:2.6, y:0, z:1.5, w:0.12, h:2.4, color:'#0d0908' },
+      { shape:'cyl', x:4.4, y:0, z:1.5, w:0.12, h:2.4, color:'#0d0908' },
+      /* 断绳（从横梁垂下来） */
+      { shape:'cyl', x:3.5, y:0.3, z:1.5, w:0.05, h:1.9, color:'#2a1810' },
+      /* 纸箱堆（塌了） */
+      { shape:'box', x:2.5, y:0, z:6.5, w:0.9, h:0.7, d:0.9, color:'#100a06' },
+      { shape:'box', x:3.2, y:0, z:6.4, w:0.6, h:0.4, d:0.6, color:'#0d0804' },
+      /* 大橘躺过的地方 —— 灰烬堆 */
+      { shape:'low', x:3.5, y:0.005, z:6.5, w:0.9, h:0.06, color:'#1c0e08' },
+      /* 后门（烧穿的门洞） */
+      { shape:'plate', x:10.4, y:0.0, z:5.5, w:1.3, h:2.0, color:'#050303' },
+      /* 配电房的门（铁皮，烧黑了） */
+      { shape:'plate', x:7.5, y:0.0, z:8.5, w:0.8, h:1.4, color:'#0d0a08' },
+      /* 墙上的霉斑变成一团红 */
+      { shape:'plate', x:7.5, y:1.0, z:1.7, w:0.6, h:0.6, color:'#1a0a0a' },
+      /* 巷口 */
+      { shape:'plate', x:1.5, y:0.0, z:5.5, w:1.6, h:2.0, color:'#0a0606' }
+    ],
     things: [
-      { id:'stairs',    x:3.5,  y:1.7, icon:'🪜', label:'消防梯',     scale:1.1 },
-      { id:'mold',      x:7.5,  y:1.7, icon:'🟢', label:'墙上的霉斑', scale:0.8 },
-      { id:'box',       x:2.5,  y:6.5, icon:'📦', label:'纸箱',       scale:0.9 },
-      { id:'cat',       x:3.5,  y:6.5, icon:'🐈',
-        label: () => F().bloodMode ? '干涸的水渍' : '大橘',
-        scale:0.9, cond: () => !F().catGone },
-      { id:'door',      x:10.5, y:5.5, icon:'🚪', label:'后门',       scale:1.1 },
-      { id:'powerDoor', x:7.5,  y:8.5, icon:'⚡', label:'配电房',     scale:0.9 },
-      { id:'back',      x:1.5,  y:5.5, icon:'⬅',  label:'回到雨巷',   scale:0.8 },
-      { id:'d_crate',   x:13.5, y:2.5, icon:'📦', decor:true, scale:0.8 },
-      { id:'d_pipe',    x:12.5, y:8.5, icon:'🪈', decor:true, scale:0.7 },
-      { id:'d_doll',    x:5.5,  y:3.5, icon:'🧸', decor:true, scale:0.6 }
+      { id:'stairs',    x:3.5,  y:1.7, icon:'🪢', label:'挂断绳的消防梯', scale:1.1 },
+      { id:'mold',      x:7.5,  y:1.7, icon:'🟥', label:'墙上的红斑',     scale:0.8 },
+      { id:'box',       x:2.5,  y:6.5, icon:'📦', label:'塌掉的纸箱',     scale:0.9 },
+      { id:'cat',       x:3.5,  y:6.5, icon:'🩸', label:'一团灰烬',       scale:0.9,
+        cond: () => !F().catGone },
+      { id:'door',      x:10.5, y:5.5, icon:'🚪', label:'后门',           scale:1.1 },
+      { id:'powerDoor', x:7.5,  y:8.5, icon:'⚡', label:'配电房',         scale:0.9 },
+      { id:'back',      x:1.5,  y:5.5, icon:'⬅',  label:'回到雨巷',       scale:0.8 }
     ]
   },
 
+  /* =====================================================
+     便利店 —— 老周关掉的店，货架上全是烧焦的罐头
+     ===================================================== */
   shop: {
-    wallTex: { type:'tile', base:'#c8d0d8', line:'rgba(0,0,0,0.25)', accent:'rgba(255,255,255,0.18)' },
+    wallTex: { type:'burnt', base:'#130b0a' },
+    floorTex: { base: '#0b0708' },
+    ceilTex: { base: '#050404' },
     spawn: { x:2.5, y:5.5, dir:0 },
     lights: [
-      { x:5.5, y:2.4, z:5.5, color: [1.6, 1.5, 1.2] },
-      { x:8.5, y:2.0, z:5.5, color: [0.5, 0.7, 1.0] }
+      { x:5.5, y:2.2, z:5.5, color: [1.0, 0.55, 0.25] },
+      { x:8.5, y:1.6, z:5.5, color: [0.4, 0.5, 0.8] }
     ],
     grid: [
       '11111111111',
@@ -107,25 +169,50 @@ window.__SCENES_3D__ = {
       '10000000001',
       '11111111111'
     ],
+    props: [
+      /* 货架（烧毁） */
+      { shape:'box', x:3.5, y:0, z:4.5, w:3.0, h:1.8, d:0.6, color:'#100a08' },
+      { shape:'box', x:3.5, y:1.8, z:4.5, w:3.2, h:0.1, d:0.7, color:'#0a0605' },
+      /* 散落的罐头（几个小柱体） */
+      { shape:'cyl', x:2.8, y:0, z:3.8, w:0.2, h:0.25, color:'#1a0a0a' },
+      { shape:'cyl', x:3.6, y:0, z:3.6, w:0.2, h:0.25, color:'#1a0a0a' },
+      { shape:'cyl', x:4.2, y:0, z:3.9, w:0.2, h:0.25, color:'#1a0a0a' },
+      /* 收银台（翻倒） */
+      { shape:'box', x:8.5, y:0, z:5.5, w:1.2, h:1.0, d:0.8, color:'#0f0a0a' },
+      { shape:'box', x:7.7, y:0, z:5.6, w:0.5, h:0.6, d:0.5, color:'#0a0606' },
+      /* 后窗（从窗户跳出去的痕迹） */
+      { shape:'plate', x:1.7, y:0.6, z:5.5, w:0.5, h:1.2, color:'#050408' },
+      /* 地板上的脚印（用几个矮圆盘拼） */
+      { shape:'low', x:2.5, y:0.005, z:6.5, w:0.16, h:0.02, color:'#1a0808' },
+      { shape:'low', x:3.0, y:0.005, z:6.3, w:0.16, h:0.02, color:'#1a0808' },
+      { shape:'low', x:3.5, y:0.005, z:6.5, w:0.16, h:0.02, color:'#1a0808' },
+      { shape:'low', x:4.5, y:0.005, z:6.7, w:0.22, h:0.02, color:'#2a0a0a' },
+      { shape:'low', x:5.2, y:0.005, z:6.4, w:0.22, h:0.02, color:'#2a0a0a' },
+      /* 墙上那张海报（烧了一半） */
+      { shape:'plate', x:5.5, y:1.2, z:1.7, w:0.7, h:0.9, color:'#1a1008' }
+    ],
     things: [
-      { id:'poster',   x:5.5, y:1.7, icon:'📜', label:'墙上海报',   scale:0.8 },
-      { id:'counter',  x:8.5, y:5.5, icon:'💳', label:'收银台',     scale:1.0 },
-      { id:'shelf',    x:3.5, y:4.5, icon:'📚', label:'货架',       scale:1.1 },
-      { id:'floor',    x:5.5, y:7.5, icon:'📐', label:'地板',       scale:0.7 },
-      { id:'window',   x:1.7, y:5.5, icon:'🪟', label:'后窗',       scale:0.8 },
-      { id:'back',     x:2.5, y:9.5, icon:'⬅',  label:'回到后巷',   scale:0.8 },
-      { id:'d_basket', x:4.5, y:2.5, icon:'🧺', decor:true, scale:0.7 },
-      { id:'d_mop',    x:7.5, y:2.5, icon:'🧹', decor:true, scale:0.8 }
+      { id:'poster',  x:5.5, y:1.7, icon:'📜', label:'烧了一半的海报', scale:0.8 },
+      { id:'counter', x:8.5, y:5.5, icon:'💳', label:'翻倒的收银台',   scale:1.0 },
+      { id:'shelf',   x:3.5, y:4.5, icon:'📚', label:'烧毁的货架',     scale:1.1 },
+      { id:'floor',   x:5.5, y:7.5, icon:'🐾', label:'地板上的脚印',   scale:0.7 },
+      { id:'window',  x:1.7, y:5.5, icon:'🪟', label:'后窗',           scale:0.8 },
+      { id:'back',    x:2.5, y:9.5, icon:'⬅',  label:'回到后巷',       scale:0.8 }
     ]
   },
 
+  /* =====================================================
+     街道 —— 火灾那晚的街道，封条、烧毁的自行车
+     ===================================================== */
   street: {
-    wallTex: { type:'brick', base:'#1c2430', mortar:'rgba(0,0,0,0.4)', accent:'rgba(180,210,255,0.03)' },
+    wallTex: { type:'burnt', base:'#120c0a' },
+    floorTex: { base: '#0a0806' },
+    ceilTex: { base: '#040404' },
     spawn: { x:2.5, y:5.5, dir:0 },
     rain: true,
     lights: [
-      { x:2.5,  y:2.4, z:1.7, color: [1.6, 1.2, 0.6] },
-      { x:11.5, y:2.0, z:5.5, color: [0.6, 0.9, 1.4] }
+      { x:2.5,  y:2.4, z:1.7, color: [1.0, 0.4, 0.2] },
+      { x:11.5, y:2.0, z:5.5, color: [0.5, 0.7, 1.0] }
     ],
     grid: [
       '1111111111111111',
@@ -139,30 +226,61 @@ window.__SCENES_3D__ = {
       '1000000000000001',
       '1111111111111111'
     ],
+    props: [
+      /* 路灯（只剩下杆） */
+      { shape:'cyl', x:2.5, y:0, z:1.7, w:0.16, h:2.4, color:'#100a08' },
+      /* 配电房门 */
+      { shape:'plate', x:4.5, y:0.0, z:1.7, w:0.8, h:1.5, color:'#0d0a08' },
+      /* 地下通道的入口（向下） */
+      { shape:'plate', x:6.5, y:0.0, z:1.7, w:0.9, h:0.06, color:'#050303' },
+      /* 河堤缺口 */
+      { shape:'plate', x:1.7, y:0.0, z:5.5, w:0.6, h:1.6, color:'#0a0808' },
+      /* 晾衣绳（还在，但绳上的东西掉光了） */
+      { shape:'cyl', x:4.5, y:2.0, z:4.5, w:0.04, h:0.04, color:'#2a2018' },
+      { shape:'cyl', x:5.5, y:2.0, z:4.5, w:0.04, h:0.04, color:'#2a2018' },
+      { shape:'cyl', x:6.5, y:2.0, z:4.5, w:0.04, h:0.04, color:'#2a2018' },
+      /* 铁门（贴着封条） */
+      { shape:'box', x:11.5, y:0, z:5.5, w:2.0, h:2.2, d:0.15, color:'#0d0a0a' },
+      { shape:'plate', x:11.5, y:1.3, z:5.35, w:0.8, h:0.12, color:'#3a0a0a' },
+      /* 烧毁的自行车 */
+      { shape:'cyl', x:8.5, y:0.2, z:3.5, w:0.5, h:0.4, color:'#0f0a08' },
+      { shape:'cyl', x:9.3, y:0.2, z:3.5, w:0.5, h:0.4, color:'#0f0a08' },
+      { shape:'box', x:8.9, y:0.5, z:3.5, w:0.9, h:0.15, d:0.15, color:'#100a08' },
+      /* 树（烧焦的主干） */
+      { shape:'cyl', x:13.5, y:0, z:2.5, w:0.4, h:2.2, color:'#0a0604' },
+      /* 信箱 */
+      { shape:'box', x:13.5, y:0.6, z:7.5, w:0.5, h:0.5, d:0.4, color:'#0f0a08' },
+      { shape:'cyl', x:13.5, y:0, z:7.5, w:0.1, h:0.6, color:'#0a0606' },
+      /* 消防栓 */
+      { shape:'cyl', x:14.5, y:0, z:8.5, w:0.25, h:0.7, color:'#2a0a0a' },
+      /* 项圈（地上） */
+      { shape:'low', x:5.5, y:0.02, z:6.5, w:0.35, h:0.02, color:'#4a2028' }
+    ],
     things: [
-      { id:'lamp',    x:2.5,  y:1.7, icon:'🏮', label:'路灯',       scale:0.9 },
-      { id:'power',   x:4.5,  y:1.7, icon:'⚡', label:'配电房',     scale:1.0 },
-      { id:'under',   x:6.5,  y:1.7, icon:'⬇',  label:'地下通道',   scale:0.9 },
-      { id:'river',   x:1.7,  y:5.5, icon:'🌊', label:'河堤',       scale:0.9 },
-      { id:'rope',    x:5.5,  y:4.5, icon:'🧵', label:'晾衣绳',     scale:0.7,
-        cond: () => !F().ropeTaken },
-      { id:'gate',    x:11.5, y:5.5, icon:'🚪', label:'铁门',       scale:1.2 },
-      { id:'tree',    x:13.5, y:2.5, icon:'🌳', label:'梧桐树',     scale:1.1 },
-      { id:'mailbox', x:13.5, y:7.5, icon:'📮', label:'信箱',       scale:0.8 },
-      { id:'fire',    x:14.5, y:8.5, icon:'🧯', label:'消防栓',     scale:0.7 },
-      { id:'back',    x:1.5,  y:5.5, icon:'⬅',  label:'回后巷',     scale:0.8 },
-      { id:'d_car',   x:8.5,  y:3.5, icon:'🚗', decor:true, scale:1.0 },
-      { id:'d_bin',   x:8.5,  y:7.5, icon:'🗑', decor:true, scale:0.8 },
-      { id:'d_sign',  x:10.5, y:1.7, icon:'🪧', decor:true, scale:0.8 }
+      { id:'lamp',    x:2.5,  y:1.7, icon:'🕯', label:'烧断的路灯',     scale:0.9 },
+      { id:'power',   x:4.5,  y:1.7, icon:'⚡', label:'配电房',         scale:1.0 },
+      { id:'under',   x:6.5,  y:1.7, icon:'⬇',  label:'地下通道',       scale:0.9 },
+      { id:'river',   x:1.7,  y:5.5, icon:'🌊', label:'河堤',           scale:0.9 },
+      { id:'rope',    x:5.5,  y:4.5, icon:'🧵', label:'晾衣绳',         scale:0.7 },
+      { id:'gate',    x:11.5, y:5.5, icon:'📜', label:'贴着封条的铁门', scale:1.2 },
+      { id:'tree',    x:13.5, y:2.5, icon:'🌳', label:'烧焦的梧桐',     scale:1.1 },
+      { id:'mailbox', x:13.5, y:7.5, icon:'📮', label:'信箱',           scale:0.8 },
+      { id:'fire',    x:14.5, y:8.5, icon:'🧯', label:'消防栓',         scale:0.7 },
+      { id:'back',    x:1.5,  y:5.5, icon:'⬅',  label:'回后巷',         scale:0.8 }
     ]
   },
 
+  /* =====================================================
+     门前 —— 烧过的院子，台阶上有两串脚印
+     ===================================================== */
   doorstep: {
-    wallTex: { type:'brick', base:'#3a2a20', mortar:'rgba(0,0,0,0.35)', accent:'rgba(255,240,200,0.05)' },
+    wallTex: { type:'burnt', base:'#150d0a' },
+    floorTex: { base: '#0a0605' },
+    ceilTex: { base: '#040202' },
     spawn: { x:2.5, y:8.5, dir:0 },
     lights: [
-      { x:6.5, y:2.0, z:1.7, color: [1.8, 1.2, 0.5] },
-      { x:4.5, y:1.8, z:4.5, color: [0.4, 0.4, 0.6] }
+      { x:6.5, y:2.0, z:1.7, color: [1.0, 0.4, 0.15] },
+      { x:4.5, y:1.6, z:4.5, color: [0.35, 0.35, 0.5] }
     ],
     grid: [
       '1111111111111',
@@ -177,23 +295,48 @@ window.__SCENES_3D__ = {
       '1000000000001',
       '1111111111111'
     ],
+    props: [
+      /* 窗户（烧穿） */
+      { shape:'plate', x:4.5, y:1.2, z:1.7, w:1.0, h:1.2, color:'#050304' },
+      /* 门灯（烧化了） */
+      { shape:'box', x:6.5, y:2.2, z:1.7, w:0.2, h:0.1, d:0.2, color:'#0a0604' },
+      /* 门（烧了一半） */
+      { shape:'plate', x:6.5, y:0.0, z:4.5, w:1.1, h:2.0, color:'#0a0605' },
+      /* 台阶 —— 两层 */
+      { shape:'box', x:6.5, y:0, z:7.5, w:2.0, h:0.12, d:0.5, color:'#0d0908' },
+      { shape:'box', x:6.5, y:0.12, z:7.0, w:1.6, h:0.12, d:0.5, color:'#0f0a08' },
+      /* 台阶上的脚印 —— 一串小（灰豆跑出去），一串大（老周追出来） */
+      { shape:'low', x:6.2, y:0.14, z:6.8, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:6.6, y:0.14, z:6.6, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:6.9, y:0.14, z:6.4, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:6.4, y:0.02, z:8.0, w:0.22, h:0.01, color:'#2a0a0a' },
+      { shape:'low', x:6.0, y:0.02, z:8.4, w:0.22, h:0.01, color:'#2a0a0a' },
+      /* 盆栽（烧焦） */
+      { shape:'cyl', x:9.5, y:0, z:2.5, w:0.4, h:0.4, color:'#0a0605' },
+      { shape:'cyl', x:9.5, y:0.4, z:2.5, w:0.15, h:0.4, color:'#0a0404' },
+      /* 地垫（烧焦） */
+      { shape:'plate', x:8.5, y:0.01, z:6.5, w:0.7, h:0.03, color:'#0a0606' }
+    ],
     things: [
-      { id:'window',  x:4.5, y:1.7, icon:'🪟', label:'窗户',       scale:1.0 },
-      { id:'lamp',    x:6.5, y:1.7, icon:'🏮', label:'门灯',       scale:0.7 },
-      { id:'door',    x:6.5, y:4.5, icon:'🚪', label:'门',         scale:1.2 },
-      { id:'steps',   x:6.5, y:7.5, icon:'🪜', label:'台阶',       scale:0.6 },
-      { id:'back',    x:2.5, y:5.5, icon:'⬅',  label:'回到街道',   scale:0.8 },
-      { id:'d_plant', x:9.5, y:2.5, icon:'🪴', decor:true, scale:0.8 },
-      { id:'d_mat',   x:8.5, y:6.5, icon:'🧻', decor:true, scale:0.5 }
+      { id:'window', x:4.5, y:1.7, icon:'🪟', label:'烧穿的窗户',     scale:1.0 },
+      { id:'lamp',   x:6.5, y:1.7, icon:'🕯', label:'烧化的门灯',     scale:0.7 },
+      { id:'door',   x:6.5, y:4.5, icon:'🚪', label:'门',             scale:1.2 },
+      { id:'steps',  x:6.5, y:7.5, icon:'🐾', label:'台阶上的脚印',   scale:0.6 },
+      { id:'back',   x:2.5, y:5.5, icon:'⬅',  label:'回到街道',       scale:0.8 }
     ]
   },
 
+  /* =====================================================
+     红屋顶 —— 火灾后的内部，摇椅翻倒，碗还在
+     ===================================================== */
   house: {
-    wallTex: { type:'wood', base:'#5a3a20', line:'rgba(0,0,0,0.35)' },
+    wallTex: { type:'burnt', base:'#100806' },
+    floorTex: { base: '#0c0604' },
+    ceilTex: { base: '#030202' },
     spawn: { x:5.5, y:5.5, dir:Math.PI },
     lights: [
-      { x:5.5, y:2.4, z:5.5, color: [1.8, 1.4, 0.9] },
-      { x:9.5, y:2.0, z:3.5, color: [1.4, 1.0, 0.5] }
+      { x:5.5, y:2.3, z:5.5, color: [1.0, 0.5, 0.25] },
+      { x:9.5, y:1.6, z:3.5, color: [0.8, 0.3, 0.2] }
     ],
     grid: [
       '11111111111',
@@ -207,27 +350,53 @@ window.__SCENES_3D__ = {
       '10000000001',
       '11111111111'
     ],
+    props: [
+      /* 窗户（从里面看，外面是黑的） */
+      { shape:'plate', x:2.5, y:1.4, z:1.7, w:1.0, h:1.0, color:'#040204' },
+      /* 挂钟（停了） */
+      { shape:'plate', x:5.5, y:1.6, z:1.7, w:0.5, h:0.5, color:'#100a06' },
+      /* 书架（烧了一半，只剩骨架） */
+      { shape:'box', x:1.7, y:0, z:4.5, w:0.4, h:2.0, d:0.9, color:'#0a0605' },
+      /* 台灯（只剩铁架） */
+      { shape:'cyl', x:9.5, y:0.5, z:3.5, w:0.12, h:0.8, color:'#0a0605' },
+      { shape:'cyl', x:9.5, y:0, z:3.5, w:0.35, h:0.5, color:'#0a0605' },
+      /* 相框（玻璃碎了，照片烧了一角） */
+      { shape:'box', x:5.5, y:0.9, z:8.5, w:0.8, h:0.6, d:0.05, color:'#100a06' },
+      /* 摇椅（翻倒） */
+      { shape:'box', x:2.5, y:0, z:7.5, w:0.8, h:0.15, d:1.0, color:'#0a0605' },
+      { shape:'box', x:2.5, y:0.15, z:7.9, w:0.8, h:0.6, d:0.15, color:'#0a0605' },
+      /* 小碗（在角落，碗底结了一层黑） */
+      { shape:'low', x:3.5, y:0.02, z:8.5, w:0.35, h:0.12, color:'#1a0a08' },
+      /* 天花板塌了一角 —— 用一块白色平面表示 */
+      { shape:'plate', x:5.5, y:0.5, z:4.0, w:1.5, h:0.6, color:'#1a1008' },
+      /* 地板上的灰烬 */
+      { shape:'low', x:5.5, y:0.005, z:5.5, w:1.8, h:0.02, color:'#1a0a08' },
+      /* 门口 */
+      { shape:'plate', x:5.5, y:0.0, z:1.5, w:1.2, h:2.0, color:'#060404' }
+    ],
     things: [
-      { id:'window',  x:2.5, y:1.7, icon:'🪟', label:'窗户',       scale:1.1 },
-      { id:'clock',   x:5.5, y:1.7, icon:'🕰', label:'挂钟',       scale:0.8 },
-      { id:'books',   x:1.7, y:4.5, icon:'📚', label:'书架',       scale:0.9 },
-      { id:'lamp',    x:9.5, y:3.5, icon:'💡', label:'台灯',       scale:0.8 },
-      { id:'frame',   x:5.5, y:8.5, icon:'🖼', label:'相框',       scale:0.9 },
-      { id:'chair',   x:2.5, y:7.5, icon:'🪑', label:'摇椅',       scale:1.0 },
-      { id:'bowl',    x:3.5, y:8.5, icon:'🥣', label:'小碗',       scale:0.6 },
-      { id:'back',    x:1.5, y:5.5, icon:'⬅',  label:'回到门前',   scale:0.8 },
-      { id:'d_plant', x:8.5, y:1.7, icon:'🪴', decor:true, scale:0.8 },
-      { id:'d_candle',x:7.5, y:8.5, icon:'🕯', decor:true, scale:0.5 },
-      { id:'d_rug',   x:5.5, y:5.5, icon:'🟫', decor:true, scale:0.5 }
+      { id:'window', x:2.5, y:1.7, icon:'🪟', label:'窗户',           scale:1.1 },
+      { id:'clock',  x:5.5, y:1.7, icon:'🕰', label:'停了的挂钟',     scale:0.8 },
+      { id:'books',  x:1.7, y:4.5, icon:'📚', label:'烧掉的书架',     scale:0.9 },
+      { id:'lamp',   x:9.5, y:3.5, icon:'💡', label:'台灯的铁架',     scale:0.8 },
+      { id:'frame',  x:5.5, y:8.5, icon:'🖼', label:'烧焦的相框',     scale:0.9 },
+      { id:'chair',  x:2.5, y:7.5, icon:'🪑', label:'翻倒的摇椅',     scale:1.0 },
+      { id:'bowl',   x:3.5, y:8.5, icon:'🥣', label:'小碗',           scale:0.6 },
+      { id:'back',   x:1.5, y:5.5, icon:'⬅',  label:'回到门前',       scale:0.8 }
     ]
   },
 
+  /* =====================================================
+     配电房 —— 老周拉下的最后一个电闸
+     ===================================================== */
   powerstation: {
-    wallTex: { type:'metal', base:'#3a4048', line:'rgba(0,0,0,0.4)' },
+    wallTex: { type:'burnt', base:'#0e0c0c' },
+    floorTex: { base: '#080606' },
+    ceilTex: { base: '#030303' },
     spawn: { x:2.5, y:5.5, dir:0 },
     lights: [
-      { x:5.5, y:2.4, z:5.5, color: [0.7, 0.9, 1.2] },
-      { x:1.7, y:2.0, z:3.5, color: [1.2, 0.4, 0.3] }
+      { x:5.5, y:2.3, z:5.5, color: [0.8, 0.55, 0.3] },
+      { x:1.7, y:2.0, z:3.5, color: [1.2, 0.3, 0.2] }
     ],
     grid: [
       '1111111111',
@@ -240,22 +409,42 @@ window.__SCENES_3D__ = {
       '1000000001',
       '1111111111'
     ],
+    props: [
+      /* 配电柜 */
+      { shape:'box', x:8.5, y:0, z:3.5, w:1.2, h:2.0, d:0.8, color:'#0d0a08' },
+      /* 主电源手柄（断了） */
+      { shape:'box', x:8.5, y:1.3, z:3.5, w:0.4, h:0.2, d:0.1, color:'#2a0808' },
+      { shape:'cyl', x:8.5, y:0.6, z:3.1, w:0.1, h:0.4, color:'#1a0606' },
+      /* 保险丝盒（面板烧黑） */
+      { shape:'box', x:1.7, y:0.8, z:3.5, w:0.6, h:1.2, d:0.2, color:'#0d0a08' },
+      /* 工作台（烧了一半） */
+      { shape:'box', x:5.5, y:0, z:7.5, w:1.6, h:0.7, d:0.9, color:'#0d0a08' },
+      /* 日志（摊在台上） */
+      { shape:'plate', x:5.5, y:0.7, z:7.5, w:0.6, h:0.4, color:'#2a1a10' },
+      /* 应急灯 */
+      { shape:'cyl', x:1.7, y:2.2, z:1.7, w:0.25, h:0.15, color:'#1a0606' },
+      /* 电线（从天花板垂下） */
+      { shape:'cyl', x:5.5, y:0.5, z:1.7, w:0.05, h:1.8, color:'#0a0606' }
+    ],
     things: [
-      { id:'breaker', x:8.5, y:3.5, icon:'⚡', label:'电闸',       scale:1.0 },
-      { id:'fuse',    x:1.7, y:3.5, icon:'🔌', label:'保险丝盒',   scale:0.9 },
-      { id:'log',     x:5.5, y:7.5, icon:'📓', label:'工作日志',   scale:0.8 },
-      { id:'back',    x:1.5, y:5.5, icon:'⬅',  label:'回去',       scale:0.8 },
-      { id:'d_wire',  x:5.5, y:1.7, icon:'🪢', decor:true, scale:0.6 },
-      { id:'d_warn',  x:7.5, y:1.7, icon:'⚠',  decor:true, scale:0.8 }
+      { id:'breaker', x:8.5, y:3.5, icon:'⚡', label:'断了的电闸',     scale:1.0 },
+      { id:'fuse',    x:1.7, y:3.5, icon:'🔌', label:'保险丝盒',       scale:0.9 },
+      { id:'log',     x:5.5, y:7.5, icon:'📓', label:'工作日志',       scale:0.8 },
+      { id:'back',    x:1.5, y:5.5, icon:'⬅',  label:'回去',           scale:0.8 }
     ]
   },
 
+  /* =====================================================
+     屋顶 —— 灰豆当年跳出去的地方，栏杆上挂着断绳
+     ===================================================== */
   rooftop: {
-    wallTex: { type:'brick', base:'#1a2028', mortar:'rgba(0,0,0,0.5)' },
+    wallTex: { type:'burnt', base:'#0c0a08' },
+    floorTex: { base: '#060604' },
+    ceilTex: { base: '#020203' },
     spawn: { x:5.5, y:7.5, dir:Math.PI },
     lights: [
-      { x:5.5,  y:3.2, z:5.5, color: [0.3, 0.4, 0.7] },
-      { x:11.5, y:1.8, z:2.5, color: [1.4, 0.8, 0.4] }
+      { x:5.5,  y:3.2, z:5.5, color: [0.35, 0.35, 0.6] },
+      { x:11.5, y:1.5, z:2.5, color: [1.0, 0.35, 0.15] }
     ],
     grid: [
       '111111111111111',
@@ -270,23 +459,46 @@ window.__SCENES_3D__ = {
       '100000000000001',
       '111111111111111'
     ],
+    props: [
+      /* 天线（锈） */
+      { shape:'cyl', x:2.5, y:0, z:1.7, w:0.12, h:2.5, color:'#0d0908' },
+      { shape:'cyl', x:2.5, y:2.2, z:1.7, w:0.4, h:0.06, color:'#0d0908' },
+      /* 水塔 */
+      { shape:'cyl', x:13.5, y:0, z:1.7, w:0.9, h:1.2, color:'#0a0806' },
+      { shape:'cyl', x:13.5, y:1.2, z:1.7, w:1.0, h:0.1, color:'#0a0806' },
+      /* 晾衣架 */
+      { shape:'cyl', x:6.5, y:0, z:2.5, w:0.08, h:2.0, color:'#0a0606' },
+      { shape:'cyl', x:6.5, y:2.0, z:2.5, w:0.04, h:0.04, color:'#0a0606' },
+      /* 远处的红屋顶 —— 烧成焦黑空壳 */
+      { shape:'box', x:11.5, y:0, z:2.5, w:1.5, h:1.2, d:1.2, color:'#0a0404' },
+      { shape:'box', x:11.5, y:1.2, z:2.5, w:1.6, h:0.15, d:1.3, color:'#080303' },
+      /* 二楼那扇窗的暗红 */
+      { shape:'plate', x:11.5, y:1.6, z:2.5, w:0.5, h:0.4, color:'#3a0808' },
+      /* 栏杆上的断绳 */
+      { shape:'cyl', x:7.0, y:0.5, z:4.0, w:0.05, h:1.5, color:'#2a1810' },
+      /* 栏杆（矮墙） */
+      { shape:'box', x:5.5, y:0, z:5.5, w:3.0, h:0.7, d:0.2, color:'#0a0806' }
+    ],
     things: [
-      { id:'antenna',   x:2.5,  y:1.7, icon:'📡', label:'旧天线',       scale:1.1 },
-      { id:'watertank', x:13.5, y:1.7, icon:'🛢', label:'水塔',         scale:1.1 },
-      { id:'hang',      x:6.5,  y:2.5, icon:'🧵', label:'晾衣架',       scale:0.8 },
-      { id:'houseroof', x:11.5, y:2.5, icon:'🏠', label:'远处的红屋顶', scale:1.0 },
-      { id:'back',      x:1.5,  y:5.5, icon:'⬅',  label:'回到后巷',     scale:0.8 },
-      { id:'d_star',    x:4.5,  y:1.7, icon:'⭐', decor:true, scale:0.6 },
-      { id:'d_bird',    x:9.5,  y:2.5, icon:'🐦', decor:true, scale:0.5 }
+      { id:'antenna',   x:2.5,  y:1.7, icon:'📡', label:'锈天线',         scale:1.1 },
+      { id:'watertank', x:13.5, y:1.7, icon:'🛢', label:'水塔',           scale:1.1 },
+      { id:'hang',      x:6.5,  y:2.5, icon:'🧵', label:'晾衣架',         scale:0.8 },
+      { id:'houseroof', x:11.5, y:2.5, icon:'🏠', label:'远处的焦黑屋顶', scale:1.0 },
+      { id:'back',      x:1.5,  y:5.5, icon:'⬅',  label:'回到后巷',       scale:0.8 }
     ]
   },
 
+  /* =====================================================
+     地下通道 —— 灰豆当年躲藏的地方
+     ===================================================== */
   underpass: {
-    wallTex: { type:'brick', base:'#1a2028', mortar:'rgba(0,0,0,0.55)' },
+    wallTex: { type:'burnt', base:'#0e0e10' },
+    floorTex: { base: '#060606' },
+    ceilTex: { base: '#030303' },
     spawn: { x:2.5, y:5.5, dir:0 },
     lights: [
-      { x:2.5, y:2.4, z:1.7, color: [0.8, 0.9, 1.1] },
-      { x:7.5, y:2.2, z:1.7, color: [0.5, 1.2, 0.8] }
+      { x:2.5, y:2.3, z:1.7, color: [0.7, 0.8, 1.0] },
+      { x:7.5, y:2.2, z:1.7, color: [0.4, 1.0, 0.6] }
     ],
     grid: [
       '1111111111111',
@@ -300,24 +512,44 @@ window.__SCENES_3D__ = {
       '1000000000001',
       '1111111111111'
     ],
+    props: [
+      /* 楼梯 */
+      { shape:'box', x:2.5, y:0, z:1.7, w:1.2, h:0.3, d:0.8, color:'#0a0808' },
+      /* 墙上的字（老周的笔迹） */
+      { shape:'plate', x:4.5, y:1.0, z:1.7, w:1.2, h:0.6, color:'#1a1008' },
+      /* 应急灯 */
+      { shape:'box', x:7.5, y:2.2, z:1.7, w:0.3, h:0.15, d:0.15, color:'#0a1408' },
+      /* 角落里的纸板堆（灰豆睡过的地方） */
+      { shape:'box', x:8.5, y:0, z:8.5, w:1.0, h:0.15, d:0.8, color:'#1a1208' },
+      { shape:'box', x:8.5, y:0.15, z:8.5, w:0.7, h:0.12, d:0.6, color:'#1a1208' },
+      { shape:'low', x:8.5, y:0.28, z:8.5, w:0.6, h:0.05, color:'#100a06' },
+      /* 配电房的门（这里能看到，但进不去） */
+      { shape:'plate', x:10.5, y:0.0, z:5.5, w:0.8, h:1.6, color:'#0a0806' },
+      /* 地面积水 */
+      { shape:'low', x:5.5, y:0.005, z:5.5, w:1.4, h:0.02, color:'#0a1018' }
+    ],
     things: [
-      { id:'stairs',    x:2.5,  y:1.7, icon:'🪜', label:'上方的楼梯', scale:1.0 },
-      { id:'graffiti',  x:4.5,  y:1.7, icon:'🖍', label:'墙上的涂鸦', scale:0.8 },
-      { id:'emergency', x:7.5,  y:1.7, icon:'💡', label:'应急灯',     scale:0.7 },
-      { id:'trash',     x:8.5,  y:8.5, icon:'🗑', label:'垃圾桶',     scale:0.9 },
-      { id:'room',      x:10.5, y:5.5, icon:'⚡', label:'配电房的门', scale:0.9 },
-      { id:'back',      x:1.5,  y:5.5, icon:'⬅',  label:'回到街道',   scale:0.8 },
-      { id:'d_puddle',  x:5.5,  y:5.5, icon:'💧', decor:true, scale:0.5 }
+      { id:'stairs',    x:2.5,  y:1.7, icon:'🪜', label:'上方的楼梯',     scale:1.0 },
+      { id:'graffiti',  x:4.5,  y:1.7, icon:'✍',  label:'墙上的字',       scale:0.8 },
+      { id:'emergency', x:7.5,  y:1.7, icon:'💡', label:'应急灯',         scale:0.7 },
+      { id:'trash',     x:8.5,  y:8.5, icon:'📦', label:'角落里的纸板',   scale:0.9 },
+      { id:'room',      x:10.5, y:5.5, icon:'⚡', label:'配电房的门',     scale:0.9 },
+      { id:'back',      x:1.5,  y:5.5, icon:'⬅',  label:'回到街道',       scale:0.8 }
     ]
   },
 
+  /* =====================================================
+     河堤 —— 灰豆当年想跳下去的地方
+     ===================================================== */
   riverside: {
-    wallTex: { type:'brick', base:'#1a2230', mortar:'rgba(0,0,0,0.45)' },
+    wallTex: { type:'burnt', base:'#0c0a0c' },
+    floorTex: { base: '#060608' },
+    ceilTex: { base: '#020203' },
     spawn: { x:2.5, y:5.5, dir:0 },
     rain: true,
     lights: [
-      { x:2.5, y:2.4, z:1.7, color: [1.6, 1.2, 0.5] },
-      { x:5.5, y:1.5, z:8.5, color: [0.4, 0.6, 1.0] }
+      { x:2.5, y:2.4, z:1.7, color: [0.9, 0.35, 0.15] },
+      { x:5.5, y:1.2, z:8.5, color: [0.25, 0.35, 0.6] }
     ],
     grid: [
       '1111111111111',
@@ -330,23 +562,49 @@ window.__SCENES_3D__ = {
       '1000000000001',
       '1111111111111'
     ],
+    props: [
+      /* 路灯（灭了） */
+      { shape:'cyl', x:2.5, y:0, z:1.7, w:0.16, h:2.3, color:'#0d0908' },
+      /* 长椅（上面有一件外套） */
+      { shape:'box', x:5.5, y:0.6, z:1.7, w:1.6, h:0.1, d:0.5, color:'#0a0605' },
+      { shape:'box', x:5.5, y:0, z:1.7, w:0.1, h:0.6, d:0.5, color:'#0a0605' },
+      { shape:'box', x:5.5, y:0.7, z:1.7, w:1.4, h:0.15, d:0.4, color:'#1a0e08' },
+      /* 丢弃的伞（塌了） */
+      { shape:'cyl', x:8.5, y:0, z:1.7, w:0.06, h:1.0, color:'#0a0606' },
+      { shape:'low', x:8.5, y:1.0, z:1.7, w:0.9, h:0.15, color:'#1a0808' },
+      /* 栏杆（灰豆紧紧抓过的） */
+      { shape:'box', x:5.5, y:0.9, z:4.5, w:4.0, h:0.1, d:0.1, color:'#0a0806' },
+      { shape:'cyl', x:2.5, y:0, z:4.5, w:0.08, h:1.0, color:'#0a0806' },
+      { shape:'cyl', x:8.5, y:0, z:4.5, w:0.08, h:1.0, color:'#0a0806' },
+      /* 栏杆上的爪印 —— 几块小小的“扣痕” */
+      { shape:'low', x:5.0, y:1.0, z:4.4, w:0.1, h:0.02, color:'#2a0a0a' },
+      { shape:'low', x:5.3, y:1.0, z:4.4, w:0.1, h:0.02, color:'#2a0a0a' },
+      { shape:'low', x:5.6, y:1.0, z:4.4, w:0.1, h:0.02, color:'#2a0a0a' },
+      /* 河面（一块很暗的平面） */
+      { shape:'plate', x:5.5, y:0.02, z:8.5, w:6.0, h:0.03, color:'#030408' },
+      /* 一张烧过的照片（漂浮在河面上） */
+      { shape:'low', x:6.5, y:0.04, z:8.5, w:0.35, h:0.01, color:'#2a1a10' }
+    ],
     things: [
-      { id:'lamp',     x:2.5, y:1.7, icon:'🏮', label:'路灯',       scale:0.9 },
-      { id:'bench',    x:5.5, y:1.7, icon:'🪑', label:'长椅',       scale:1.0 },
-      { id:'umbrella', x:8.5, y:1.7, icon:'☂',  label:'丢弃的伞',   scale:0.9 },
-      { id:'river',    x:5.5, y:8.5, icon:'🌊', label:'河面',       scale:1.2 },
-      { id:'back',     x:1.5, y:5.5, icon:'⬅',  label:'回到街道',   scale:0.8 },
-      { id:'d_boat',   x:9.5, y:8.5, icon:'⛵', decor:true, scale:0.9 },
-      { id:'d_reed',   x:3.5, y:8.5, icon:'🌾', decor:true, scale:0.7 }
+      { id:'lamp',     x:2.5, y:1.7, icon:'🕯', label:'熄灭的路灯',     scale:0.9 },
+      { id:'bench',    x:5.5, y:1.7, icon:'🧥', label:'长椅上的旧外套', scale:1.0 },
+      { id:'umbrella', x:8.5, y:1.7, icon:'☂',  label:'丢弃的伞',       scale:0.9 },
+      { id:'river',    x:5.5, y:8.5, icon:'🌊', label:'河面',           scale:1.2 },
+      { id:'back',     x:1.5, y:5.5, icon:'⬅',  label:'回到街道',       scale:0.8 }
     ]
   },
 
+  /* =====================================================
+     邻屋 —— 火灾那晚，邻居从窗户看着对面烧起来
+     ===================================================== */
   neighbor: {
-    wallTex: { type:'burnt', base:'#120806' },
+    wallTex: { type:'burnt', base:'#0a0606' },
+    floorTex: { base: '#060404' },
+    ceilTex: { base: '#020202' },
     spawn: { x:2.5, y:5.5, dir:0 },
     lights: [
-      { x:5.5, y:2.0, z:1.7, color: [1.2, 0.4, 0.3] },
-      { x:9.5, y:1.6, z:5.5, color: [0.5, 0.3, 0.3] }
+      { x:5.5, y:2.0, z:1.7, color: [1.2, 0.35, 0.2] },
+      { x:9.5, y:1.6, z:5.5, color: [0.3, 0.25, 0.3] }
     ],
     grid: [
       '1111111111111',
@@ -360,15 +618,37 @@ window.__SCENES_3D__ = {
       '1000000000001',
       '1111111111111'
     ],
+    props: [
+      /* 窗户（对着红屋顶房子） */
+      { shape:'plate', x:5.5, y:1.2, z:1.7, w:1.6, h:1.4, color:'#0a0404' },
+      /* 窗外那栋房子的暗红窗 */
+      { shape:'plate', x:5.5, y:1.5, z:1.65, w:0.5, h:0.35, color:'#3a0808' },
+      /* 日历 */
+      { shape:'plate', x:2.5, y:1.6, z:1.7, w:0.5, h:0.7, color:'#2a1e10' },
+      /* 小床（塌了一半） */
+      { shape:'box', x:9.5, y:0, z:5.5, w:2.0, h:0.5, d:1.0, color:'#0a0605' },
+      { shape:'box', x:9.5, y:0.5, z:5.5, w:1.8, h:0.1, d:0.9, color:'#1a1008' },
+      /* 床上的凹陷（一个矮圆盘） */
+      { shape:'low', x:9.5, y:0.55, z:5.5, w:0.8, h:0.04, color:'#0a0605' },
+      /* 地板上的爪印（灰豆在这里坐过很多天） */
+      { shape:'low', x:5.5, y:0.005, z:4.0, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:5.5, y:0.005, z:5.5, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:5.5, y:0.005, z:7.0, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:7.5, y:0.005, z:5.5, w:0.14, h:0.01, color:'#1a0808' },
+      /* 角落的灰烬 */
+      { shape:'low', x:7.5, y:0.005, z:1.7, w:0.7, h:0.03, color:'#1a0a08' },
+      /* 通向门前院子的门 */
+      { shape:'plate', x:11.5, y:0.0, z:5.5, w:1.0, h:2.0, color:'#060404' },
+      /* 来的路 —— 通回街道的门 */
+      { shape:'plate', x:2.5, y:0.0, z:9.5, w:1.2, h:2.0, color:'#080606' }
+    ],
     things: [
-      { id:'neighborWindow',   x:5.5,  y:1.7, icon:'🪟', label:'窗户',         scale:1.1 },
-      { id:'neighborCalendar', x:2.5,  y:1.7, icon:'📅', label:'日历',         scale:0.8 },
-      { id:'neighborFloor',    x:5.5,  y:5.5, icon:'🐾', label:'地板上的爪印', scale:0.7 },
-      { id:'neighborBed',      x:9.5,  y:5.5, icon:'🛏', label:'小床',         scale:1.0 },
-      { id:'back',             x:2.5,  y:9.5, icon:'⬅',  label:'来的路',       scale:0.8 },
-      { id:'exit',             x:11.5, y:5.5, icon:'➡',  label:'通向院子的门', scale:0.9 },
-      { id:'d_ash',            x:7.5,  y:1.7, icon:'🪵', decor:true, scale:0.6 },
-      { id:'d_smoke',          x:3.5,  y:8.5, icon:'💨', decor:true, scale:0.7 }
+      { id:'neighborWindow',   x:5.5,  y:1.7, icon:'🪟', label:'对着红屋顶的窗户', scale:1.1 },
+      { id:'neighborCalendar', x:2.5,  y:1.7, icon:'📅', label:'停在那一夜的日历', scale:0.8 },
+      { id:'neighborFloor',    x:5.5,  y:5.5, icon:'🐾', label:'地板上的爪印',     scale:0.7 },
+      { id:'neighborBed',      x:9.5,  y:5.5, icon:'🛏', label:'塌了一半的小床',   scale:1.0 },
+      { id:'back',             x:2.5,  y:9.5, icon:'⬅',  label:'来的路',           scale:0.8 },
+      { id:'exit',             x:11.5, y:5.5, icon:'➡',  label:'通向院子的门',     scale:0.9 }
     ]
   }
 };
