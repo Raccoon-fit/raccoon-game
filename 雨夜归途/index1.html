@@ -433,12 +433,6 @@ body.streamer-mode #btnTempLight{display:inline-flex;}
         <h3>设 置</h3>
         <div class="row"><span>提示</span>
           <button class="highlight-btn" id="btnHighlight">🔍 高亮可交互（5秒）</button></div>
-        <div class="row"><span>视图</span>
-          <div class="opts" data-key="viewMode">
-            <button data-v="2d">2D 平面</button>
-            <button data-v="3d">3D 沉浸 ✦</button>
-          </div>
-        </div>
         <div class="row"><span>帧率</span>
           <div class="opts" data-key="fps">
             <button data-v="30">30</button><button data-v="45">45</button><button data-v="60">60</button></div></div>
@@ -469,11 +463,12 @@ body.streamer-mode #btnTempLight{display:inline-flex;}
         <button id="warnConfirm">确 认 清 除</button>
       </div></div></div>
     <div id="bloodWarnMask"><div id="bloodWarnBox">
-      <div class="warn-ic">🩸</div><h4>暗 色 分 支</h4>
-      <p>即将进入<span class="hl">暗色分支</span>。</p>
+      <div class="warn-ic">🩸</div><h4>暗 夜 模 式</h4>
+      <p>即将进入<span class="hl">暗夜模式</span>。</p>
       <p>这里没有回头的路——也回不到原来的雨夜。</p>
       <p>画面上会出现<span class="hl">令你不适的内容</span>。</p>
-      <p>暗色分支的物品与主线<span class="hl">互不相通</span>。</p>
+      <p>暗夜模式的物品与主线<span class="hl">互不相通</span>。</p>
+      <p>视图会切换为 <span class="hl">3D 第一人称</span>。</p>
       <p>若你只想走主线，请点击<span class="hl">「离 开」</span>。</p>
       <div class="warn-btns">
         <button id="bloodCancel">离 开</button>
@@ -482,11 +477,11 @@ body.streamer-mode #btnTempLight{display:inline-flex;}
     </div></div>
     <div id="streamerWarnMask"><div id="streamerWarnBox">
       <div class="warn-ic">ℹ️</div><h4>主 播 模 式 提 醒</h4>
-      <p>当前已处于<span class="hl">暗色支线</span>。</p>
+      <p>当前已处于<span class="hl">暗夜模式</span>。</p>
       <p>主播模式的各项权益<span class="hl">依然生效</span>——</p>
       <p>物品名称常显、粉丝团提示、状态徽标。</p>
-      <p>但<span class="hl">「临时点亮全局」在支线里不可用</span>。</p>
-      <p>暗色支线的画面与文字也会<span class="hl">完整保留</span>。</p>
+      <p>但<span class="hl">「临时点亮全局」在暗夜里不可用</span>。</p>
+      <p>暗夜模式的画面与文字也会<span class="hl">完整保留</span>。</p>
       <div class="warn-btns">
         <button id="streamerOkBtn">知 道 了</button>
       </div>
@@ -494,10 +489,10 @@ body.streamer-mode #btnTempLight{display:inline-flex;}
     <div id="streamerBlockMask"><div id="streamerBlockBox">
       <div class="warn-ic">🚫</div><h4>暂 时 无 法 进 入</h4>
       <p>当前处于<span class="hl">主播模式</span>，</p>
-      <p>暗色支线<span class="hl">已被拦截</span>。</p>
+      <p>暗夜模式<span class="hl">已被拦截</span>。</p>
       <p>如果你想体验这段内容，可以：</p>
-      <p>① 先关闭主播模式 → ② 进入暗色支线 → ③ 再开启主播模式。</p>
-      <p>（暗色内容会保留，主播模式的各项权益也会生效。）</p>
+      <p>① 先关闭主播模式 → ② 进入暗夜模式 → ③ 再开启主播模式。</p>
+      <p>（暗夜内容会保留，主播模式的各项权益也会生效。）</p>
       <div class="warn-btns">
         <button id="streamerBlockOk">知 道 了</button>
       </div>
@@ -585,7 +580,7 @@ document.getElementById('btnForce').addEventListener('click', function(){
   document.body.classList.add('forceLand'); setTimeout(resize, 60);
 });
 
-var settings = { fps:'60', quality:'high', textSpeed:'normal', fontSize:19, streamerMode:'off', viewMode:'2d' };
+var settings = { fps:'60', quality:'high', textSpeed:'normal', fontSize:19, streamerMode:'off' };
 try{
   var _d = JSON.parse(localStorage.getItem(SET_KEY) || '{}');
   Object.keys(settings).forEach(function(k){ if(k in _d) settings[k] = _d[k]; });
@@ -609,15 +604,6 @@ function applySettings(){
     S.flags.streamerMode = isStreamer;
   }
   syncState();
-
-  /* ★ 视图模式切换：重建 iframe */
-  if(lastViewMode !== settings.viewMode){
-    lastViewMode = settings.viewMode;
-    if(S && SCENES[S.scene]){
-      showLoading(SCENES[S.scene].label);
-      createGameFrame(sceneURL(S.scene));
-    }
-  }
 
   if(isStreamer && S && S.flags && S.flags.bloodMode && !streamerWarnShownThisSession){
     streamerWarnShownThisSession = true;
@@ -646,14 +632,13 @@ var endingShown = false;
 var endingLock = false;
 var bloodPuddleCount = 0;
 
-/* ★ 按当前视图模式返回 iframe url */
+/* ★ 暗夜模式走 3D，主线走 2D */
 function sceneURL(name){
-  if(settings.viewMode === '3d'){
-    return 'assets3d/scene.html?id=' + name;
+  if(S && S.flags && S.flags.bloodMode){
+    return 'assets3d/scene.html?id=' + name + '&blood=1';
   }
   return SCENES[name].url;
 }
-var lastViewMode = settings.viewMode;
 
 /* ========================================================
    ★ 主线 / 支线 分离工具函数
@@ -715,6 +700,8 @@ var streamerWarnMask = document.getElementById('streamerWarnMask');
 var streamerBlockMask = document.getElementById('streamerBlockMask');
 
 function showBloodWarn(){ bloodWarnMask.classList.add('show'); }
+
+/* ★ 进入暗夜模式：立刻切到 3D 场景 */
 function enterBloodMode(){
   if(!S) return;
   S.flags.bloodMode = true;
@@ -722,23 +709,41 @@ function enterBloodMode(){
   bloodPuddleCount = 0;
   save(); syncState();
   renderInv();
+
+  /* 切 3D */
+  if(SCENES[S.scene]){
+    showLoading(SCENES[S.scene].label);
+    createGameFrame(sceneURL(S.scene));
+  }
+
   say('水洼里的倒影，忽然抬起了头。');
   say('灰豆眨了眨眼。');
   say('——倒影没有眨眼。');
   say('雨声变了。');
   say('变得更近、更沉，像是敲在**铁皮**上。');
   say('远处那栋红屋顶房子，变成了一片焦黑。');
-  say('（暗色分支已开启。）');
+  say('（暗夜模式已开启。）');
+  say('（视图切换为**第一人称**。）');
+  say('（**WASD / 方向键** 移动，**鼠标拖动 / 右侧拖动** 环视四周。）');
+  say('（靠近物件，左下角会出现互动按钮。）');
   say('（主线里的东西，在这里**带不进来**。）');
   say('（雨巷墙根处，有一道窄缝，似乎能回去。）');
-  toast('🩸 暗色分支 · 已开启');
+  toast('🩸 暗夜模式 · 3D 场景');
 }
+
+/* ★ 退出暗夜模式：立刻切回 2D */
 function exitBloodMode(){
   if(!S) return;
   S.flags.bloodMode = false;
   bloodPuddleCount = 0;
   save(); syncState();
   renderInv();
+
+  if(SCENES[S.scene]){
+    showLoading(SCENES[S.scene].label);
+    createGameFrame(sceneURL(S.scene));
+  }
+
   toast('🌧 已回到原来的雨夜');
 }
 
@@ -2176,7 +2181,7 @@ var SCENES = {
     }
   },
 
-  /* ===================== 邻屋（支线·主流程必经） ===================== */
+  /* ===================== 邻屋（暗夜模式·主流程必经） ===================== */
   neighbor: {
     url:'assets/scene11.html', label:'邻 屋',
     acts: {
@@ -2403,6 +2408,17 @@ var pendingOpeningMonologue = false;
 window.addEventListener('message', function(e){
   var d = e.data;
   if(!d || !d.type) return;
+
+  if(d.type === 'engineError'){
+    loadingActive = true;
+    loadingCeiling = 100;
+    loadingTarget = 100;
+    loadingTipEl.textContent = '⚠ ' + (d.message || '引擎错误');
+    loadingTipEl.classList.add('error');
+    loadingRetryEl.classList.add('show');
+    return;
+  }
+
   if(!gameFrame || !gameFrame.contentWindow) return;
   if(e.source !== gameFrame.contentWindow) return;
   if(d.type === 'ready'){
@@ -2445,12 +2461,12 @@ function triggerTempLight(){
   try{ gameFrame.contentWindow.postMessage({ type: 'tempLight' }, '*'); }catch(e){}
 }
 
-/* ★ 临时点亮：支线里禁用 */
+/* ★ 临时点亮：暗夜模式里禁用 */
 btnTempLightEl.addEventListener('click', function(e){
   e.stopPropagation();
   if(settings.streamerMode !== 'on') return;
   if(isBloodMode()){
-    toast('🩸 暗色支线中不提供该功能');
+    toast('🩸 暗夜模式中不提供该功能');
     return;
   }
   triggerTempLight();
@@ -2715,13 +2731,6 @@ document.querySelectorAll('.opts').forEach(function(group){
     if(key === 'fontSize') v = Number(v);
     settings[key] = v;
     saveSettings(); applySettings();
-    if(key === 'viewMode'){
-      if(v === '3d'){
-        toast('✨ 3D 视角 · WASD/方向键行走 · 走近物件自动查看');
-      }else{
-        toast('回到 2D 平面');
-      }
-    }
     if(key === 'streamerMode'){
       if(v === 'on'){ toast('🎬 主播模式已开启'); }
       else{ toast('主播模式已关闭'); }
