@@ -3,7 +3,7 @@
    grid: '1'=墙 '0'=地
    spawn: {x, y, dir}  dir = 弧度，0 = +x 方向
    wallTex: 纹理参数（程序生成）
-   things: {id, x, y, icon, label, triggerR, scale, cond, decor}
+   things: {id, x, y, icon, label, scale, cond, decor}
    ========================================================= */
 (function(){
 'use strict';
@@ -13,11 +13,6 @@ const F = () => (window.S && window.S.flags) || {};
 window.__SCENES_3D__ = {
 
   alley: {
-    palette: {
-      floorA:'#151015', floorB:'#080508',
-      ceilA:'#04020a', ceilB:'#0e0716',
-      wallA:'#2a1a1a', wallB:'#1e1214'
-    },
     wallTex: { type:'wetBrick', base:'#1a1018', mortar:'rgba(0,0,0,0.6)' },
     spawn: { x:1.5, y:9.5, dir:-Math.PI/2 },
     rain: true,
@@ -36,28 +31,22 @@ window.__SCENES_3D__ = {
       '1111111'
     ],
     things: [
-      { id:'lamp',     x:1.7,  y:1.7,  icon:'🏮', label:'路灯',      scale:0.9 },
-      { id:'wires',    x:3.5,  y:1.7,  icon:'⚡', label:'电线',      scale:0.7 },
-      { id:'graffiti', x:1.7,  y:5.5,  icon:'🖍', label:'墙上的字',  scale:0.8 },
-      { id:'trash',    x:5.5,  y:5.5,  icon:'🗑', label:'垃圾桶',    scale:1.0 },
-      { id:'photo1',   x:5.5,  y:9.5,  icon:'📄', label:'湿透的纸片',scale:0.7,
+      { id:'lamp',      x:1.7, y:1.7,  icon:'🏮', label:'路灯',       scale:0.9 },
+      { id:'wires',     x:3.5, y:1.7,  icon:'⚡', label:'电线',       scale:0.7 },
+      { id:'graffiti',  x:1.7, y:5.5,  icon:'🖍', label:'墙上的字',   scale:0.8 },
+      { id:'trash',     x:5.5, y:5.5,  icon:'🗑', label:'垃圾桶',     scale:1.0 },
+      { id:'photo1',    x:5.5, y:9.5,  icon:'📄', label:'湿透的纸片', scale:0.7,
         cond: () => !F().photo1Taken && !F().bloodMode },
-      { id:'puddle',   x:3.5,  y:9.5,  icon:'💧', label:'水洼',      scale:0.6 },
-      { id:'bloodExit',x:1.7,  y:11.3, icon:'🚪', label:'墙根窄缝',  scale:0.8,
+      { id:'puddle',    x:3.5, y:9.5,  icon:'💧', label:'水洼',       scale:0.6 },
+      { id:'bloodExit', x:1.7, y:11.3, icon:'🚪', label:'墙根窄缝',   scale:0.8,
         cond: () => F().bloodMode },
-      { id:'exit',     x:5.5,  y:1.5,  icon:'➡',  label:'巷子深处',  scale:0.9 },
-      /* 装饰 */
-      { id:'d_bucket', x:1.6,  y:3.3,  icon:'🪣', decor:true, scale:0.7 },
-      { id:'d_rat',    x:5.6,  y:7.3,  icon:'🐀', decor:true, scale:0.5 }
+      { id:'exit',      x:5.5, y:1.5,  icon:'➡',  label:'巷子深处',   scale:0.9 },
+      { id:'d_bucket',  x:1.6, y:3.3,  icon:'🪣', decor:true, scale:0.7 },
+      { id:'d_rat',     x:5.6, y:7.3,  icon:'🐀', decor:true, scale:0.5 }
     ]
   },
 
   backstreet: {
-    palette: {
-      floorA:'#121010', floorB:'#080608',
-      ceilA:'#040408', ceilB:'#0c0a18',
-      wallA:'#1a1414', wallB:'#140e10'
-    },
     wallTex: { type:'brick', base:'#1a1414', mortar:'rgba(0,0,0,0.5)', accent:'rgba(255,255,255,0.03)' },
     spawn: { x:1.5, y:5.5, dir:0 },
     rain: true,
@@ -75,27 +64,22 @@ window.__SCENES_3D__ = {
       '111111111111111'
     ],
     things: [
-      { id:'stairs',    x:3.5,  y:1.7,  icon:'🪜', label:'消防梯',    scale:1.1 },
-      { id:'mold',      x:7.5,  y:1.7,  icon:'🟢', label:'墙上的霉斑',scale:0.8 },
-      { id:'box',       x:2.5,  y:6.5,  icon:'📦', label:'纸箱',      scale:0.9 },
-      { id:'cat',       x:3.5,  y:6.5,  icon:'🐈',
+      { id:'stairs',    x:3.5,  y:1.7, icon:'🪜', label:'消防梯',     scale:1.1 },
+      { id:'mold',      x:7.5,  y:1.7, icon:'🟢', label:'墙上的霉斑', scale:0.8 },
+      { id:'box',       x:2.5,  y:6.5, icon:'📦', label:'纸箱',       scale:0.9 },
+      { id:'cat',       x:3.5,  y:6.5, icon:'🐈',
         label: () => F().bloodMode ? '干涸的水渍' : '大橘',
         scale:0.9, cond: () => !F().catGone },
-      { id:'door',      x:10.5, y:5.5,  icon:'🚪', label:'后门',      scale:1.1 },
-      { id:'powerDoor', x:7.5,  y:8.5,  icon:'⚡', label:'配电房',    scale:0.9 },
-      { id:'back',      x:1.5,  y:5.5,  icon:'⬅',  label:'回到雨巷',  scale:0.8 },
-      { id:'d_crate',   x:13.5, y:2.5,  icon:'📦', decor:true, scale:0.8 },
-      { id:'d_pipe',    x:12.5, y:8.5,  icon:'🪈', decor:true, scale:0.7 },
-      { id:'d_doll',    x:5.5,  y:3.5,  icon:'🧸', decor:true, scale:0.6 }
+      { id:'door',      x:10.5, y:5.5, icon:'🚪', label:'后门',       scale:1.1 },
+      { id:'powerDoor', x:7.5,  y:8.5, icon:'⚡', label:'配电房',     scale:0.9 },
+      { id:'back',      x:1.5,  y:5.5, icon:'⬅',  label:'回到雨巷',   scale:0.8 },
+      { id:'d_crate',   x:13.5, y:2.5, icon:'📦', decor:true, scale:0.8 },
+      { id:'d_pipe',    x:12.5, y:8.5, icon:'🪈', decor:true, scale:0.7 },
+      { id:'d_doll',    x:5.5,  y:3.5, icon:'🧸', decor:true, scale:0.6 }
     ]
   },
 
   shop: {
-    palette: {
-      floorA:'#1a1218', floorB:'#0a0608',
-      ceilA:'#040408', ceilB:'#0c0c18',
-      wallA:'#1a1828', wallB:'#140e18'
-    },
     wallTex: { type:'tile', base:'#c8d0d8', line:'rgba(0,0,0,0.25)', accent:'rgba(255,255,255,0.18)' },
     spawn: { x:2.5, y:5.5, dir:0 },
     grid: [
@@ -111,23 +95,18 @@ window.__SCENES_3D__ = {
       '11111111111'
     ],
     things: [
-      { id:'poster',  x:5.5,  y:1.7,  icon:'📜', label:'墙上海报',  scale:0.8 },
-      { id:'counter', x:8.5,  y:5.5,  icon:'💳', label:'收银台',    scale:1.0 },
-      { id:'shelf',   x:3.5,  y:4.5,  icon:'📚', label:'货架',      scale:1.1 },
-      { id:'floor',   x:5.5,  y:7.5,  icon:'📐', label:'地板',      scale:0.7 },
-      { id:'window',  x:1.7,  y:5.5,  icon:'🪟', label:'后窗',      scale:0.8 },
-      { id:'back',    x:2.5,  y:9.5,  icon:'⬅',  label:'回到后巷',  scale:0.8 },
-      { id:'d_basket',x:4.5,  y:2.5,  icon:'🧺', decor:true, scale:0.7 },
-      { id:'d_mop',   x:7.5,  y:2.5,  icon:'🧹', decor:true, scale:0.8 }
+      { id:'poster',   x:5.5, y:1.7, icon:'📜', label:'墙上海报',   scale:0.8 },
+      { id:'counter',  x:8.5, y:5.5, icon:'💳', label:'收银台',     scale:1.0 },
+      { id:'shelf',    x:3.5, y:4.5, icon:'📚', label:'货架',       scale:1.1 },
+      { id:'floor',    x:5.5, y:7.5, icon:'📐', label:'地板',       scale:0.7 },
+      { id:'window',   x:1.7, y:5.5, icon:'🪟', label:'后窗',       scale:0.8 },
+      { id:'back',     x:2.5, y:9.5, icon:'⬅',  label:'回到后巷',   scale:0.8 },
+      { id:'d_basket', x:4.5, y:2.5, icon:'🧺', decor:true, scale:0.7 },
+      { id:'d_mop',    x:7.5, y:2.5, icon:'🧹', decor:true, scale:0.8 }
     ]
   },
 
   street: {
-    palette: {
-      floorA:'#1a1a20', floorB:'#0a0c12',
-      ceilA:'#040408', ceilB:'#0a1018',
-      wallA:'#1c2430', wallB:'#161c26'
-    },
     wallTex: { type:'brick', base:'#1c2430', mortar:'rgba(0,0,0,0.4)', accent:'rgba(180,210,255,0.03)' },
     spawn: { x:2.5, y:5.5, dir:0 },
     rain: true,
@@ -144,17 +123,17 @@ window.__SCENES_3D__ = {
       '1111111111111111'
     ],
     things: [
-      { id:'lamp',    x:2.5,  y:1.7, icon:'🏮', label:'路灯',      scale:0.9 },
-      { id:'power',   x:4.5,  y:1.7, icon:'⚡', label:'配电房',    scale:1.0 },
-      { id:'under',   x:6.5,  y:1.7, icon:'⬇',  label:'地下通道',  scale:0.9 },
-      { id:'river',   x:1.7,  y:5.5, icon:'🌊', label:'河堤',      scale:0.9 },
-      { id:'rope',    x:5.5,  y:4.5, icon:'🧵', label:'晾衣绳',    scale:0.7,
+      { id:'lamp',    x:2.5,  y:1.7, icon:'🏮', label:'路灯',       scale:0.9 },
+      { id:'power',   x:4.5,  y:1.7, icon:'⚡', label:'配电房',     scale:1.0 },
+      { id:'under',   x:6.5,  y:1.7, icon:'⬇',  label:'地下通道',   scale:0.9 },
+      { id:'river',   x:1.7,  y:5.5, icon:'🌊', label:'河堤',       scale:0.9 },
+      { id:'rope',    x:5.5,  y:4.5, icon:'🧵', label:'晾衣绳',     scale:0.7,
         cond: () => !F().ropeTaken },
-      { id:'gate',    x:11.5, y:5.5, icon:'🚪', label:'铁门',      scale:1.2 },
-      { id:'tree',    x:13.5, y:2.5, icon:'🌳', label:'梧桐树',    scale:1.1 },
-      { id:'mailbox', x:13.5, y:7.5, icon:'📮', label:'信箱',      scale:0.8 },
-      { id:'fire',    x:14.5, y:8.5, icon:'🧯', label:'消防栓',    scale:0.7 },
-      { id:'back',    x:1.5,  y:5.5, icon:'⬅',  label:'回后巷',    scale:0.8 },
+      { id:'gate',    x:11.5, y:5.5, icon:'🚪', label:'铁门',       scale:1.2 },
+      { id:'tree',    x:13.5, y:2.5, icon:'🌳', label:'梧桐树',     scale:1.1 },
+      { id:'mailbox', x:13.5, y:7.5, icon:'📮', label:'信箱',       scale:0.8 },
+      { id:'fire',    x:14.5, y:8.5, icon:'🧯', label:'消防栓',     scale:0.7 },
+      { id:'back',    x:1.5,  y:5.5, icon:'⬅',  label:'回后巷',     scale:0.8 },
       { id:'d_car',   x:8.5,  y:3.5, icon:'🚗', decor:true, scale:1.0 },
       { id:'d_bin',   x:8.5,  y:7.5, icon:'🗑', decor:true, scale:0.8 },
       { id:'d_sign',  x:10.5, y:1.7, icon:'🪧', decor:true, scale:0.8 }
@@ -162,11 +141,6 @@ window.__SCENES_3D__ = {
   },
 
   doorstep: {
-    palette: {
-      floorA:'#1a1418', floorB:'#080608',
-      ceilA:'#040608', ceilB:'#0a1424',
-      wallA:'#2a1c1c', wallB:'#1e1414'
-    },
     wallTex: { type:'brick', base:'#3a2a20', mortar:'rgba(0,0,0,0.35)', accent:'rgba(255,240,200,0.05)' },
     spawn: { x:2.5, y:8.5, dir:0 },
     grid: [
@@ -183,22 +157,17 @@ window.__SCENES_3D__ = {
       '1111111111111'
     ],
     things: [
-      { id:'window', x:4.5, y:1.7, icon:'🪟', label:'窗户',      scale:1.0 },
-      { id:'lamp',   x:6.5, y:1.7, icon:'🏮', label:'门灯',      scale:0.7 },
-      { id:'door',   x:6.5, y:4.5, icon:'🚪', label:'门',        scale:1.2 },
-      { id:'steps',  x:6.5, y:7.5, icon:'🪜', label:'台阶',      scale:0.6 },
-      { id:'back',   x:2.5, y:5.5, icon:'⬅',  label:'回到街道',  scale:0.8 },
-      { id:'d_plant',x:9.5, y:2.5, icon:'🪴', decor:true, scale:0.8 },
-      { id:'d_mat',  x:8.5, y:6.5, icon:'🧻', decor:true, scale:0.5 }
+      { id:'window',  x:4.5, y:1.7, icon:'🪟', label:'窗户',       scale:1.0 },
+      { id:'lamp',    x:6.5, y:1.7, icon:'🏮', label:'门灯',       scale:0.7 },
+      { id:'door',    x:6.5, y:4.5, icon:'🚪', label:'门',         scale:1.2 },
+      { id:'steps',   x:6.5, y:7.5, icon:'🪜', label:'台阶',       scale:0.6 },
+      { id:'back',    x:2.5, y:5.5, icon:'⬅',  label:'回到街道',   scale:0.8 },
+      { id:'d_plant', x:9.5, y:2.5, icon:'🪴', decor:true, scale:0.8 },
+      { id:'d_mat',   x:8.5, y:6.5, icon:'🧻', decor:true, scale:0.5 }
     ]
   },
 
   house: {
-    palette: {
-      floorA:'#3a2a1d', floorB:'#1a1208',
-      ceilA:'#1a1008', ceilB:'#2a1c10',
-      wallA:'#4a3a20', wallB:'#38281a'
-    },
     wallTex: { type:'wood', base:'#5a3a20', line:'rgba(0,0,0,0.35)' },
     spawn: { x:5.5, y:5.5, dir:Math.PI },
     grid: [
@@ -214,26 +183,21 @@ window.__SCENES_3D__ = {
       '11111111111'
     ],
     things: [
-      { id:'window', x:2.5, y:1.7, icon:'🪟', label:'窗户',      scale:1.1 },
-      { id:'clock',  x:5.5, y:1.7, icon:'🕰', label:'挂钟',      scale:0.8 },
-      { id:'books',  x:1.7, y:4.5, icon:'📚', label:'书架',      scale:0.9 },
-      { id:'lamp',   x:9.5, y:3.5, icon:'💡', label:'台灯',      scale:0.8 },
-      { id:'frame',  x:5.5, y:8.5, icon:'🖼', label:'相框',      scale:0.9 },
-      { id:'chair',  x:2.5, y:7.5, icon:'🪑', label:'摇椅',      scale:1.0 },
-      { id:'bowl',   x:3.5, y:8.5, icon:'🥣', label:'小碗',      scale:0.6 },
-      { id:'back',   x:1.5, y:5.5, icon:'⬅',  label:'回到门前',  scale:0.8 },
-      { id:'d_plant',x:8.5, y:1.7, icon:'🪴', decor:true, scale:0.8 },
+      { id:'window',  x:2.5, y:1.7, icon:'🪟', label:'窗户',       scale:1.1 },
+      { id:'clock',   x:5.5, y:1.7, icon:'🕰', label:'挂钟',       scale:0.8 },
+      { id:'books',   x:1.7, y:4.5, icon:'📚', label:'书架',       scale:0.9 },
+      { id:'lamp',    x:9.5, y:3.5, icon:'💡', label:'台灯',       scale:0.8 },
+      { id:'frame',   x:5.5, y:8.5, icon:'🖼', label:'相框',       scale:0.9 },
+      { id:'chair',   x:2.5, y:7.5, icon:'🪑', label:'摇椅',       scale:1.0 },
+      { id:'bowl',    x:3.5, y:8.5, icon:'🥣', label:'小碗',       scale:0.6 },
+      { id:'back',    x:1.5, y:5.5, icon:'⬅',  label:'回到门前',   scale:0.8 },
+      { id:'d_plant', x:8.5, y:1.7, icon:'🪴', decor:true, scale:0.8 },
       { id:'d_candle',x:7.5, y:8.5, icon:'🕯', decor:true, scale:0.5 },
-      { id:'d_rug',  x:5.5, y:5.5, icon:'🟫', decor:true, scale:0.5 }
+      { id:'d_rug',   x:5.5, y:5.5, icon:'🟫', decor:true, scale:0.5 }
     ]
   },
 
   powerstation: {
-    palette: {
-      floorA:'#141820', floorB:'#080a10',
-      ceilA:'#040608', ceilB:'#0a1018',
-      wallA:'#1c2430', wallB:'#141a24'
-    },
     wallTex: { type:'metal', base:'#3a4048', line:'rgba(0,0,0,0.4)' },
     spawn: { x:2.5, y:5.5, dir:0 },
     grid: [
@@ -248,21 +212,16 @@ window.__SCENES_3D__ = {
       '1111111111'
     ],
     things: [
-      { id:'breaker', x:8.5, y:3.5, icon:'⚡', label:'电闸',      scale:1.0 },
-      { id:'fuse',    x:1.7, y:3.5, icon:'🔌', label:'保险丝盒',  scale:0.9 },
-      { id:'log',     x:5.5, y:7.5, icon:'📓', label:'工作日志',  scale:0.8 },
-      { id:'back',    x:1.5, y:5.5, icon:'⬅',  label:'回去',      scale:0.8 },
+      { id:'breaker', x:8.5, y:3.5, icon:'⚡', label:'电闸',       scale:1.0 },
+      { id:'fuse',    x:1.7, y:3.5, icon:'🔌', label:'保险丝盒',   scale:0.9 },
+      { id:'log',     x:5.5, y:7.5, icon:'📓', label:'工作日志',   scale:0.8 },
+      { id:'back',    x:1.5, y:5.5, icon:'⬅',  label:'回去',       scale:0.8 },
       { id:'d_wire',  x:5.5, y:1.7, icon:'🪢', decor:true, scale:0.6 },
       { id:'d_warn',  x:7.5, y:1.7, icon:'⚠',  decor:true, scale:0.8 }
     ]
   },
 
   rooftop: {
-    palette: {
-      floorA:'#0e1018', floorB:'#04060a',
-      ceilA:'#020408', ceilB:'#0a1424',
-      wallA:'#1c2430', wallB:'#141a24'
-    },
     wallTex: { type:'brick', base:'#1a2028', mortar:'rgba(0,0,0,0.5)' },
     spawn: { x:5.5, y:7.5, dir:Math.PI },
     grid: [
@@ -279,22 +238,17 @@ window.__SCENES_3D__ = {
       '111111111111111'
     ],
     things: [
-      { id:'antenna',   x:2.5,  y:1.7, icon:'📡', label:'旧天线',        scale:1.1 },
-      { id:'watertank', x:13.5, y:1.7, icon:'🛢', label:'水塔',          scale:1.1 },
-      { id:'hang',      x:6.5,  y:2.5, icon:'🧵', label:'晾衣架',        scale:0.8 },
-      { id:'houseroof', x:11.5, y:2.5, icon:'🏠', label:'远处的红屋顶',  scale:1.0 },
-      { id:'back',      x:1.5,  y:5.5, icon:'⬅',  label:'回到后巷',      scale:0.8 },
+      { id:'antenna',   x:2.5,  y:1.7, icon:'📡', label:'旧天线',       scale:1.1 },
+      { id:'watertank', x:13.5, y:1.7, icon:'🛢', label:'水塔',         scale:1.1 },
+      { id:'hang',      x:6.5,  y:2.5, icon:'🧵', label:'晾衣架',       scale:0.8 },
+      { id:'houseroof', x:11.5, y:2.5, icon:'🏠', label:'远处的红屋顶', scale:1.0 },
+      { id:'back',      x:1.5,  y:5.5, icon:'⬅',  label:'回到后巷',     scale:0.8 },
       { id:'d_star',    x:4.5,  y:1.7, icon:'⭐', decor:true, scale:0.6 },
       { id:'d_bird',    x:9.5,  y:2.5, icon:'🐦', decor:true, scale:0.5 }
     ]
   },
 
   underpass: {
-    palette: {
-      floorA:'#0e1018', floorB:'#04060a',
-      ceilA:'#020408', ceilB:'#080c18',
-      wallA:'#1a2028', wallB:'#12181e'
-    },
     wallTex: { type:'brick', base:'#1a2028', mortar:'rgba(0,0,0,0.55)' },
     spawn: { x:2.5, y:5.5, dir:0 },
     grid: [
@@ -310,22 +264,17 @@ window.__SCENES_3D__ = {
       '1111111111111'
     ],
     things: [
-      { id:'stairs',    x:2.5,  y:1.7, icon:'🪜', label:'上方的楼梯',  scale:1.0 },
-      { id:'graffiti',  x:4.5,  y:1.7, icon:'🖍', label:'墙上的涂鸦',  scale:0.8 },
-      { id:'emergency', x:7.5,  y:1.7, icon:'💡', label:'应急灯',      scale:0.7 },
-      { id:'trash',     x:8.5,  y:8.5, icon:'🗑', label:'垃圾桶',      scale:0.9 },
-      { id:'room',      x:10.5, y:5.5, icon:'⚡', label:'配电房的门',  scale:0.9 },
-      { id:'back',      x:1.5,  y:5.5, icon:'⬅',  label:'回到街道',    scale:0.8 },
+      { id:'stairs',    x:2.5,  y:1.7, icon:'🪜', label:'上方的楼梯', scale:1.0 },
+      { id:'graffiti',  x:4.5,  y:1.7, icon:'🖍', label:'墙上的涂鸦', scale:0.8 },
+      { id:'emergency', x:7.5,  y:1.7, icon:'💡', label:'应急灯',     scale:0.7 },
+      { id:'trash',     x:8.5,  y:8.5, icon:'🗑', label:'垃圾桶',     scale:0.9 },
+      { id:'room',      x:10.5, y:5.5, icon:'⚡', label:'配电房的门', scale:0.9 },
+      { id:'back',      x:1.5,  y:5.5, icon:'⬅',  label:'回到街道',   scale:0.8 },
       { id:'d_puddle',  x:5.5,  y:5.5, icon:'💧', decor:true, scale:0.5 }
     ]
   },
 
   riverside: {
-    palette: {
-      floorA:'#1a1a28', floorB:'#0a0c12',
-      ceilA:'#020408', ceilB:'#0a1424',
-      wallA:'#1a2230', wallB:'#141a24'
-    },
     wallTex: { type:'brick', base:'#1a2230', mortar:'rgba(0,0,0,0.45)' },
     spawn: { x:2.5, y:5.5, dir:0 },
     rain: true,
@@ -341,22 +290,17 @@ window.__SCENES_3D__ = {
       '1111111111111'
     ],
     things: [
-      { id:'lamp',     x:2.5, y:1.7, icon:'🏮', label:'路灯',      scale:0.9 },
-      { id:'bench',    x:5.5, y:1.7, icon:'🪑', label:'长椅',      scale:1.0 },
-      { id:'umbrella', x:8.5, y:1.7, icon:'☂',  label:'丢弃的伞',  scale:0.9 },
-      { id:'river',    x:5.5, y:8.5, icon:'🌊', label:'河面',      scale:1.2 },
-      { id:'back',     x:1.5, y:5.5, icon:'⬅',  label:'回到街道',  scale:0.8 },
+      { id:'lamp',     x:2.5, y:1.7, icon:'🏮', label:'路灯',       scale:0.9 },
+      { id:'bench',    x:5.5, y:1.7, icon:'🪑', label:'长椅',       scale:1.0 },
+      { id:'umbrella', x:8.5, y:1.7, icon:'☂',  label:'丢弃的伞',   scale:0.9 },
+      { id:'river',    x:5.5, y:8.5, icon:'🌊', label:'河面',       scale:1.2 },
+      { id:'back',     x:1.5, y:5.5, icon:'⬅',  label:'回到街道',   scale:0.8 },
       { id:'d_boat',   x:9.5, y:8.5, icon:'⛵', decor:true, scale:0.9 },
       { id:'d_reed',   x:3.5, y:8.5, icon:'🌾', decor:true, scale:0.7 }
     ]
   },
 
   neighbor: {
-    palette: {
-      floorA:'#1a0e08', floorB:'#080403',
-      ceilA:'#020201', ceilB:'#0a0403',
-      wallA:'#2a1408', wallB:'#1e0c06'
-    },
     wallTex: { type:'burnt', base:'#120806' },
     spawn: { x:2.5, y:5.5, dir:0 },
     grid: [
@@ -372,12 +316,12 @@ window.__SCENES_3D__ = {
       '1111111111111'
     ],
     things: [
-      { id:'neighborWindow',   x:5.5,  y:1.7, icon:'🪟', label:'窗户',        scale:1.1 },
-      { id:'neighborCalendar', x:2.5,  y:1.7, icon:'📅', label:'日历',        scale:0.8 },
-      { id:'neighborFloor',    x:5.5,  y:5.5, icon:'🐾', label:'地板上的爪印',scale:0.7 },
-      { id:'neighborBed',      x:9.5,  y:5.5, icon:'🛏', label:'小床',        scale:1.0 },
-      { id:'back',             x:2.5,  y:9.5, icon:'⬅',  label:'来的路',      scale:0.8 },
-      { id:'exit',             x:11.5, y:5.5, icon:'➡',  label:'通向院子的门',scale:0.9 },
+      { id:'neighborWindow',   x:5.5,  y:1.7, icon:'🪟', label:'窗户',         scale:1.1 },
+      { id:'neighborCalendar', x:2.5,  y:1.7, icon:'📅', label:'日历',         scale:0.8 },
+      { id:'neighborFloor',    x:5.5,  y:5.5, icon:'🐾', label:'地板上的爪印', scale:0.7 },
+      { id:'neighborBed',      x:9.5,  y:5.5, icon:'🛏', label:'小床',         scale:1.0 },
+      { id:'back',             x:2.5,  y:9.5, icon:'⬅',  label:'来的路',       scale:0.8 },
+      { id:'exit',             x:11.5, y:5.5, icon:'➡',  label:'通向院子的门', scale:0.9 },
       { id:'d_ash',            x:7.5,  y:1.7, icon:'🪵', decor:true, scale:0.6 },
       { id:'d_smoke',          x:3.5,  y:8.5, icon:'💨', decor:true, scale:0.7 }
     ]
