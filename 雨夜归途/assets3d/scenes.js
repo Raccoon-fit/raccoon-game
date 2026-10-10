@@ -2,7 +2,8 @@
    3D 场景定义
    grid: '1'=墙 '0'=地
    spawn: {x, y, dir}  dir = 弧度，0 = +x 方向
-   wallTex: 纹理参数（程序生成）
+   wallTex: 墙壁纹理参数（程序生成）
+   lights: 场景灯光（最多 3 盏，手电筒占用第 1 个槽）
    things: {id, x, y, icon, label, scale, cond, decor}
    ========================================================= */
 (function(){
@@ -16,6 +17,10 @@ window.__SCENES_3D__ = {
     wallTex: { type:'wetBrick', base:'#1a1018', mortar:'rgba(0,0,0,0.6)' },
     spawn: { x:1.5, y:9.5, dir:-Math.PI/2 },
     rain: true,
+    lights: [
+      { x:1.7, y:1.9, z:1.7, color: [1.6, 1.1, 0.5] },
+      { x:5.5, y:1.4, z:5.5, color: [0.4, 0.5, 0.7] }
+    ],
     grid: [
       '1111111',
       '1000001',
@@ -50,6 +55,10 @@ window.__SCENES_3D__ = {
     wallTex: { type:'brick', base:'#1a1414', mortar:'rgba(0,0,0,0.5)', accent:'rgba(255,255,255,0.03)' },
     spawn: { x:1.5, y:5.5, dir:0 },
     rain: true,
+    lights: [
+      { x:3.5, y:2.2, z:1.7, color: [1.4, 0.9, 0.4] },
+      { x:10.5, y:1.8, z:5.5, color: [0.6, 1.2, 1.5] }
+    ],
     grid: [
       '111111111111111',
       '100000000000001',
@@ -82,6 +91,10 @@ window.__SCENES_3D__ = {
   shop: {
     wallTex: { type:'tile', base:'#c8d0d8', line:'rgba(0,0,0,0.25)', accent:'rgba(255,255,255,0.18)' },
     spawn: { x:2.5, y:5.5, dir:0 },
+    lights: [
+      { x:5.5, y:2.4, z:5.5, color: [1.6, 1.5, 1.2] },
+      { x:8.5, y:2.0, z:5.5, color: [0.5, 0.7, 1.0] }
+    ],
     grid: [
       '11111111111',
       '10000000001',
@@ -110,6 +123,10 @@ window.__SCENES_3D__ = {
     wallTex: { type:'brick', base:'#1c2430', mortar:'rgba(0,0,0,0.4)', accent:'rgba(180,210,255,0.03)' },
     spawn: { x:2.5, y:5.5, dir:0 },
     rain: true,
+    lights: [
+      { x:2.5,  y:2.4, z:1.7, color: [1.6, 1.2, 0.6] },
+      { x:11.5, y:2.0, z:5.5, color: [0.6, 0.9, 1.4] }
+    ],
     grid: [
       '1111111111111111',
       '1000000000000001',
@@ -143,6 +160,10 @@ window.__SCENES_3D__ = {
   doorstep: {
     wallTex: { type:'brick', base:'#3a2a20', mortar:'rgba(0,0,0,0.35)', accent:'rgba(255,240,200,0.05)' },
     spawn: { x:2.5, y:8.5, dir:0 },
+    lights: [
+      { x:6.5, y:2.0, z:1.7, color: [1.8, 1.2, 0.5] },
+      { x:4.5, y:1.8, z:4.5, color: [0.4, 0.4, 0.6] }
+    ],
     grid: [
       '1111111111111',
       '1000000000001',
@@ -170,6 +191,10 @@ window.__SCENES_3D__ = {
   house: {
     wallTex: { type:'wood', base:'#5a3a20', line:'rgba(0,0,0,0.35)' },
     spawn: { x:5.5, y:5.5, dir:Math.PI },
+    lights: [
+      { x:5.5, y:2.4, z:5.5, color: [1.8, 1.4, 0.9] },
+      { x:9.5, y:2.0, z:3.5, color: [1.4, 1.0, 0.5] }
+    ],
     grid: [
       '11111111111',
       '10000000001',
@@ -200,6 +225,10 @@ window.__SCENES_3D__ = {
   powerstation: {
     wallTex: { type:'metal', base:'#3a4048', line:'rgba(0,0,0,0.4)' },
     spawn: { x:2.5, y:5.5, dir:0 },
+    lights: [
+      { x:5.5, y:2.4, z:5.5, color: [0.7, 0.9, 1.2] },
+      { x:1.7, y:2.0, z:3.5, color: [1.2, 0.4, 0.3] }
+    ],
     grid: [
       '1111111111',
       '1000000001',
@@ -224,6 +253,10 @@ window.__SCENES_3D__ = {
   rooftop: {
     wallTex: { type:'brick', base:'#1a2028', mortar:'rgba(0,0,0,0.5)' },
     spawn: { x:5.5, y:7.5, dir:Math.PI },
+    lights: [
+      { x:5.5,  y:3.2, z:5.5, color: [0.3, 0.4, 0.7] },
+      { x:11.5, y:1.8, z:2.5, color: [1.4, 0.8, 0.4] }
+    ],
     grid: [
       '111111111111111',
       '100000000000001',
@@ -251,6 +284,10 @@ window.__SCENES_3D__ = {
   underpass: {
     wallTex: { type:'brick', base:'#1a2028', mortar:'rgba(0,0,0,0.55)' },
     spawn: { x:2.5, y:5.5, dir:0 },
+    lights: [
+      { x:2.5, y:2.4, z:1.7, color: [0.8, 0.9, 1.1] },
+      { x:7.5, y:2.2, z:1.7, color: [0.5, 1.2, 0.8] }
+    ],
     grid: [
       '1111111111111',
       '1000000000001',
@@ -278,6 +315,10 @@ window.__SCENES_3D__ = {
     wallTex: { type:'brick', base:'#1a2230', mortar:'rgba(0,0,0,0.45)' },
     spawn: { x:2.5, y:5.5, dir:0 },
     rain: true,
+    lights: [
+      { x:2.5, y:2.4, z:1.7, color: [1.6, 1.2, 0.5] },
+      { x:5.5, y:1.5, z:8.5, color: [0.4, 0.6, 1.0] }
+    ],
     grid: [
       '1111111111111',
       '1000000000001',
@@ -303,6 +344,10 @@ window.__SCENES_3D__ = {
   neighbor: {
     wallTex: { type:'burnt', base:'#120806' },
     spawn: { x:2.5, y:5.5, dir:0 },
+    lights: [
+      { x:5.5, y:2.0, z:1.7, color: [1.2, 0.4, 0.3] },
+      { x:9.5, y:1.6, z:5.5, color: [0.5, 0.3, 0.3] }
+    ],
     grid: [
       '1111111111111',
       '1000000000001',
