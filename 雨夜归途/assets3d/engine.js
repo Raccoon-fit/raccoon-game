@@ -1,6 +1,6 @@
 /* =========================================================
-   engine.js — 真 3D 引擎 v7
-   断电后：场景灯全部转为红色应急灯（闪烁）
+   engine.js — 真 3D 引擎 v10
+   在 v9 基础上整体压暗 ~10%
    ========================================================= */
 (function(){
 'use strict';
@@ -38,7 +38,11 @@ let shakeTime = 0, shakeAmp = 0;
 let breathPhase = 0;
 let audioReady = false;
 
-/* 焦点保持 */
+/* 全局应急灯脉冲 —— 大部分时间有微亮 */
+let emgPulse = 0.55;
+let emgTarget = 0.55;
+let emgNextChange = 0;
+
 let focusCheckTimer = null;
 let lastExternalFocus = 0;
 
@@ -475,6 +479,8 @@ function loadScene(key){
   nextInvertAt   = performance.now()/1000 + 8 + Math.random()*10;
   nextIntrudeAt  = performance.now()/1000 + 6 + Math.random()*8;
   nextDriftAt    = performance.now()/1000 + 12 + Math.random()*10;
+  emgPulse = 0.50; emgTarget = 0.50;
+  emgNextChange = performance.now()/1000 + 0.5 + Math.random()*2;
   bloodDrops = [];
   resize();
   buildWorld();
@@ -514,10 +520,39 @@ function canStand(x, z){
   return true;
 }
 
+/* ==================== 应急灯脉冲 ==================== */
+function updateEmgPulse(){
+  const nowSec = performance.now() / 1000;
+  if(nowSec < emgNextChange){
+    emgPulse += (emgTarget - emgPulse) * 0.35;
+    return;
+  }
+
+  const r = Math.random();
+  if(r < 0.10){
+    emgTarget = 0.04 + Math.random()*0.07;
+    emgNextChange = nowSec + 0.25 + Math.random()*0.6;
+  } else if(r < 0.40){
+    emgTarget = 0.40 + Math.random()*0.14;
+    emgNextChange = nowSec + 0.7 + Math.random()*1.6;
+  } else if(r < 0.78){
+    emgTarget = 0.68 + Math.random()*0.16;
+    emgNextChange = nowSec + 0.9 + Math.random()*2.2;
+  } else if(r < 0.94){
+    emgTarget = 0.95 + Math.random()*0.14;
+    emgNextChange = nowSec + 0.4 + Math.random()*1.0;
+  } else {
+    emgTarget = 1.22;
+    emgNextChange = nowSec + 0.08 + Math.random()*0.15;
+  }
+}
+
 /* ==================== 更新 ==================== */
 function update(dt){
   if(!map) return;
   isMoving = false;
+
+  updateEmgPulse();
 
   const rotSpeed = 2.2;
   if(keys['arrowleft'])  cam.yaw -= rotSpeed*dt;
@@ -651,17 +686,17 @@ function computeAmbient(){
   const cut = isPowerCut();
   const torch = isTorchOn();
 
-  /* 暗夜模式 */
+  /* 暗夜模式 —— 在 v9 基础上 × 0.9 */
   if(blood){
-    /* 断电后：环境光微微偏红（应急灯余晖） */
-    if(cut) return torch ? [0.18, 0.06, 0.06] : [0.07, 0.02, 0.02];
-    return torch ? [0.16, 0.05, 0.05] : [0.04, 0.012, 0.015];
+    if(cut){
+      return torch ? [0.081, 0.027, 0.025] : [0.050, 0.016, 0.016];
+    }
+    return torch ? [0.090, 0.031, 0.029] : [0.058, 0.020, 0.020];
   }
 
   /* 主线 */
   if(cut){
-    /* 断电后：不是全黑，有一层冷调的应急余光 */
-    return torch ? [0.22, 0.20, 0.20] : [0.09, 0.09, 0.11];
+    return torch ? [0.135, 0.108, 0.108] : [0.050, 0.041, 0.045];
   }
   return torch ? [0.28, 0.26, 0.24] : [0.14, 0.15, 0.18];
 }
@@ -672,75 +707,65 @@ function computeLights(){
   const cut = isPowerCut();
   const list = [];
 
-  /* 手电筒优先 */
   if(torch){
     let flick = blood
-      ? 0.86 + 0.14*Math.sin(time*22) * (Math.random() > 0.8 ? 1.5 : 1)
+      ? 0.90 + 0.10*Math.sin(time*22) * (Math.random() > 0.85 ? 1.4 : 1)
       : 0.96 + 0.04*Math.sin(time*18);
     list.push({
       x: cam.x, y: cam.eye - 0.05, z: cam.z,
       color: blood
-        ? [2.2*flick, 0.55*flick, 0.42*flick]
+        ? [2.0*flick, 0.55*flick, 0.42*flick]
         : [2.4*flick, 2.1*flick, 1.75*flick]
     });
   }
 
   const sceneLights = (map && map.lights) || [];
 
-  /* ★ 断电后：场景灯变成红色应急灯，微微闪烁 */
   for(let i = 0; i < sceneLights.length && list.length < 3; i++){
     const l = sceneLights[i];
-    let color;
 
     if(cut && l.conditional !== false){
-      /* 应急灯色：暗红，闪烁 */
-      const blink = 0.75 + 0.25 * Math.sin(time * 3.2 + i * 1.7);
-      const strobe = (Math.random() > 0.965) ? 0.45 : 1.0;
-      color = [
-        1.55 * blink * strobe,
-        0.18 * blink * strobe,
-        0.14 * blink * strobe
+      const perLampPhase = Math.sin(time * 1.3 + i * 2.1) * 0.5 + 0.5;
+      const localPulse = 0.55 + 0.45 * perLampPhase;
+      const pulse = emgPulse * localPulse;
+
+      /* v9 基础 × 0.9 */
+      const base = blood ? 1.22 : 0.99;
+      const col = [
+        base * pulse,
+        0.145 * pulse,
+        0.108 * pulse
       ];
+      list.push({ x: l.x, y: l.y || 2.0, z: l.z, color: col });
     } else {
-      color = (l.color || [0.6, 0.5, 0.4]).slice();
-      if(blood) color = [color[0]*0.55, color[1]*0.18, color[2]*0.18];
+      const base = (l.color || [0.6, 0.5, 0.4]).slice();
+      let col;
+      if(blood){
+        col = [base[0]*0.68, base[1]*0.25, base[2]*0.20];
+      } else if(cut){
+        col = [base[0]*0.50, base[1]*0.36, base[2]*0.36];
+      } else {
+        col = base;
+      }
+      list.push({ x: l.x, y: l.y || 2.0, z: l.z, color: col });
     }
-
-    list.push({ x: l.x, y: l.y || 2.0, z: l.z, color: color });
   }
 
-  /* 如果没手电、没场景灯，加一点方向光 */
-  if(!torch && list.length < 3){
-    let col;
-    if(cut){
-      /* 断电后的柔红余光（应急灯散射） */
-      col = blood ? [0.35, 0.08, 0.08] : [0.32, 0.14, 0.10];
-    } else if(blood){
-      col = [0.20, 0.05, 0.05];
-    } else {
-      col = [0.35, 0.34, 0.36];
-    }
-    list.push({
-      x: cam.x + Math.cos(cam.yaw) * 3,
-      y: cam.eye + 1.5,
-      z: cam.z + Math.sin(cam.yaw) * 3,
-      color: col
-    });
-  }
-
-  /* 断电后额外在玩家附近放一盏红色泛光 —— 保证任何场景都有光 */
+  /* 玩家附近补光 —— v9 × 0.9 */
   if(cut && list.length < 3){
     list.push({
       x: cam.x,
-      y: 1.6,
+      y: 1.4,
       z: cam.z,
       color: blood
-        ? [0.55, 0.10, 0.10]
-        : [0.48, 0.16, 0.12]
+        ? [0.27, 0.09, 0.072]
+        : [0.20, 0.144, 0.126]
     });
   }
 
-  while(list.length < 3) list.push({ x: 0, y: -999, z: 0, color: [0,0,0] });
+  while(list.length < 3){
+    list.push({ x: 0, y: -999, z: 0, color: [0, 0, 0] });
+  }
   return list;
 }
 
@@ -753,15 +778,32 @@ function render(dt, t){
 
   const blood = isBloodMode();
   const cut = isPowerCut();
+
   let fogColor;
-  if(blood) fogColor = [0.025, 0.006, 0.012];
-  else if(cut) fogColor = [0.06, 0.03, 0.025];     /* 断电：雾偏红棕 */
-  else fogColor = [0.04, 0.05, 0.08];
+  if(blood){
+    fogColor = cut ? [0.020, 0.005, 0.007] : [0.023, 0.007, 0.009];
+  } else if(cut){
+    fogColor = [0.032, 0.022, 0.018];
+  } else {
+    fogColor = [0.04, 0.05, 0.08];
+  }
+
+  let fogNear, fogFar;
+  if(blood){
+    fogNear = cut ? 1.5 : 2.2;
+    fogFar  = cut ? 7.0 : 8.8;
+  } else if(cut){
+    fogNear = 1.8;
+    fogFar  = 8.2;
+  } else {
+    fogNear = 5;
+    fogFar  = 24;
+  }
 
   renderer.setFog({
     color: fogColor,
-    near: blood ? 2.2 : 5,
-    far:  blood ? 9.5 : 24
+    near: fogNear,
+    far: fogFar
   });
 
   let yaw = cam.yaw, pitch = cam.pitch;
@@ -794,11 +836,11 @@ function updateOverlayFilter(){
 
   if(blood){
     if(invertT > 0) f = 'invert(1) contrast(1.4)';
-    else if(silenceT > 0) f = 'saturate(0.2) contrast(1.4) brightness(0.55)';
-    else f = 'saturate(0.7) contrast(1.25) brightness(0.82) hue-rotate(-12deg)';
+    else if(silenceT > 0) f = 'saturate(0.3) contrast(1.3) brightness(0.56)';
+    else if(cut) f = 'saturate(0.65) contrast(1.22) brightness(0.79) hue-rotate(-10deg)';
+    else f = 'saturate(0.7) contrast(1.17) brightness(0.83) hue-rotate(-10deg)';
   } else if(cut){
-    /* 断电后的主线：色调偏红 —— 应急灯氛围 */
-    f = 'saturate(1.05) contrast(1.05) brightness(0.95) hue-rotate(-6deg)';
+    f = 'saturate(0.9) contrast(1.10) brightness(0.81) hue-rotate(-6deg)';
   }
 
   if(canvas.style.filter !== f) canvas.style.filter = f;
@@ -830,25 +872,27 @@ function drawHorror(dt, t){
   fxCtx.clearRect(0, 0, w, h);
   const panic = getPanic();
   const silent = silenceT > 0;
+  const cut = isPowerCut();
 
-  const breathe = 0.5 + 0.5 * Math.sin(t * 1.1);
-  const vg = fxCtx.createRadialGradient(w/2, h/2, Math.min(w,h)*0.06, w/2, h/2, Math.max(w,h)*0.78);
+  const breath = 0.5 + 0.5 * Math.sin(t * 1.1);
+  const innerR = Math.min(w, h) * (cut ? 0.07 : 0.09);
+  const vg = fxCtx.createRadialGradient(w/2, h/2, innerR, w/2, h/2, Math.max(w,h)*0.78);
   vg.addColorStop(0, 'rgba(0,0,0,0)');
-  vg.addColorStop(0.42, 'rgba(70,0,10,' + (0.30 + 0.26*panic + 0.12*breathe) + ')');
-  vg.addColorStop(1, 'rgba(8,0,1,' + (0.90 + 0.10*panic) + ')');
+  vg.addColorStop(0.42, 'rgba(60,0,8,' + (cut ? 0.32 : 0.25) + ')');
+  vg.addColorStop(1, 'rgba(4,0,1,' + (cut ? 0.92 : 0.86) + ')');
   fxCtx.fillStyle = vg;
   fxCtx.fillRect(0, 0, w, h);
 
   const heartFreq = 1.0 + 1.1 * panic;
   const pulse = 0.5 + 0.5 * Math.sin(t * 2 * Math.PI * heartFreq);
-  const pAlpha = 0.04 + 0.14 * pulse * (0.5 + 0.5*panic);
+  const pAlpha = 0.03 + 0.14 * pulse * (0.5 + 0.5*panic);
   const cg = fxCtx.createRadialGradient(w/2, h/2, 0, w/2, h/2, Math.min(w,h)*0.65);
   cg.addColorStop(0, 'rgba(160,0,12,' + pAlpha + ')');
   cg.addColorStop(1, 'rgba(0,0,0,0)');
   fxCtx.fillStyle = cg;
   fxCtx.fillRect(0, 0, w, h);
 
-  const baseN = silent ? 520 : 260;
+  const baseN = (silent ? 520 : 260) + (cut ? 120 : 0);
   const count = baseN + Math.floor(panic * 500);
   fxCtx.fillStyle = 'rgba(255,255,255,0.06)';
   for(let i = 0; i < count; i++) fxCtx.fillRect(Math.random()*w, Math.random()*h, 1, 1);
@@ -872,7 +916,7 @@ function drawHorror(dt, t){
     fxCtx.fillStyle = 'rgba(200,0,0,' + (b.a*0.7) + ')';
     fxCtx.beginPath(); fxCtx.arc(x, y + b.len*h, 2.5, 0, Math.PI*2); fxCtx.fill();
   }
-  if(silent){ fxCtx.fillStyle = 'rgba(0,0,0,0.18)'; fxCtx.fillRect(0,0,w,h); }
+  if(silent){ fxCtx.fillStyle = 'rgba(0,0,0,0.24)'; fxCtx.fillRect(0,0,w,h); }
   if(nearby){ fxCtx.fillStyle = 'rgba(120,0,10,0.10)'; fxCtx.fillRect(0,0,w,h); }
   if(scareTime > 0){
     scareTime = Math.max(0, scareTime - dt);
