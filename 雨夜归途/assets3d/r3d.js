@@ -1,7 +1,7 @@
 /* =========================================================
    r3d.js — 极简真 3D 引擎
    纯 WebGL 1.0，零依赖，单文件
-   iOS WebKit 兼容：纹理用 ImageData 而非 canvas
+   iOS WebKit 兼容：纹理优先走 Image，其次 ImageData
    ========================================================= */
 (function(global){
 'use strict';
@@ -159,32 +159,34 @@ function linkProgram(gl){
 /* ==================== 纹理 ==================== */
 function isPOT(n){ return (n & (n-1)) === 0; }
 
-function canvasToImageData(canvas){
-  const w = canvas.width;
-  const h = canvas.height;
-  const c2d = canvas.getContext('2d');
-  return c2d.getImageData(0, 0, w, h);
-}
-
-function makeTextureFromCanvas(gl, canvas, opts){
+/* 接受 Image 或 Canvas
+   - Image：直接上传，iOS 最稳
+   - Canvas：走 ImageData，避开 WebKit 的 canvas 直传兼容问题 */
+function makeTextureFromCanvas(gl, source, opts){
   opts = opts || {};
-  if(!canvas) throw new Error('纹理源为空');
-  const w = canvas.width;
-  const h = canvas.height;
-  if(!w || !h) throw new Error('纹理尺寸无效 ' + w + 'x' + h);
+  if(!source) throw new Error('纹理源为空');
 
-  const data = canvasToImageData(canvas);
+  const isImage = (typeof HTMLImageElement !== 'undefined') && (source instanceof HTMLImageElement);
+  const w = isImage ? source.naturalWidth : source.width;
+  const h = isImage ? source.naturalHeight : source.height;
+  if(!w || !h) throw new Error('纹理尺寸无效 ' + w + 'x' + h);
 
   const t = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, t);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, opts.flipY ? 1 : 0);
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
 
-  gl.texImage2D(
-    gl.TEXTURE_2D, 0, gl.RGBA,
-    w, h, 0,
-    gl.RGBA, gl.UNSIGNED_BYTE, data
-  );
+  if(isImage){
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+  } else {
+    const c2d = source.getContext('2d');
+    const data = c2d.getImageData(0, 0, w, h);
+    gl.texImage2D(
+      gl.TEXTURE_2D, 0, gl.RGBA,
+      w, h, 0,
+      gl.RGBA, gl.UNSIGNED_BYTE, data
+    );
+  }
 
   const wrap = opts.repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE;
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
@@ -365,8 +367,8 @@ Renderer.prototype.setFog = function(f){
   if(f.far !== undefined) this.fog.far = f.far;
 };
 
-Renderer.prototype.textureFromCanvas = function(canvas, opts){
-  return makeTextureFromCanvas(this.gl, canvas, opts);
+Renderer.prototype.textureFromCanvas = function(source, opts){
+  return makeTextureFromCanvas(this.gl, source, opts);
 };
 
 Renderer.prototype.deleteTexture = function(tex){
@@ -458,9 +460,9 @@ Renderer.prototype.buildWorld = function(cfg){
     this.worldTex = null;
   }
   this.worldHasTex = false;
-  if(cfg.wallTexCanvas){
+  if(cfg.wallTexSource){
     try{
-      this.worldTex = makeTextureFromCanvas(gl, cfg.wallTexCanvas, { repeat: true });
+      this.worldTex = makeTextureFromCanvas(gl, cfg.wallTexSource, { repeat: true });
       this.worldHasTex = true;
     }catch(e){
       console.warn('[R3D] 纹理上传失败，降级为纯色:', e.message);
