@@ -1,8 +1,7 @@
 /* =========================================================
-   scenes.js — 10 场景绘制 + 定义
-   依赖 window.S（游戏状态）
-   + 新增：邻屋（支线·主流程必经）
-   + 邻屋加入「来的路」出口
+   scenes.js — 2D 场景绘制 + 定义
+   依赖 window.S
+   + 白天场景：alley_day（第二天早上）
    ========================================================= */
 (function(){
 'use strict';
@@ -14,7 +13,6 @@ function getCtx(){ return ctx; }
 
 function flags(){ return (window.S && window.S.flags) || {}; }
 function isPowerCut(){ return !!flags().powerCut; }
-/* ★ 暗色分支：只判断 bloodMode，与主播模式无关 */
 function isBloodMode(){ return !!flags().bloodMode; }
 
 /* ================== 工具 ================== */
@@ -144,7 +142,6 @@ function drawAlleyStatic(){
     }
   });
 
-  /* 远处红屋顶：暗色模式下变成烧焦的黑屋顶 */
   const hx = 780, hy = 210;
   ctx.fillStyle = blood ? '#180808' : '#2c1414';
   ctx.beginPath();
@@ -183,7 +180,6 @@ function drawAlleyStatic(){
     ctx.fillRect(hx-60, hy-60, 210, 210);
   }
 
-  /* 霓虹招牌 */
   if(!cut && !blood){
     ctx.fillStyle = 'rgba(70,220,255,0.55)';
     ctx.fillRect(380, 130, 44, 5);
@@ -206,7 +202,6 @@ function drawAlleyStatic(){
     ctx.fillRect(452, 160, 24, 5);
   }
 
-  /* 左墙 */
   brickWall(0, 16, 160, 524, 60, 22,
     blood ? '#1a0a14' : '#131a23',
     blood ? 'rgba(60,10,20,0.35)' : 'rgba(0,0,0,0.35)');
@@ -400,6 +395,320 @@ function drawAlleyDynamic(t, dt){
     ctx.arc(168, 124, 44, 0, Math.PI*2);
     ctx.fill();
   }
+}
+
+/* =========================================================
+   雨巷 · 白天（第二天早上）
+   ========================================================= */
+function drawAlleyDayStatic(){
+  ctx.fillStyle = grad(0, 0, 0, 440, [
+    [0,   '#7a8a98'],
+    [0.30,'#a8b4bc'],
+    [0.55,'#d0c4b0'],
+    [0.80,'#e8d2b0'],
+    [1,   '#f0d8b8']
+  ]);
+  ctx.fillRect(0, 0, W, 440);
+
+  for(let i=0;i<6;i++){
+    const cx = 60 + i*170, cy = 30 + Math.sin(i*1.3)*22;
+    ctx.fillStyle = 'rgba(245,235,225,' + (0.35 + 0.08*(i%2)) + ')';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, 200 - i*8, 26 + (i%3)*5, 0, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  const skyline = [
+    { x:0,   y:200, w:120, h:250 },
+    { x:140, y:230, w:130, h:210 },
+    { x:290, y:180, w:140, h:260 },
+    { x:450, y:210, w:120, h:230 },
+    { x:590, y:160, w:150, h:280 },
+    { x:760, y:200, w:130, h:240 },
+    { x:900, y:230, w:80,  h:210 }
+  ];
+  skyline.forEach((b, bi) => {
+    const shade = ['#6a7684','#5c6878','#748090','#606c78'][bi % 4];
+    ctx.fillStyle = shade;
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+    ctx.fillStyle = 'rgba(255,235,200,0.45)';
+    ctx.fillRect(b.x, b.y, b.w, 2);
+  });
+
+  const wins = [];
+  skyline.forEach(b => {
+    const cols = Math.floor(b.w / 34);
+    const rows = Math.floor(b.h / 50);
+    for(let i=0;i<cols;i++){
+      for(let j=0;j<rows;j++){
+        const wx = b.x + 16 + i*34;
+        const wy = b.y + 26 + j*50;
+        if(wx + 14 > b.x + b.w - 8) continue;
+        if(wy + 22 > b.y + b.h - 8) continue;
+        wins.push([wx, wy]);
+      }
+    }
+  });
+  wins.forEach((w0, i) => {
+    const lit = (i*13 + 7) % 11 === 0;
+    if(lit){
+      ctx.fillStyle = 'rgba(255,220,150,0.85)';
+      ctx.fillRect(w0[0], w0[1], 12, 18);
+    } else {
+      ctx.fillStyle = 'rgba(50,62,78,0.85)';
+      ctx.fillRect(w0[0], w0[1], 12, 18);
+      ctx.fillStyle = 'rgba(220,230,240,0.25)';
+      ctx.fillRect(w0[0], w0[1], 4, 18);
+    }
+  });
+
+  const hx = 780, hy = 210;
+  ctx.fillStyle = '#7a2818';
+  ctx.beginPath();
+  ctx.moveTo(hx-28, hy); ctx.lineTo(hx+42, hy-78); ctx.lineTo(hx+112, hy);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#b84030';
+  ctx.beginPath();
+  ctx.moveTo(hx-22, hy); ctx.lineTo(hx+42, hy-72); ctx.lineTo(hx+106, hy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.lineWidth = 1;
+  for(let i=0;i<8;i++){
+    ctx.beginPath();
+    ctx.moveTo(hx-8 + i*14, hy - 4 - i*6);
+    ctx.lineTo(hx+42 + i*14, hy - 4 - i*6);
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#e8d8b8';
+  ctx.fillRect(hx, hy, 84, 82);
+  ctx.fillStyle = 'rgba(0,0,0,0.08)';
+  ctx.fillRect(hx + 60, hy, 24, 82);
+  ctx.fillStyle = 'rgba(255,240,200,0.95)';
+  ctx.fillRect(hx+28, hy+28, 28, 34);
+  ctx.strokeStyle = '#5a4a30';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(hx+28, hy+28, 28, 34);
+  ctx.beginPath();
+  ctx.moveTo(hx+42, hy+28); ctx.lineTo(hx+42, hy+62);
+  ctx.moveTo(hx+28, hy+45); ctx.lineTo(hx+56, hy+45);
+  ctx.stroke();
+
+  brickWall(0, 16, 160, 524, 60, 22,
+    '#9a8870',
+    'rgba(70,50,30,0.35)');
+  ctx.fillStyle = grad(0, 0, 0, 540, [
+    [0,'rgba(255,235,200,0.15)'],
+    [1,'rgba(255,235,200,0)']
+  ]);
+  ctx.fillRect(0, 0, 160, 540);
+
+  ctx.save();
+  ctx.translate(38, 220); ctx.rotate(-0.05);
+  ctx.fillStyle = 'rgba(200,180,140,0.5)';
+  ctx.fillRect(0, 0, 48, 64);
+  ctx.strokeStyle = 'rgba(240,235,220,0.7)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(8, 12); ctx.lineTo(38, 12);
+  ctx.moveTo(8, 22); ctx.lineTo(32, 22);
+  ctx.moveTo(8, 32); ctx.lineTo(40, 32);
+  ctx.moveTo(8, 42); ctx.lineTo(28, 42);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,245,220,0.95)';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(8, 52); ctx.lineTo(44, 52);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.fillStyle = 'rgba(240,235,220,0.7)';
+  ctx.beginPath();
+  ctx.ellipse(88, 500, 4, 2, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle = '#4a5058';
+  ctx.fillRect(164, 116, 9, 336);
+  ctx.fillStyle = '#3a4048';
+  ctx.beginPath();
+  ctx.moveTo(146, 120); ctx.lineTo(190, 120);
+  ctx.lineTo(182, 96); ctx.lineTo(154, 96);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(180,180,170,0.6)';
+  ctx.beginPath();
+  ctx.ellipse(168, 124, 8, 4.5, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  const bx = 618, by = 314, bw = 126, bh = 180;
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath();
+  ctx.ellipse(bx+bw/2, by+bh+2, bw*0.6, 15, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.save();
+  ctx.translate(bx + bw/2, by + bh/2);
+  ctx.rotate(-0.35);
+  ctx.fillStyle = '#4a4a48';
+  ctx.beginPath();
+  ctx.moveTo(-40, -80); ctx.lineTo(40, -80);
+  ctx.lineTo(36, 80); ctx.lineTo(-36, 80);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#5a5a58';
+  ctx.beginPath();
+  ctx.ellipse(-60, 60, 44, 12, 0.3, 0, Math.PI*2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  ctx.lineWidth = 1;
+  for(let i=-60;i<80;i+=20){
+    ctx.beginPath();
+    ctx.moveTo(-40, i); ctx.lineTo(40, i);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  drawDayCat(bx - 40, by + bh - 30);
+
+  ctx.fillStyle = grad(0, 440, 0, H, [
+    [0, '#8a98a2'],
+    [0.5, '#6a7882'],
+    [1, '#4a5860']
+  ]);
+  ctx.fillRect(0, 440, W, 100);
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1;
+  for(let x = -60; x < W+80; x += 120){
+    ctx.beginPath();
+    ctx.moveTo(x, 440); ctx.lineTo(x+40, H);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  for(let y = 460; y < H; y += 30){
+    ctx.beginPath();
+    ctx.moveTo(0, y); ctx.lineTo(W, y);
+    ctx.stroke();
+  }
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(330, 492, 110, 24, 0, 0, Math.PI*2);
+  const pg = ctx.createRadialGradient(330, 492, 0, 330, 492, 110);
+  pg.addColorStop(0, 'rgba(150,180,200,0.55)');
+  pg.addColorStop(0.5, 'rgba(100,140,170,0.35)');
+  pg.addColorStop(1, 'rgba(80,110,140,0)');
+  ctx.fillStyle = pg;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(80,50,40,0.4)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(180,200,220,0.35)';
+  ctx.fillRect(300, 480, 60, 3);
+  ctx.fillRect(320, 488, 40, 2);
+  ctx.restore();
+
+  ctx.fillStyle = 'rgba(90,40,35,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(380, 500, 30, 6, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(430, 505, 15, 4, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  const lg = ctx.createLinearGradient(856, 0, 600, 500);
+  lg.addColorStop(0, 'rgba(255,230,180,0)');
+  lg.addColorStop(0.5, 'rgba(255,225,170,0.20)');
+  lg.addColorStop(1, 'rgba(255,220,160,0.45)');
+  ctx.fillStyle = lg;
+  ctx.fillRect(600, 0, W-600, H);
+
+  const eg = ctx.createLinearGradient(856, 0, W, 0);
+  eg.addColorStop(0, 'rgba(255,240,200,0)');
+  eg.addColorStop(1, 'rgba(255,240,200,0.55)');
+  ctx.fillStyle = eg;
+  ctx.fillRect(856, 0, 104, H);
+}
+
+function drawDayCat(x, y){
+  ctx.save();
+  ctx.translate(x, y);
+
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath();
+  ctx.ellipse(0, 26, 32, 6, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle = '#d8964e';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 28, 18, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.strokeStyle = '#b87832';
+  ctx.lineWidth = 8;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-24, 8);
+  ctx.quadraticCurveTo(-38, 4, -34, 20);
+  ctx.stroke();
+
+  ctx.fillStyle = '#d8964e';
+  ctx.beginPath();
+  ctx.ellipse(20, -6, 16, 14, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(10, -18); ctx.lineTo(12, -30); ctx.lineTo(22, -20);
+  ctx.closePath(); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(26, -19); ctx.lineTo(34, -30); ctx.lineTo(34, -16);
+  ctx.closePath(); ctx.fill();
+
+  ctx.fillStyle = '#a86028';
+  ctx.beginPath();
+  ctx.moveTo(14, -20); ctx.lineTo(15, -26); ctx.lineTo(19, -21);
+  ctx.closePath(); ctx.fill();
+
+  ctx.strokeStyle = '#3a2818';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(15, -6, 3, 0.2, Math.PI - 0.2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(26, -7, 3, 0.2, Math.PI - 0.2);
+  ctx.stroke();
+
+  ctx.fillStyle = '#7a3828';
+  ctx.beginPath();
+  ctx.moveTo(20, 0); ctx.lineTo(22, 0); ctx.lineTo(21, 2);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(140,80,30,0.6)';
+  ctx.lineWidth = 2;
+  for(let i=-3;i<=3;i++){
+    ctx.beginPath();
+    ctx.moveTo(i*6, -12);
+    ctx.lineTo(i*6, 12);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = 'rgba(120,50,30,0.7)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(0, 0, 18, -0.6, 0.6);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawAlleyDayDynamic(t, dt){
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for(let i=0;i<24;i++){
+    const x = (i * 83 + t * 8) % W;
+    const y = (i * 137 + Math.sin(t*0.5 + i) * 20 + 200) % H;
+    ctx.fillStyle = 'rgba(255,240,200,' + (0.15 + (i%3)*0.08) + ')';
+    ctx.beginPath();
+    ctx.arc(x, y, 1 + (i%2)*0.8, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 /* =========================================================
@@ -615,7 +924,6 @@ function drawBackstreetDynamic(t, dt){
     ctx.beginPath(); ctx.arc(dx + dw/2, dy + dh/2, 8, 0, Math.PI*2); ctx.fill();
   }
 
-  /* 主线：有猫就画猫；支线：未拿 photo1 时画猫形水渍 */
   if(!blood){
     if(!f.catGone) drawCat(246, 354, t);
   } else if(!f.photo1Taken){
@@ -660,7 +968,6 @@ function drawCat(x, y, t){
   ctx.restore();
 }
 
-/* 支线的猫形水渍（替代大橘的视觉占位） */
 function drawBloodStain(x, y, t){
   ctx.save();
   ctx.translate(x, y);
@@ -941,7 +1248,6 @@ function drawStreetStatic(){
   ctx.textBaseline = 'middle';
   ctx.fillText('17', 137, 330);
 
-  /* ★ 支线：17 号 → 焦黑的门洞 */
   if(isBloodMode()){
     ctx.fillStyle = '#060404';
     ctx.fillRect(108, 342, 60, 128);
@@ -2483,25 +2789,21 @@ function drawRiversideDynamic(t, dt){
 }
 
 /* =========================================================
-   邻屋（支线·主流程必经）
+   邻屋
    ========================================================= */
 function drawNeighborStatic(){
-  /* 背景：深焦褐 */
   ctx.fillStyle = grad(0, 0, 0, H, [
     [0,'#0a0706'],[0.5,'#120b08'],[1,'#060403']
   ]);
   ctx.fillRect(0, 0, W, H);
 
-  /* 墙：烧焦的砖 */
   brickWall(0, 60, W, 400, 60, 24, '#1a1008', 'rgba(0,0,0,0.55)');
 
-  /* 房梁 */
   ctx.fillStyle = '#0a0604';
   ctx.fillRect(0, 40, W, 24);
   ctx.fillStyle = '#1a0f08';
   ctx.fillRect(0, 44, W, 6);
 
-  /* 天花板的破洞 */
   ctx.fillStyle = '#02040a';
   ctx.beginPath();
   ctx.moveTo(340, 0);
@@ -2521,7 +2823,6 @@ function drawNeighborStatic(){
   ctx.lineTo(620, 0);
   ctx.stroke();
 
-  /* 窗户 */
   const wx = 300, wy = 160, ww = 300, wh = 240;
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.fillRect(wx - 8, wy - 8, ww + 16, wh + 16);
@@ -2530,7 +2831,6 @@ function drawNeighborStatic(){
   ctx.fillStyle = '#050810';
   ctx.fillRect(wx, wy, ww, wh);
 
-  /* 窗外：远处焦黑的红屋顶 */
   const hx0 = wx + 100, hy0 = wy + 170;
   ctx.fillStyle = '#2a0e08';
   ctx.beginPath();
@@ -2541,11 +2841,9 @@ function drawNeighborStatic(){
   ctx.fill();
   ctx.fillStyle = '#0a0505';
   ctx.fillRect(hx0 + 18, hy0, 76, 60);
-  /* 二楼那扇暗红的窗 */
   ctx.fillStyle = 'rgba(180,40,30,0.6)';
   ctx.fillRect(hx0 + 40, hy0 + 18, 30, 32);
 
-  /* 窗格 */
   ctx.strokeStyle = '#2a1a10';
   ctx.lineWidth = 6;
   ctx.strokeRect(wx, wy, ww, wh);
@@ -2554,7 +2852,6 @@ function drawNeighborStatic(){
   ctx.moveTo(wx, wy + wh/2); ctx.lineTo(wx + ww, wy + wh/2);
   ctx.stroke();
 
-  /* 日历 */
   const cx = 100, cy = 170, cw = 70, ch = 92;
   ctx.fillStyle = '#2a1f14';
   ctx.fillRect(cx, cy, cw, ch);
@@ -2575,7 +2872,6 @@ function drawNeighborStatic(){
   ctx.closePath();
   ctx.fill();
 
-  /* 小床 */
   const bx = 680, by = 320, bw = 240, bh = 160;
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(bx + 6, by + 6, bw, bh);
@@ -2592,7 +2888,6 @@ function drawNeighborStatic(){
   ctx.ellipse(bx + 60, by + 55, 34, 18, -0.1, 0, Math.PI*2);
   ctx.fill();
 
-  /* 地板 */
   ctx.fillStyle = grad(0, 460, 0, H, [
     [0,'#0e0806'],[1,'#040201']
   ]);
@@ -2610,7 +2905,6 @@ function drawNeighborStatic(){
   ctx.ellipse(400, 500, 120, 20, 0, 0, Math.PI*2);
   ctx.fill();
 
-  /* 右侧：通向门前的门 */
   const dx = 860, dy = 240, dw = 88, dh = 130;
   ctx.fillStyle = '#0a0604';
   ctx.fillRect(dx, dy, dw, dh);
@@ -2624,23 +2918,19 @@ function drawNeighborStatic(){
   ctx.fillStyle = 'rgba(180,60,40,0.35)';
   ctx.fillRect(dx, dy + 4, 3, dh - 8);
 
-  /* ★ 左下角：来的路（通向街道） */
   const bx2 = 16, by2 = 456, bw2 = 100, bh2 = 84;
   ctx.fillStyle = '#050302';
   ctx.fillRect(bx2, by2, bw2, bh2);
   ctx.strokeStyle = '#2a1808';
   ctx.lineWidth = 3;
   ctx.strokeRect(bx2, by2, bw2, bh2);
-  /* 门下透出的一线暗红 */
   ctx.fillStyle = 'rgba(160, 70, 50, 0.28)';
   ctx.fillRect(bx2 + 4, by2 + 4, bw2 - 8, 4);
-  /* 门上的把手 */
   ctx.fillStyle = '#4a3020';
   ctx.beginPath();
   ctx.arc(bx2 + bw2 - 16, by2 + bh2 / 2, 4, 0, Math.PI * 2);
   ctx.fill();
 
-  /* 暗角 */
   const vg = ctx.createRadialGradient(W/2, H/2, H*0.30, W/2, H/2, H*0.95);
   vg.addColorStop(0, 'rgba(0,0,0,0)');
   vg.addColorStop(1, 'rgba(0,0,0,0.72)');
@@ -2649,7 +2939,6 @@ function drawNeighborStatic(){
 }
 
 function drawNeighborDynamic(t, dt){
-  /* 破洞漏雨 */
   ctx.strokeStyle = 'rgba(200,140,140,0.45)';
   ctx.lineWidth = 1;
   for(let i = 0; i < 8; i++){
@@ -2662,7 +2951,6 @@ function drawNeighborDynamic(t, dt){
     ctx.stroke();
   }
 
-  /* 窗外雨丝 */
   ctx.strokeStyle = 'rgba(180,120,120,0.35)';
   ctx.lineWidth = 1;
   for(let i = 0; i < 12; i++){
@@ -2674,7 +2962,6 @@ function drawNeighborDynamic(t, dt){
     ctx.stroke();
   }
 
-  /* 窗外红屋顶·暗红灯闪烁 */
   const blink = 0.6 + 0.4 * Math.sin(t * 2.2);
   ctx.fillStyle = `rgba(220, 70, 50, ${0.6 * blink})`;
   ctx.fillRect(440, 348, 30, 32);
@@ -2684,6 +2971,19 @@ function drawNeighborDynamic(t, dt){
    场景 SPOTS 定义
    ========================================================= */
 const SCENES = {
+  /* 白天雨巷 —— 放在最前 */
+  alley_day: {
+    draw: drawAlleyDayStatic, dynamic: drawAlleyDayDynamic, rain: false,
+    spots: [
+      { id:'trash',    x:600, y:290, w:160, h:220, label:'翻倒的垃圾桶' },
+      { id:'cat',      x:496, y:428, w:96,  h:72,  label:'一只小猫' },
+      { id:'graffiti', x:28,  y:250, w:84,  h:70,  label:'墙上的字' },
+      { id:'puddle',   x:220, y:466, w:220, h:56,  label:'水洼' },
+      { id:'lamp',     x:136, y:88,  w:66,  h:56,  label:'路灯' },
+      { id:'exit',     x:892, y:244, w:52,  h:52,  label:'巷子深处' }
+    ]
+  },
+
   alley: {
     draw: drawAlleyStatic, dynamic: drawAlleyDynamic, rain: true,
     spots: [
@@ -2803,7 +3103,6 @@ const SCENES = {
       { id:'back',    x:16,  y:244, w:52,  h:52,  label:'回到街道' }
     ]
   },
-  /* ★ 邻屋（支线·主流程必经）+ 来的路出口 */
   neighbor: {
     draw: drawNeighborStatic, dynamic: drawNeighborDynamic, rain: false,
     spots: [
