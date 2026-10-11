@@ -433,7 +433,6 @@ function presentChoice(options, onPick){
     });
     choiceBoxEl.appendChild(btn);
   });
-  /* 定位到对话上方 */
   try{
     var dlgRect = dlgEl.getBoundingClientRect();
     var stageRect = stage.getBoundingClientRect();
@@ -458,7 +457,6 @@ function sayChoice(promptText, options, onPick){
    ★ D · 三道心结 的具体实现
    ========================================================= */
 
-/* 第一道：雨巷 · 垃圾桶旁的猫 */
 function triggerInjuredCat(){
   var myInv = getInv();
   if(myInv.indexOf('catfood') === -1){
@@ -484,7 +482,6 @@ function triggerInjuredCat(){
   ], function(v){
     set('injuredCatDone', true);
     if(v === 'feed'){
-      /* 用掉猫粮 */
       var arr = getInv().filter(function(i){ return i !== 'catfood'; });
       setInv(arr);
       set('injuredCatFed', true);
@@ -515,14 +512,12 @@ function triggerInjuredCat(){
 }
 
 function afterInjuredCatChoice(v){
-  /* 喂了猫 → 后面大橘的路径需要自己找钥匙 */
   if(v === 'feed'){
     set('catFedByKarma', true);
     save();
   }
 }
 
-/* 第二道：后巷 · 大橘问"你跑了吗" */
 function triggerCatQuestion(){
   say('大橘看着灰豆。');
   say('——看得很久了。');
@@ -570,7 +565,6 @@ function triggerCatQuestion(){
   });
 }
 
-/* 第三道：红屋顶 · 照片 */
 function triggerPhotoChoice(){
   say('两片照片，都凑齐了。');
   say('');
@@ -594,7 +588,6 @@ function triggerPhotoChoice(){
     if(v === 'full'){
       setVal('photoChoice', 'full');
       save();
-      /* 走真相线 */
       var myInv = getInv();
       var newInv = myInv.filter(function(i){ return i!=='photo1' && i!=='photo2'; });
       newInv.push('photoFull'); setInv(newInv);
@@ -614,7 +607,6 @@ function triggerPhotoChoice(){
     } else {
       setVal('photoChoice', 'half');
       save();
-      /* 走遗忘线 */
       var myInv2 = getInv();
       var newInv2 = myInv2.filter(function(i){ return i!=='photo1' && i!=='photo2'; });
       newInv2.push('photo1'); setInv(newInv2);
@@ -643,12 +635,12 @@ function triggerPhotoChoice(){
 
 /* =========================================================
    ★ B · 第二天早上 —— 主线的真正结局
+   ★ 修复：不再设 endingLock，改用 dayStarted
    ========================================================= */
 function startDaySequence(){
-  if(endingLock) return;
-  endingLock = true;
-  /* 主线真相线达成 */
-  unlockAchievement('truth_daybreak');
+  if(!S || !S.flags) return;
+  if(S.flags.dayStarted) return;
+  S.flags.dayStarted = true;
   /* 进入白天场景 */
   S.flags.daySequence = true;
   S.scene = 'alley_day';
@@ -935,6 +927,7 @@ var SCENES = {
 
   /* =====================================================
      红屋顶 · 早 —— 主线真相线终章
+     ★ 修复：frame 现在能正常触发
      ===================================================== */
   house_day: {
     url: null,
@@ -959,6 +952,8 @@ var SCENES = {
         say('——但他笑了。');
         say('（主线 · 真相线 · 完结）', function(){
           endingLock = true;
+          /* ★ 结局显示时才解锁真相成就 */
+          unlockAchievement('truth_daybreak');
           setTimeout(function(){
             endingShown = true;
             syncState();
@@ -1010,7 +1005,6 @@ var SCENES = {
             say('垃圾桶里，什么都没有了。');
             say('只剩下那股腥甜。');
           } else {
-            /* ★ D-1：主线第二次点垃圾桶 → 受伤的猫 */
             if(!is('injuredCatDone')){
               triggerInjuredCat();
             } else {
@@ -1297,7 +1291,6 @@ var SCENES = {
           return;
         }
         if(is('catFed') || myInv.indexOf('key') !== -1){
-          /* ★ D-2：拿到钥匙后，大橘问"你跑了吗" */
           if(!is('catQuestionAsked')){
             triggerCatQuestion();
           } else {
@@ -2048,7 +2041,6 @@ var SCENES = {
           return;
         }
 
-        /* ★ D-3：主线 —— 拼照片选择 */
         if(is('photoJoined')){
           say('照片还摆在桌上。');
           if(getVal('photoChoice', '') === 'half'){
@@ -2064,7 +2056,6 @@ var SCENES = {
         var has1 = myInv.indexOf('photo1') !== -1;
         var has2 = myInv.indexOf('photo2') !== -1;
         if(has1 && has2){
-          /* 两片都有 → 触发选择 */
           triggerPhotoChoice();
           return;
         }
@@ -2705,7 +2696,6 @@ window.addEventListener('message', function(e){
           say('它决定去找那个屋顶。');
         }, 420);
       } else {
-        /* ★ A：老人身影，只在主线首次进入时触发 */
         maybeShowSilhouette(S.scene);
       }
     });
@@ -3054,10 +3044,6 @@ function showEnding(){
   endEl.classList.add('show');
 }
 
-/* ★ 暗夜三层结局 —— 分级阈值已调整：
-   3 个承认 → blood_full
-   2 个承认 → blood_half
-   0-1 个承认 → blood_dark（含"只承认相框本身"的情况） */
 function startBloodEnding(){
   if(endingLock) return;
   endingLock = true;
