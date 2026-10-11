@@ -220,7 +220,6 @@ function sceneURL(name){
     return 'assets3d/scene.html?id=' + name + '&blood=1';
   }
   if(SCENES[name] && SCENES[name].url) return SCENES[name].url;
-  /* 白天场景统一走 scene_day.html */
   if(/^[a-z]+_day$/.test(name)){
     return 'assets/scene_day.html?id=' + name;
   }
@@ -634,18 +633,15 @@ function triggerPhotoChoice(){
 }
 
 /* =========================================================
-   ★ B · 第二天早上 —— 主线的真正结局
-   ★ 修复：不再设 endingLock，改用 dayStarted
+   ★ B · 第二天早上
    ========================================================= */
 function startDaySequence(){
   if(!S || !S.flags) return;
   if(S.flags.dayStarted) return;
   S.flags.dayStarted = true;
-  /* 进入白天场景 */
   S.flags.daySequence = true;
   S.scene = 'alley_day';
   save();
-  /* 先播一段过渡 */
   say('雨停了。');
   say('——真的停了。');
   say('');
@@ -664,7 +660,7 @@ function startDaySequence(){
 var SCENES = {
 
   /* =====================================================
-     白天雨巷 —— 第二天早上
+     白天雨巷
      ===================================================== */
   alley_day: {
     url: null,
@@ -766,7 +762,7 @@ var SCENES = {
   },
 
   /* =====================================================
-     便利店 · 早 —— 老周登场（主线真相线的关键）
+     便利店 · 早
      ===================================================== */
   shop_day: {
     url: null,
@@ -927,7 +923,6 @@ var SCENES = {
 
   /* =====================================================
      红屋顶 · 早 —— 主线真相线终章
-     ★ 修复：frame 现在能正常触发
      ===================================================== */
   house_day: {
     url: null,
@@ -952,7 +947,6 @@ var SCENES = {
         say('——但他笑了。');
         say('（主线 · 真相线 · 完结）', function(){
           endingLock = true;
-          /* ★ 结局显示时才解锁真相成就 */
           unlockAchievement('truth_daybreak');
           setTimeout(function(){
             endingShown = true;
@@ -1343,10 +1337,13 @@ var SCENES = {
           return;
         }
         var missing = [];
-        if(myInv.indexOf('hook') === -1 && myInv.indexOf('grapnel') === -1)
-          missing.push('雨巷垃圾桶里的挂钩');
-        if(!isBloodMode() && myInv.indexOf('photo1') === -1 && myInv.indexOf('photoFull') === -1 && !is('photo1Taken'))
-          missing.push('雨巷墙上的湿透的纸片');
+        /* ★ 修复：暗夜模式下不再要求 hook / photo1 */
+        if(!isBloodMode()){
+          if(myInv.indexOf('hook') === -1 && myInv.indexOf('grapnel') === -1)
+            missing.push('雨巷垃圾桶里的挂钩');
+          if(myInv.indexOf('photo1') === -1 && myInv.indexOf('photoFull') === -1 && !is('photo1Taken'))
+            missing.push('雨巷墙上的湿透的纸片');
+        }
         if(missing.length > 0){
           say('钥匙插进锁孔，灰豆的动作停住了。');
           say('它回头看了一眼来时的路。');
@@ -1355,7 +1352,8 @@ var SCENES = {
           say('（请先往左边走回雨巷，把东西找齐。）');
           return;
         }
-        if(!S.flags.powerCut){
+        /* ★ 修复：暗夜模式下跳过主线电力检查 */
+        if(!isBloodMode() && !S.flags.powerCut){
           say('钥匙插进锁孔，转了一圈。');
           say('“咔哒”一声——');
           say('门却纹丝不动。');
@@ -2436,6 +2434,7 @@ var SCENES = {
 
   /* =====================================================
      邻屋
+     ★ 修复：补上 back act
      ===================================================== */
   neighbor: {
     url:'assets/scene11.html', label:'邻 屋',
@@ -2514,6 +2513,16 @@ var SCENES = {
         say('很久没有动。');
         say('——它记得脖子上有过一根一样的东西。');
         say('——但它不记得，绳子是什么时候断的。');
+      },
+      back: function(){
+        if(isBloodMode()){
+          say('灰豆退回到那条街。');
+          say('——铁门还在那里。');
+          say('——像是在等它。');
+        } else {
+          say('灰豆退回到那条街。');
+        }
+        changeScene('street', '街 道');
       },
       exit: function(){
         say('房间另一头，有一扇门。');
