@@ -717,25 +717,282 @@ var SCENES = {
         say('——很暖。');
         say('它走在昨晚跑过的那条巷子里。');
         say('——走得很慢。');
+        changeScene('backstreet_day', '后 巷 · 早');
+      }
+    }
+  },
+
+  /* =====================================================
+     后巷 · 早
+     ===================================================== */
+  backstreet_day: {
+    url: null,
+    label: '后 巷 · 早',
+    acts: {
+      stairs: function(){
+        say('消防梯锈得更厉害了。');
+        say('——但它看起来没那么吓人了。');
+        say('铁栏杆上还留着灰豆的爪印。');
+        say('（昨晚它爬上去过。）');
+      },
+      mold: function(){
+        say('墙上的霉斑，白天看是一团普通的黑。');
+        say('——只是一块老墙。');
+        say('灰豆盯着看了一会儿。');
+        say('形状还是有点像一栋房子。');
+        say('——但屋顶是黑的了。');
+      },
+      box: function(){
+        say('三个纸箱都塌了。');
+        say('里面是空的。');
+        say('——只有雨水和一点碎报纸。');
+      },
+      cat: function(){
+        say('大橘蜷在纸箱上，在晒太阳。');
+        say('它看见灰豆，只抬了一下眼皮。');
+        say('“哦，是你。”');
+        say('“昨晚的事，就当没发生。”');
+        say('然后它把脸埋回尾巴里。');
+      },
+      door: function(){
+        say('后门开着。');
+        say('——是昨晚灰豆撞开的。');
+        say('里面是便利店。');
+        changeScene('shop_day', '便 利 店 · 早');
+      },
+      powerDoor: function(){
+        say('配电房的小铁门还开着。');
+        say('里面黑漆漆的。');
+        say('——白天看，只是一间小屋。');
+        say('灰豆没有进去。');
+      },
+      back: function(){
+        say('灰豆走回雨巷。');
+        changeScene('alley_day', '雨 巷 · 早');
+      }
+    }
+  },
+
+  /* =====================================================
+     便利店 · 早 —— 老周登场（主线真相线的关键）
+     ===================================================== */
+  shop_day: {
+    url: null,
+    label: '便 利 店 · 早',
+    acts: {
+      counter: function(){
+        if(is('zhouMet')){
+          say('老周站在收银台后面。');
+          say('——他在擦一个杯子。');
+          say('“不着急。”他说。“慢慢来。”');
+          return;
+        }
+        set('zhouMet', true); save();
+        say('一个老人从收银台后面走了出来。');
+        say('——他穿着一件旧毛衣，手里端着一个茶缸。');
+        say('他看见灰豆。');
+        say('茶缸停在了半空中。');
         say('');
-        say('巷口。');
-        say('——红屋顶的房子就在前面。');
-        say('台阶上，蹲着一只很小的浣熊。');
-        say('——它在晒太阳。');
+        say('“……你回来了。”');
         say('');
-        say('灰豆走过去。');
-        say('那只小浣熊抬起头，看了它一眼。');
-        say('——然后，又低下头。');
-        say('像是认出它来了。');
+        say('灰豆看着他。');
+        say('——它认出来了。');
+        say('是老周。');
+        say('那天晚上，从窗户里往外看的，就是他。');
+        say('——他没有追出来。');
+        say('——是因为他追不动了。');
         say('');
-        say('灰豆在它旁边坐下。');
-        say('——今天没有雨。', function(){
+        say('“进来吧。”老周说。');
+        say('“外面冷。”');
+        say('');
+        say('（老周把茶缸放在了桌上。）');
+        say('（他没有再看灰豆。）');
+        say('（他好像……已经等这一天很久了。）');
+      },
+      shelf: function(){
+        say('货架是空的。');
+        say('——白天看，就只是空的。');
+        say('昨天晚上那些红色的标签，都不在了。');
+      },
+      window: function(){
+        say('后窗外面，天已经大亮了。');
+        say('——巷子尽头，就是街。');
+      },
+      floor: function(){
+        say('地板上，还是那串爪印。');
+        say('——很小。');
+        say('是小浣熊的。');
+        say('灰豆把自己的爪子按了上去。');
+        say('——正好。');
+      },
+      poster: function(){
+        say('墙上的海报。');
+        say('——白天看，只是一张普通的促销海报。');
+        say('右下角那只小小的浣熊，还是歪歪的。');
+        say('——但画得很认真。');
+      },
+      back: function(){
+        say('灰豆退回后巷。');
+        changeScene('backstreet_day', '后 巷 · 早');
+      },
+      exit: function(){
+        say('灰豆推开后门。');
+        say('外面是一条街。');
+        changeScene('street_day', '街 道 · 早');
+      }
+    }
+  },
+
+  /* =====================================================
+     街道 · 早
+     ===================================================== */
+  street_day: {
+    url: null,
+    label: '街 道 · 早',
+    acts: {
+      lamp: function(){
+        say('路灯是关着的。');
+        say('白天不需要它。');
+      },
+      power: function(){
+        say('配电房的门锁着。');
+        say('——老周说，白天的电，是给别人的。');
+      },
+      under: function(){
+        say('地下通道的入口，白天看只是一个普通的洞口。');
+        say('灰豆没有下去。');
+      },
+      river: function(){
+        say('河堤那边，能听见水声。');
+        say('——哗啦哗啦。');
+        say('河还在。');
+      },
+      rope: function(){
+        say('晾衣绳已经不在那里了。');
+      },
+      gate: function(){
+        say('铁门开着。');
+        say('——昨晚灰豆用钩爪翻过去过。');
+        say('今天不用了。');
+        say('灰豆从门里走了过去。');
+        changeScene('doorstep_day', '门 前 · 早');
+      },
+      tree: function(){
+        say('梧桐树上的塑料袋，还在风里抖。');
+        say('——但白天看，就只是塑料袋。');
+      },
+      mailbox: function(){
+        say('信箱还在那里。');
+        say('——锁还是锈的。');
+        say('灰豆这次没有去扒。');
+      },
+      fire: function(){
+        say('消防栓在阳光里闪着一点光。');
+        say('灰豆凑过去蹭了蹭。');
+        say('——还是凉的。');
+        say('——但比昨晚暖。');
+      },
+      back: function(){
+        say('灰豆退回后巷。');
+        changeScene('backstreet_day', '后 巷 · 早');
+      }
+    }
+  },
+
+  /* =====================================================
+     门前 · 早
+     ===================================================== */
+  doorstep_day: {
+    url: null,
+    label: '门 前 · 早',
+    acts: {
+      window: function(){
+        say('窗户里，有人在走动。');
+        say('——是老周。');
+        say('他在整理什么东西。');
+      },
+      lamp: function(){
+        say('门框上的小灯，白天不需要亮。');
+        say('——灯罩上还挂着几滴昨晚的雨。');
+      },
+      door: function(){
+        say('门开着。');
+        say('——像是在等谁。');
+        say('灰豆走了进去。');
+        changeScene('house_day', '红 屋 顶 · 早');
+      },
+      steps: function(){
+        say('两级石阶，被早晨的阳光晒得暖暖的。');
+        say('——昨晚的青苔，还在。');
+        say('灰豆在台阶上坐了一会儿。');
+      },
+      back: function(){
+        say('灰豆退回到街道。');
+        changeScene('street_day', '街 道 · 早');
+      }
+    }
+  },
+
+  /* =====================================================
+     红屋顶 · 早 —— 主线真相线终章
+     ===================================================== */
+  house_day: {
+    url: null,
+    label: '红 屋 顶 · 早',
+    acts: {
+      frame: function(){
+        if(endingShown || endingLock) return;
+        say('桌上摆着一张照片。');
+        say('——完整的。');
+        say('一个老人，抱着一只小浣熊。');
+        say('小浣熊的脖子上，系着一根蓝色的绳子。');
+        say('——绳子没有断。');
+        say('');
+        say('灰豆看了很久。');
+        say('然后它转过头。');
+        say('——它不需要再看了。');
+        say('');
+        say('“我回来了。”');
+        say('');
+        say('老周站在门口。');
+        say('他没有说话。');
+        say('——但他笑了。');
+        say('（主线 · 真相线 · 完结）', function(){
+          endingLock = true;
           setTimeout(function(){
             endingShown = true;
             syncState();
             endEl.classList.add('show');
           }, 900);
         });
+      },
+      chair: function(){
+        say('摇椅还在慢慢地晃。');
+        say('——好像刚有人站起来。');
+      },
+      bowl: function(){
+        say('小碗已经洗干净了。');
+        say('——里面放着一块饼干。');
+      },
+      window: function(){
+        say('窗外，天亮了。');
+        say('——没有雨。');
+      },
+      books: function(){
+        say('书架上的旧书，还在那里。');
+        say('——这一次，没有烧焦。');
+      },
+      clock: function(){
+        say('挂钟还在走。');
+        say('——滴答。滴答。');
+      },
+      lamp: function(){
+        say('台灯是关着的。');
+        say('白天不需要它。');
+      },
+      back: function(){
+        say('灰豆退回门前。');
+        changeScene('doorstep_day', '门 前 · 早');
       }
     }
   },
@@ -2453,6 +2710,40 @@ window.addEventListener('message', function(e){
       }
     });
   }
+  if(d.type === 'bloodAcknowledge'){
+    if(!S || !S.flags) return;
+    var ackId = d.id;
+    if(!ackId) return;
+    if(!S.flags.b_acked) S.flags.b_acked = {};
+    if(S.flags.b_acked[ackId]) return;
+    S.flags.b_acked[ackId] = true;
+
+    var cnt = 0;
+    for(var k in S.flags.b_acked){ if(S.flags.b_acked[k]) cnt++; }
+    S.flags.b_knows = cnt;
+    save(); syncState();
+
+    var ackTexts = {
+      pawprints: [
+        '灰豆看着那串爪印。',
+        '——它认得那双小脚。',
+        '“是我。”'
+      ],
+      ropeEnd: [
+        '灰豆把断绳叼起来。',
+        '断口是齐的。',
+        '“是我咬断的。”'
+      ],
+      photoBack: [
+        '灰豆把相框翻了过来。',
+        '背面的字，是它写的。',
+        '“我那天……跑掉了。”'
+      ]
+    };
+    if(ackTexts[ackId]){
+      ackTexts[ackId].forEach(function(l){ say(l); });
+    }
+  }
   if(d.type === 'hit'){
     if(!S) return;
     var sc = SCENES[S.scene];
@@ -2573,7 +2864,6 @@ function nextDlg(){
 
   var item = queue.shift();
 
-  /* ★ 选择项 —— 显示选项框，等玩家点 */
   if(item.choice){
     currentDlg = null;
     dlgEl.classList.remove('show');
@@ -2585,7 +2875,6 @@ function nextDlg(){
     }catch(err){}
     presentChoice(item.options, function(v){
       if(item.onPick) item.onPick(v);
-      /* 选项选完后继续下一句 */
       if(!currentDlg) nextDlg();
     });
     return;
@@ -2747,7 +3036,6 @@ function pickup(id){
 function startEnding(){
   if(endingLock) return;
   endingLock = true;
-  /* 主线真相线 —— 实际解锁在 startDaySequence 里 */
   if(!getAchievementCount() || !loadAchievements()['truth_daybreak']){
     unlockAchievement('truth_daybreak');
   }
@@ -2766,11 +3054,25 @@ function showEnding(){
   endEl.classList.add('show');
 }
 
+/* ★ 暗夜三层结局 —— 按"承认"次数分级 */
 function startBloodEnding(){
   if(endingLock) return;
   endingLock = true;
-  /* 暗夜第一层 —— 后面 A/D/B 补齐后会区分三层 */
-  unlockAchievement('blood_dark');
+
+  var count = 0;
+  if(S && S.flags && S.flags.b_acked){
+    for(var k in S.flags.b_acked){ if(S.flags.b_acked[k]) count++; }
+  }
+  S.flags.b_knows = count;
+
+  if(count >= 3){
+    unlockAchievement('blood_full');
+  } else if(count >= 1){
+    unlockAchievement('blood_half');
+  } else {
+    unlockAchievement('blood_dark');
+  }
+
   setTimeout(function(){
     endingShown = true; syncState();
     bloodEndEl.classList.add('show');
@@ -2824,7 +3126,6 @@ document.getElementById('btnBloodAgain').addEventListener('click', function(){
   }, 8600);
 });
 
-/* 遗忘线结局 —— 点"再走一次"就重来 */
 document.getElementById('btnForgetAgain').addEventListener('click', function(){
   try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
   forgetEndEl.classList.remove('show');
