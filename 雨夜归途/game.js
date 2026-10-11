@@ -3054,7 +3054,10 @@ function showEnding(){
   endEl.classList.add('show');
 }
 
-/* ★ 暗夜三层结局 —— 按"承认"次数分级 */
+/* ★ 暗夜三层结局 —— 分级阈值已调整：
+   3 个承认 → blood_full
+   2 个承认 → blood_half
+   0-1 个承认 → blood_dark（含"只承认相框本身"的情况） */
 function startBloodEnding(){
   if(endingLock) return;
   endingLock = true;
@@ -3067,7 +3070,7 @@ function startBloodEnding(){
 
   if(count >= 3){
     unlockAchievement('blood_full');
-  } else if(count >= 1){
+  } else if(count === 2){
     unlockAchievement('blood_half');
   } else {
     unlockAchievement('blood_dark');
