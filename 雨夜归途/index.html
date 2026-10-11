@@ -5,242 +5,290 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#04070b">
-<title>雨夜归途</title>
-<link rel="stylesheet" href="styles.css">
+<title>雨夜归途 · 开始</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{width:100%;height:100%;background:#04070b;overflow:hidden;
+    font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    user-select:none;-webkit-user-select:none;touch-action:none;}
+  body{display:flex;align-items:center;justify-content:center;}
+  #titleStage{position:relative;overflow:hidden;background:#04070b;
+    box-shadow:0 0 120px rgba(0,0,0,1);}
+  canvas{display:block;width:100%;height:100%;}
+  #titleContent{position:absolute;left:0;top:0;width:960px;height:540px;
+    transform-origin:0 0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;pointer-events:none;}
+  #titleContent > *{pointer-events:auto;}
+  #titleContent h1{margin:0;font-size:64px;letter-spacing:24px;
+    color:#f2e6cb;font-weight:600;padding-left:24px;
+    text-shadow:0 0 50px rgba(255,196,110,.45),0 6px 26px rgba(0,0,0,.95);
+    animation:glow 4.5s ease-in-out infinite;}
+  @keyframes glow{
+    0%,100%{text-shadow:0 0 44px rgba(255,196,110,.32),0 6px 26px rgba(0,0,0,.95);}
+    50%{text-shadow:0 0 72px rgba(255,206,130,.6),0 6px 26px rgba(0,0,0,.95);}
+  }
+  #titleContent .sub{margin:10px 0 44px;font-size:15px;letter-spacing:9px;
+    color:#7d92a8;padding-left:9px;}
+  #titleContent .btns{display:flex;gap:24px;margin-bottom:38px;}
+  #titleContent button{padding:14px 44px;font-size:17px;letter-spacing:5px;
+    cursor:pointer;color:#e9dcc0;
+    background:linear-gradient(180deg,rgba(34,50,70,.92),rgba(14,22,34,.94));
+    border:1px solid rgba(200,170,110,.35);border-radius:11px;
+    transition:transform .15s,background .15s,box-shadow .15s;
+    font-family:inherit;box-shadow:0 8px 26px rgba(0,0,0,.6);}
+  #titleContent button:hover:not(:disabled){
+    background:linear-gradient(180deg,rgba(62,90,124,.95),rgba(26,40,58,.95));
+    border-color:rgba(255,214,140,.85);color:#ffe6b0;transform:translateY(-3px);
+    box-shadow:0 14px 34px rgba(0,0,0,.7),0 0 26px rgba(255,190,110,.15);}
+  #titleContent button:active:not(:disabled){transform:scale(.96);}
+  #titleContent button:disabled{opacity:.3;cursor:not-allowed;}
+  #titleContent .tip{font-size:13px;letter-spacing:2.5px;color:#4e6278;}
+
+  /* 16+ 适龄提示（左下角） */
+  #titleContent .age-badge{
+    position:absolute;left:34px;bottom:30px;
+    display:flex;align-items:center;gap:13px;
+    pointer-events:none;z-index:10;
+    animation:ageIn 1.1s cubic-bezier(.2,.9,.3,1) .55s both;}
+  @keyframes ageIn{
+    from{opacity:0;transform:translateY(14px);}
+    to{opacity:1;transform:translateY(0);}
+  }
+  #titleContent .age-circle{
+    width:54px;height:54px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:18px;font-weight:800;letter-spacing:.5px;
+    color:#ffffff;
+    font-family:"PingFang SC","Microsoft YaHei",sans-serif;
+    background:radial-gradient(circle at 36% 28%,
+      #9fe8af 0%, #5fc97c 45%, #3ea65f 78%, #2c7f47 100%);
+    box-shadow:
+      0 0 0 2px rgba(255,255,255,.92),
+      0 0 0 3px rgba(95,201,124,.55),
+      0 8px 22px rgba(60,180,100,.38),
+      inset 0 -3px 8px rgba(0,0,0,.20),
+      inset 0 3px 6px rgba(255,255,255,.32);
+    text-shadow:0 1px 2px rgba(0,0,0,.35);
+  }
+  #titleContent .age-label{
+    display:flex;flex-direction:column;gap:3px;
+    padding-left:2px;
+    text-shadow:0 2px 10px rgba(0,0,0,.85),0 0 5px rgba(0,0,0,.7);
+  }
+  #titleContent .age-label .cn{
+    font-size:14.5px;letter-spacing:5px;
+    color:#dbe9e0;font-weight:600;padding-left:2px;
+  }
+  #titleContent .age-label .en{
+    font-size:9.5px;letter-spacing:2.2px;
+    color:#87a99a;font-weight:500;padding-left:2px;
+  }
+
+  /* ★ 感谢名单（右下角，四位主播） */
+  #titleContent .thanks{
+    position:absolute;right:34px;bottom:30px;
+    display:flex;flex-direction:column;
+    gap:6px;
+    padding:14px 20px 14px 16px;
+    border-radius:16px;
+    background:linear-gradient(180deg,
+      rgba(40,30,16,.72),
+      rgba(18,12,6,.82));
+    border:1px solid rgba(255,214,140,.38);
+    box-shadow:
+      0 6px 22px rgba(0,0,0,.6),
+      0 0 24px rgba(255,196,110,.14),
+      inset 0 1px 0 rgba(255,255,255,.06);
+    pointer-events:none;z-index:10;
+    backdrop-filter:blur(6px);
+    animation:thanksIn 1.2s cubic-bezier(.2,.9,.3,1) .85s both;}
+  @keyframes thanksIn{
+    from{opacity:0;transform:translateY(14px);}
+    to{opacity:1;transform:translateY(0);}
+  }
+  #titleContent .thanks .label{
+    font-size:11px;letter-spacing:4px;
+    color:rgba(200,180,140,.72);
+    font-weight:500;
+    padding-left:2px;padding-bottom:2px;
+    border-bottom:1px solid rgba(255,214,140,.18);
+    margin-bottom:4px;}
+  #titleContent .thanks .row{
+    display:flex;align-items:center;
+    gap:8px;
+    padding:1px 0;}
+  #titleContent .thanks .dot{
+    width:7px;height:7px;border-radius:50%;flex:0 0 auto;
+    background:radial-gradient(circle at 35% 30%,#ffd98f,#c93a3a 75%,#8a1a1a);
+    box-shadow:
+      0 0 8px rgba(255,90,90,.85),
+      0 0 14px rgba(255,120,120,.45);
+    animation:liveDot 1.5s ease-in-out infinite;}
+  @keyframes liveDot{
+    0%,100%{opacity:.75;transform:scale(.92);}
+    50%    {opacity:1;transform:scale(1.18);}
+  }
+  #titleContent .thanks .role{
+    font-size:10.5px;letter-spacing:1.5px;
+    color:rgba(200,180,140,.65);
+    font-weight:500;}
+  #titleContent .thanks .role .live{
+    color:#ff8a6a;
+    font-weight:700;
+    text-shadow:0 0 8px rgba(255,120,90,.55);}
+  #titleContent .thanks .name{
+    font-size:14px;letter-spacing:1.2px;
+    color:#ffe6a8;font-weight:700;
+    text-shadow:
+      0 0 12px rgba(255,200,110,.5),
+      0 1px 2px rgba(0,0,0,.85);}
+
+  /* 健康忠告（底部居中） */
+  #titleContent .health-tip{
+    position:absolute;left:50%;bottom:22px;
+    transform:translateX(-50%);
+    display:flex;flex-direction:column;
+    gap:1px;
+    text-align:center;
+    pointer-events:none;z-index:10;
+    animation:healthIn 1.1s cubic-bezier(.2,.9,.3,1) .75s both;}
+  @keyframes healthIn{
+    from{opacity:0;transform:translate(-50%,14px);}
+    to{opacity:1;transform:translate(-50%,0);}
+  }
+  #titleContent .health-tip p{
+    font-size:9px;
+    letter-spacing:1.2px;
+    line-height:1.45;
+    color:rgba(140,160,180,.55);
+    font-weight:400;
+    text-shadow:0 1px 4px rgba(0,0,0,.85),0 0 3px rgba(0,0,0,.6);
+    white-space:nowrap;
+  }
+</style>
 </head>
 <body>
-<div id="stage">
-  <div id="overlay">
-
-    <div id="hud">
-      <div id="inv"></div>
-      <button id="btnTempLight">✨ 临时点亮全局</button>
-      <button id="btnSet">⚙</button>
+<div id="titleStage">
+  <canvas id="titleCv"></canvas>
+  <div id="titleContent">
+    <h1>雨夜归途</h1>
+    <p class="sub">一只浣熊的寻找</p>
+    <div class="btns">
+      <button id="btnNew">新 游 戏</button>
+      <button id="btnCont">继续存档</button>
     </div>
+    <p class="tip">点击场景中的物件进行探索 · 进度自动保存</p>
 
-    <div id="fanClub">✦ 欢迎加入粉丝团 ✦</div>
-
-    <div id="streamerBadge"><span class="dot"></span>主播模式：开</div>
-
-    <div id="toast"></div>
-
-    <div id="sceneTitle"></div>
-
-    <div id="dlgMask"></div>
-
-    <div id="dlg"></div>
-
-    <div id="choiceBox"></div>
-
-    <div id="settings">
-      <button class="close-x" id="btnCloseSet">✕</button>
-      <div class="settings-body">
-        <h3>设 置</h3>
-
-        <div class="row">
-          <span>提示</span>
-          <button class="highlight-btn" id="btnHighlight">🔍 高亮可交互（5秒）</button>
-        </div>
-
-        <div class="row achv-row">
-          <button class="achv-card" id="btnAchievements">
-            <span class="trophy">🏆</span>
-            <span class="achv-body">
-              <span class="achv-title">已 达 成 的 结 局</span>
-              <span class="achv-sub">你走过的每一条路</span>
-            </span>
-            <span class="achv-progress" id="achvProgress">0 / 5</span>
-            <span class="achv-arrow">›</span>
-          </button>
-        </div>
-
-        <div class="row">
-          <span>帧率</span>
-          <div class="opts" data-key="fps">
-            <button data-v="30">30</button>
-            <button data-v="45">45</button>
-            <button data-v="60">60</button>
-          </div>
-        </div>
-
-        <div class="row">
-          <span>画质</span>
-          <div class="opts" data-key="quality">
-            <button data-v="low">低</button>
-            <button data-v="medium">中</button>
-            <button data-v="high">高</button>
-          </div>
-        </div>
-
-        <div class="row">
-          <span>文字速度</span>
-          <div class="opts" data-key="textSpeed">
-            <button data-v="slow">慢</button>
-            <button data-v="normal">中</button>
-            <button data-v="fast">快</button>
-            <button data-v="instant">瞬显</button>
-          </div>
-        </div>
-
-        <div class="row">
-          <span>文字大小</span>
-          <div class="opts" data-key="fontSize">
-            <button data-v="17">小</button>
-            <button data-v="19">中</button>
-            <button data-v="22">大</button>
-          </div>
-        </div>
-
-        <div class="row">
-          <span>主播模式</span>
-          <div class="opts" data-key="streamerMode">
-            <button data-v="off">关</button>
-            <button data-v="on">开</button>
-          </div>
-        </div>
-
-        <div class="row">
-          <span>游戏进度</span>
-          <button class="danger" id="btnReset">清除所有进度</button>
-        </div>
+    <div class="age-badge">
+      <div class="age-circle">16+</div>
+      <div class="age-label">
+        <span class="cn">适龄提示</span>
+        <span class="en">AGE RATING</span>
       </div>
     </div>
 
-    <div id="achvPanel">
-      <button class="close-x" id="btnCloseAchv">✕</button>
-      <div class="achv-head"><h3>已 达 成 的 结 局</h3></div>
-      <div class="achv-scroll" id="achvList"></div>
-      <div class="achv-foot">
-        <div class="total" id="achvTotal">已达成 <b>0</b> / 5</div>
+    <!-- ★ 感谢名单（四位均为主播） -->
+    <div class="thanks">
+      <div class="label">感谢名单</div>
+      <div class="row">
+        <span class="dot"></span>
+        <span class="role"><span class="live">主播</span></span>
+        <span class="name">刘忠英</span>
+      </div>
+      <div class="row">
+        <span class="dot"></span>
+        <span class="role"><span class="live">主播</span></span>
+        <span class="name">星奈_ovo</span>
+      </div>
+      <div class="row">
+        <span class="dot"></span>
+        <span class="role"><span class="live">主播</span></span>
+        <span class="name">超级丫丫channel</span>
+      </div>
+      <div class="row">
+        <span class="dot"></span>
+        <span class="role"><span class="live">主播</span></span>
+        <span class="name">水水_SSS</span>
       </div>
     </div>
 
-    <div id="warnMask">
-      <div id="warnBox">
-        <div class="warn-ic">⚠️</div>
-        <h4>警 告</h4>
-        <p>即将清除<span class="hl">所有游戏进度</span>。</p>
-        <p>包括存档、物品、剧情记录。</p>
-        <p>成就记录<span class="hl">不会</span>被清除。</p>
-        <p>此操作<span class="hl">无法撤销</span>。</p>
-        <div class="warn-btns">
-          <button id="warnCancel">取 消</button>
-          <button id="warnConfirm">确 认 清 除</button>
-        </div>
-      </div>
+    <div class="health-tip">
+      <p>抵制不良游戏，拒绝盗版游戏。</p>
+      <p>注意自我保护，谨防受骗上当。</p>
+      <p>适度游戏益脑，沉迷游戏伤身。</p>
+      <p>合理安排时间，享受健康生活。</p>
     </div>
-
-    <div id="bloodWarnMask">
-      <div id="bloodWarnBox">
-        <div class="warn-ic">🩸</div>
-        <h4>暗 夜 模 式</h4>
-        <p>即将进入<span class="hl">暗夜模式</span>。</p>
-        <p>这里没有回头的路——也回不到原来的雨夜。</p>
-        <p>画面上会出现<span class="hl">令你不适的内容</span>。</p>
-        <p>暗夜模式的物品与主线<span class="hl">互不相通</span>。</p>
-        <p>视图会切换为 <span class="hl">3D 第一人称</span>。</p>
-        <p>若你只想走主线，请点击<span class="hl">「离 开」</span>。</p>
-        <div class="warn-btns">
-          <button id="bloodCancel">离 开</button>
-          <button id="bloodConfirm">继 续 深 入</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="streamerWarnMask">
-      <div id="streamerWarnBox">
-        <div class="warn-ic">ℹ️</div>
-        <h4>主 播 模 式 提 醒</h4>
-        <p>当前已处于<span class="hl">暗夜模式</span>。</p>
-        <p>主播模式的各项权益<span class="hl">依然生效</span>——</p>
-        <p>物品名称常显、粉丝团提示、状态徽标。</p>
-        <p>但<span class="hl">「临时点亮全局」在暗夜里不可用</span>。</p>
-        <p>暗夜模式的画面与文字也会<span class="hl">完整保留</span>。</p>
-        <div class="warn-btns">
-          <button id="streamerOkBtn">知 道 了</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="streamerBlockMask">
-      <div id="streamerBlockBox">
-        <div class="warn-ic">🚫</div>
-        <h4>暂 时 无 法 进 入</h4>
-        <p>当前处于<span class="hl">主播模式</span>，</p>
-        <p>暗夜模式<span class="hl">已被拦截</span>。</p>
-        <p>如果你想体验这段内容，可以：</p>
-        <p>① 先关闭主播模式 → ② 进入暗夜模式 → ③ 再开启主播模式。</p>
-        <p>（暗夜内容会保留，主播模式的各项权益也会生效。）</p>
-        <div class="warn-btns">
-          <button id="streamerBlockOk">知 道 了</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="ending">
-      <h2>雨 停 了</h2>
-      <p>第二天早上，红屋顶的房子门口，多了一只浣熊。<br>它在晒太阳。</p>
-      <button id="btnAgain">再 走 一 次</button>
-    </div>
-
-    <div id="bloodEnding">
-      <h2>雨 还 在 下</h2>
-      <p>灰豆把两片纸拼在一起。</p>
-      <p>照片上的老人没有笑。小浣熊在哭。</p>
-      <p class="dim">——不是它要找的那一张。</p>
-      <p>它想起来了。</p>
-      <p><span class="hl">全部。</span></p>
-      <p>那栋房子烧起来的那一夜，它从窗户跳了出去。</p>
-      <p>老人没有追出来。</p>
-      <p>——也许是因为，他追不动了。</p>
-      <p>灰豆一直都知道这件事。</p>
-      <p>它只是<span class="hl">不想承认</span>。</p>
-      <p>它跑了很多年。</p>
-      <p>回到这里，只是想告诉自己：</p>
-      <p class="dim">“那天，我只是迷路了。”</p>
-      <p>——但它没有。</p>
-      <p>它只是<span class="hl">跑掉了</span>。</p>
-      <button id="btnBloodAgain">结 束 了 …</button>
-    </div>
-
-    <div id="forgetEnding">
-      <h2>一 个 人 的 早 晨</h2>
-      <p>第二天早上，街上没有人。</p>
-      <p>巷子里没有小孩。</p>
-      <p>便利店锁着门。</p>
-      <p>门口的小碗，倒扣着。</p>
-      <p>——里面是干的。</p>
-      <p class="dim">台阶上什么都没有。</p>
-      <p>灰豆站在那里。</p>
-      <p>站了很久。</p>
-      <p>——它没有回头。</p>
-      <button id="btnForgetAgain">再 走 一 次</button>
-    </div>
-
-  </div>
-
-  <div id="loadingScreen">
-    <div class="loading-box">
-      <div class="loading-scene-name" id="loadingName">雨 夜 归 途</div>
-      <div class="loading-bar"><div class="loading-bar-fill" id="loadingFill"></div></div>
-      <div class="loading-row">
-        <span class="loading-tip" id="loadingTip">正在准备……</span>
-        <span class="loading-pct" id="loadingPct">0%</span>
-      </div>
-      <button class="loading-retry" id="loadingRetry">重 试</button>
-    </div>
-  </div>
-
-  <div id="rotate">
-    <div class="ic">📱</div>
-    <p>请 横 屏 使 用</p>
-    <button id="btnForce">仍然继续</button>
   </div>
 </div>
 
-<script src="game.js"></script>
-</body>
-</html>-70); ctx.lineTo(hx+120, hy);
+<script>
+const cv = document.getElementById('titleCv');
+const ctx = cv.getContext('2d');
+const W = 960, H = 540;
+const stage = document.getElementById('titleStage');
+const content = document.getElementById('titleContent');
+
+const SAVE_KEY = 'raccoon_rainy_night_v5';
+const LAUNCH_KEY = 'raccoon_launch_mode';
+const GAME_URL = 'index.html';
+
+function resize(){
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const scale = Math.min(vw / W, vh / H);
+  const w = Math.round(W * scale), h = Math.round(H * scale);
+  stage.style.width = w + 'px';
+  stage.style.height = h + 'px';
+  content.style.transform = 'scale(' + scale + ')';
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  cv.width = Math.round(w * dpr);
+  cv.height = Math.round(h * dpr);
+  cv.style.width = '100%';
+  cv.style.height = '100%';
+  ctx.setTransform(cv.width / W, 0, 0, cv.height / H, 0, 0);
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 200));
+
+const rain = [];
+for(let i=0;i<120;i++){
+  rain.push({
+    x: Math.random()*W*1.4-140, y: Math.random()*H,
+    len: 10 + Math.random()*20, sp: 600 + Math.random()*520
+  });
+}
+
+function draw(t){
+  const sky = ctx.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,'#05080f'); sky.addColorStop(0.5,'#0c1624'); sky.addColorStop(1,'#16202e');
+  ctx.fillStyle = sky; ctx.fillRect(0,0,W,H);
+
+  ctx.fillStyle = 'rgba(28,42,62,0.35)';
+  ctx.beginPath(); ctx.ellipse(200,90,240,36,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(720,120,280,44,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = 'rgba(42,58,82,0.22)';
+  ctx.beginPath(); ctx.ellipse(480,60,320,32,0,0,Math.PI*2); ctx.fill();
+
+  ctx.fillStyle = '#070c14';
+  ctx.fillRect(0,220,140,H-220);
+  ctx.fillRect(160,260,100,H-260);
+  ctx.fillRect(280,200,120,H-200);
+  ctx.fillRect(560,240,140,H-240);
+  ctx.fillRect(840,210,120,H-210);
+
+  const wins = [
+    [30,250],[80,250],[30,320],[80,320],
+    [190,290],[230,290],[190,360],[230,360],
+    [310,230],[360,230],[310,300],[360,300],
+    [590,270],[640,270],[590,340],[640,340],
+    [870,240],[920,240],[870,310],[920,310]
+  ];
+  ctx.fillStyle = 'rgba(255,196,120,0.13)';
+  for(let i=0;i<wins.length;i++) ctx.fillRect(wins[i][0], wins[i][1], 20, 28);
+
+  const hx = 640, hy = 300;
+  ctx.fillStyle = '#381c1c';
+  ctx.beginPath();
+  ctx.moveTo(hx-20, hy); ctx.lineTo(hx+50, hy-70); ctx.lineTo(hx+120, hy);
   ctx.closePath(); ctx.fill();
   ctx.fillStyle = '#121821'; ctx.fillRect(hx, hy, 100, 80);
 
