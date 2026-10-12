@@ -31,7 +31,7 @@
   #loading .tip.error{color:#ff6a5a;}
 
   /* ============================================
-     ★ 飘窗文字层 —— 纯净发光文字，无背景框
+     ★ 飘窗文字层 —— 纯净发光文字
      ============================================ */
   #storyLayer{position:absolute;left:0;top:0;width:100%;height:100%;
     pointer-events:none;overflow:hidden;z-index:5;}
@@ -46,7 +46,6 @@
     letter-spacing:8px;
     font-weight:600;
     color:#faf0dc;
-    /* 多层光晕 + 底部投影，让文字像自己会发光 */
     text-shadow:
       0 0 10px rgba(255, 235, 190, 0.75),
       0 0 24px rgba(255, 210, 140, 0.55),
@@ -55,7 +54,6 @@
       0 2px 3px rgba(0, 0, 0, 0.95),
       0 4px 12px rgba(0, 0, 0, 0.9);
     opacity:0;
-    /* 每句通过内联 animation-delay 错开 */
     animation-name: floatUp;
     animation-duration: 6s;
     animation-timing-function: cubic-bezier(.25,.5,.35,1);
@@ -95,26 +93,22 @@
     }
   }
 
-  /* 顶部渐隐遮罩 —— 字飘出画面时柔和消失 */
   #storyLayer::before{
     content:'';position:absolute;left:0;top:0;width:100%;height:140px;
     background:linear-gradient(180deg,#000 0%,rgba(0,0,0,0.85) 35%,transparent 100%);
     pointer-events:none;z-index:6;}
 
-  /* 底部渐隐遮罩 —— 字从黑雾里浮现 */
   #storyLayer::after{
     content:'';position:absolute;left:0;bottom:0;width:100%;height:110px;
     background:linear-gradient(0deg,#000 0%,rgba(0,0,0,0.8) 40%,transparent 100%);
     pointer-events:none;z-index:6;}
 
-  /* 底部操作提示 */
   #hint{
     position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
     color:rgba(140,160,180,.5);font-size:11.5px;letter-spacing:2.5px;
     pointer-events:none;z-index:7;opacity:0;transition:opacity 1s;}
   #hint.show{opacity:1;}
 
-  /* 结束黑幕 */
   #endScreen{position:absolute;inset:0;background:#000;
     display:flex;align-items:center;justify-content:center;
     opacity:0;pointer-events:none;transition:opacity 1s;z-index:20;}
@@ -160,8 +154,8 @@ if(mode === 'continue'){
 }
 
 /* =========================================================
-   ★ 剧情文本 —— 分四幕
-   pause 属性：这句飘完后额外停顿的毫秒数
+   ★ 剧情文本
+   pause 属性：这句播完后额外停顿的毫秒数
    ========================================================= */
 const STORY = [
   /* --- 幕一 · 醒来 --- */
@@ -192,14 +186,14 @@ const STORY = [
 /* =========================================================
    状态
    ========================================================= */
-const cam = { x: 6, y: 1.6, z: 6, yaw: 0, pitch: 0 };
+const cam = { x: 6, y: 1.8, z: 10.5, yaw: -Math.PI / 2, pitch: -0.15 };
 const keys = {};
 let renderer = null;
 let time = 0;
 let lastFrame = performance.now();
 let storyDone = false;
 
-/* ★ 玩家从一进场景就能移动 —— 剧情不锁走路 */
+/* ★ 玩家一进场景就能移动 */
 const canMove = true;
 
 const ROOM = 12;
@@ -283,11 +277,14 @@ function init3D(){
     floorTexSource: makeFloorTex(),
     ceilTexSource: makeDarkTex()
   });
-  renderer.setAmbient([0.05, 0.05, 0.07]);
+  renderer.setAmbient([0.08, 0.08, 0.11]);
   renderer.setLights([
-    { x: 6, y: 3.2, z: 6, color: [1.4, 1.1, 0.7] },
-    { x: 6, y: 3.0, z: 6, color: [0.35, 0.4, 0.55] },
-    { x: 0, y: -999, z: 0, color: [0, 0, 0] }
+    /* 主光 —— 头顶照浣熊 */
+    { x: 6, y: 3.4, z: 4.5, color: [2.0, 1.6, 1.0] },
+    /* 侧逆光 —— 勾边 */
+    { x: 4, y: 2.5, z: 2.5, color: [0.7, 0.9, 1.2] },
+    /* 相机方向补光 */
+    { x: 6, y: 2.0, z: 9.0, color: [0.9, 0.8, 0.6] }
   ]);
   renderer.setFog({ color: [0.005, 0.008, 0.014], near: 3, far: 18 });
   return true;
@@ -302,14 +299,39 @@ function loadRaccoon(){
     loadTip.textContent = msg;
   }).then(function(model){
     if(!model || !model.P || model.P.length === 0) throw new Error('模型为空');
+
+    /* ★ 计算包围盒 —— 自动适配房间尺寸 */
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+    let minZ = Infinity, maxZ = -Infinity;
+    for(let i = 0; i < model.P.length; i += 3){
+      const px = model.P[i], py = model.P[i+1], pz = model.P[i+2];
+      if(px < minX) minX = px; if(px > maxX) maxX = px;
+      if(py < minY) minY = py; if(py > maxY) maxY = py;
+      if(pz < minZ) minZ = pz; if(pz > maxZ) maxZ = pz;
+    }
+    const height = maxY - minY;
+    const targetHeight = 2.4;   /* 浣熊目标高度 2.4 米 */
+    const autoScale = targetHeight / Math.max(height, 0.001);
+
+    console.log('[raccoon] 包围盒 X:',
+      minX.toFixed(3), '~', maxX.toFixed(3),
+      '| Y:', minY.toFixed(3), '~', maxY.toFixed(3),
+      '| Z:', minZ.toFixed(3), '~', maxZ.toFixed(3),
+      '| 高度:', height.toFixed(4),
+      '| 自动缩放:', autoScale.toFixed(4));
+
     loadFill.style.width = '75%';
     loadTip.textContent = '上传到显卡……';
+
+    /* ★ 放在 (6, 0, 4) —— 相机从 (6, 1.8, 10.5) 看向 -z 方向 */
     renderer.addModel(model, {
-      x: 6, y: 0, z: 6,
-      scale: 1.0,
+      x: 6, y: 0, z: 4,
+      scale: autoScale,
       rotationY: Math.PI,
       autoFit: true
     });
+
     loadFill.style.width = '100%';
     loadTip.textContent = '完成';
     setTimeout(function(){
@@ -328,41 +350,30 @@ function loadRaccoon(){
 }
 
 /* =========================================================
-   ★ 剧情播放
-   通过 animation-delay 错开每句出现时间
+   ★ 剧情播放 —— 用 animation-delay 错开每句
    ========================================================= */
 function startStory(){
-  const GAP = 2100;       /* 每句的启动间隔（毫秒） */
-
+  const GAP = 2100;       /* 每句启动间隔（毫秒） */
   let delay = 600;        /* 首句延迟 */
 
-  STORY.forEach(function(item, i){
+  STORY.forEach(function(item){
     const el = document.createElement('div');
     el.className = 'storyLine';
     el.textContent = item.text;
 
-    /* 每句随机轻微倾斜（-1.2° ~ +1.2°），让飘更自然 */
-    const rot = (Math.random() - 0.5) * 2.4;
-
-    /* 长句字号略小，避免超出屏幕 */
+    /* 长句字号略小 */
     const len = item.text.length;
     let fs = 26, ls = 8;
     if(len > 12){ fs = 22; ls = 6; }
     if(len > 16){ fs = 20; ls = 5; }
     el.style.fontSize = fs + 'px';
     el.style.letterSpacing = ls + 'px';
-    /* 把倾斜角度合并进 transform 通过 CSS 变量不行（因为 keyframes 里有 transform），
-       改用 wrapper 旋转 */
-    el.style.transform = 'translateX(-50%) rotate(' + rot.toFixed(2) + 'deg)';
-    /* 但动画会覆盖 transform，所以通过 setProperty 让动画里的 translateX 生效
-       这里我们改用外层包裹 —— 见下方 CSS 补丁 */
 
-    /* ★ 关键：用 animation-delay 让每句错开出现 */
+    /* ★ 关键：用 animation-delay 让每句错开 */
     el.style.animationDelay = (delay / 1000) + 's';
 
     storyLayer.appendChild(el);
 
-    /* 计算下一句延迟 */
     delay += GAP + (item.pause || 0);
   });
 
@@ -389,7 +400,9 @@ function bindInput(){
     keys[e.key.toLowerCase()] = false;
   });
   let dragging = false, lx = 0, ly = 0;
-  cv.addEventListener('mousedown', function(e){ dragging = true; lx = e.clientX; ly = e.clientY; });
+  cv.addEventListener('mousedown', function(e){
+    dragging = true; lx = e.clientX; ly = e.clientY;
+  });
   window.addEventListener('mousemove', function(e){
     if(!dragging) return;
     const dx = e.clientX - lx, dy = e.clientY - ly;
@@ -399,6 +412,7 @@ function bindInput(){
     if(cam.pitch < -0.9) cam.pitch = -0.9;
   });
   window.addEventListener('mouseup', function(){ dragging = false; });
+
   let tlx = 0, tly = 0, touching = false;
   cv.addEventListener('touchstart', function(e){
     if(!e.touches.length) return;
