@@ -1,10 +1,9 @@
 /* =========================================================
-   r3d.js — 极简真 3D 引擎 v3
-   纯 WebGL 1.0，零依赖，单文件
+   r3d.js — 极简真 3D 引擎 v4
+   v3 基础 + 6 种新几何体 + 圆柱段数 10→24
    - 三贴图：墙 / 地板 / 天花板
    - 三光源：手电 + 场景灯 + 环境补光
-   - Prop 几何体：box / cyl / plate / low
-   - iOS WebKit 兼容：纹理优先走 Image
+   - Prop 几何体：box / cyl / plate / low / sphere / cone / torus / arch / ramp / bevelBox
    ========================================================= */
 (function(global){
 'use strict';
@@ -255,6 +254,8 @@ function uploadMesh(gl, mesh, P, N, U, I){
 }
 
 /* ==================== 几何体生成器 ==================== */
+
+/* --- 基础：四边形 --- */
 function pushQuad(P, N, U, I, v0, v1, v2, v3, n){
   const base = P.length / 3;
   P.push(
@@ -268,40 +269,41 @@ function pushQuad(P, N, U, I, v0, v1, v2, v3, n){
   I.push(base, base+1, base+2, base, base+2, base+3);
 }
 
+/* --- 基础：三角形 --- */
+function pushTri(P, N, U, I, v0, v1, v2, n, uv0, uv1, uv2){
+  const base = P.length / 3;
+  P.push(
+    v0[0], v0[1], v0[2],
+    v1[0], v1[1], v1[2],
+    v2[0], v2[1], v2[2]
+  );
+  for(let k = 0; k < 3; k++) N.push(n[0], n[1], n[2]);
+  U.push(
+    uv0 ? uv0[0] : 0, uv0 ? uv0[1] : 0,
+    uv1 ? uv1[0] : 1, uv1 ? uv1[1] : 0,
+    uv2 ? uv2[0] : 0.5, uv2 ? uv2[1] : 1
+  );
+  I.push(base, base+1, base+2);
+}
+
+/* --- 方块 --- */
 function buildBox(P, N, U, I, cx, y0, cz, w, h, d){
   const hw = w / 2, hd = d / 2;
   const x0 = cx - hw, x1 = cx + hw;
   const y1 = y0 + h;
   const z0 = cz - hd, z1 = cz + hd;
 
-  /* 前 (+z) */
-  pushQuad(P, N, U, I,
-    [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1],
-    [0, 0, 1]);
-  /* 后 (-z) */
-  pushQuad(P, N, U, I,
-    [x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0],
-    [0, 0, -1]);
-  /* 左 (-x) */
-  pushQuad(P, N, U, I,
-    [x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0],
-    [-1, 0, 0]);
-  /* 右 (+x) */
-  pushQuad(P, N, U, I,
-    [x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1],
-    [1, 0, 0]);
-  /* 顶 (+y) */
-  pushQuad(P, N, U, I,
-    [x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0],
-    [0, 1, 0]);
-  /* 底 (-y) */
-  pushQuad(P, N, U, I,
-    [x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1],
-    [0, -1, 0]);
+  pushQuad(P, N, U, I, [x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1], [0,0,1]);
+  pushQuad(P, N, U, I, [x1,y0,z0],[x0,y0,z0],[x0,y1,z0],[x1,y1,z0], [0,0,-1]);
+  pushQuad(P, N, U, I, [x0,y0,z0],[x0,y0,z1],[x0,y1,z1],[x0,y1,z0], [-1,0,0]);
+  pushQuad(P, N, U, I, [x1,y0,z1],[x1,y0,z0],[x1,y1,z0],[x1,y1,z1], [1,0,0]);
+  pushQuad(P, N, U, I, [x0,y1,z1],[x1,y1,z1],[x1,y1,z0],[x0,y1,z0], [0,1,0]);
+  pushQuad(P, N, U, I, [x0,y0,z0],[x1,y0,z0],[x1,y0,z1],[x0,y0,z1], [0,-1,0]);
 }
 
+/* --- 圆柱：★ 段数默认从 10 提升到 24 --- */
 function buildCylinder(P, N, U, I, cx, y0, cz, r, h, seg){
-  seg = seg || 10;
+  seg = seg || 24;
   const y1 = y0 + h;
 
   for(let i = 0; i < seg; i++){
@@ -319,20 +321,336 @@ function buildCylinder(P, N, U, I, cx, y0, cz, r, h, seg){
       [x0, y0, z0], [x1, y0, z1], [x1, y1, z1], [x0, y1, z0],
       [nx, 0, nz]);
 
-    /* 顶盖扇形 */
-    const topBase = P.length / 3;
-    P.push(cx, y1, cz, x0, y1, z0, x1, y1, z1, cx, y1, cz);
-    for(let k = 0; k < 4; k++) N.push(0, 1, 0);
-    U.push(0.5, 0.5, 0, 0, 1, 0, 0.5, 0.5);
-    I.push(topBase, topBase+1, topBase+2, topBase, topBase+2, topBase+3);
+    /* 顶盖三角 */
+    pushTri(P, N, U, I,
+      [cx, y1, cz], [x0, y1, z0], [x1, y1, z1],
+      [0, 1, 0],
+      [0.5, 0.5], [0, 0], [1, 0]);
 
-    /* 底盖扇形 */
-    const botBase = P.length / 3;
-    P.push(cx, y0, cz, x1, y0, z1, x0, y0, z0, cx, y0, cz);
-    for(let k = 0; k < 4; k++) N.push(0, -1, 0);
-    U.push(0.5, 0.5, 1, 0, 0, 0, 0.5, 0.5);
-    I.push(botBase, botBase+1, botBase+2, botBase, botBase+2, botBase+3);
+    /* 底盖三角 */
+    pushTri(P, N, U, I,
+      [cx, y0, cz], [x1, y0, z1], [x0, y0, z0],
+      [0, -1, 0],
+      [0.5, 0.5], [1, 0], [0, 0]);
   }
+}
+
+/* --- ★ 新：球体（UV 球）--- */
+function buildSphere(P, N, U, I, cx, y0, cz, r, segU, segV){
+  segU = segU || 16;
+  segV = segV || 12;
+  const cy = y0 + r;
+
+  for(let j = 0; j < segV; j++){
+    const v0 = j / segV;
+    const v1 = (j + 1) / segV;
+    const phi0 = v0 * Math.PI;
+    const phi1 = v1 * Math.PI;
+    const yt0 = Math.cos(phi0) * r;
+    const yt1 = Math.cos(phi1) * r;
+    const rt0 = Math.sin(phi0) * r;
+    const rt1 = Math.sin(phi1) * r;
+
+    for(let i = 0; i < segU; i++){
+      const u0 = i / segU;
+      const u1 = (i + 1) / segU;
+      const th0 = u0 * Math.PI * 2;
+      const th1 = u1 * Math.PI * 2;
+
+      const x00 = cx + Math.cos(th0) * rt0;
+      const z00 = cz + Math.sin(th0) * rt0;
+      const y00 = cy + yt0;
+
+      const x10 = cx + Math.cos(th1) * rt0;
+      const z10 = cz + Math.sin(th1) * rt0;
+      const y10 = cy + yt0;
+
+      const x01 = cx + Math.cos(th0) * rt1;
+      const z01 = cz + Math.sin(th0) * rt1;
+      const y01 = cy + yt1;
+
+      const x11 = cx + Math.cos(th1) * rt1;
+      const z11 = cz + Math.sin(th1) * rt1;
+      const y11 = cy + yt1;
+
+      /* 法线：从球心指向顶点 */
+      function nrm(x, y, z){
+        const dx = x - cx, dy = y - cy, dz = z - cz;
+        const l = Math.hypot(dx, dy, dz) || 1;
+        return [dx/l, dy/l, dz/l];
+      }
+
+      const base = P.length / 3;
+      P.push(
+        x00, y00, z00,
+        x10, y10, z10,
+        x11, y11, z11,
+        x01, y01, z01
+      );
+      const n00 = nrm(x00, y00, z00);
+      const n10 = nrm(x10, y10, z10);
+      const n11 = nrm(x11, y11, z11);
+      const n01 = nrm(x01, y01, z01);
+      N.push(n00[0],n00[1],n00[2], n10[0],n10[1],n10[2], n11[0],n11[1],n11[2], n01[0],n01[1],n01[2]);
+      U.push(u0, v0, u1, v0, u1, v1, u0, v1);
+      I.push(base, base+1, base+2, base, base+2, base+3);
+    }
+  }
+}
+
+/* --- ★ 新：圆锥 --- */
+function buildCone(P, N, U, I, cx, y0, cz, r, h, seg){
+  seg = seg || 24;
+  const yTop = y0 + h;
+
+  for(let i = 0; i < seg; i++){
+    const a0 = (i / seg) * Math.PI * 2;
+    const a1 = ((i + 1) / seg) * Math.PI * 2;
+    const x0 = cx + Math.cos(a0) * r;
+    const z0 = cz + Math.sin(a0) * r;
+    const x1 = cx + Math.cos(a1) * r;
+    const z1 = cz + Math.sin(a1) * r;
+
+    /* 侧面：从底面两点到顶点 */
+    const slope = Math.atan2(r, h);
+    const nx0 = Math.cos(a0) * Math.cos(slope);
+    const nz0 = Math.sin(a0) * Math.cos(slope);
+    const ny0 = Math.sin(slope);
+    const nx1 = Math.cos(a1) * Math.cos(slope);
+    const nz1 = Math.sin(a1) * Math.cos(slope);
+    const nAvg = [
+      (nx0 + nx1) / 2,
+      ny0,
+      (nz0 + nz1) / 2
+    ];
+    const nl = Math.hypot(nAvg[0], nAvg[1], nAvg[2]) || 1;
+    nAvg[0] /= nl; nAvg[1] /= nl; nAvg[2] /= nl;
+
+    /* 侧面三角形 —— 用 quad 拆分以支持 UV */
+    const base = P.length / 3;
+    P.push(
+      x0, y0, z0,
+      x1, y0, z1,
+      cx, yTop, cz,
+      cx, yTop, cz  /* 退化点，让 quad → 2 三角有一半退化 */
+    );
+    for(let k = 0; k < 4; k++) N.push(nAvg[0], nAvg[1], nAvg[2]);
+    U.push(0, 0, 1, 0, 0.5, 1, 0.5, 1);
+    I.push(base, base+1, base+2);
+    /* 第二个三角形退化，不 push 索引 */
+
+    /* 底盖三角 */
+    pushTri(P, N, U, I,
+      [cx, y0, cz], [x1, y0, z1], [x0, y0, z0],
+      [0, -1, 0],
+      [0.5, 0.5], [1, 0], [0, 0]);
+  }
+}
+
+/* --- ★ 新：圆环（甜甜圈）--- */
+function buildTorus(P, N, U, I, cx, y0, cz, R, r, segU, segV){
+  segU = segU || 24;
+  segV = segV || 12;
+  const cy = y0 + R;
+
+  for(let j = 0; j < segV; j++){
+    const v0 = j / segV;
+    const v1 = (j + 1) / segV;
+    const phi0 = v0 * Math.PI * 2;
+    const phi1 = v1 * Math.PI * 2;
+
+    for(let i = 0; i < segU; i++){
+      const u0 = i / segU;
+      const u1 = (i + 1) / segU;
+      const th0 = u0 * Math.PI * 2;
+      const th1 = u1 * Math.PI * 2;
+
+      function pt(th, ph){
+        const rr = R + r * Math.cos(ph);
+        return [
+          cx + Math.cos(th) * rr,
+          cy + r * Math.sin(ph),
+          cz + Math.sin(th) * rr
+        ];
+      }
+      function nrm(th, ph){
+        const nx = Math.cos(th) * Math.cos(ph);
+        const ny = Math.sin(ph);
+        const nz = Math.sin(th) * Math.cos(ph);
+        return [nx, ny, nz];
+      }
+
+      const p00 = pt(th0, phi0);
+      const p10 = pt(th1, phi0);
+      const p11 = pt(th1, phi1);
+      const p01 = pt(th0, phi1);
+
+      const n00 = nrm(th0, phi0);
+      const n10 = nrm(th1, phi0);
+      const n11 = nrm(th1, phi1);
+      const n01 = nrm(th0, phi1);
+
+      const base = P.length / 3;
+      P.push(
+        p00[0], p00[1], p00[2],
+        p10[0], p10[1], p10[2],
+        p11[0], p11[1], p11[2],
+        p01[0], p01[1], p01[2]
+      );
+      N.push(n00[0],n00[1],n00[2], n10[0],n10[1],n10[2], n11[0],n11[1],n11[2], n01[0],n01[1],n01[2]);
+      U.push(u0, v0, u1, v0, u1, v1, u0, v1);
+      I.push(base, base+1, base+2, base, base+2, base+3);
+    }
+  }
+}
+
+/* --- ★ 新：拱形（半圆拱门）--- */
+function buildArch(P, N, U, I, cx, y0, cz, w, h, d, seg){
+  seg = seg || 16;
+  const hw = w / 2;
+  const hd = d / 2;
+  const r = hw;
+  const yBottom = y0;
+  const yTop = y0 + h;
+  const yArchStart = yTop - r;
+
+  /* 两侧墙（左、右）—— 从 y0 到 yArchStart 的方块部分 */
+  const wallH = yArchStart - yBottom;
+  if(wallH > 0){
+    buildBox(P, N, U, I, cx, yBottom, cz, w, wallH, d);
+  }
+
+  /* 半圆拱 —— 上半圆环 */
+  for(let i = 0; i < seg; i++){
+    const a0 = Math.PI + (i / seg) * Math.PI;
+    const a1 = Math.PI + ((i + 1) / seg) * Math.PI;
+    const x0 = cx + Math.cos(a0) * r;
+    const y0a = yArchStart + Math.sin(a0) * r;
+    const x1 = cx + Math.cos(a1) * r;
+    const y1a = yArchStart + Math.sin(a1) * r;
+
+    /* 拱内壁 */
+    const n0 = [Math.cos(a0), Math.sin(a0), 0];
+    const n1 = [Math.cos(a1), Math.sin(a1), 0];
+    const nAvg = [(n0[0]+n1[0])/2, (n0[1]+n1[1])/2, 0];
+    const nl = Math.hypot(nAvg[0], nAvg[1]) || 1;
+    nAvg[0] /= nl; nAvg[1] /= nl;
+
+    const base = P.length / 3;
+    P.push(
+      x0, y0a, cz - hd,
+      x1, y1a, cz - hd,
+      x1, y1a, cz + hd,
+      x0, y0a, cz + hd
+    );
+    for(let k = 0; k < 4; k++) N.push(nAvg[0], nAvg[1], 0);
+    U.push(0, 0, 1, 0, 1, 1, 0, 1);
+    I.push(base, base+1, base+2, base, base+2, base+3);
+  }
+
+  /* 顶盖薄板 —— 覆盖拱上方 */
+  pushQuad(P, N, U, I,
+    [cx - hw, yTop, cz + hd],
+    [cx + hw, yTop, cz + hd],
+    [cx + hw, yTop, cz - hd],
+    [cx - hw, yTop, cz - hd],
+    [0, 1, 0]);
+}
+
+/* --- ★ 新：斜坡/斜面 --- */
+function buildRamp(P, N, U, I, cx, y0, cz, w, h, d, dir){
+  /* dir: 'n' 's' 'e' 'w' —— 斜面向哪一侧倾 */
+  const hw = w / 2, hd = d / 2;
+  const x0 = cx - hw, x1 = cx + hw;
+  const y1 = y0 + h;
+  const z0 = cz - hd, z1 = cz + hd;
+
+  /* 底面 */
+  pushQuad(P, N, U, I,
+    [x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1],
+    [0, -1, 0]);
+
+  if(dir === 's'){
+    /* 斜面从北(z0)高，到南(z1)低 */
+    /* 斜顶面 */
+    const nx = 0, ny = d / Math.hypot(h, d), nz = h / Math.hypot(h, d);
+    pushQuad(P, N, U, I,
+      [x0, y1, z0], [x1, y1, z0], [x1, y0, z1], [x0, y0, z1],
+      [nx, ny, nz]);
+    /* 北墙 */
+    pushQuad(P, N, U, I,
+      [x0, y0, z0], [x0, y1, z0], [x1, y1, z0], [x1, y0, z0],
+      [0, 0, -1]);
+    /* 左右三角 */
+    pushTri(P, N, U, I,
+      [x0, y0, z0], [x0, y0, z1], [x0, y1, z0], [-1, 0, 0]);
+    pushTri(P, N, U, I,
+      [x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [1, 0, 0]);
+  } else if(dir === 'n'){
+    const nx = 0, ny = d / Math.hypot(h, d), nz = -h / Math.hypot(h, d);
+    pushQuad(P, N, U, I,
+      [x0, y0, z0], [x1, y0, z0], [x1, y1, z1], [x0, y1, z1],
+      [nx, ny, nz]);
+    pushQuad(P, N, U, I,
+      [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], [x0, y0, z1],
+      [0, 0, 1]);
+    pushTri(P, N, U, I,
+      [x0, y0, z0], [x0, y1, z1], [x0, y0, z1], [-1, 0, 0]);
+    pushTri(P, N, U, I,
+      [x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [1, 0, 0]);
+  } else if(dir === 'e'){
+    const nx = w / Math.hypot(h, w), ny = d / Math.hypot(h, d), nz = 0;
+    pushQuad(P, N, U, I,
+      [x0, y1, z0], [x1, y0, z0], [x1, y0, z1], [x0, y1, z1],
+      [nx, ny, nz]);
+    pushQuad(P, N, U, I,
+      [x0, y0, z1], [x0, y1, z1], [x0, y1, z0], [x0, y0, z0],
+      [-1, 0, 0]);
+    pushTri(P, N, U, I,
+      [x0, y0, z1], [x0, y1, z0], [x0, y0, z0], [0, 0, 1]);
+    pushTri(P, N, U, I,
+      [x1, y0, z0], [x1, y0, z1], [x0, y1, z0], [0, 0, -1]);
+  } else if(dir === 'w'){
+    const nx = -w / Math.hypot(h, w), ny = d / Math.hypot(h, d), nz = 0;
+    pushQuad(P, N, U, I,
+      [x0, y0, z0], [x1, y1, z0], [x1, y1, z1], [x0, y0, z1],
+      [nx, ny, nz]);
+    pushQuad(P, N, U, I,
+      [x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [x1, y0, z1],
+      [1, 0, 0]);
+    pushTri(P, N, U, I,
+      [x0, y0, z0], [x1, y1, z0], [x0, y0, z1], [0, 0, -1]);
+    pushTri(P, N, U, I,
+      [x0, y0, z1], [x1, y1, z1], [x0, y0, z0], [0, 0, 1]);
+  }
+}
+
+/* --- ★ 新：倒角方块（8 个角被切掉）--- */
+function buildBevelBox(P, N, U, I, cx, y0, cz, w, h, d, bevel){
+  bevel = bevel || Math.min(w, h, d) * 0.08;
+  const hw = w / 2, hd = d / 2;
+  const b = bevel;
+  const x0 = cx - hw, x1 = cx + hw;
+  const y1 = y0 + h;
+  const z0 = cz - hd, z1 = cz + hd;
+
+  /* 6 个主面（保持原样） */
+  pushQuad(P, N, U, I, [x0+b,y0,z1-b],[x1-b,y0,z1-b],[x1-b,y1,z1-b],[x0+b,y1,z1-b], [0,0,1]);
+  pushQuad(P, N, U, I, [x1-b,y0,z0+b],[x0+b,y0,z0+b],[x0+b,y1,z0+b],[x1-b,y1,z0+b], [0,0,-1]);
+  pushQuad(P, N, U, I, [x0,y0,z0+b],[x0,y0,z1-b],[x0,y1,z1-b],[x0,y1,z0+b], [-1,0,0]);
+  pushQuad(P, N, U, I, [x1,y0,z1-b],[x1,y0,z0+b],[x1,y1,z0+b],[x1,y1,z1-b], [1,0,0]);
+  pushQuad(P, N, U, I, [x0+b,y1,z1-b],[x1-b,y1,z1-b],[x1-b,y1,z0+b],[x0+b,y1,z0+b], [0,1,0]);
+  pushQuad(P, N, U, I, [x0+b,y0,z0+b],[x1-b,y0,z0+b],[x1-b,y0,z1-b],[x0+b,y0,z1-b], [0,-1,0]);
+
+  /* 12 条棱（倒角面）—— 简化：只做垂直 4 条 */
+  /* 左前棱 */
+  pushQuad(P, N, U, I, [x0,y0,z1-b],[x0+b,y0,z1],[x0+b,y1,z1],[x0,y1,z1-b], [-0.7,0,0.7]);
+  /* 右前棱 */
+  pushQuad(P, N, U, I, [x1-b,y0,z1],[x1,y0,z1-b],[x1,y1,z1-b],[x1-b,y1,z1], [0.7,0,0.7]);
+  /* 左后棱 */
+  pushQuad(P, N, U, I, [x0+b,y0,z0],[x0,y0,z0+b],[x0,y1,z0+b],[x0+b,y1,z0], [-0.7,0,-0.7]);
+  /* 右后棱 */
+  pushQuad(P, N, U, I, [x1,y0,z0+b],[x1-b,y0,z0],[x1-b,y1,z0],[x1,y1,z0+b], [0.7,0,-0.7]);
 }
 
 /* ==================== 渲染器 ==================== */
@@ -501,10 +819,8 @@ Renderer.prototype.buildWorld = function(cfg){
       const z0 = y, z1 = y + 1;
       const y0 = 0, y1 = wallH;
 
-      /* 顶面（总是画） */
       wq([x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1], [0, 1, 0]);
 
-      /* 前后左右 — 只画暴露的 */
       if(y - 1 < 0 || grid[y-1][x] !== '1'){
         wq([x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0], [0, 0, -1]);
       }
@@ -520,18 +836,15 @@ Renderer.prototype.buildWorld = function(cfg){
     }
   }
 
-  /* 地板 —— 一大块，UV 平铺 */
   const FP = [], FN = [], FU = [], FI = [];
   pushQuad(FP, FN, FU, FI,
     [0, 0, 0], [cols, 0, 0], [cols, 0, rows], [0, 0, rows],
     [0, 1, 0]);
-  /* 上面 pushQuad 的 UV 是 0-1，改成平铺：重写 UV */
   FU[0] = 0; FU[1] = 0;
   FU[2] = cols; FU[3] = 0;
   FU[4] = cols; FU[5] = rows;
   FU[6] = 0; FU[7] = rows;
 
-  /* 天花板 */
   const CP = [], CN = [], CU = [], CI = [];
   pushQuad(CP, CN, CU, CI,
     [0, wallH, 0], [cols, wallH, 0], [cols, wallH, rows], [0, wallH, rows],
@@ -562,7 +875,6 @@ Renderer.prototype.buildWorld = function(cfg){
 Renderer.prototype.buildProps = function(list){
   const gl = this.gl;
 
-  /* 清掉旧的 */
   for(let i = 0; i < this.props.length; i++){
     const p = this.props[i];
     try{
@@ -584,36 +896,52 @@ Renderer.prototype.buildProps = function(list){
     const y0 = p.y !== undefined ? p.y : 0;
     const cz = p.z;
 
+    /* ★ 支持所有形状 */
     if(shape === 'box'){
       buildBox(P, N, U, I, cx, y0, cz, w, h, d);
     }
     else if(shape === 'cyl'){
-      buildCylinder(P, N, U, I, cx, y0, cz, w / 2, h, 10);
+      buildCylinder(P, N, U, I, cx, y0, cz, w / 2, h, p.seg || 24);
     }
     else if(shape === 'plate'){
-      /* 薄板：默认厚度 0.06，朝 +z */
       buildBox(P, N, U, I, cx, y0, cz, w, h, 0.06);
     }
     else if(shape === 'low'){
-      /* 矮盘：默认厚度 h，半径 w/2，8 段 */
-      buildCylinder(P, N, U, I, cx, y0, cz, w / 2, h, 8);
+      buildCylinder(P, N, U, I, cx, y0, cz, w / 2, h, p.seg || 12);
+    }
+    /* ★ 新增形状 */
+    else if(shape === 'sphere'){
+      buildSphere(P, N, U, I, cx, y0, cz, w / 2, p.segU || 16, p.segV || 12);
+    }
+    else if(shape === 'cone'){
+      buildCone(P, N, U, I, cx, y0, cz, w / 2, h, p.seg || 24);
+    }
+    else if(shape === 'torus'){
+      buildTorus(P, N, U, I, cx, y0, cz, w / 2, (p.r2 !== undefined ? p.r2 : h), p.segU || 24, p.segV || 12);
+    }
+    else if(shape === 'arch'){
+      buildArch(P, N, U, I, cx, y0, cz, w, h, d, p.seg || 16);
+    }
+    else if(shape === 'ramp'){
+      buildRamp(P, N, U, I, cx, y0, cz, w, h, d, p.dir || 's');
+    }
+    else if(shape === 'bevelBox'){
+      buildBevelBox(P, N, U, I, cx, y0, cz, w, h, d, p.bevel);
     }
     else {
-      /* 未知 shape，跳过 */
       continue;
     }
 
     if(P.length === 0) continue;
-    if(I.length > 65535) continue;  /* 单 mesh 顶点上限 */
+    /* 单 mesh 顶点上限检查 */
+    if(P.length / 3 > 65535) continue;
 
     const mesh = createMesh(gl);
     uploadMesh(gl, mesh, P, N, U, I);
 
-    /* 解析 hex 颜色 */
     let color = p.color || '#888888';
     if(color.charAt(0) !== '#') color = '#888888';
     if(color.length === 4){
-      /* #abc → #aabbcc */
       color = '#' + color[1] + color[1] + color[2] + color[2] + color[3] + color[3];
     }
     const r = parseInt(color.slice(1, 3), 16) / 255;
@@ -631,7 +959,6 @@ Renderer.prototype.setBillboards = function(list){
   this.billboards = list || [];
 };
 
-/* ---------- 内部：画一个 mesh ---------- */
 Renderer.prototype._drawMesh = function(mesh, tex, hasTex, r, g, b, alphaTest){
   const gl = this.gl;
   if(!mesh || mesh.indexCount === 0) return;
@@ -655,7 +982,6 @@ Renderer.prototype._drawMesh = function(mesh, tex, hasTex, r, g, b, alphaTest){
   gl.drawElements(gl.TRIANGLES, mesh.indexCount, gl.UNSIGNED_SHORT, 0);
 };
 
-/* ---------- 渲染一帧 ---------- */
 Renderer.prototype.render = function(){
   const gl = this.gl;
   const cam = this.camera;
@@ -667,20 +993,17 @@ Renderer.prototype.render = function(){
   gl.enableVertexAttribArray(this.attr.normal);
   gl.enableVertexAttribArray(this.attr.uv);
 
-  /* 相机方向 */
   const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
   const cy = Math.cos(cam.yaw),   sy = Math.sin(cam.yaw);
   const dir = [cy * cp, sp, sy * cp];
   const target = [cam.x + dir[0], cam.y + dir[1], cam.z + dir[2]];
 
-  /* 投影 + 视图 */
   M4.perspective(this._proj, cam.fov, this.aspect || 1, cam.near, cam.far);
   M4.lookAt(this._view, [cam.x, cam.y, cam.z], target, [0, 1, 0]);
   M4.multiply(this._vp, this._proj, this._view);
 
   gl.uniformMatrix4fv(this.uni.uVP, false, this._vp);
 
-  /* 相机 / 光源 / 雾 */
   gl.uniform3f(this.uni.uCamPos, cam.x, cam.y, cam.z);
 
   for(let i = 0; i < 3; i++){
@@ -694,18 +1017,15 @@ Renderer.prototype.render = function(){
   gl.uniform1f(this.uni.uFogNear, this.fog.near);
   gl.uniform1f(this.uni.uFogFar, this.fog.far);
 
-  /* 世界 */
   this._drawMesh(this.wallMesh,  this.wallTex,  this.wallHasTex,  1, 1, 1, 0);
   this._drawMesh(this.floorMesh, this.floorTex, this.floorHasTex, 1, 1, 1, 0);
   this._drawMesh(this.ceilMesh,  this.ceilTex,  this.ceilHasTex,  1, 1, 1, 0);
 
-  /* Props */
   for(let i = 0; i < this.props.length; i++){
     const p = this.props[i];
     this._drawMesh(p.mesh, null, false, p.color[0], p.color[1], p.color[2], 0);
   }
 
-  /* Billboard */
   if(this.billboards.length){
     gl.uniform1f(this.uni.uAlphaTest, 1.0);
     const camX = cam.x, camZ = cam.z;
@@ -766,16 +1086,13 @@ Renderer.prototype.render = function(){
   }
 };
 
-/* ---------- 释放 ---------- */
 Renderer.prototype.dispose = function(){
   const gl = this.gl;
-
   [this.wallMesh, this.floorMesh, this.ceilMesh, this.bbMesh].forEach(m => {
     if(m){
       try{ gl.deleteBuffer(m.vbo); gl.deleteBuffer(m.ibo); }catch(e){}
     }
   });
-
   for(let i = 0; i < this.props.length; i++){
     const p = this.props[i];
     try{
@@ -784,11 +1101,9 @@ Renderer.prototype.dispose = function(){
     }catch(e){}
   }
   this.props = [];
-
   [this.wallTex, this.floorTex, this.ceilTex].forEach(t => {
     if(t){ try{ gl.deleteTexture(t); }catch(e){} }
   });
-
   if(this.program){ try{ gl.deleteProgram(this.program); }catch(e){} }
 };
 
