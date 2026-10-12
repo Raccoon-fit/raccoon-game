@@ -129,7 +129,7 @@ const endScreen = document.getElementById('endScreen');
 let mode = 'new';
 try{ mode = localStorage.getItem('raccoon_launch_mode') || 'new'; }catch(e){}
 if(mode === 'continue'){
-  location.replace('index.html');
+  location.replace('index1.html');
   return;
 }
 
@@ -455,7 +455,7 @@ if(init3D()){
   loadFill.style.width = '100%';
   loadTip.textContent = '⚠ 3D 不可用，即将跳过……';
   setTimeout(function(){
-    location.replace('index.html');
+    location.replace('index1.html');
   }, 2000);
 }
 
