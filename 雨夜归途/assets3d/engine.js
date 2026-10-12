@@ -1,6 +1,6 @@
 /* =========================================================
-   engine.js — 真 3D 引擎 v11
-   v10 基础 + 影子 / 承认点 / blood_full 结尾运镜
+   engine.js — 真 3D 引擎 v12
+   v11 + 后处理层升级（路线 C）
    ========================================================= */
 (function(){
 'use strict';
@@ -38,13 +38,19 @@ let shakeTime = 0, shakeAmp = 0;
 let breathPhase = 0;
 let audioReady = false;
 
-/* ★ 新增状态 */
-let shadowAlpha = 0;         /* 影子当前透明度 */
-let ackFlashTime = 0;        /* 承认闪光计时（秒） */
-let ackFlashAlpha = 0;       /* 承认闪光透明度 */
-let bloodFadeActive = false; /* blood_full 结尾的雾吞没 */
-let bloodFadeT = 0;          /* 剩余时间（秒） */
+/* v11 状态 */
+let shadowAlpha = 0;
+let ackFlashTime = 0;
+let ackFlashAlpha = 0;
+let bloodFadeActive = false;
+let bloodFadeT = 0;
 const BLOOD_FADE_TOTAL = 3.5;
+
+/* ★ v12 新增状态 */
+let lensDrops = [];       /* 镜头水珠 */
+let lensTrails = [];      /* 镜头水迹 */
+let bloodSplats = [];     /* 屏幕血渍 */
+let sceneChangeTime = 0;  /* 场景切换时间戳 */
 
 /* 全局应急灯脉冲 */
 let emgPulse = 0.55;
@@ -482,6 +488,7 @@ function loadScene(key){
   nearby = null;
   for(const k in triggerTime) delete triggerTime[k];
   sceneEnterTime = performance.now();
+  sceneChangeTime = performance.now();
   nextScareAt    = performance.now()/1000 + 4 + Math.random()*5;
   nextSilenceAt  = performance.now()/1000 + 10 + Math.random()*12;
   nextInvertAt   = performance.now()/1000 + 8 + Math.random()*10;
@@ -490,10 +497,24 @@ function loadScene(key){
   emgPulse = 0.50; emgTarget = 0.50;
   emgNextChange = performance.now()/1000 + 0.5 + Math.random()*2;
   bloodDrops = [];
-  /* ★ 重置影子与承认状态 */
+
+  /* v11 状态重置 */
   shadowAlpha = 0;
   ackFlashTime = 0;
   ackFlashAlpha = 0;
+
+  /* ★ v12 状态重置 */
+  lensDrops = [];
+  lensTrails = [];
+  bloodSplats = [];
+  /* 场景首次进入 —— 轻度血渍溅射，暗示这个场景有承认点 */
+  if(isBloodMode()){
+    const hasAck = map.things && map.things.some(function(th){ return th.ack; });
+    if(hasAck){
+      triggerBloodSplats(0.5);
+    }
+  }
+
   resize();
   buildWorld();
 }
@@ -559,20 +580,15 @@ function updateEmgPulse(){
   }
 }
 
-/* ==================== 影子更新 ==================== */
+/* ==================== v11 状态更新 ==================== */
 function updateShadow(dt){
-  if(!map || !map.shadow){
-    shadowAlpha = 0;
-    return;
-  }
+  if(!map || !map.shadow){ shadowAlpha = 0; return; }
   const sh = map.shadow;
   const dx = sh.x - cam.x;
   const dz = sh.z - cam.z;
   const dist = Math.sqrt(dx*dx + dz*dz);
 
-  /* 世界坐标角度 */
   const worldAngle = Math.atan2(dz, dx);
-  /* 相机朝向角度 —— 与 r3d 一致：(cos(yaw), sin(yaw)) */
   const camAngle = Math.atan2(Math.sin(cam.yaw), Math.cos(cam.yaw));
 
   let diff = worldAngle - camAngle;
@@ -581,43 +597,28 @@ function updateShadow(dt){
   const ad = Math.abs(diff);
 
   let target = 0;
-
-  /* 距离太近：直接消失 */
-  if(dist < 2.5){
-    target = 0;
-  } else {
-    /* 正前方（视野内）：消失 */
-    if(ad < Math.PI * 0.30){
-      target = 0;
-    }
-    /* 余光边缘：最强 */
+  if(dist < 2.5){ target = 0; }
+  else {
+    if(ad < Math.PI * 0.30){ target = 0; }
     else if(ad < Math.PI * 0.55){
       const t = (ad - Math.PI * 0.30) / (Math.PI * 0.25);
       target = t * 0.60;
     }
-    else if(ad < Math.PI * 0.85){
-      target = 0.60;
-    }
-    /* 完全背后：消失 */
+    else if(ad < Math.PI * 0.85){ target = 0.60; }
     else {
       const t = 1 - (ad - Math.PI * 0.85) / (Math.PI * 0.15);
       target = Math.max(0, t) * 0.60;
     }
   }
-
-  /* 距离衰减：远到一定程度也消失 */
   if(dist > 14) target = 0;
   else if(dist > 9){
     const t = 1 - (dist - 9) / 5;
     target *= Math.max(0, t);
   }
-
-  /* 平滑过渡 */
   shadowAlpha += (target - shadowAlpha) * Math.min(1, dt * 3);
   if(shadowAlpha < 0.005) shadowAlpha = 0;
 }
 
-/* ==================== 承认闪光 ==================== */
 function updateAckFlash(dt){
   if(ackFlashTime > 0){
     ackFlashTime = Math.max(0, ackFlashTime - dt);
@@ -627,7 +628,6 @@ function updateAckFlash(dt){
   }
 }
 
-/* ==================== blood_full 结尾雾吞没 ==================== */
 function updateBloodFade(dt){
   if(!bloodFadeActive) return;
   bloodFadeT = Math.max(0, bloodFadeT - dt);
@@ -636,6 +636,108 @@ function updateBloodFade(dt){
 function triggerBloodFade(){
   bloodFadeActive = true;
   bloodFadeT = BLOOD_FADE_TOTAL;
+}
+
+/* ==================== ★ v12 更新函数 ==================== */
+
+/* 镜头水痕 —— 雨珠从屏幕上滑落 */
+function updateLensRain(dt, t){
+  /* 生成 —— 每秒约 2.5 颗 */
+  if(Math.random() < dt * 2.5){
+    lensDrops.push({
+      x: Math.random() * W,
+      y: -30 - Math.random() * 40,
+      vy: 40 + Math.random() * 55,
+      vx: (Math.random() - 0.5) * 8,
+      r: 4 + Math.random() * 8,
+      alpha: 0.5 + Math.random() * 0.4,
+      life: 0,
+      lifeMax: 12 + Math.random() * 8
+    });
+  }
+
+  /* 更新水珠 */
+  for(let i = lensDrops.length - 1; i >= 0; i--){
+    const d = lensDrops[i];
+    d.y += d.vy * dt;
+    d.x += d.vx * dt;
+    d.life += dt;
+
+    if(d.y > H + 20 || d.life >= d.lifeMax){
+      /* 水珠消失 → 变成水迹 */
+      lensTrails.push({
+        x: d.x,
+        y: d.y - d.r * 2,
+        len: 25 + Math.random() * 55,
+        w: d.r * 0.6,
+        alpha: 0.30 + Math.random() * 0.20,
+        life: 0,
+        lifeMax: 8 + Math.random() * 6
+      });
+      lensDrops.splice(i, 1);
+    }
+  }
+
+  /* 更新水迹 */
+  for(let i = lensTrails.length - 1; i >= 0; i--){
+    const tr = lensTrails[i];
+    tr.life += dt;
+    if(tr.life >= tr.lifeMax) lensTrails.splice(i, 1);
+  }
+
+  /* 上限控制 —— 防止爆内存 */
+  if(lensDrops.length > 40) lensDrops.splice(0, lensDrops.length - 40);
+  if(lensTrails.length > 30) lensTrails.splice(0, lensTrails.length - 30);
+}
+
+/* 屏幕血渍更新 */
+function updateBloodSplats(dt){
+  for(let i = bloodSplats.length - 1; i >= 0; i--){
+    const s = bloodSplats[i];
+    s.life += dt;
+    if(s.life >= s.lifeMax) bloodSplats.splice(i, 1);
+  }
+}
+
+/* 触发血渍 —— intensity 0~1 */
+function triggerBloodSplats(intensity){
+  if(!isBloodMode()) return;
+  const count = 3 + Math.floor(intensity * 4);
+  for(let i = 0; i < count; i++){
+    /* 边缘区域随机位置 */
+    let x, y;
+    const side = Math.floor(Math.random() * 4);
+    if(side === 0){ x = Math.random() * W * 0.30; y = Math.random() * H; }
+    else if(side === 1){ x = W * 0.70 + Math.random() * W * 0.30; y = Math.random() * H; }
+    else if(side === 2){ x = Math.random() * W; y = Math.random() * H * 0.28; }
+    else { x = Math.random() * W; y = H * 0.72 + Math.random() * H * 0.28; }
+
+    const baseR = 15 + Math.random() * 40 * intensity;
+    bloodSplats.push({
+      x: x, y: y,
+      r: baseR,
+      alpha: (0.45 + Math.random() * 0.35) * intensity,
+      seed: Math.random() * 100,
+      life: 0,
+      lifeMax: 10 + Math.random() * 10
+    });
+
+    /* 附带小滴 */
+    const drops = 2 + Math.floor(Math.random() * 3);
+    for(let j = 0; j < drops; j++){
+      const ang = Math.random() * Math.PI * 2;
+      const dist = baseR * (0.8 + Math.random() * 1.6);
+      bloodSplats.push({
+        x: x + Math.cos(ang) * dist,
+        y: y + Math.sin(ang) * dist,
+        r: 2 + Math.random() * 7,
+        alpha: (0.35 + Math.random() * 0.30) * intensity,
+        seed: Math.random() * 100,
+        life: 0,
+        lifeMax: 8 + Math.random() * 8
+      });
+    }
+  }
 }
 
 /* ==================== 更新 ==================== */
@@ -759,7 +861,7 @@ function update(dt){
       if(bloodDrops[i].y > 1.1) bloodDrops.splice(i, 1);
     }
 
-    /* ★ 新增：影子 / 承认闪光 / 雾吞没 */
+    /* v11 */
     updateShadow(dt);
     updateAckFlash(dt);
     updateBloodFade(dt);
@@ -776,13 +878,13 @@ function triggerNearby(){
   nearby = null;
   updateButton();
 
-  /* ★ 承认点：先发 bloodAcknowledge，再发 hit（让父级既能记数，也能走原 act） */
   if(wasNearby.ack && wasNearby.ackId){
     ackFlashTime = 0.5;
     ackFlashAlpha = 1.0;
+    /* ★ v12：强烈血溅 */
+    triggerBloodSplats(1.0);
     try{ window.parent.postMessage({ type:'bloodAcknowledge', id: wasNearby.ackId }, '*'); }catch(e){}
 
-    /* 本地也记录一份（避免父级 state 同步延迟） */
     if(window.S && window.S.flags){
       if(!window.S.flags.b_acked) window.S.flags.b_acked = {};
       const wasNew = !window.S.flags.b_acked[wasNearby.ackId];
@@ -793,7 +895,6 @@ function triggerNearby(){
           if(window.S.flags.b_acked[k]) n++;
         }
         window.S.flags.b_knows = n;
-        /* 三个承认点都完成 → 触发结尾雾吞没 */
         if(n >= 3){
           triggerBloodFade();
         }
@@ -935,7 +1036,6 @@ function render(dt, t){
   breathPhase += dt * 1.3;
   const breathY = Math.sin(breathPhase) * 0.012;
 
-  /* ★ blood_full 雾吞没时，相机轻微后拉 + 下沉 */
   let eyeY = cam.eye + breathY;
   let fov = Math.PI / 3.1;
   if(bloodFadeActive){
@@ -993,6 +1093,183 @@ function applyShake(dt){
     ((Math.random()*2-1)*amp).toFixed(2) + 'px)';
 }
 
+/* ==================== ★ v12 后处理绘制函数 ==================== */
+
+/* 场景色调分级 */
+const SCENE_GRADE = {
+  alley:        { r: 90,  g: 30,  b: 50,  a: 0.10 },
+  backstreet:   { r: 100, g: 70,  b: 25,  a: 0.09 },
+  shop:         { r: 25,  g: 60,  b: 55,  a: 0.10 },
+  street:       { r: 25,  g: 45,  b: 90,  a: 0.10 },
+  doorstep:     { r: 80,  g: 35,  b: 25,  a: 0.11 },
+  house:        { r: 80,  g: 12,  b: 18,  a: 0.14 },
+  powerstation: { r: 50,  g: 50,  b: 70,  a: 0.10 },
+  rooftop:      { r: 35,  g: 45,  b: 80,  a: 0.09 },
+  underpass:    { r: 40,  g: 40,  b: 55,  a: 0.11 },
+  riverside:    { r: 25,  g: 50,  b: 75,  a: 0.10 },
+  neighbor:     { r: 90,  g: 20,  b: 25,  a: 0.14 }
+};
+
+/* 镜头内水汽 —— 边缘雾感 */
+function drawInnerFog(w, h, t){
+  const flick = 0.85 + 0.15 * Math.sin(t * 0.7);
+  fxCtx.save();
+  fxCtx.globalCompositeOperation = 'lighter';
+
+  /* 左上角 */
+  const g1 = fxCtx.createRadialGradient(w * 0.08, h * 0.08, 0, w * 0.08, h * 0.08, w * 0.40);
+  g1.addColorStop(0, 'rgba(80,95,120,' + (0.07 * flick) + ')');
+  g1.addColorStop(0.6, 'rgba(70,85,110,' + (0.03 * flick) + ')');
+  g1.addColorStop(1, 'rgba(60,75,100,0)');
+  fxCtx.fillStyle = g1;
+  fxCtx.fillRect(0, 0, w * 0.5, h * 0.5);
+
+  /* 右下角 */
+  const g2 = fxCtx.createRadialGradient(w * 0.92, h * 0.92, 0, w * 0.92, h * 0.92, w * 0.40);
+  g2.addColorStop(0, 'rgba(75,85,105,' + (0.06 * flick) + ')');
+  g2.addColorStop(1, 'rgba(65,75,95,0)');
+  fxCtx.fillStyle = g2;
+  fxCtx.fillRect(w * 0.5, h * 0.5, w * 0.5, h * 0.5);
+
+  /* 右上角（弱） */
+  const g3 = fxCtx.createRadialGradient(w * 0.92, h * 0.08, 0, w * 0.92, h * 0.08, w * 0.32);
+  g3.addColorStop(0, 'rgba(70,80,100,' + (0.045 * flick) + ')');
+  g3.addColorStop(1, 'rgba(70,80,100,0)');
+  fxCtx.fillStyle = g3;
+  fxCtx.fillRect(w * 0.6, 0, w * 0.4, h * 0.4);
+
+  fxCtx.restore();
+}
+
+/* 场景色调 */
+function drawSceneGrade(w, h){
+  const grade = SCENE_GRADE[sceneKey];
+  if(!grade) return;
+  fxCtx.save();
+  fxCtx.fillStyle = 'rgba(' + grade.r + ',' + grade.g + ',' + grade.b + ',' + grade.a + ')';
+  fxCtx.fillRect(0, 0, w, h);
+  fxCtx.restore();
+}
+
+/* 呼吸圈 —— 紧张时边缘脉动 */
+function drawBreathVignette(w, h, t){
+  const panic = getPanic();
+  if(panic < 0.45) return;
+
+  /* 使用 time 驱动的周期，不依赖 dt */
+  const breathK = 0.5 + 0.5 * Math.sin(t * 2 * Math.PI * (0.5 + panic * 0.35));
+
+  const intensity = (panic - 0.45) / 0.55;
+  const alpha = intensity * 0.30 * (0.35 + breathK * 0.65);
+
+  const innerR = Math.min(w, h) * (0.34 + breathK * 0.06);
+  const outerR = Math.max(w, h) * 0.80;
+
+  const g = fxCtx.createRadialGradient(w/2, h/2, innerR, w/2, h/2, outerR);
+  g.addColorStop(0,   'rgba(40,0,10,0)');
+  g.addColorStop(0.5, 'rgba(40,0,10,' + (alpha * 0.35) + ')');
+  g.addColorStop(1,   'rgba(20,0,6,' + alpha + ')');
+  fxCtx.fillStyle = g;
+  fxCtx.fillRect(0, 0, w, h);
+}
+
+/* 屏幕血渍 */
+function drawBloodSplats(w, h){
+  if(!bloodSplats.length) return;
+  fxCtx.save();
+  for(let i = 0; i < bloodSplats.length; i++){
+    const s = bloodSplats[i];
+    const fade = 1 - s.life / s.lifeMax;
+    const a = s.alpha * Math.min(1, fade * 1.6);
+    if(a <= 0.01) continue;
+
+    /* 不规则形状 —— 用 seed 驱动伪随机 */
+    const sides = 9;
+    fxCtx.beginPath();
+    for(let j = 0; j <= sides; j++){
+      const ang = (j / sides) * Math.PI * 2;
+      const noise = Math.sin(s.seed + j * 2.13) * 0.28 + Math.cos(s.seed * 1.7 + j * 3.7) * 0.18;
+      const rr = s.r * (0.85 + noise);
+      const px = s.x + Math.cos(ang) * rr;
+      const py = s.y + Math.sin(ang) * rr;
+      if(j === 0) fxCtx.moveTo(px, py);
+      else fxCtx.lineTo(px, py);
+    }
+    fxCtx.closePath();
+
+    const g = fxCtx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r);
+    g.addColorStop(0,    'rgba(120,8,15,' + a + ')');
+    g.addColorStop(0.45, 'rgba(80,3,8,' + (a * 0.85) + ')');
+    g.addColorStop(0.8,  'rgba(50,0,5,' + (a * 0.4) + ')');
+    g.addColorStop(1,    'rgba(30,0,2,0)');
+    fxCtx.fillStyle = g;
+    fxCtx.fill();
+  }
+  fxCtx.restore();
+}
+
+/* 镜头水痕 */
+function drawLensRain(w, h){
+  const sx = w / W, sy = h / H;
+
+  /* 水迹（先画，被水珠覆盖） */
+  fxCtx.save();
+  fxCtx.scale(sx, sy);
+  for(let i = 0; i < lensTrails.length; i++){
+    const tr = lensTrails[i];
+    const fade = 1 - tr.life / tr.lifeMax;
+    const a = tr.alpha * fade;
+    if(a <= 0.01) continue;
+    const grad = fxCtx.createLinearGradient(tr.x, tr.y, tr.x, tr.y + tr.len);
+    grad.addColorStop(0,   'rgba(180,210,240,' + (a * 0.4) + ')');
+    grad.addColorStop(0.4, 'rgba(140,180,220,' + a + ')');
+    grad.addColorStop(1,   'rgba(100,140,190,0)');
+    fxCtx.fillStyle = grad;
+    fxCtx.beginPath();
+    fxCtx.ellipse(tr.x, tr.y + tr.len * 0.5, tr.w, tr.len * 0.5, 0, 0, Math.PI * 2);
+    fxCtx.fill();
+  }
+  fxCtx.restore();
+
+  /* 水珠 */
+  fxCtx.save();
+  fxCtx.scale(sx, sy);
+  for(let i = 0; i < lensDrops.length; i++){
+    const d = lensDrops[i];
+    const a = d.alpha;
+
+    /* 底部阴影 —— 让水珠有点"立体"感 */
+    fxCtx.fillStyle = 'rgba(20,30,40,' + (a * 0.35) + ')';
+    fxCtx.beginPath();
+    fxCtx.ellipse(d.x, d.y + d.r * 1.2, d.r * 0.9, d.r * 0.4, 0, 0, Math.PI * 2);
+    fxCtx.fill();
+
+    /* 水珠主体 —— 上亮下暗的球面 */
+    const g = fxCtx.createRadialGradient(d.x - d.r * 0.35, d.y - d.r * 0.4, 0, d.x, d.y, d.r * 1.05);
+    g.addColorStop(0,   'rgba(240,248,255,' + (a * 0.85) + ')');
+    g.addColorStop(0.5, 'rgba(160,195,230,' + (a * 0.55) + ')');
+    g.addColorStop(0.85,'rgba(90,130,170,' + (a * 0.35) + ')');
+    g.addColorStop(1,   'rgba(40,70,100,' + (a * 0.15) + ')');
+    fxCtx.fillStyle = g;
+    fxCtx.beginPath();
+    fxCtx.ellipse(d.x, d.y, d.r, d.r * 1.25, 0, 0, Math.PI * 2);
+    fxCtx.fill();
+
+    /* 高光点 */
+    fxCtx.fillStyle = 'rgba(255,255,255,' + (a * 0.95) + ')';
+    fxCtx.beginPath();
+    fxCtx.arc(d.x - d.r * 0.42, d.y - d.r * 0.55, d.r * 0.26, 0, Math.PI * 2);
+    fxCtx.fill();
+
+    /* 次高光 */
+    fxCtx.fillStyle = 'rgba(255,255,255,' + (a * 0.4) + ')';
+    fxCtx.beginPath();
+    fxCtx.arc(d.x + d.r * 0.35, d.y + d.r * 0.3, d.r * 0.12, 0, Math.PI * 2);
+    fxCtx.fill();
+  }
+  fxCtx.restore();
+}
+
 /* ==================== 恐怖叠加 ==================== */
 function drawHorror(dt, t){
   if(!fxCanvas || !fxCtx) return;
@@ -1008,7 +1285,17 @@ function drawHorror(dt, t){
   const silent = silenceT > 0;
   const cut = isPowerCut();
 
-  const breath = 0.5 + 0.5 * Math.sin(t * 1.1);
+  /* ===== ★ v12：先更新 v12 状态 ===== */
+  updateLensRain(dt, t);
+  updateBloodSplats(dt);
+
+  /* ===== ★ v12 第 1 层：场景色调 ===== */
+  drawSceneGrade(w, h);
+
+  /* ===== ★ v12 第 2 层：镜头内水汽 ===== */
+  drawInnerFog(w, h, t);
+
+  /* ===== 现有：暗角 ===== */
   const innerR = Math.min(w, h) * (cut ? 0.07 : 0.09);
   const vg = fxCtx.createRadialGradient(w/2, h/2, innerR, w/2, h/2, Math.max(w,h)*0.78);
   vg.addColorStop(0, 'rgba(0,0,0,0)');
@@ -1017,6 +1304,7 @@ function drawHorror(dt, t){
   fxCtx.fillStyle = vg;
   fxCtx.fillRect(0, 0, w, h);
 
+  /* ===== 现有：心跳脉动 ===== */
   const heartFreq = 1.0 + 1.1 * panic;
   const pulse = 0.5 + 0.5 * Math.sin(t * 2 * Math.PI * heartFreq);
   const pAlpha = 0.03 + 0.14 * pulse * (0.5 + 0.5*panic);
@@ -1026,6 +1314,10 @@ function drawHorror(dt, t){
   fxCtx.fillStyle = cg;
   fxCtx.fillRect(0, 0, w, h);
 
+  /* ===== ★ v12 第 3 层：呼吸圈 ===== */
+  drawBreathVignette(w, h, t);
+
+  /* ===== 现有：噪点 ===== */
   const baseN = (silent ? 520 : 260) + (cut ? 120 : 0);
   const count = baseN + Math.floor(panic * 500);
   fxCtx.fillStyle = 'rgba(255,255,255,0.06)';
@@ -1033,12 +1325,15 @@ function drawHorror(dt, t){
   fxCtx.fillStyle = 'rgba(255,40,40,' + (0.08 + 0.08*panic) + ')';
   for(let i = 0; i < Math.floor(count*0.35); i++) fxCtx.fillRect(Math.random()*w, Math.random()*h, 1, 1);
 
+  /* ===== 现有：扫描线 ===== */
   const scanY = (t * 140) % h;
   fxCtx.fillStyle = 'rgba(255,255,255,0.014)';
   fxCtx.fillRect(0, scanY, w, 2);
 
+  /* ===== 现有：幽灵入侵 ===== */
   if(intrudeT > 0) drawIntrusion(w, h, intrudeT/0.9, intrudeX, intrudeY, intrudeSeed);
 
+  /* ===== 现有：垂直血滴 ===== */
   for(let i = 0; i < bloodDrops.length; i++){
     const b = bloodDrops[i];
     const x = b.x * w, y = b.y * h;
@@ -1050,20 +1345,30 @@ function drawHorror(dt, t){
     fxCtx.fillStyle = 'rgba(200,0,0,' + (b.a*0.7) + ')';
     fxCtx.beginPath(); fxCtx.arc(x, y + b.len*h, 2.5, 0, Math.PI*2); fxCtx.fill();
   }
+
+  /* ===== ★ v12 第 4 层：屏幕血渍 ===== */
+  drawBloodSplats(w, h);
+
+  /* ===== 现有：silence / nearby ===== */
   if(silent){ fxCtx.fillStyle = 'rgba(0,0,0,0.24)'; fxCtx.fillRect(0,0,w,h); }
   if(nearby){ fxCtx.fillStyle = 'rgba(120,0,10,0.10)'; fxCtx.fillRect(0,0,w,h); }
+
+  /* ===== 现有：scare ===== */
   if(scareTime > 0){
     scareTime = Math.max(0, scareTime - dt);
     drawScare(w, h, scareTime / 0.55);
   }
 
-  /* ★ 新增绘制 —— 顺序很重要：影子 → 承认闪光 → 雾吞没 */
+  /* ===== v11：影子 / 承认 / 血雾 ===== */
   drawShadow(w, h);
   drawAckFlash(w, h);
   drawBloodFade(w, h);
+
+  /* ===== ★ v12 第 5 层：镜头水痕（最顶） ===== */
+  drawLensRain(w, h);
 }
 
-/* ★ 影子 —— 在余光里出现，正面看它时消失 */
+/* ★ v11 影子 */
 function drawShadow(w, h){
   if(shadowAlpha <= 0.005) return;
   if(!map || !map.shadow) return;
@@ -1079,15 +1384,12 @@ function drawShadow(w, h){
   while(diff >  Math.PI) diff -= Math.PI * 2;
   while(diff < -Math.PI) diff += Math.PI * 2;
 
-  /* 屏幕位置：用 diff 映射到屏幕横向 */
   const xRatio = 0.5 + diff / Math.PI;
   const px = Math.max(w * 0.08, Math.min(w * 0.92, xRatio * w));
 
-  /* 屏幕 Y —— 根据距离上下浮动一点，营造"站在远处"感 */
   const distK = Math.max(0, Math.min(1, (dist - 2) / 10));
   const py = h * (0.72 - distK * 0.10);
 
-  /* 剪影大小 —— 距离越远越矮 */
   const scale = 0.65 + (1 - distK) * 0.55;
   const bodyW = w * 0.052 * scale;
   const bodyH = h * 0.30 * scale;
@@ -1095,13 +1397,11 @@ function drawShadow(w, h){
   fxCtx.save();
   fxCtx.globalAlpha = shadowAlpha;
 
-  /* 头部 */
   fxCtx.fillStyle = 'rgba(2,0,0,0.94)';
   fxCtx.beginPath();
   fxCtx.arc(px, py - bodyH * 0.58, bodyW * 0.42, 0, Math.PI*2);
   fxCtx.fill();
 
-  /* 肩颈 */
   fxCtx.beginPath();
   fxCtx.moveTo(px - bodyW * 0.62, py + bodyH * 0.55);
   fxCtx.lineTo(px - bodyW * 0.42, py - bodyH * 0.30);
@@ -1110,7 +1410,6 @@ function drawShadow(w, h){
   fxCtx.closePath();
   fxCtx.fill();
 
-  /* 周边红晕 —— 让余光里的它"脏"一点 */
   const gr = fxCtx.createRadialGradient(px, py, 0, px, py, bodyW * 4);
   gr.addColorStop(0, 'rgba(90,0,10,' + (shadowAlpha * 0.28) + ')');
   gr.addColorStop(0.5, 'rgba(60,0,8,' + (shadowAlpha * 0.12) + ')');
@@ -1121,17 +1420,16 @@ function drawShadow(w, h){
   fxCtx.restore();
 }
 
-/* ★ 承认闪光 —— 屏幕暗一下 */
+/* ★ v11 承认闪光 */
 function drawAckFlash(w, h){
   if(ackFlashAlpha <= 0.005) return;
   fxCtx.fillStyle = 'rgba(0,0,0,' + (ackFlashAlpha * 0.85) + ')';
   fxCtx.fillRect(0, 0, w, h);
-  /* 一层很淡的红 */
   fxCtx.fillStyle = 'rgba(80,0,10,' + (ackFlashAlpha * 0.20) + ')';
   fxCtx.fillRect(0, 0, w, h);
 }
 
-/* ★ blood_full 结尾雾吞没 —— 黑雾吞没 → 短暂全黑 → 淡出 */
+/* ★ v11 blood_full 结尾雾吞没 */
 function drawBloodFade(w, h){
   if(!bloodFadeActive) return;
   const total = BLOOD_FADE_TOTAL;
@@ -1146,7 +1444,6 @@ function drawBloodFade(w, h){
   }
   if(a <= 0.005) return;
 
-  /* 黑雾 */
   fxCtx.save();
   fxCtx.globalAlpha = a;
   const g = fxCtx.createRadialGradient(w/2, h*0.6, 0, w/2, h*0.6, Math.max(w,h)*0.9);
@@ -1156,11 +1453,9 @@ function drawBloodFade(w, h){
   fxCtx.fillRect(0, 0, w, h);
   fxCtx.restore();
 
-  /* 全黑层 */
   fxCtx.fillStyle = 'rgba(0,0,0,' + a + ')';
   fxCtx.fillRect(0, 0, w, h);
 
-  /* 中间一行很淡的字 —— 只在全黑那一段显示 */
   if(a > 0.85){
     fxCtx.save();
     fxCtx.globalAlpha = Math.min(1, (a - 0.85) / 0.15);
@@ -1285,7 +1580,6 @@ function updateButton(){
   overlayIcon.textContent = (typeof nearby.icon === 'function') ? (nearby.icon() || '❓') : (nearby.icon || '❓');
   overlayName.textContent = label;
 
-  /* ★ 承认点：文案改为 "承认它" */
   if(nearby.ack){
     overlayHint.textContent = isTouch ? '轻点承认它' : '按 E / 空格 承认它';
   } else {
