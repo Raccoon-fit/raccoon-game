@@ -1,6 +1,6 @@
 /* =========================================================
-   engine.js — 真 3D 引擎 v12
-   v11 + 后处理层升级（路线 C）
+   engine.js — 真 3D 引擎 v14
+   v13 全功能 + 几何体精细拆分（每件 ≥ 500 顶点）
    ========================================================= */
 (function(){
 'use strict';
@@ -26,8 +26,6 @@ let isMoving = false;
 let nearby = null;
 const triggerTime = {};
 const texCache = {};
-const spriteTexCache = {};
-const spritePendings = {};
 
 let scareTime = 0, scareSeed = 0, nextScareAt = 0;
 let silenceT = 0, nextSilenceAt = 0;
@@ -37,8 +35,8 @@ let bloodDrops = [];
 let shakeTime = 0, shakeAmp = 0;
 let breathPhase = 0;
 let audioReady = false;
+let musicStarted = false;
 
-/* v11 状态 */
 let shadowAlpha = 0;
 let ackFlashTime = 0;
 let ackFlashAlpha = 0;
@@ -46,19 +44,19 @@ let bloodFadeActive = false;
 let bloodFadeT = 0;
 const BLOOD_FADE_TOTAL = 3.5;
 
-/* ★ v12 新增状态 */
-let lensDrops = [];       /* 镜头水珠 */
-let lensTrails = [];      /* 镜头水迹 */
-let bloodSplats = [];     /* 屏幕血渍 */
-let sceneChangeTime = 0;  /* 场景切换时间戳 */
+let lensDrops = [];
+let lensTrails = [];
+let bloodSplats = [];
 
-/* 全局应急灯脉冲 */
 let emgPulse = 0.55;
 let emgTarget = 0.55;
 let emgNextChange = 0;
 
 let focusCheckTimer = null;
 let lastExternalFocus = 0;
+
+/* ★ 精细拆分等级：1=关 2=中 3=精细 */
+const DETAIL_LEVEL = 3;
 
 const F = () => (window.S && window.S.flags) || {};
 function isBloodMode(){ return !!F().bloodMode; }
@@ -74,6 +72,288 @@ function getPanic(){
   if(scareTime > 0) p += 0.5;
   if(silenceT > 0) p += 0.25;
   return Math.min(1, p);
+}
+
+/* ==================== 颜色工具 ==================== */
+function shadeHex(hex, factor){
+  if(!hex || hex.charAt(0) !== '#') return hex || '#888888';
+  if(hex.length === 4){
+    hex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
+  }
+  let r = parseInt(hex.slice(1,3), 16);
+  let g = parseInt(hex.slice(3,5), 16);
+  let b = parseInt(hex.slice(5,7), 16);
+  if(factor > 1){
+    r = Math.min(255, r * factor) | 0;
+    g = Math.min(255, g * factor) | 0;
+    b = Math.min(255, b * factor) | 0;
+  } else {
+    r = Math.max(0, r * factor) | 0;
+    g = Math.max(0, g * factor) | 0;
+    b = Math.max(0, b * factor) | 0;
+  }
+  return '#' + r.toString(16).padStart(2,'0')
+             + g.toString(16).padStart(2,'0')
+             + b.toString(16).padStart(2,'0');
+}
+
+/* =========================================================
+   ★ v14 几何体精细拆分 —— 每件 ≥ 500 顶点
+   ========================================================= */
+function enrichBox(p){
+  const w = p.w !== undefined ? p.w : 0.6;
+  const h = p.h !== undefined ? p.h : 0.6;
+  const d = p.d !== undefined ? p.d : w;
+  const x = p.x, y = p.y, z = p.z;
+  const col = p.color || '#888888';
+  const vol = Math.abs(w * h * d);
+
+  if(vol < 0.005){
+    const t = Math.max(0.005, Math.min(w,h,d) * 0.06);
+    return [
+      { shape:'box', x:x, y:y, z:z, w:w, h:h, d:d, color: col },
+      { shape:'box', x:x, y:y+h-t*0.5, z:z, w:w*1.02, h:t, d:d*1.02, color: shadeHex(col,1.35) },
+      { shape:'box', x:x, y:y+t*0.5, z:z, w:w*1.02, h:t, d:d*1.02, color: shadeHex(col,0.65) },
+      { shape:'box', x:x, y:y+h*0.5, z:z+d*0.5, w:w*1.02, h:h*1.01, d:t, color: shadeHex(col,1.15) },
+      { shape:'box', x:x, y:y+h*0.5, z:z-d*0.5, w:w*1.02, h:h*1.01, d:t, color: shadeHex(col,0.85) },
+      { shape:'box', x:x-w*0.5, y:y+h*0.5, z:z, w:t, h:h*1.01, d:d*1.02, color: shadeHex(col,1.1) },
+      { shape:'box', x:x+w*0.5, y:y+h*0.5, z:z, w:t, h:h*1.01, d:d*1.02, color: shadeHex(col,0.9) },
+      { shape:'box', x:x, y:y+h*0.5, z:z, w:w*0.6, h:h*0.6, d:0.005, color: shadeHex(col,0.75) }
+    ];
+  }
+
+  if(vol < 0.05){
+    const t = Math.max(0.015, Math.min(w,h,d) * 0.05);
+    const arr = [];
+    arr.push({ shape:'box', x:x, y:y, z:z, w:w, h:h, d:d, color: col });
+    arr.push({ shape:'box', x:x, y:y+h-t*0.5, z:z, w:w*1.025, h:t, d:d*1.025, color: shadeHex(col,1.35) });
+    arr.push({ shape:'box', x:x, y:y+t*0.5, z:z, w:w*1.025, h:t, d:d*1.025, color: shadeHex(col,0.65) });
+    arr.push({ shape:'box', x:x, y:y+h*0.5, z:z+d*0.5, w:w*1.025, h:h*1.01, d:t, color: shadeHex(col,1.15) });
+    arr.push({ shape:'box', x:x, y:y+h*0.5, z:z-d*0.5, w:w*1.025, h:h*1.01, d:t, color: shadeHex(col,0.85) });
+    arr.push({ shape:'box', x:x-w*0.5, y:y+h*0.5, z:z, w:t, h:h*1.01, d:d*1.025, color: shadeHex(col,1.1) });
+    arr.push({ shape:'box', x:x+w*0.5, y:y+h*0.5, z:z, w:t, h:h*1.01, d:d*1.025, color: shadeHex(col,0.9) });
+    arr.push({ shape:'box', x:x, y:y+h*0.5, z:z+d*0.5+0.008, w:w*0.82, h:h*0.82, d:0.004, color: shadeHex(col,0.78) });
+    arr.push({ shape:'box', x:x, y:y+h*0.5, z:z-d*0.5-0.008, w:w*0.82, h:h*0.82, d:0.004, color: shadeHex(col,0.78) });
+    arr.push({ shape:'box', x:x, y:y+h*0.7, z:z+d*0.5+0.014, w:w*0.66, h:h*0.05, d:0.003, color: shadeHex(col,1.5) });
+    arr.push({ shape:'box', x:x, y:y+h*0.5, z:z+d*0.5+0.014, w:w*0.58, h:h*0.04, d:0.003, color: shadeHex(col,1.4) });
+    const cw = Math.min(w, d) * 0.07;
+    [[-1,-1],[-1,1],[1,-1],[1,1]].forEach(function(cc){
+      arr.push({ shape:'box',
+        x: x + cc[0]*(w*0.5-cw*0.5), y: y+h*0.5, z: z + cc[1]*(d*0.5-cw*0.5),
+        w: cw, h: h*1.02, d: cw, color: shadeHex(col, 0.6) });
+    });
+    return arr;
+  }
+
+  const t = Math.max(0.02, Math.min(w,h,d) * 0.045);
+  const arr = [];
+  arr.push({ shape:'box', x:x, y:y, z:z, w:w, h:h, d:d, color: col });
+  arr.push({ shape:'box', x:x, y:y+h-t*0.5, z:z, w:w*1.03, h:t, d:d*1.03, color: shadeHex(col,1.35) });
+  arr.push({ shape:'box', x:x, y:y+t*0.5, z:z, w:w*1.03, h:t, d:d*1.03, color: shadeHex(col,0.65) });
+  arr.push({ shape:'box', x:x, y:y+h*0.5, z:z+d*0.5, w:w*1.03, h:h*1.01, d:t, color: shadeHex(col,1.18) });
+  arr.push({ shape:'box', x:x, y:y+h*0.5, z:z-d*0.5, w:w*1.03, h:h*1.01, d:t, color: shadeHex(col,0.82) });
+  arr.push({ shape:'box', x:x-w*0.5, y:y+h*0.5, z:z, w:t, h:h*1.01, d:d*1.03, color: shadeHex(col,1.12) });
+  arr.push({ shape:'box', x:x+w*0.5, y:y+h*0.5, z:z, w:t, h:h*1.01, d:d*1.03, color: shadeHex(col,0.88) });
+  arr.push({ shape:'box', x:x, y:y+h*0.5, z:z+d*0.5+0.01, w:w*0.80, h:h*0.80, d:0.005, color: shadeHex(col,0.75) });
+  arr.push({ shape:'box', x:x, y:y+h*0.5, z:z-d*0.5-0.01, w:w*0.80, h:h*0.80, d:0.005, color: shadeHex(col,0.75) });
+  arr.push({ shape:'box', x:x-w*0.5-0.01, y:y+h*0.5, z:z, w:0.005, h:h*0.80, d:d*0.80, color: shadeHex(col,0.75) });
+  arr.push({ shape:'box', x:x+w*0.5+0.01, y:y+h*0.5, z:z, w:0.005, h:h*0.80, d:d*0.80, color: shadeHex(col,0.75) });
+  arr.push({ shape:'box', x:x, y:y+h*0.72, z:z+d*0.5+0.016, w:w*0.66, h:h*0.045, d:0.004, color: shadeHex(col,1.55) });
+  arr.push({ shape:'box', x:x, y:y+h*0.56, z:z+d*0.5+0.016, w:w*0.60, h:h*0.035, d:0.004, color: shadeHex(col,1.45) });
+  arr.push({ shape:'box', x:x, y:y+h*0.42, z:z+d*0.5+0.016, w:w*0.54, h:h*0.030, d:0.004, color: shadeHex(col,1.35) });
+  arr.push({ shape:'box', x:x, y:y+h*0.28, z:z+d*0.5+0.016, w:w*0.46, h:h*0.028, d:0.004, color: shadeHex(col,1.25) });
+  arr.push({ shape:'box', x:x, y:y+h*0.68, z:z-d*0.5-0.016, w:w*0.60, h:h*0.040, d:0.004, color: shadeHex(col,1.4) });
+  arr.push({ shape:'box', x:x, y:y+h*0.50, z:z-d*0.5-0.016, w:w*0.52, h:h*0.032, d:0.004, color: shadeHex(col,1.3) });
+  const cw = Math.min(w, d) * 0.08;
+  [[-1,-1],[-1,1],[1,-1],[1,1]].forEach(function(cc){
+    arr.push({ shape:'box',
+      x: x + cc[0]*(w*0.5-cw*0.5), y: y+h*0.5, z: z + cc[1]*(d*0.5-cw*0.5),
+      w: cw, h: h*1.03, d: cw, color: shadeHex(col, 0.55) });
+  });
+  const mw = Math.min(w, d) * 0.04;
+  arr.push({ shape:'box', x:x, y:y+h*0.5, z:z+d*0.5, w:mw, h:h*1.01, d:mw, color: shadeHex(col,0.7) });
+  arr.push({ shape:'box', x:x, y:y+h*0.5, z:z-d*0.5, w:mw, h:h*1.01, d:mw, color: shadeHex(col,0.7) });
+  arr.push({ shape:'box', x:x-w*0.5, y:y+h*0.5, z:z, w:mw, h:h*1.01, d:mw, color: shadeHex(col,0.7) });
+  arr.push({ shape:'box', x:x+w*0.5, y:y+h*0.5, z:z, w:mw, h:h*1.01, d:mw, color: shadeHex(col,0.7) });
+  arr.push({ shape:'box', x:x, y:y+h+t*0.8, z:z, w:w*0.95, h:t*0.7, d:d*0.95, color: shadeHex(col,1.5) });
+  arr.push({ shape:'box', x:x, y:y+h+t*1.7, z:z, w:w*0.80, h:t*0.5, d:d*0.80, color: shadeHex(col,1.6) });
+  arr.push({ shape:'box', x:x, y:y+h+t*2.3, z:z, w:w*0.55, h:t*0.4, d:d*0.55, color: shadeHex(col,1.7) });
+  arr.push({ shape:'box', x:x, y:y-t*1.5, z:z, w:w*0.95, h:t*0.7, d:d*0.95, color: shadeHex(col,0.55) });
+  arr.push({ shape:'box', x:x, y:y-t*2.4, z:z, w:w*0.80, h:t*0.5, d:d*0.80, color: shadeHex(col,0.45) });
+  arr.push({ shape:'box', x:x, y:y-t*3.0, z:z, w:w*0.55, h:t*0.4, d:d*0.55, color: shadeHex(col,0.35) });
+  return arr;
+}
+
+function enrichCyl(p){
+  const w = p.w !== undefined ? p.w : 0.6;
+  const h = p.h !== undefined ? p.h : 0.6;
+  const x = p.x, y = p.y, z = p.z;
+  const col = p.color || '#888888';
+  const r = w / 2;
+  const vol = Math.PI * r * r * h;
+
+  if(vol < 0.01){
+    const arr = [
+      { shape:'cyl', x:x, y:y, z:z, w:w, h:h, color: col },
+      { shape:'cyl', x:x, y:y+h-h*0.05, z:z, w:w*1.15, h:h*0.06, color: shadeHex(col,1.4) },
+      { shape:'cyl', x:x, y:y+h*0.05, z:z, w:w*1.15, h:h*0.06, color: shadeHex(col,0.6) },
+      { shape:'cyl', x:x, y:y+h-h*0.12, z:z, w:w*1.10, h:h*0.04, color: shadeHex(col,1.25) },
+      { shape:'cyl', x:x, y:y+h*0.12, z:z, w:w*1.10, h:h*0.04, color: shadeHex(col,0.75) }
+    ];
+    [[0,1],[1,0],[0,-1],[-1,0]].forEach(function(dir){
+      arr.push({ shape:'box',
+        x: x + dir[0]*(r*1.01), y: y+h*0.5, z: z + dir[1]*(r*1.01),
+        w: Math.abs(dir[0])>0 ? r*0.18 : r*0.7,
+        h: h*1.01,
+        d: Math.abs(dir[0])>0 ? r*0.7 : r*0.18,
+        color: shadeHex(col,0.7) });
+    });
+    return arr;
+  }
+
+  if(vol < 0.08){
+    const ringT = Math.max(0.015, h * 0.05);
+    const arr = [
+      { shape:'cyl', x:x, y:y, z:z, w:w, h:h, color: col },
+      { shape:'cyl', x:x, y:y+h-ringT*0.5, z:z, w:w*1.18, h:ringT, color: shadeHex(col,1.4) },
+      { shape:'cyl', x:x, y:y+ringT*0.5, z:z, w:w*1.18, h:ringT, color: shadeHex(col,0.6) },
+      { shape:'cyl', x:x, y:y+h-h*0.12, z:z, w:w*1.10, h:ringT*0.6, color: shadeHex(col,1.28) },
+      { shape:'cyl', x:x, y:y+h*0.12, z:z, w:w*1.10, h:ringT*0.6, color: shadeHex(col,0.72) },
+      { shape:'cyl', x:x, y:y+h*0.5, z:z, w:w*1.05, h:ringT*0.5, color: shadeHex(col,1.1) }
+    ];
+    for(let i = 0; i < 8; i++){
+      const a = (i / 8) * Math.PI * 2;
+      arr.push({ shape:'box',
+        x: x + Math.cos(a) * r * 1.01,
+        y: y + h*0.5,
+        z: z + Math.sin(a) * r * 1.01,
+        w: Math.abs(Math.cos(a)) > 0.5 ? r*0.14 : r*0.55,
+        h: h*1.01,
+        d: Math.abs(Math.sin(a)) > 0.5 ? r*0.14 : r*0.55,
+        color: shadeHex(col, 0.65)
+      });
+    }
+    arr.push({ shape:'cyl', x:x, y:y+h, z:z, w:w*0.85, h:0.008, color: shadeHex(col,1.5) });
+    arr.push({ shape:'cyl', x:x, y:y-h*0.02, z:z, w:w*0.85, h:0.008, color: shadeHex(col,0.45) });
+    arr.push({ shape:'cyl', x:x, y:y+h+0.01, z:z, w:w*0.55, h:0.02, color: shadeHex(col,1.6) });
+    arr.push({ shape:'cyl', x:x, y:y-h*0.04, z:z, w:w*0.55, h:0.02, color: shadeHex(col,0.35) });
+    return arr;
+  }
+
+  const ringT = Math.max(0.02, h * 0.045);
+  const arr = [
+    { shape:'cyl', x:x, y:y, z:z, w:w, h:h, color: col },
+    { shape:'cyl', x:x, y:y+h-ringT*0.5, z:z, w:w*1.20, h:ringT, color: shadeHex(col,1.42) },
+    { shape:'cyl', x:x, y:y+ringT*0.5, z:z, w:w*1.20, h:ringT, color: shadeHex(col,0.58) },
+    { shape:'cyl', x:x, y:y+h-h*0.15, z:z, w:w*1.12, h:ringT*0.6, color: shadeHex(col,1.30) },
+    { shape:'cyl', x:x, y:y+h*0.15, z:z, w:w*1.12, h:ringT*0.6, color: shadeHex(col,0.70) },
+    { shape:'cyl', x:x, y:y+h*0.72, z:z, w:w*1.08, h:ringT*0.5, color: shadeHex(col,1.15) },
+    { shape:'cyl', x:x, y:y+h*0.28, z:z, w:w*1.08, h:ringT*0.5, color: shadeHex(col,0.85) },
+    { shape:'cyl', x:x, y:y+h*0.5, z:z, w:w*1.05, h:ringT*0.4, color: shadeHex(col,1.05) }
+  ];
+  for(let i = 0; i < 12; i++){
+    const a = (i / 12) * Math.PI * 2;
+    arr.push({ shape:'box',
+      x: x + Math.cos(a) * r * 1.015,
+      y: y + h*0.5,
+      z: z + Math.sin(a) * r * 1.015,
+      w: Math.abs(Math.cos(a)) > 0.5 ? r*0.11 : r*0.5,
+      h: h*1.02,
+      d: Math.abs(Math.sin(a)) > 0.5 ? r*0.11 : r*0.5,
+      color: shadeHex(col, 0.62)
+    });
+  }
+  arr.push({ shape:'cyl', x:x, y:y+h, z:z, w:w*0.88, h:0.008, color: shadeHex(col,1.5) });
+  arr.push({ shape:'cyl', x:x, y:y-h*0.02, z:z, w:w*0.88, h:0.008, color: shadeHex(col,0.45) });
+  arr.push({ shape:'cyl', x:x, y:y+h+0.01, z:z, w:w*0.65, h:0.015, color: shadeHex(col,1.6) });
+  arr.push({ shape:'cyl', x:x, y:y-h*0.03, z:z, w:w*0.65, h:0.015, color: shadeHex(col,0.35) });
+  return arr;
+}
+
+function enrichPlate(p){
+  const w = p.w !== undefined ? p.w : 0.6;
+  const h = p.h !== undefined ? p.h : 0.6;
+  const x = p.x, y = p.y, z = p.z;
+  const col = p.color || '#888888';
+
+  const barT = Math.max(0.012, Math.min(w, h) * 0.05);
+  const arr = [
+    { shape:'plate', x:x, y:y, z:z, w:w, h:h, color: col },
+    { shape:'box', x:x, y:y+h-barT*0.5, z:z, w:w*1.04, h:barT, d:0.05, color: shadeHex(col,1.35) },
+    { shape:'box', x:x, y:y+barT*0.5, z:z, w:w*1.04, h:barT, d:0.05, color: shadeHex(col,0.65) },
+    { shape:'box', x:x-w*0.5, y:y+h*0.5, z:z, w:barT, h:h*1.02, d:0.05, color: shadeHex(col,1.15) },
+    { shape:'box', x:x+w*0.5, y:y+h*0.5, z:z, w:barT, h:h*1.02, d:0.05, color: shadeHex(col,0.85) },
+    { shape:'box', x:x, y:y+h-barT*1.5, z:z+0.02, w:w*0.90, h:barT*0.5, d:0.03, color: shadeHex(col,1.5) },
+    { shape:'box', x:x, y:y+barT*1.5, z:z+0.02, w:w*0.90, h:barT*0.5, d:0.03, color: shadeHex(col,0.5) },
+    { shape:'box', x:x-w*0.42, y:y+h*0.5, z:z+0.02, w:barT*0.5, h:h*0.85, d:0.03, color: shadeHex(col,1.3) },
+    { shape:'box', x:x+w*0.42, y:y+h*0.5, z:z+0.02, w:barT*0.5, h:h*0.85, d:0.03, color: shadeHex(col,0.8) },
+    { shape:'box', x:x, y:y+h*0.5, z:z+0.008, w:w*0.75, h:h*0.75, d:0.004, color: shadeHex(col,0.72) },
+    { shape:'box', x:x, y:y+h*0.72, z:z+0.014, w:w*0.6, h:h*0.04, d:0.003, color: shadeHex(col,1.55) },
+    { shape:'box', x:x, y:y+h*0.58, z:z+0.014, w:w*0.55, h:h*0.03, d:0.003, color: shadeHex(col,1.45) },
+    { shape:'box', x:x, y:y+h*0.42, z:z+0.014, w:w*0.5, h:h*0.03, d:0.003, color: shadeHex(col,1.35) },
+    { shape:'box', x:x, y:y+h*0.28, z:z+0.014, w:w*0.42, h:h*0.025, d:0.003, color: shadeHex(col,1.25) }
+  ];
+  const rvT = Math.min(w, h) * 0.04;
+  [[-1,-1],[-1,1],[1,-1],[1,1]].forEach(function(cc){
+    arr.push({ shape:'cyl',
+      x: x + cc[0]*(w*0.46), y: y+h*0.5 + cc[1]*(h*0.46), z: z + 0.02,
+      w: rvT, h: 0.02, color: shadeHex(col,1.5) });
+  });
+  return arr;
+}
+
+function enrichLow(p){
+  const w = p.w !== undefined ? p.w : 0.6;
+  const h = p.h !== undefined ? p.h : 0.01;
+  const x = p.x, y = p.y, z = p.z;
+  const col = p.color || '#888888';
+  const r = w / 2;
+  const ringT = Math.max(0.004, h * 0.5);
+
+  const arr = [
+    { shape:'low', x:x, y:y, z:z, w:w, h:h, color: col },
+    { shape:'low', x:x, y:y+h*0.5, z:z, w:w*1.15, h:ringT, color: shadeHex(col,1.4) },
+    { shape:'low', x:x, y:y-h*0.5, z:z, w:w*1.1, h:ringT, color: shadeHex(col,0.6) },
+    { shape:'low', x:x, y:y+h*0.2, z:z, w:w*1.08, h:ringT*0.7, color: shadeHex(col,1.25) },
+    { shape:'low', x:x, y:y-h*0.2, z:z, w:w*1.05, h:ringT*0.7, color: shadeHex(col,0.75) }
+  ];
+  for(let i = 0; i < 8; i++){
+    const a = (i / 8) * Math.PI * 2;
+    arr.push({ shape:'box',
+      x: x + Math.cos(a) * r * 0.6,
+      y: y, z: z + Math.sin(a) * r * 0.6,
+      w: Math.abs(Math.cos(a)) > 0.5 ? r*0.28 : r*0.12,
+      h: h * 2,
+      d: Math.abs(Math.sin(a)) > 0.5 ? r*0.28 : r*0.12,
+      color: shadeHex(col, 1.1)
+    });
+  }
+  arr.push({ shape:'low', x:x, y:y, z:z, w:r*0.4, h:h*3, color: shadeHex(col,1.55) });
+  arr.push({ shape:'low', x:x, y:y, z:z, w:r*0.7, h:h*2, color: shadeHex(col,1.35) });
+  arr.push({ shape:'box', x:x, y:y, z:z, w:r*1.5, h:h*2, d:r*0.1, color: shadeHex(col,1.2) });
+  arr.push({ shape:'box', x:x, y:y, z:z, w:r*0.1, h:h*2, d:r*1.5, color: shadeHex(col,1.2) });
+  return arr;
+}
+
+function enrichProp(p){
+  if(DETAIL_LEVEL <= 1) return [p];
+  const shape = p.shape || 'box';
+  if(shape === 'box')   return enrichBox(p);
+  if(shape === 'cyl')   return enrichCyl(p);
+  if(shape === 'plate') return enrichPlate(p);
+  if(shape === 'low')   return enrichLow(p);
+  return [p];
+}
+
+function enrichProps(rawProps){
+  if(!rawProps || !rawProps.length) return rawProps || [];
+  if(DETAIL_LEVEL <= 1) return rawProps;
+  const out = [];
+  for(let i = 0; i < rawProps.length; i++){
+    const sub = enrichProp(rawProps[i]);
+    for(let j = 0; j < sub.length; j++) out.push(sub[j]);
+  }
+  return out;
 }
 
 /* ==================== 音频 ==================== */
@@ -195,13 +475,195 @@ const HorrorAudio = (function(){
   return { init, resume, scareScream, footstepBehind, updateMix };
 })();
 
+/* ==================== 背景音乐 ==================== */
+const SceneMusic = (function(){
+  let ctx = null, master = null;
+  let reverbInput = null;
+  let active = false;
+  let currentTheme = null;
+  let schedTimer = null;
+  let nextBeat = 0;
+  let beatIndex = 0;
+  let chordIndex = 0;
+  const TARGET_VOLUME = 0.42;
+
+  function makeReverb(c){
+    const d1 = c.createDelay(2.0);
+    d1.delayTime.value = 0.37;
+    const d2 = c.createDelay(2.0);
+    d2.delayTime.value = 0.53;
+    const fb = c.createGain();
+    fb.gain.value = 0.40;
+    const lp = c.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 1600;
+    d1.connect(lp);
+    lp.connect(fb);
+    fb.connect(d2);
+    d2.connect(d1);
+    return d1;
+  }
+
+  const THEMES = {
+    horror: { root: 110, chords: [[0,1,6],[0,1,6],[-1,3,8],[0,1,6]], arp: [0,1,0,2,1,0,1,2], bpm: 40, wave: 'sawtooth', filt: 480, vol: 0.15 },
+    mystery: { root: 174.61, chords: [[0,3,7],[-2,1,5],[-4,-1,3],[0,3,7]], arp: [0,2,1,2,3,2,1,0], bpm: 48, wave: 'sine', filt: 1200, vol: 0.13 },
+    warm: { root: 261.63, chords: [[0,4,7],[-3,2,5],[-5,0,4],[-3,2,5]], arp: [0,1,2,1,0,1,2,1], bpm: 62, wave: 'triangle', filt: 2100, vol: 0.18 },
+    sad: { root: 196, chords: [[0,3,7],[-2,1,5],[-5,-2,2],[0,3,7]], arp: [0,2,1,3,2,1,0,2], bpm: 52, wave: 'sine', filt: 1100, vol: 0.14 },
+    bright: { root: 293.66, chords: [[0,4,7,12],[-2,2,5,9],[3,7,10,14],[-2,2,5,9]], arp: [0,1,2,3,2,1,0,1], bpm: 68, wave: 'triangle', filt: 2600, vol: 0.15 }
+  };
+
+  function themeForScene(key, isBlood){
+    if(isBlood) return 'horror';
+    const map = {
+      alley: 'mystery', backstreet: 'mystery', shop: 'warm',
+      street: 'mystery', doorstep: 'warm', house: 'warm',
+      powerstation: 'mystery', rooftop: 'sad', underpass: 'mystery',
+      riverside: 'sad', neighbor: 'mystery',
+      alley_day: 'bright', backstreet_day: 'bright', shop_day: 'warm',
+      street_day: 'warm', doorstep_day: 'warm', house_day: 'warm'
+    };
+    return map[key] || 'warm';
+  }
+
+  function noteFreq(root, semitone){ return root * Math.pow(2, semitone / 12); }
+
+  function playNote(c, dest, freq, when, dur, opts){
+    const osc = c.createOscillator();
+    osc.type = opts.wave || 'sine';
+    osc.frequency.value = freq;
+    const g = c.createGain();
+    const peak = opts.peak || 0.15;
+    const attack = opts.attack || 0.1;
+    const release = opts.release || 0.6;
+    const sustain = opts.sustain || 0.7;
+    g.gain.setValueAtTime(0, when);
+    g.gain.linearRampToValueAtTime(peak, when + attack);
+    g.gain.linearRampToValueAtTime(peak * sustain, when + Math.max(attack + 0.05, dur - release));
+    g.gain.linearRampToValueAtTime(0, when + dur);
+    const filt = c.createBiquadFilter();
+    filt.type = 'lowpass';
+    filt.frequency.value = opts.filt || 1500;
+    filt.Q.value = 0.8;
+    osc.connect(filt); filt.connect(g);
+    g.connect(dest); g.connect(reverbInput);
+    osc.start(when); osc.stop(when + dur + 0.1);
+  }
+
+  function scheduleLoop(){
+    if(!ctx || !active) return;
+    const theme = THEMES[currentTheme];
+    if(!theme) return;
+    const now = ctx.currentTime;
+    const beatDur = 60 / theme.bpm / 2;
+    const chordDur = beatDur * 8;
+    while(nextBeat < now + 1.5){
+      const idx = beatIndex % theme.arp.length;
+      const chord = theme.chords[chordIndex % theme.chords.length];
+      const arpNote = theme.arp[idx];
+      const semitone = (chord[arpNote % chord.length] || 0) + 12 * Math.floor(arpNote / 3);
+      const freq = noteFreq(theme.root, semitone + 12);
+      const peak = theme.vol * (0.7 + Math.random() * 0.4);
+      playNote(ctx, master, freq, nextBeat, beatDur * 1.6, {
+        wave: theme.wave, attack: 0.15, release: 0.7,
+        peak: peak, filt: theme.filt
+      });
+      beatIndex++;
+      if(beatIndex % 8 === 0){
+        chordIndex++;
+        const padChord = theme.chords[chordIndex % theme.chords.length];
+        padChord.forEach(function(st){
+          const pf = noteFreq(theme.root, st);
+          playNote(ctx, master, pf, nextBeat, chordDur * 1.05, {
+            wave: 'sine', attack: 0.6, release: 1.4,
+            peak: theme.vol * 0.38, filt: theme.filt * 0.6
+          });
+        });
+      }
+      nextBeat += beatDur;
+    }
+    schedTimer = setTimeout(scheduleLoop, 700);
+  }
+
+  function init(){
+    if(ctx) return;
+    try{
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if(!AC) return;
+      ctx = new AC();
+      master = ctx.createGain();
+      master.gain.value = 0;
+      reverbInput = makeReverb(ctx);
+      const revGain = ctx.createGain();
+      revGain.gain.value = 0.45;
+      reverbInput.connect(revGain);
+      revGain.connect(ctx.destination);
+      master.connect(ctx.destination);
+    }catch(e){ console.warn('[SceneMusic]', e); }
+  }
+
+  function start(themeName, fadeIn){
+    if(!ctx) init();
+    if(!ctx) return;
+    currentTheme = themeName;
+    if(master){
+      master.gain.cancelScheduledValues(ctx.currentTime);
+      master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
+      master.gain.linearRampToValueAtTime(TARGET_VOLUME, ctx.currentTime + (fadeIn || 1.5));
+    }
+    if(active) return;
+    active = true;
+    nextBeat = ctx.currentTime + 0.1;
+    beatIndex = 0;
+    chordIndex = 0;
+    scheduleLoop();
+  }
+
+  function stop(fadeOut){
+    if(!ctx || !master) return;
+    active = false;
+    if(schedTimer){ clearTimeout(schedTimer); schedTimer = null; }
+    const dur = fadeOut || 1.2;
+    master.gain.cancelScheduledValues(ctx.currentTime);
+    master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
+    master.gain.linearRampToValueAtTime(0, ctx.currentTime + dur);
+  }
+
+  function setScene(key, isBlood){
+    const newTheme = themeForScene(key, isBlood);
+    if(!ctx) init();
+    if(!ctx) return;
+    if(newTheme === currentTheme && active) return;
+    if(!active){ start(newTheme, 1.5); return; }
+    if(master){
+      master.gain.cancelScheduledValues(ctx.currentTime);
+      master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
+      master.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.8);
+    }
+    active = false;
+    if(schedTimer){ clearTimeout(schedTimer); schedTimer = null; }
+    setTimeout(function(){
+      currentTheme = newTheme;
+      start(newTheme, 1.2);
+    }, 900);
+  }
+
+  function resume(){ if(ctx && ctx.state === 'suspended') ctx.resume(); }
+  return { init, start, stop, setScene, resume };
+})();
+
 function ensureAudio(){
   if(!audioReady){ audioReady = true; HorrorAudio.init(); }
   HorrorAudio.resume();
+  SceneMusic.init();
+  SceneMusic.resume();
+  if(sceneKey && !musicStarted){
+    musicStarted = true;
+    SceneMusic.setScene(sceneKey, isBloodMode());
+  }
 }
 
-/* ==================== 纹理 ==================== */
-const TEX_SIZE = 128;
+/* ==================== 纹理 —— 512 ==================== */
+const TEX_SIZE = 512;
 
 function makeWallTextureCanvas(spec){
   const S = TEX_SIZE;
@@ -217,72 +679,113 @@ function makeWallTextureCanvas(spec){
 
     const bg = x.createLinearGradient(0, 0, 0, S);
     bg.addColorStop(0, base);
-    bg.addColorStop(1, shade(base, -0.25));
+    bg.addColorStop(1, shadeHex(base, 0.72));
     x.fillStyle = bg; x.fillRect(0, 0, S, S);
 
-    const bw = 32, bh = 16;
+    const bw = S / 4, bh = S / 8;
     const rows = S / bh;
     for(let row = 0; row < rows; row++){
       const yy = row * bh;
-      const off = (row % 2) ? 0 : bw/2;
+      const off = (row % 2) ? 0 : bw / 2;
       for(let xx = off - bw; xx < S; xx += bw){
-        const bx = xx + 1, by = yy + 1;
-        const cellW = bw - 2, cellH = bh - 2;
+        const bx = xx + 2, by = yy + 2;
+        const cellW = bw - 4, cellH = bh - 4;
         const seed = (row * 31 + xx * 17) % 100;
-        const tint = (seed - 50) / 400;
-        x.fillStyle = shade(base, tint * 0.6);
+        const tint = (seed - 50) / 350;
+        x.fillStyle = shadeHex(base, 1 + tint * 0.7);
         x.fillRect(bx, by, cellW, cellH);
-        x.fillStyle = 'rgba(255,255,255,' + (0.05 + Math.random()*0.04) + ')';
-        x.fillRect(bx, by, cellW, 1);
-        x.fillStyle = 'rgba(0,0,0,0.35)';
-        x.fillRect(bx, by + cellH - 1, cellW, 1);
-        x.fillRect(bx + cellW - 1, by, 1, cellH);
+
+        x.strokeStyle = 'rgba(0,0,0,0.18)';
+        x.lineWidth = 1;
+        for(let k = 0; k < 3; k++){
+          const lx = bx + 4 + (k + seed % 3) * cellW / 5;
+          x.beginPath();
+          x.moveTo(lx, by + 4);
+          x.lineTo(lx + (Math.random() - 0.5) * 3, by + cellH - 4);
+          x.stroke();
+        }
+
+        x.fillStyle = 'rgba(255,255,255,' + (0.06 + Math.random() * 0.05) + ')';
+        x.fillRect(bx, by, cellW, 2);
+        x.fillStyle = 'rgba(0,0,0,0.5)';
+        x.fillRect(bx, by + cellH - 2, cellW, 2);
+        x.fillRect(bx + cellW - 2, by, 2, cellH);
       }
     }
-    x.strokeStyle = isBurnt ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.55)';
-    x.lineWidth = 1;
+
+    x.strokeStyle = isBurnt ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.62)';
+    x.lineWidth = 2;
     for(let row = 0; row <= rows; row++){
-      x.beginPath(); x.moveTo(0, row*bh); x.lineTo(S, row*bh); x.stroke();
+      x.beginPath(); x.moveTo(0, row * bh); x.lineTo(S, row * bh); x.stroke();
     }
-    for(let i = 0; i < 22; i++){
-      const px = Math.random()*S, py = Math.random()*S;
-      const r = 4 + Math.random()*14;
+
+    for(let i = 0; i < 90; i++){
+      const px = Math.random() * S, py = Math.random() * S;
+      const r = 10 + Math.random() * 45;
       const grd = x.createRadialGradient(px, py, 0, px, py, r);
       if(isBurnt){
-        grd.addColorStop(0, 'rgba(70,10,10,0.35)');
+        grd.addColorStop(0, 'rgba(70,10,10,0.42)');
         grd.addColorStop(1, 'rgba(70,10,10,0)');
       } else if(isWet){
-        grd.addColorStop(0, 'rgba(140,180,220,0.28)');
+        grd.addColorStop(0, 'rgba(140,180,220,0.30)');
         grd.addColorStop(1, 'rgba(0,0,0,0)');
       } else {
-        grd.addColorStop(0, 'rgba(0,0,0,0.22)');
+        grd.addColorStop(0, 'rgba(0,0,0,0.26)');
         grd.addColorStop(1, 'rgba(0,0,0,0)');
       }
       x.fillStyle = grd;
-      x.beginPath(); x.arc(px, py, r, 0, Math.PI*2); x.fill();
+      x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.fill();
     }
+
+    for(let i = 0; i < 60; i++){
+      const px = Math.random() * S;
+      const py = S * 0.55 + Math.random() * S * 0.45;
+      const r = 6 + Math.random() * 22;
+      const grd = x.createRadialGradient(px, py, 0, px, py, r);
+      grd.addColorStop(0, 'rgba(50,75,40,0.4)');
+      grd.addColorStop(1, 'rgba(50,75,40,0)');
+      x.fillStyle = grd;
+      x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.fill();
+    }
+
+    x.strokeStyle = 'rgba(0,0,0,0.5)';
+    x.lineWidth = 1;
+    for(let i = 0; i < 6; i++){
+      let cx = Math.random() * S;
+      let cy = Math.random() * S;
+      x.beginPath();
+      x.moveTo(cx, cy);
+      for(let j = 0; j < 8; j++){
+        cx += (Math.random() - 0.5) * 60;
+        cy += Math.random() * 40;
+        x.lineTo(cx, cy);
+      }
+      x.stroke();
+    }
+
     if(isWet){
-      x.fillStyle = 'rgba(140,180,220,0.06)';
-      for(let i = 0; i < 5; i++) x.fillRect(0, 4 + i*26, S, 2);
+      x.fillStyle = 'rgba(140,180,220,0.07)';
+      for(let i = 0; i < 12; i++) x.fillRect(0, 12 + i * 40, S, 3);
     }
+
     if(isBurnt){
-      x.fillStyle = 'rgba(0,0,0,0.6)';
-      for(let i = 0; i < 60; i++){
+      x.fillStyle = 'rgba(0,0,0,0.7)';
+      for(let i = 0; i < 220; i++){
         x.beginPath();
-        x.arc(Math.random()*S, Math.random()*S, 1 + Math.random()*4, 0, Math.PI*2);
+        x.arc(Math.random() * S, Math.random() * S, 1 + Math.random() * 7, 0, Math.PI * 2);
         x.fill();
       }
-      x.fillStyle = 'rgba(90,5,5,0.5)';
-      for(let i = 0; i < 14; i++){
-        const bx = Math.random()*S;
-        const by = Math.random()*S*0.7;
-        const bl = 8 + Math.random()*20;
-        x.fillRect(bx, by, 1.4, bl);
+      x.fillStyle = 'rgba(90,5,5,0.55)';
+      for(let i = 0; i < 45; i++){
+        const bx = Math.random() * S;
+        const by = Math.random() * S * 0.7;
+        const bl = 10 + Math.random() * 30;
+        x.fillRect(bx, by, 1.8, bl);
       }
-      x.fillStyle = 'rgba(140,10,10,0.35)';
-      for(let i = 0; i < 6; i++){
+      x.fillStyle = 'rgba(140,10,10,0.4)';
+      for(let i = 0; i < 15; i++){
         x.beginPath();
-        x.arc(Math.random()*S, Math.random()*S, 1.5 + Math.random()*2, 0, Math.PI*2);
+        x.arc(Math.random() * S, Math.random() * S, 1.5 + Math.random() * 3, 0, Math.PI * 2);
         x.fill();
       }
     }
@@ -290,18 +793,18 @@ function makeWallTextureCanvas(spec){
   else if(type === 'tile'){
     const base = spec.base || '#c8d0d8';
     x.fillStyle = base; x.fillRect(0, 0, S, S);
-    const t = 32;
+    const t = 64;
     for(let yy = 0; yy < S; yy += t){
       for(let xx = 0; xx < S; xx += t){
-        const seed = (yy*11 + xx*7) % 100;
+        const seed = (yy * 11 + xx * 7) % 100;
         const tint = (seed - 50) / 500;
-        x.fillStyle = shade(base, tint);
+        x.fillStyle = shadeHex(base, 1 + tint);
         x.fillRect(xx + 1, yy + 1, t - 2, t - 2);
-        x.fillStyle = 'rgba(255,255,255,0.10)'; x.fillRect(xx + 1, yy + 1, t - 2, 1);
-        x.fillStyle = 'rgba(0,0,0,0.10)'; x.fillRect(xx + 1, yy + t - 2, t - 2, 1);
+        x.fillStyle = 'rgba(255,255,255,0.12)'; x.fillRect(xx + 1, yy + 1, t - 2, 2);
+        x.fillStyle = 'rgba(0,0,0,0.15)'; x.fillRect(xx + 1, yy + t - 3, t - 2, 2);
       }
     }
-    x.strokeStyle = 'rgba(0,0,0,0.28)'; x.lineWidth = 1;
+    x.strokeStyle = 'rgba(0,0,0,0.3)'; x.lineWidth = 2;
     for(let i = 0; i <= S; i += t){
       x.beginPath(); x.moveTo(i, 0); x.lineTo(i, S); x.stroke();
       x.beginPath(); x.moveTo(0, i); x.lineTo(S, i); x.stroke();
@@ -310,19 +813,19 @@ function makeWallTextureCanvas(spec){
   else if(type === 'wood'){
     const base = spec.base || '#5a3a20';
     x.fillStyle = base; x.fillRect(0, 0, S, S);
-    const pw = 16;
+    const pw = 32;
     for(let xx = 0; xx < S; xx += pw){
       const tint = ((xx * 13) % 40 - 20) / 200;
-      x.fillStyle = shade(base, tint);
-      x.fillRect(xx + 1, 0, pw - 1, S);
-      x.strokeStyle = 'rgba(0,0,0,0.45)'; x.lineWidth = 1;
+      x.fillStyle = shadeHex(base, 1 + tint);
+      x.fillRect(xx + 1, 0, pw - 2, S);
+      x.strokeStyle = 'rgba(0,0,0,0.5)'; x.lineWidth = 2;
       x.beginPath(); x.moveTo(xx, 0); x.lineTo(xx, S); x.stroke();
       x.strokeStyle = 'rgba(0,0,0,0.14)';
-      for(let i = 0; i < 4; i++){
-        const py = 4 + i * 32 + Math.random() * 4;
+      for(let i = 0; i < 8; i++){
+        const py = 8 + i * 64 + Math.random() * 6;
         x.beginPath();
-        x.moveTo(xx + 2, py);
-        x.bezierCurveTo(xx + 6, py + 1, xx + 10, py - 1, xx + pw - 1, py + 0.5);
+        x.moveTo(xx + 4, py);
+        x.bezierCurveTo(xx + 10, py + 2, xx + 20, py - 2, xx + pw - 3, py + 1);
         x.stroke();
       }
     }
@@ -330,16 +833,16 @@ function makeWallTextureCanvas(spec){
   else if(type === 'metal'){
     const base = spec.base || '#3a4048';
     x.fillStyle = base; x.fillRect(0, 0, S, S);
-    x.strokeStyle = 'rgba(0,0,0,0.45)'; x.lineWidth = 2;
-    x.strokeRect(2, 2, S-4, S-4);
+    x.strokeStyle = 'rgba(0,0,0,0.5)'; x.lineWidth = 3;
+    x.strokeRect(4, 4, S-8, S-8);
     x.beginPath(); x.moveTo(0, S/2); x.lineTo(S, S/2); x.stroke();
     x.beginPath(); x.moveTo(S/2, 0); x.lineTo(S/2, S); x.stroke();
-    for(let yy = 12; yy < S; yy += 24){
-      for(let xx = 12; xx < S; xx += 24){
-        x.fillStyle = 'rgba(255,255,255,0.28)';
-        x.beginPath(); x.arc(xx, yy, 2.5, 0, Math.PI*2); x.fill();
-        x.fillStyle = 'rgba(0,0,0,0.35)';
-        x.beginPath(); x.arc(xx + 0.5, yy + 0.5, 1.6, 0, Math.PI*2); x.fill();
+    for(let yy = 24; yy < S; yy += 48){
+      for(let xx = 24; xx < S; xx += 48){
+        x.fillStyle = 'rgba(255,255,255,0.32)';
+        x.beginPath(); x.arc(xx, yy, 4, 0, Math.PI*2); x.fill();
+        x.fillStyle = 'rgba(0,0,0,0.42)';
+        x.beginPath(); x.arc(xx + 1, yy + 1, 2.5, 0, Math.PI*2); x.fill();
       }
     }
   }
@@ -347,12 +850,12 @@ function makeWallTextureCanvas(spec){
   if(spec.skirting !== false && type !== 'tile'){
     const skH = Math.floor(S * 0.12);
     const sgrad = x.createLinearGradient(0, S - skH, 0, S);
-    sgrad.addColorStop(0, 'rgba(0,0,0,0.6)');
-    sgrad.addColorStop(1, 'rgba(0,0,0,0.85)');
+    sgrad.addColorStop(0, 'rgba(0,0,0,0.65)');
+    sgrad.addColorStop(1, 'rgba(0,0,0,0.9)');
     x.fillStyle = sgrad;
     x.fillRect(0, S - skH, S, skH);
-    x.fillStyle = 'rgba(255,255,255,0.06)';
-    x.fillRect(0, S - skH, S, 1);
+    x.fillStyle = 'rgba(255,255,255,0.08)';
+    x.fillRect(0, S - skH, S, 2);
   }
   return c;
 }
@@ -381,8 +884,8 @@ function makeFloorTextureCanvas(spec){
   const x = c.getContext('2d');
   const base = (spec && spec.base) || '#0d1218';
   x.fillStyle = base; x.fillRect(0, 0, S, S);
-  x.strokeStyle = 'rgba(0,0,0,0.5)'; x.lineWidth = 1;
-  const t = 32;
+  x.strokeStyle = 'rgba(0,0,0,0.55)'; x.lineWidth = 2;
+  const t = 64;
   for(let i = 0; i <= S; i += t){
     x.beginPath(); x.moveTo(i, 0); x.lineTo(i, S); x.stroke();
     x.beginPath(); x.moveTo(0, i); x.lineTo(S, i); x.stroke();
@@ -391,23 +894,23 @@ function makeFloorTextureCanvas(spec){
     for(let xx = 0; xx < S; xx += t){
       const seed = (xx*7 + yy*13) % 100;
       const tint = (seed - 50) / 600;
-      x.fillStyle = shade(base, tint);
-      x.fillRect(xx + 1, yy + 1, t - 2, t - 2);
+      x.fillStyle = shadeHex(base, 1 + tint);
+      x.fillRect(xx + 2, yy + 2, t - 4, t - 4);
     }
   }
-  for(let i = 0; i < 8; i++){
+  for(let i = 0; i < 30; i++){
     const px = Math.random()*S, py = Math.random()*S;
-    const r = 6 + Math.random()*18;
+    const r = 12 + Math.random()*36;
     const grd = x.createRadialGradient(px, py, 0, px, py, r);
-    grd.addColorStop(0, 'rgba(80,10,10,0.35)');
+    grd.addColorStop(0, 'rgba(80,10,10,0.4)');
     grd.addColorStop(1, 'rgba(80,10,10,0)');
     x.fillStyle = grd;
     x.beginPath(); x.arc(px, py, r, 0, Math.PI*2); x.fill();
   }
-  x.fillStyle = 'rgba(255,255,255,0.04)';
-  for(let i = 0; i < 200; i++) x.fillRect(Math.random()*S, Math.random()*S, 1, 1);
-  x.fillStyle = 'rgba(0,0,0,0.12)';
-  for(let i = 0; i < 200; i++) x.fillRect(Math.random()*S, Math.random()*S, 1, 1);
+  x.fillStyle = 'rgba(255,255,255,0.06)';
+  for(let i = 0; i < 800; i++) x.fillRect(Math.random()*S, Math.random()*S, 1.5, 1.5);
+  x.fillStyle = 'rgba(0,0,0,0.14)';
+  for(let i = 0; i < 800; i++) x.fillRect(Math.random()*S, Math.random()*S, 1.5, 1.5);
   return c;
 }
 
@@ -418,31 +921,31 @@ function makeCeilTextureCanvas(spec){
   const x = c.getContext('2d');
   const base = (spec && spec.base) || '#0a0d12';
   x.fillStyle = base; x.fillRect(0, 0, S, S);
-  x.strokeStyle = 'rgba(0,0,0,0.5)'; x.lineWidth = 1;
-  const t = 64;
+  x.strokeStyle = 'rgba(0,0,0,0.55)'; x.lineWidth = 2;
+  const t = 128;
   for(let i = 0; i <= S; i += t){
     x.beginPath(); x.moveTo(i, 0); x.lineTo(i, S); x.stroke();
     x.beginPath(); x.moveTo(0, i); x.lineTo(S, i); x.stroke();
   }
-  for(let i = 0; i < 8; i++){
+  for(let i = 0; i < 30; i++){
     const px = Math.random()*S, py = Math.random()*S;
-    const r = 8 + Math.random()*20;
+    const r = 16 + Math.random()*40;
     const grd = x.createRadialGradient(px, py, 0, px, py, r);
-    grd.addColorStop(0, 'rgba(0,0,0,0.28)');
+    grd.addColorStop(0, 'rgba(0,0,0,0.32)');
     grd.addColorStop(1, 'rgba(0,0,0,0)');
     x.fillStyle = grd;
     x.beginPath(); x.arc(px, py, r, 0, Math.PI*2); x.fill();
   }
-  x.fillStyle = 'rgba(90,5,5,0.5)';
-  for(let i = 0; i < 10; i++){
+  x.fillStyle = 'rgba(90,5,5,0.6)';
+  for(let i = 0; i < 30; i++){
     const bx = Math.random()*S;
     const by = Math.random()*S*0.6;
-    const bl = 6 + Math.random()*16;
-    x.fillRect(bx, by, 1.2, bl);
+    const bl = 10 + Math.random()*26;
+    x.fillRect(bx, by, 1.6, bl);
   }
-  for(let i = 0; i < 300; i++){
-    x.fillStyle = 'rgba(255,255,255,0.025)';
-    x.fillRect(Math.random()*S, Math.random()*S, 1, 1);
+  for(let i = 0; i < 1200; i++){
+    x.fillStyle = 'rgba(255,255,255,0.03)';
+    x.fillRect(Math.random()*S, Math.random()*S, 1.5, 1.5);
   }
   return c;
 }
@@ -488,7 +991,6 @@ function loadScene(key){
   nearby = null;
   for(const k in triggerTime) delete triggerTime[k];
   sceneEnterTime = performance.now();
-  sceneChangeTime = performance.now();
   nextScareAt    = performance.now()/1000 + 4 + Math.random()*5;
   nextSilenceAt  = performance.now()/1000 + 10 + Math.random()*12;
   nextInvertAt   = performance.now()/1000 + 8 + Math.random()*10;
@@ -497,24 +999,17 @@ function loadScene(key){
   emgPulse = 0.50; emgTarget = 0.50;
   emgNextChange = performance.now()/1000 + 0.5 + Math.random()*2;
   bloodDrops = [];
-
-  /* v11 状态重置 */
   shadowAlpha = 0;
   ackFlashTime = 0;
   ackFlashAlpha = 0;
-
-  /* ★ v12 状态重置 */
   lensDrops = [];
   lensTrails = [];
   bloodSplats = [];
-  /* 场景首次进入 —— 轻度血渍溅射，暗示这个场景有承认点 */
   if(isBloodMode()){
     const hasAck = map.things && map.things.some(function(th){ return th.ack; });
-    if(hasAck){
-      triggerBloodSplats(0.5);
-    }
+    if(hasAck) triggerBloodSplats(0.5);
   }
-
+  SceneMusic.setScene(key, isBloodMode());
   resize();
   buildWorld();
 }
@@ -531,7 +1026,8 @@ function buildWorld(){
     ceilTexSource:  getCeilTextureCanvas(ceilSpec,  sceneKey)
   });
 
-  const props = (typeof map.props === 'function') ? map.props() : (map.props || []);
+  let props = (typeof map.props === 'function') ? map.props() : (map.props || []);
+  props = enrichProps(props);
   renderer.buildProps(props);
 }
 
@@ -560,7 +1056,6 @@ function updateEmgPulse(){
     emgPulse += (emgTarget - emgPulse) * 0.35;
     return;
   }
-
   const r = Math.random();
   if(r < 0.10){
     emgTarget = 0.04 + Math.random()*0.07;
@@ -580,22 +1075,19 @@ function updateEmgPulse(){
   }
 }
 
-/* ==================== v11 状态更新 ==================== */
+/* ==================== 影子 / 承认 / 血雾 ==================== */
 function updateShadow(dt){
   if(!map || !map.shadow){ shadowAlpha = 0; return; }
   const sh = map.shadow;
   const dx = sh.x - cam.x;
   const dz = sh.z - cam.z;
   const dist = Math.sqrt(dx*dx + dz*dz);
-
   const worldAngle = Math.atan2(dz, dx);
   const camAngle = Math.atan2(Math.sin(cam.yaw), Math.cos(cam.yaw));
-
   let diff = worldAngle - camAngle;
   while(diff >  Math.PI) diff -= Math.PI * 2;
   while(diff < -Math.PI) diff += Math.PI * 2;
   const ad = Math.abs(diff);
-
   let target = 0;
   if(dist < 2.5){ target = 0; }
   else {
@@ -638,11 +1130,8 @@ function triggerBloodFade(){
   bloodFadeT = BLOOD_FADE_TOTAL;
 }
 
-/* ==================== ★ v12 更新函数 ==================== */
-
-/* 镜头水痕 —— 雨珠从屏幕上滑落 */
+/* ==================== v12 更新 ==================== */
 function updateLensRain(dt, t){
-  /* 生成 —— 每秒约 2.5 颗 */
   if(Math.random() < dt * 2.5){
     lensDrops.push({
       x: Math.random() * W,
@@ -655,19 +1144,14 @@ function updateLensRain(dt, t){
       lifeMax: 12 + Math.random() * 8
     });
   }
-
-  /* 更新水珠 */
   for(let i = lensDrops.length - 1; i >= 0; i--){
     const d = lensDrops[i];
     d.y += d.vy * dt;
     d.x += d.vx * dt;
     d.life += dt;
-
     if(d.y > H + 20 || d.life >= d.lifeMax){
-      /* 水珠消失 → 变成水迹 */
       lensTrails.push({
-        x: d.x,
-        y: d.y - d.r * 2,
+        x: d.x, y: d.y - d.r * 2,
         len: 25 + Math.random() * 55,
         w: d.r * 0.6,
         alpha: 0.30 + Math.random() * 0.20,
@@ -677,20 +1161,15 @@ function updateLensRain(dt, t){
       lensDrops.splice(i, 1);
     }
   }
-
-  /* 更新水迹 */
   for(let i = lensTrails.length - 1; i >= 0; i--){
     const tr = lensTrails[i];
     tr.life += dt;
     if(tr.life >= tr.lifeMax) lensTrails.splice(i, 1);
   }
-
-  /* 上限控制 —— 防止爆内存 */
   if(lensDrops.length > 40) lensDrops.splice(0, lensDrops.length - 40);
   if(lensTrails.length > 30) lensTrails.splice(0, lensTrails.length - 30);
 }
 
-/* 屏幕血渍更新 */
 function updateBloodSplats(dt){
   for(let i = bloodSplats.length - 1; i >= 0; i--){
     const s = bloodSplats[i];
@@ -699,30 +1178,23 @@ function updateBloodSplats(dt){
   }
 }
 
-/* 触发血渍 —— intensity 0~1 */
 function triggerBloodSplats(intensity){
   if(!isBloodMode()) return;
   const count = 3 + Math.floor(intensity * 4);
   for(let i = 0; i < count; i++){
-    /* 边缘区域随机位置 */
     let x, y;
     const side = Math.floor(Math.random() * 4);
     if(side === 0){ x = Math.random() * W * 0.30; y = Math.random() * H; }
     else if(side === 1){ x = W * 0.70 + Math.random() * W * 0.30; y = Math.random() * H; }
     else if(side === 2){ x = Math.random() * W; y = Math.random() * H * 0.28; }
     else { x = Math.random() * W; y = H * 0.72 + Math.random() * H * 0.28; }
-
     const baseR = 15 + Math.random() * 40 * intensity;
     bloodSplats.push({
-      x: x, y: y,
-      r: baseR,
+      x: x, y: y, r: baseR,
       alpha: (0.45 + Math.random() * 0.35) * intensity,
       seed: Math.random() * 100,
-      life: 0,
-      lifeMax: 10 + Math.random() * 10
+      life: 0, lifeMax: 10 + Math.random() * 10
     });
-
-    /* 附带小滴 */
     const drops = 2 + Math.floor(Math.random() * 3);
     for(let j = 0; j < drops; j++){
       const ang = Math.random() * Math.PI * 2;
@@ -733,8 +1205,7 @@ function triggerBloodSplats(intensity){
         r: 2 + Math.random() * 7,
         alpha: (0.35 + Math.random() * 0.30) * intensity,
         seed: Math.random() * 100,
-        life: 0,
-        lifeMax: 8 + Math.random() * 8
+        life: 0, lifeMax: 8 + Math.random() * 8
       });
     }
   }
@@ -744,7 +1215,6 @@ function triggerBloodSplats(intensity){
 function update(dt){
   if(!map) return;
   isMoving = false;
-
   updateEmgPulse();
 
   const rotSpeed = 2.2;
@@ -860,8 +1330,6 @@ function update(dt){
       bloodDrops[i].y += bloodDrops[i].v * dt;
       if(bloodDrops[i].y > 1.1) bloodDrops.splice(i, 1);
     }
-
-    /* v11 */
     updateShadow(dt);
     updateAckFlash(dt);
     updateBloodFade(dt);
@@ -873,18 +1341,14 @@ function triggerNearby(){
   const now = performance.now();
   if(now - (triggerTime[nearby.id] || 0) < 700) return;
   triggerTime[nearby.id] = now;
-
   const wasNearby = nearby;
   nearby = null;
   updateButton();
-
   if(wasNearby.ack && wasNearby.ackId){
     ackFlashTime = 0.5;
     ackFlashAlpha = 1.0;
-    /* ★ v12：强烈血溅 */
     triggerBloodSplats(1.0);
     try{ window.parent.postMessage({ type:'bloodAcknowledge', id: wasNearby.ackId }, '*'); }catch(e){}
-
     if(window.S && window.S.flags){
       if(!window.S.flags.b_acked) window.S.flags.b_acked = {};
       const wasNew = !window.S.flags.b_acked[wasNearby.ackId];
@@ -895,13 +1359,10 @@ function triggerNearby(){
           if(window.S.flags.b_acked[k]) n++;
         }
         window.S.flags.b_knows = n;
-        if(n >= 3){
-          triggerBloodFade();
-        }
+        if(n >= 3) triggerBloodFade();
       }
     }
   }
-
   try{ window.parent.postMessage({ type:'hit', spotId: wasNearby.id }, '*'); }catch(e){}
 }
 
@@ -910,17 +1371,11 @@ function computeAmbient(){
   const blood = isBloodMode();
   const cut = isPowerCut();
   const torch = isTorchOn();
-
   if(blood){
-    if(cut){
-      return torch ? [0.081, 0.027, 0.025] : [0.050, 0.016, 0.016];
-    }
+    if(cut) return torch ? [0.081, 0.027, 0.025] : [0.050, 0.016, 0.016];
     return torch ? [0.090, 0.031, 0.029] : [0.058, 0.020, 0.020];
   }
-
-  if(cut){
-    return torch ? [0.135, 0.108, 0.108] : [0.050, 0.041, 0.045];
-  }
+  if(cut) return torch ? [0.135, 0.108, 0.108] : [0.050, 0.041, 0.045];
   return torch ? [0.28, 0.26, 0.24] : [0.14, 0.15, 0.18];
 }
 
@@ -943,44 +1398,29 @@ function computeLights(){
   }
 
   const sceneLights = (map && map.lights) || [];
-
   for(let i = 0; i < sceneLights.length && list.length < 3; i++){
     const l = sceneLights[i];
-
     if(cut && l.conditional !== false){
       const perLampPhase = Math.sin(time * 1.3 + i * 2.1) * 0.5 + 0.5;
       const localPulse = 0.55 + 0.45 * perLampPhase;
       const pulse = emgPulse * localPulse;
-
       const base = blood ? 1.22 : 0.99;
-      const col = [
-        base * pulse,
-        0.145 * pulse,
-        0.108 * pulse
-      ];
+      const col = [base * pulse, 0.145 * pulse, 0.108 * pulse];
       list.push({ x: l.x, y: l.y || 2.0, z: l.z, color: col });
     } else {
       const base = (l.color || [0.6, 0.5, 0.4]).slice();
       let col;
-      if(blood){
-        col = [base[0]*0.68, base[1]*0.25, base[2]*0.20];
-      } else if(cut){
-        col = [base[0]*0.50, base[1]*0.36, base[2]*0.36];
-      } else {
-        col = base;
-      }
+      if(blood) col = [base[0]*0.68, base[1]*0.25, base[2]*0.20];
+      else if(cut) col = [base[0]*0.50, base[1]*0.36, base[2]*0.36];
+      else col = base;
       list.push({ x: l.x, y: l.y || 2.0, z: l.z, color: col });
     }
   }
 
   if(cut && list.length < 3){
     list.push({
-      x: cam.x,
-      y: 1.4,
-      z: cam.z,
-      color: blood
-        ? [0.27, 0.09, 0.072]
-        : [0.20, 0.144, 0.126]
+      x: cam.x, y: 1.4, z: cam.z,
+      color: blood ? [0.27, 0.09, 0.072] : [0.20, 0.144, 0.126]
     });
   }
 
@@ -993,39 +1433,22 @@ function computeLights(){
 /* ==================== 渲染 ==================== */
 function render(dt, t){
   if(!map) return;
-
   renderer.setAmbient(computeAmbient());
   renderer.setLights(computeLights());
 
   const blood = isBloodMode();
   const cut = isPowerCut();
-
   let fogColor;
-  if(blood){
-    fogColor = cut ? [0.020, 0.005, 0.007] : [0.023, 0.007, 0.009];
-  } else if(cut){
-    fogColor = [0.032, 0.022, 0.018];
-  } else {
-    fogColor = [0.04, 0.05, 0.08];
-  }
+  if(blood) fogColor = cut ? [0.020, 0.005, 0.007] : [0.023, 0.007, 0.009];
+  else if(cut) fogColor = [0.032, 0.022, 0.018];
+  else fogColor = [0.04, 0.05, 0.08];
 
   let fogNear, fogFar;
-  if(blood){
-    fogNear = cut ? 1.5 : 2.2;
-    fogFar  = cut ? 7.0 : 8.8;
-  } else if(cut){
-    fogNear = 1.8;
-    fogFar  = 8.2;
-  } else {
-    fogNear = 5;
-    fogFar  = 24;
-  }
+  if(blood){ fogNear = cut ? 1.5 : 2.2; fogFar = cut ? 7.0 : 8.8; }
+  else if(cut){ fogNear = 1.8; fogFar = 8.2; }
+  else { fogNear = 5; fogFar = 24; }
 
-  renderer.setFog({
-    color: fogColor,
-    near: fogNear,
-    far: fogFar
-  });
+  renderer.setFog({ color: fogColor, near: fogNear, far: fogFar });
 
   let yaw = cam.yaw, pitch = cam.pitch;
   if(camDriftT > 0){
@@ -1035,7 +1458,6 @@ function render(dt, t){
   }
   breathPhase += dt * 1.3;
   const breathY = Math.sin(breathPhase) * 0.012;
-
   let eyeY = cam.eye + breathY;
   let fov = Math.PI / 3.1;
   if(bloodFadeActive){
@@ -1054,7 +1476,6 @@ function render(dt, t){
     yaw: yaw, pitch: pitch,
     fov: fov, near: 0.06, far: 60
   });
-
   renderer.setBillboards([]);
   renderer.render();
 
@@ -1067,7 +1488,6 @@ function updateOverlayFilter(){
   const blood = isBloodMode();
   const cut = isPowerCut();
   let f = 'none';
-
   if(blood){
     if(invertT > 0) f = 'invert(1) contrast(1.4)';
     else if(silenceT > 0) f = 'saturate(0.3) contrast(1.3) brightness(0.56)';
@@ -1076,7 +1496,6 @@ function updateOverlayFilter(){
   } else if(cut){
     f = 'saturate(0.9) contrast(1.10) brightness(0.81) hue-rotate(-6deg)';
   }
-
   if(canvas.style.filter !== f) canvas.style.filter = f;
 }
 
@@ -1093,55 +1512,39 @@ function applyShake(dt){
     ((Math.random()*2-1)*amp).toFixed(2) + 'px)';
 }
 
-/* ==================== ★ v12 后处理绘制函数 ==================== */
-
-/* 场景色调分级 */
+/* ==================== 场景色调 ==================== */
 const SCENE_GRADE = {
-  alley:        { r: 90,  g: 30,  b: 50,  a: 0.10 },
-  backstreet:   { r: 100, g: 70,  b: 25,  a: 0.09 },
-  shop:         { r: 25,  g: 60,  b: 55,  a: 0.10 },
-  street:       { r: 25,  g: 45,  b: 90,  a: 0.10 },
-  doorstep:     { r: 80,  g: 35,  b: 25,  a: 0.11 },
-  house:        { r: 80,  g: 12,  b: 18,  a: 0.14 },
-  powerstation: { r: 50,  g: 50,  b: 70,  a: 0.10 },
-  rooftop:      { r: 35,  g: 45,  b: 80,  a: 0.09 },
-  underpass:    { r: 40,  g: 40,  b: 55,  a: 0.11 },
-  riverside:    { r: 25,  g: 50,  b: 75,  a: 0.10 },
-  neighbor:     { r: 90,  g: 20,  b: 25,  a: 0.14 }
+  alley: { r: 90, g: 30, b: 50, a: 0.10 },
+  backstreet: { r: 100, g: 70, b: 25, a: 0.09 },
+  shop: { r: 25, g: 60, b: 55, a: 0.10 },
+  street: { r: 25, g: 45, b: 90, a: 0.10 },
+  doorstep: { r: 80, g: 35, b: 25, a: 0.11 },
+  house: { r: 80, g: 12, b: 18, a: 0.14 },
+  powerstation: { r: 50, g: 50, b: 70, a: 0.10 },
+  rooftop: { r: 35, g: 45, b: 80, a: 0.09 },
+  underpass: { r: 40, g: 40, b: 55, a: 0.11 },
+  riverside: { r: 25, g: 50, b: 75, a: 0.10 },
+  neighbor: { r: 90, g: 20, b: 25, a: 0.14 }
 };
 
-/* 镜头内水汽 —— 边缘雾感 */
 function drawInnerFog(w, h, t){
   const flick = 0.85 + 0.15 * Math.sin(t * 0.7);
   fxCtx.save();
   fxCtx.globalCompositeOperation = 'lighter';
-
-  /* 左上角 */
   const g1 = fxCtx.createRadialGradient(w * 0.08, h * 0.08, 0, w * 0.08, h * 0.08, w * 0.40);
   g1.addColorStop(0, 'rgba(80,95,120,' + (0.07 * flick) + ')');
   g1.addColorStop(0.6, 'rgba(70,85,110,' + (0.03 * flick) + ')');
   g1.addColorStop(1, 'rgba(60,75,100,0)');
   fxCtx.fillStyle = g1;
   fxCtx.fillRect(0, 0, w * 0.5, h * 0.5);
-
-  /* 右下角 */
   const g2 = fxCtx.createRadialGradient(w * 0.92, h * 0.92, 0, w * 0.92, h * 0.92, w * 0.40);
   g2.addColorStop(0, 'rgba(75,85,105,' + (0.06 * flick) + ')');
   g2.addColorStop(1, 'rgba(65,75,95,0)');
   fxCtx.fillStyle = g2;
   fxCtx.fillRect(w * 0.5, h * 0.5, w * 0.5, h * 0.5);
-
-  /* 右上角（弱） */
-  const g3 = fxCtx.createRadialGradient(w * 0.92, h * 0.08, 0, w * 0.92, h * 0.08, w * 0.32);
-  g3.addColorStop(0, 'rgba(70,80,100,' + (0.045 * flick) + ')');
-  g3.addColorStop(1, 'rgba(70,80,100,0)');
-  fxCtx.fillStyle = g3;
-  fxCtx.fillRect(w * 0.6, 0, w * 0.4, h * 0.4);
-
   fxCtx.restore();
 }
 
-/* 场景色调 */
 function drawSceneGrade(w, h){
   const grade = SCENE_GRADE[sceneKey];
   if(!grade) return;
@@ -1151,29 +1554,22 @@ function drawSceneGrade(w, h){
   fxCtx.restore();
 }
 
-/* 呼吸圈 —— 紧张时边缘脉动 */
 function drawBreathVignette(w, h, t){
   const panic = getPanic();
   if(panic < 0.45) return;
-
-  /* 使用 time 驱动的周期，不依赖 dt */
   const breathK = 0.5 + 0.5 * Math.sin(t * 2 * Math.PI * (0.5 + panic * 0.35));
-
   const intensity = (panic - 0.45) / 0.55;
   const alpha = intensity * 0.30 * (0.35 + breathK * 0.65);
-
   const innerR = Math.min(w, h) * (0.34 + breathK * 0.06);
   const outerR = Math.max(w, h) * 0.80;
-
   const g = fxCtx.createRadialGradient(w/2, h/2, innerR, w/2, h/2, outerR);
-  g.addColorStop(0,   'rgba(40,0,10,0)');
+  g.addColorStop(0, 'rgba(40,0,10,0)');
   g.addColorStop(0.5, 'rgba(40,0,10,' + (alpha * 0.35) + ')');
-  g.addColorStop(1,   'rgba(20,0,6,' + alpha + ')');
+  g.addColorStop(1, 'rgba(20,0,6,' + alpha + ')');
   fxCtx.fillStyle = g;
   fxCtx.fillRect(0, 0, w, h);
 }
 
-/* 屏幕血渍 */
 function drawBloodSplats(w, h){
   if(!bloodSplats.length) return;
   fxCtx.save();
@@ -1182,8 +1578,6 @@ function drawBloodSplats(w, h){
     const fade = 1 - s.life / s.lifeMax;
     const a = s.alpha * Math.min(1, fade * 1.6);
     if(a <= 0.01) continue;
-
-    /* 不规则形状 —— 用 seed 驱动伪随机 */
     const sides = 9;
     fxCtx.beginPath();
     for(let j = 0; j <= sides; j++){
@@ -1196,23 +1590,19 @@ function drawBloodSplats(w, h){
       else fxCtx.lineTo(px, py);
     }
     fxCtx.closePath();
-
     const g = fxCtx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r);
-    g.addColorStop(0,    'rgba(120,8,15,' + a + ')');
+    g.addColorStop(0, 'rgba(120,8,15,' + a + ')');
     g.addColorStop(0.45, 'rgba(80,3,8,' + (a * 0.85) + ')');
-    g.addColorStop(0.8,  'rgba(50,0,5,' + (a * 0.4) + ')');
-    g.addColorStop(1,    'rgba(30,0,2,0)');
+    g.addColorStop(0.8, 'rgba(50,0,5,' + (a * 0.4) + ')');
+    g.addColorStop(1, 'rgba(30,0,2,0)');
     fxCtx.fillStyle = g;
     fxCtx.fill();
   }
   fxCtx.restore();
 }
 
-/* 镜头水痕 */
 function drawLensRain(w, h){
   const sx = w / W, sy = h / H;
-
-  /* 水迹（先画，被水珠覆盖） */
   fxCtx.save();
   fxCtx.scale(sx, sy);
   for(let i = 0; i < lensTrails.length; i++){
@@ -1221,47 +1611,34 @@ function drawLensRain(w, h){
     const a = tr.alpha * fade;
     if(a <= 0.01) continue;
     const grad = fxCtx.createLinearGradient(tr.x, tr.y, tr.x, tr.y + tr.len);
-    grad.addColorStop(0,   'rgba(180,210,240,' + (a * 0.4) + ')');
+    grad.addColorStop(0, 'rgba(180,210,240,' + (a * 0.4) + ')');
     grad.addColorStop(0.4, 'rgba(140,180,220,' + a + ')');
-    grad.addColorStop(1,   'rgba(100,140,190,0)');
+    grad.addColorStop(1, 'rgba(100,140,190,0)');
     fxCtx.fillStyle = grad;
     fxCtx.beginPath();
     fxCtx.ellipse(tr.x, tr.y + tr.len * 0.5, tr.w, tr.len * 0.5, 0, 0, Math.PI * 2);
     fxCtx.fill();
   }
-  fxCtx.restore();
-
-  /* 水珠 */
-  fxCtx.save();
-  fxCtx.scale(sx, sy);
   for(let i = 0; i < lensDrops.length; i++){
     const d = lensDrops[i];
     const a = d.alpha;
-
-    /* 底部阴影 —— 让水珠有点"立体"感 */
     fxCtx.fillStyle = 'rgba(20,30,40,' + (a * 0.35) + ')';
     fxCtx.beginPath();
     fxCtx.ellipse(d.x, d.y + d.r * 1.2, d.r * 0.9, d.r * 0.4, 0, 0, Math.PI * 2);
     fxCtx.fill();
-
-    /* 水珠主体 —— 上亮下暗的球面 */
     const g = fxCtx.createRadialGradient(d.x - d.r * 0.35, d.y - d.r * 0.4, 0, d.x, d.y, d.r * 1.05);
-    g.addColorStop(0,   'rgba(240,248,255,' + (a * 0.85) + ')');
+    g.addColorStop(0, 'rgba(240,248,255,' + (a * 0.85) + ')');
     g.addColorStop(0.5, 'rgba(160,195,230,' + (a * 0.55) + ')');
-    g.addColorStop(0.85,'rgba(90,130,170,' + (a * 0.35) + ')');
-    g.addColorStop(1,   'rgba(40,70,100,' + (a * 0.15) + ')');
+    g.addColorStop(0.85, 'rgba(90,130,170,' + (a * 0.35) + ')');
+    g.addColorStop(1, 'rgba(40,70,100,' + (a * 0.15) + ')');
     fxCtx.fillStyle = g;
     fxCtx.beginPath();
     fxCtx.ellipse(d.x, d.y, d.r, d.r * 1.25, 0, 0, Math.PI * 2);
     fxCtx.fill();
-
-    /* 高光点 */
     fxCtx.fillStyle = 'rgba(255,255,255,' + (a * 0.95) + ')';
     fxCtx.beginPath();
     fxCtx.arc(d.x - d.r * 0.42, d.y - d.r * 0.55, d.r * 0.26, 0, Math.PI * 2);
     fxCtx.fill();
-
-    /* 次高光 */
     fxCtx.fillStyle = 'rgba(255,255,255,' + (a * 0.4) + ')';
     fxCtx.beginPath();
     fxCtx.arc(d.x + d.r * 0.35, d.y + d.r * 0.3, d.r * 0.12, 0, Math.PI * 2);
@@ -1285,17 +1662,12 @@ function drawHorror(dt, t){
   const silent = silenceT > 0;
   const cut = isPowerCut();
 
-  /* ===== ★ v12：先更新 v12 状态 ===== */
   updateLensRain(dt, t);
   updateBloodSplats(dt);
 
-  /* ===== ★ v12 第 1 层：场景色调 ===== */
   drawSceneGrade(w, h);
-
-  /* ===== ★ v12 第 2 层：镜头内水汽 ===== */
   drawInnerFog(w, h, t);
 
-  /* ===== 现有：暗角 ===== */
   const innerR = Math.min(w, h) * (cut ? 0.07 : 0.09);
   const vg = fxCtx.createRadialGradient(w/2, h/2, innerR, w/2, h/2, Math.max(w,h)*0.78);
   vg.addColorStop(0, 'rgba(0,0,0,0)');
@@ -1304,7 +1676,6 @@ function drawHorror(dt, t){
   fxCtx.fillStyle = vg;
   fxCtx.fillRect(0, 0, w, h);
 
-  /* ===== 现有：心跳脉动 ===== */
   const heartFreq = 1.0 + 1.1 * panic;
   const pulse = 0.5 + 0.5 * Math.sin(t * 2 * Math.PI * heartFreq);
   const pAlpha = 0.03 + 0.14 * pulse * (0.5 + 0.5*panic);
@@ -1314,10 +1685,8 @@ function drawHorror(dt, t){
   fxCtx.fillStyle = cg;
   fxCtx.fillRect(0, 0, w, h);
 
-  /* ===== ★ v12 第 3 层：呼吸圈 ===== */
   drawBreathVignette(w, h, t);
 
-  /* ===== 现有：噪点 ===== */
   const baseN = (silent ? 520 : 260) + (cut ? 120 : 0);
   const count = baseN + Math.floor(panic * 500);
   fxCtx.fillStyle = 'rgba(255,255,255,0.06)';
@@ -1325,15 +1694,12 @@ function drawHorror(dt, t){
   fxCtx.fillStyle = 'rgba(255,40,40,' + (0.08 + 0.08*panic) + ')';
   for(let i = 0; i < Math.floor(count*0.35); i++) fxCtx.fillRect(Math.random()*w, Math.random()*h, 1, 1);
 
-  /* ===== 现有：扫描线 ===== */
   const scanY = (t * 140) % h;
   fxCtx.fillStyle = 'rgba(255,255,255,0.014)';
   fxCtx.fillRect(0, scanY, w, 2);
 
-  /* ===== 现有：幽灵入侵 ===== */
   if(intrudeT > 0) drawIntrusion(w, h, intrudeT/0.9, intrudeX, intrudeY, intrudeSeed);
 
-  /* ===== 现有：垂直血滴 ===== */
   for(let i = 0; i < bloodDrops.length; i++){
     const b = bloodDrops[i];
     const x = b.x * w, y = b.y * h;
@@ -1346,62 +1712,44 @@ function drawHorror(dt, t){
     fxCtx.beginPath(); fxCtx.arc(x, y + b.len*h, 2.5, 0, Math.PI*2); fxCtx.fill();
   }
 
-  /* ===== ★ v12 第 4 层：屏幕血渍 ===== */
   drawBloodSplats(w, h);
-
-  /* ===== 现有：silence / nearby ===== */
   if(silent){ fxCtx.fillStyle = 'rgba(0,0,0,0.24)'; fxCtx.fillRect(0,0,w,h); }
   if(nearby){ fxCtx.fillStyle = 'rgba(120,0,10,0.10)'; fxCtx.fillRect(0,0,w,h); }
-
-  /* ===== 现有：scare ===== */
   if(scareTime > 0){
     scareTime = Math.max(0, scareTime - dt);
     drawScare(w, h, scareTime / 0.55);
   }
-
-  /* ===== v11：影子 / 承认 / 血雾 ===== */
   drawShadow(w, h);
   drawAckFlash(w, h);
   drawBloodFade(w, h);
-
-  /* ===== ★ v12 第 5 层：镜头水痕（最顶） ===== */
   drawLensRain(w, h);
 }
 
-/* ★ v11 影子 */
 function drawShadow(w, h){
   if(shadowAlpha <= 0.005) return;
   if(!map || !map.shadow) return;
-
   const sh = map.shadow;
   const dx = sh.x - cam.x;
   const dz = sh.z - cam.z;
   const dist = Math.sqrt(dx*dx + dz*dz);
-
   const worldAngle = Math.atan2(dz, dx);
   const camAngle = Math.atan2(Math.sin(cam.yaw), Math.cos(cam.yaw));
   let diff = worldAngle - camAngle;
   while(diff >  Math.PI) diff -= Math.PI * 2;
   while(diff < -Math.PI) diff += Math.PI * 2;
-
   const xRatio = 0.5 + diff / Math.PI;
   const px = Math.max(w * 0.08, Math.min(w * 0.92, xRatio * w));
-
   const distK = Math.max(0, Math.min(1, (dist - 2) / 10));
   const py = h * (0.72 - distK * 0.10);
-
   const scale = 0.65 + (1 - distK) * 0.55;
   const bodyW = w * 0.052 * scale;
   const bodyH = h * 0.30 * scale;
-
   fxCtx.save();
   fxCtx.globalAlpha = shadowAlpha;
-
   fxCtx.fillStyle = 'rgba(2,0,0,0.94)';
   fxCtx.beginPath();
   fxCtx.arc(px, py - bodyH * 0.58, bodyW * 0.42, 0, Math.PI*2);
   fxCtx.fill();
-
   fxCtx.beginPath();
   fxCtx.moveTo(px - bodyW * 0.62, py + bodyH * 0.55);
   fxCtx.lineTo(px - bodyW * 0.42, py - bodyH * 0.30);
@@ -1409,18 +1757,15 @@ function drawShadow(w, h){
   fxCtx.lineTo(px + bodyW * 0.62, py + bodyH * 0.55);
   fxCtx.closePath();
   fxCtx.fill();
-
   const gr = fxCtx.createRadialGradient(px, py, 0, px, py, bodyW * 4);
   gr.addColorStop(0, 'rgba(90,0,10,' + (shadowAlpha * 0.28) + ')');
   gr.addColorStop(0.5, 'rgba(60,0,8,' + (shadowAlpha * 0.12) + ')');
   gr.addColorStop(1, 'rgba(40,0,6,0)');
   fxCtx.fillStyle = gr;
   fxCtx.fillRect(px - bodyW * 4, py - bodyH * 1.6, bodyW * 8, bodyH * 3.6);
-
   fxCtx.restore();
 }
 
-/* ★ v11 承认闪光 */
 function drawAckFlash(w, h){
   if(ackFlashAlpha <= 0.005) return;
   fxCtx.fillStyle = 'rgba(0,0,0,' + (ackFlashAlpha * 0.85) + ')';
@@ -1429,21 +1774,15 @@ function drawAckFlash(w, h){
   fxCtx.fillRect(0, 0, w, h);
 }
 
-/* ★ v11 blood_full 结尾雾吞没 */
 function drawBloodFade(w, h){
   if(!bloodFadeActive) return;
   const total = BLOOD_FADE_TOTAL;
   const elapsed = total - bloodFadeT;
   let a = 0;
-  if(elapsed < 1.6){
-    a = elapsed / 1.6;
-  } else if(elapsed < 2.2){
-    a = 1.0;
-  } else {
-    a = Math.max(0, 1 - (elapsed - 2.2) / (total - 2.2));
-  }
+  if(elapsed < 1.6) a = elapsed / 1.6;
+  else if(elapsed < 2.2) a = 1.0;
+  else a = Math.max(0, 1 - (elapsed - 2.2) / (total - 2.2));
   if(a <= 0.005) return;
-
   fxCtx.save();
   fxCtx.globalAlpha = a;
   const g = fxCtx.createRadialGradient(w/2, h*0.6, 0, w/2, h*0.6, Math.max(w,h)*0.9);
@@ -1452,10 +1791,8 @@ function drawBloodFade(w, h){
   fxCtx.fillStyle = g;
   fxCtx.fillRect(0, 0, w, h);
   fxCtx.restore();
-
   fxCtx.fillStyle = 'rgba(0,0,0,' + a + ')';
   fxCtx.fillRect(0, 0, w, h);
-
   if(a > 0.85){
     fxCtx.save();
     fxCtx.globalAlpha = Math.min(1, (a - 0.85) / 0.15);
@@ -1579,7 +1916,6 @@ function updateButton(){
   if(!label){ overlayBtn.classList.remove('show'); return; }
   overlayIcon.textContent = (typeof nearby.icon === 'function') ? (nearby.icon() || '❓') : (nearby.icon || '❓');
   overlayName.textContent = label;
-
   if(nearby.ack){
     overlayHint.textContent = isTouch ? '轻点承认它' : '按 E / 空格 承认它';
   } else {
@@ -1740,6 +2076,7 @@ function bindMessage(){
         if(!window.S.invBlood) window.S.invBlood = [];
         updateButton();
         if(map) buildWorld();
+        if(sceneKey) SceneMusic.setScene(sceneKey, isBloodMode());
       }
     }
     if(d.type === 'dlgClosed'){
@@ -1747,9 +2084,7 @@ function bindMessage(){
       setTimeout(forceFocus, 150);
       setTimeout(forceFocus, 500);
     }
-    if(d.type === 'refocus'){
-      forceFocus();
-    }
+    if(d.type === 'refocus'){ forceFocus(); }
   });
   try{ window.parent.postMessage({ type:'ready' }, '*'); }catch(e){}
 }
@@ -1832,6 +2167,7 @@ window.__engineStop = function(){
     if(canvas) canvas.style.visibility = 'hidden';
     if(fxCanvas) fxCanvas.style.display = 'none';
     if(viewport) viewport.style.transform = '';
+    SceneMusic.stop(0.6);
   }catch(e){}
 };
 window.addEventListener('pagehide', () => { stopped = true; });
