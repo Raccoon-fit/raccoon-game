@@ -102,48 +102,34 @@ function burnMark(cx, cz, radius){
   return arr;
 }
 
-/* ★ 新辅助：一盏完整的精细路灯 */
 function buildFullLamp(x, z){
   return [
-    /* 底座 —— 三层 + 环形装饰 */
     { shape:'cyl',    x:x, y:0,    z:z, w:0.55, h:0.08, color:'#1a1814' },
     { shape:'torus',  x:x, y:0.06, z:z, w:0.5,  r2:0.035, color:'#2a2018' },
     { shape:'cyl',    x:x, y:0.1,  z:z, w:0.4,  h:0.08, color:'#161210' },
     { shape:'cyl',    x:x, y:0.18, z:z, w:0.28, h:0.06, color:'#1a1814' },
-    /* 柱身 —— 渐细的三节 */
     { shape:'cyl',    x:x, y:0.24, z:z, w:0.18, h:2.3,  color:'#1e1a16' },
-    /* 装饰环 —— 上/中/下 */
     { shape:'torus',  x:x, y:0.4,  z:z, w:0.22, r2:0.018, color:'#2a2018' },
     { shape:'torus',  x:x, y:1.4,  z:z, w:0.22, r2:0.018, color:'#2a2018' },
     { shape:'torus',  x:x, y:2.4,  z:z, w:0.22, r2:0.018, color:'#2a2018' },
-    /* 灯罩底盘 */
     { shape:'cyl',    x:x, y:2.54, z:z, w:0.55, h:0.06, color:'#1a1814' },
-    /* 灯罩 —— 圆锥 */
     { shape:'cone',   x:x, y:2.6,  z:z, w:0.6,  h:0.35, color:'#2a1d10' },
-    /* 灯珠 —— 球 */
     { shape:'sphere', x:x, y:2.55, z:z, w:0.42, color:'#ffe0a0' },
-    /* 顶盖 —— 小圆锥 */
     { shape:'cone',   x:x, y:2.95, z:z, w:0.65, h:0.08, color:'#1a0e08' },
-    /* 顶杆 + 顶球 */
     { shape:'cyl',    x:x, y:3.03, z:z, w:0.08, h:0.15, color:'#1a1410' },
     { shape:'sphere', x:x, y:3.2,  z:z, w:0.12, color:'#2a1d10' }
   ];
 }
 
-/* ★ 新辅助：一个精细的木箱 */
 function buildCrate(x, y, z, w, h, d, col){
   return [
     { shape:'bevelBox', x:x, y:y, z:z, w:w, h:h, d:d, bevel:Math.min(w,h,d)*0.08, color: col },
-    /* 顶部盖板 */
     { shape:'box', x:x, y:y+h-0.02, z:z, w:w*1.02, h:0.03, d:d*1.02, color: '#2a2018' },
-    /* 底边装饰 */
     { shape:'box', x:x, y:y+0.01, z:z, w:w*1.02, h:0.02, d:d*1.02, color: '#1a1208' },
-    /* 正面凹槽 */
     { shape:'box', x:x, y:y+h*0.4, z:z+d/2+0.005, w:w*0.7, h:h*0.2, d:0.003, color: '#0a0604' }
   ];
 }
 
-/* ★ 新辅助：一个精细的垃圾桶 */
 function buildFullTrashCan(x, z){
   return [
     { shape:'cyl',   x:x, y:0,    z:z, w:0.78, h:0.05, color:'#0e0a08' },
@@ -162,7 +148,7 @@ function buildFullTrashCan(x, z){
 window.__SCENES_3D__ = {
 
   /* =====================================================
-     雨巷 —— 窄长巷子
+     雨巷
      ===================================================== */
   alley: {
     wallTex: { type:'burnt', base:'#150c0a' },
@@ -185,52 +171,33 @@ window.__SCENES_3D__ = {
       '111111111'
     ],
     props: [
-      /* --- 巷口路灯（完整） --- */
       ...buildFullLamp(1.9, 2.2),
-
-      /* --- 中间路灯 --- */
       ...buildFullLamp(5.6, 9.5),
-
-      /* --- 尽头路灯 --- */
       ...buildFullLamp(1.9, 17.8),
-
-      /* --- 垃圾桶 × 2 --- */
       ...buildFullTrashCan(5.5, 6.5),
       ...buildFullTrashCan(5.5, 7.5),
-
-      /* --- 木箱堆 --- */
       ...buildCrate(3.8, 0, 2.5, 0.9, 0.7, 0.9, '#1a1410'),
       ...buildCrate(4.6, 0, 2.6, 0.6, 0.5, 0.6, '#221a12'),
-
-      /* --- 电线杆 --- */
       { shape:'cyl',    x:7.8, y:0,   z:3.0, w:0.2, h:5.5, color:'#1a1410' },
       { shape:'torus',  x:7.8, y:4.5, z:3.0, w:0.24, r2:0.03, color:'#0e0a08' },
       { shape:'box',    x:7.8, y:5.0, z:3.0, w:0.06, h:0.06, d:2.0, color:'#1a1410' },
       { shape:'box',    x:7.8, y:4.7, z:3.0, w:0.06, h:0.06, d:1.6, color:'#1a1410' },
-
-      /* --- 消防栓 --- */
       { shape:'cyl',    x:1.4, y:0,    z:6.0, w:0.45, h:0.08, color:'#5a1510' },
       { shape:'cyl',    x:1.4, y:0.08, z:6.0, w:0.35, h:0.7,  color:'#8a2424' },
       { shape:'sphere', x:1.4, y:0.85, z:6.0, w:0.42, color:'#8a2424' },
       { shape:'cyl',    x:1.15, y:0.35, z:6.0, w:0.1, h:0.18, color:'#5a1510' },
       { shape:'cyl',    x:1.65, y:0.35, z:6.0, w:0.1, h:0.18, color:'#5a1510' },
       { shape:'sphere', x:1.4, y:1.05, z:6.0, w:0.15, color:'#5a1510' },
-
-      /* --- 地面血迹 --- */
       ...bloodSpots(1.7, 3.5, 14, 0.9, '#2a0404'),
       ...bloodTrail(5.5, 6.5, 5.5, 9.5, 10, '#1e0303'),
       ...bloodSpots(1.7, 6.8, 8, 0.4, '#240303'),
       ...bloodSpots(7.5, 5.5, 12, 0.8, '#260303'),
       ...bloodSpots(7.5, 7.5, 12, 0.8, '#260303'),
-
-      /* --- 墙壁手印 --- */
       ...wallHandprint(1.6, 1.5, 8.5),
       ...wallHandprint(1.6, 0.9, 9.5),
       ...wallHandprint(1.6, 1.3, 10.5),
       ...wallHandprint(7.4, 1.6, 11.5),
       ...wallHandprint(7.4, 1.0, 12.5),
-
-      /* --- 小爪印 --- */
       { shape:'low', x:3.0, y:0.012, z:14.5, w:0.14, h:0.01, color:'#1a0808' },
       { shape:'low', x:3.3, y:0.012, z:14.3, w:0.14, h:0.01, color:'#1a0808' },
       { shape:'low', x:3.6, y:0.012, z:14.5, w:0.14, h:0.01, color:'#1a0808' },
@@ -239,24 +206,14 @@ window.__SCENES_3D__ = {
       { shape:'low', x:4.5, y:0.012, z:14.3, w:0.14, h:0.01, color:'#1a0808' },
       { shape:'low', x:4.8, y:0.012, z:14.5, w:0.14, h:0.01, color:'#1a0808' },
       { shape:'low', x:5.1, y:0.012, z:14.3, w:0.14, h:0.01, color:'#1a0808' },
-
-      /* --- 墙上挂着的破布 --- */
       { shape:'plate', x:1.6, y:1.0, z:6.5, w:0.8, h:0.5, color:'#1c1614' },
-
-      /* --- 悬挂物 --- */
       ...hangingMeat(7.3, 1.5, 5.5, 'w'),
       ...hangingMeat(7.3, 1.5, 7.5, 'w'),
-
-      /* --- 巷尾的墙 --- */
       { shape:'plate', x:1.6, y:0.0, z:17.3, w:0.7, h:1.6, color:'#050303' },
       { shape:'plate', x:5.5, y:0.0, z:1.5,  w:1.6, h:2.2, color:'#12080a' },
-
-      /* --- 酒瓶堆 --- */
       { shape:'cyl', x:4.5, y:0, z:11.5, w:0.06, h:0.3, color:'#2a1a10' },
       { shape:'cyl', x:4.7, y:0, z:11.6, w:0.06, h:0.28, color:'#2a1a10' },
       { shape:'cyl', x:4.3, y:0, z:11.7, w:0.06, h:0.32, color:'#2a1a10' },
-
-      /* --- 地面小石头 --- */
       { shape:'sphere', x:6.2, y:0.02, z:12.5, w:0.08, color:'#2a2620' },
       { shape:'sphere', x:2.5, y:0.02, z:11.5, w:0.06, color:'#2a2620' },
       { shape:'sphere', x:6.8, y:0.02, z:8.5,  w:0.09, color:'#2a2620' }
@@ -277,7 +234,7 @@ window.__SCENES_3D__ = {
   },
 
   /* =====================================================
-     后巷 —— 宽巷
+     后巷
      ===================================================== */
   backstreet: {
     wallTex: { type:'burnt', base:'#100806' },
@@ -301,7 +258,6 @@ window.__SCENES_3D__ = {
       '11111111111111111111'
     ],
     props: [
-      /* --- 消防梯（完整） --- */
       { shape:'box',   x:4.5, y:0,    z:1.6, w:2.4, h:0.1, d:0.2, color:'#0f0a08' },
       { shape:'cyl',   x:3.4, y:0,    z:1.7, w:0.12, h:2.5, color:'#0d0908' },
       { shape:'cyl',   x:5.6, y:0,    z:1.7, w:0.12, h:2.5, color:'#0d0908' },
@@ -311,48 +267,30 @@ window.__SCENES_3D__ = {
       { shape:'cyl',   x:5.6, y:2.0,  z:1.7, w:0.14, h:0.04, color:'#1a1410' },
       { shape:'cyl',   x:4.5, y:0.3,  z:1.6, w:0.05, h:2.0, color:'#2a1810' },
       ...hangingMeat(4.5, 1.8, 2.2, 's'),
-
-      /* --- 纸箱堆（精细） --- */
       ...buildCrate(2.5, 0, 8.5, 0.9, 0.7, 0.9, '#100a06'),
       ...buildCrate(3.2, 0, 8.4, 0.6, 0.4, 0.6, '#0d0804'),
       ...buildCrate(2.0, 0, 9.2, 0.7, 0.5, 0.7, '#0e0805'),
-
-      /* --- 后门 + 招牌 --- */
       { shape:'plate', x:13.4, y:0.0, z:7.5, w:1.3, h:2.2, color:'#050303' },
       { shape:'arch',  x:13.5, y:0.0, z:7.5, w:0.9, h:2.5, d:0.1, seg:16, color:'#2a1a12' },
-
-      /* --- 配电房 --- */
       { shape:'plate', x:10.5, y:0.0, z:11.5, w:0.8, h:1.5, color:'#0d0a08' },
-
-      /* --- 悬挂物 --- */
       ...hangingMeat(9.4, 1.6, 4.5, 'w'),
       ...hangingMeat(9.4, 1.6, 6.5, 'w'),
       ...hangingMeat(9.4, 1.6, 8.5, 'w'),
-
-      /* --- 地面血迹 --- */
       ...bloodSpots(3.0, 9.5, 18, 1.2, '#2a0404'),
       ...bloodTrail(3.0, 9.5, 3.5, 5.0, 14, '#1e0303'),
       ...bloodSpots(3.5, 8.5, 10, 0.5, '#240303'),
       ...bloodSpots(12.5, 7.5, 14, 0.9, '#2a0404'),
       ...bloodSpots(9.5, 6.5, 20, 1.4, '#260303'),
-
-      /* --- 墙壁手印 --- */
       ...wallHandprint(1.6, 1.5, 6.5),
       ...wallHandprint(1.6, 1.2, 8.5),
       ...wallHandprint(1.6, 0.9, 10.5),
       ...wallHandprint(1.6, 1.4, 12.5),
       ...wallHandprint(14.4, 1.5, 4.5),
       ...wallHandprint(14.4, 1.2, 6.5),
-
-      /* --- 巷尾烧痕 --- */
       ...burnMark(16.5, 12.5, 1.2),
-
-      /* --- 墙面小道具 --- */
       { shape:'cyl',    x:15.5, y:0, z:5.5, w:0.08, h:0.12, color:'#2a2018' },
       { shape:'cyl',    x:15.8, y:0, z:5.7, w:0.07, h:0.11, color:'#2a2018' },
       { shape:'cyl',    x:16.1, y:0, z:5.5, w:0.09, h:0.13, color:'#2a2018' },
-
-      /* --- 木箱 --- */
       { shape:'low', x:3.5, y:0.005, z:8.5, w:1.0, h:0.06, color:'#1c0e08' },
       ...buildCrate(15.5, 0, 3.5, 0.6, 0.5, 0.6, '#1a1410')
     ],
@@ -392,29 +330,19 @@ window.__SCENES_3D__ = {
       '111111111111111'
     ],
     props: [
-      /* --- 货架 —— 多层结构 --- */
       { shape:'bevelBox', x:4.5, y:0,    z:5.5, w:4.0, h:1.8, d:0.6, bevel:0.1, color:'#100a08' },
       { shape:'box',      x:4.5, y:1.8,  z:5.5, w:4.2, h:0.1, d:0.7, color:'#0a0605' },
-      /* 货架物品 —— 圆罐头 */
       { shape:'cyl',   x:3.5, y:0, z:4.8, w:0.2, h:0.25, color:'#1a0a0a' },
       { shape:'cyl',   x:4.3, y:0, z:4.6, w:0.2, h:0.25, color:'#1a0a0a' },
       { shape:'cyl',   x:5.1, y:0, z:4.9, w:0.2, h:0.25, color:'#1a0a0a' },
       { shape:'cyl',   x:5.8, y:0, z:4.7, w:0.2, h:0.25, color:'#1a0a0a' },
       { shape:'sphere',x:3.5, y:0.25, z:4.8, w:0.15, color:'#2a0a0a' },
       { shape:'sphere',x:4.3, y:0.25, z:4.6, w:0.15, color:'#2a0a0a' },
-
-      /* --- 收银台（倒） --- */
       { shape:'bevelBox', x:11.5, y:0, z:7.5, w:1.4, h:1.0, d:0.9, bevel:0.08, color:'#0f0a0a' },
       { shape:'bevelBox', x:10.5, y:0, z:7.6, w:0.6, h:0.6, d:0.6, bevel:0.04, color:'#0a0606' },
-
-      /* --- 收银机（乱） --- */
       { shape:'box',    x:11.5, y:1.0, z:7.4, w:0.6, h:0.4, d:0.4, color:'#050303' },
       { shape:'plate',  x:11.5, y:1.0, z:7.2, w:0.5, h:0.3, color:'#2a0a0a' },
-
-      /* --- 后窗 --- */
       { shape:'plate', x:1.7, y:0.8, z:7.5, w:0.6, h:1.4, color:'#050408' },
-
-      /* --- 地板脚印 --- */
       { shape:'low', x:3.5, y:0.012, z:8.5, w:0.15, h:0.01, color:'#1a0808' },
       { shape:'low', x:4.0, y:0.012, z:8.3, w:0.15, h:0.01, color:'#1a0808' },
       { shape:'low', x:4.5, y:0.012, z:8.5, w:0.15, h:0.01, color:'#1a0808' },
@@ -423,32 +351,20 @@ window.__SCENES_3D__ = {
       { shape:'low', x:6.0, y:0.012, z:8.3, w:0.15, h:0.01, color:'#1a0808' },
       { shape:'low', x:6.5, y:0.012, z:8.5, w:0.15, h:0.01, color:'#1a0808' },
       { shape:'low', x:7.0, y:0.012, z:8.3, w:0.15, h:0.01, color:'#1a0808' },
-
-      /* --- 地面血迹 --- */
       ...bloodTrail(11.5, 7.5, 2.5, 7.5, 18, '#240303'),
       ...bloodSpots(2.5, 7.5, 16, 1.1, '#2a0404'),
-
-      /* --- 悬挂物 --- */
       ...hangingMeat(13.4, 1.5, 5.5, 'w'),
       ...hangingMeat(13.4, 1.5, 9.5, 'w'),
-
-      /* --- 墙壁手印 --- */
       ...wallHandprint(1.6, 1.4, 4.5),
       ...wallHandprint(1.6, 1.0, 10.5),
       ...wallHandprint(13.4, 1.5, 11.5),
       ...wallHandprint(13.4, 1.2, 2.5),
-
-      /* --- 海报 --- */
       { shape:'plate', x:7.5, y:1.4, z:1.7, w:0.8, h:1.0, color:'#1a1008' },
       ...hangingBags(9.5, 2.3, 3.5, 4),
       ...burnMark(8.5, 11.5, 0.9),
-
-      /* --- 倒地的椅子 --- */
       { shape:'bevelBox', x:12.5, y:0.2, z:3.5, w:0.5, h:0.1, d:0.5, bevel:0.03, color:'#1a1410' },
       { shape:'cyl', x:12.5, y:0, z:3.5, w:0.08, h:0.2, color:'#0a0606' },
       { shape:'cyl', x:12.8, y:0, z:3.2, w:0.08, h:0.2, color:'#0a0606' },
-
-      /* --- 地上散落硬币（用小盘模拟）--- */
       { shape:'low', x:10.5, y:0.008, z:8.5, w:0.08, h:0.006, color:'#3a2a10' },
       { shape:'low', x:10.8, y:0.008, z:8.7, w:0.07, h:0.006, color:'#3a2a10' },
       { shape:'low', x:11.1, y:0.008, z:8.4, w:0.08, h:0.006, color:'#3a2a10' }
@@ -464,7 +380,7 @@ window.__SCENES_3D__ = {
   },
 
   /* =====================================================
-     街道 —— 长街
+     街道
      ===================================================== */
   street: {
     wallTex: { type:'burnt', base:'#120c0a' },
@@ -487,90 +403,61 @@ window.__SCENES_3D__ = {
       '1111111111111111111111'
     ],
     props: [
-      /* --- 街口路灯 --- */
       ...buildFullLamp(2.5, 2.0),
-
-      /* --- 配电房（完整） --- */
       { shape:'bevelBox', x:4.5, y:0, z:2.0, w:0.9, h:1.8, d:0.6, bevel:0.05, color:'#0d0a08' },
       { shape:'plate',    x:4.5, y:1.4, z:1.65, w:0.5, h:0.2, color:'#3a0a0a' },
       { shape:'sphere',   x:4.9, y:1.0, z:1.68, w:0.08, color:'#d0a040' },
-
-      /* --- 铁门 --- */
       { shape:'box', x:15.5, y:0, z:7.5, w:2.2, h:2.4, d:0.15, color:'#0d0a0a' },
       { shape:'plate', x:15.5, y:1.5, z:7.35, w:0.9, h:0.14, color:'#3a0a0a' },
-
-      /* --- 铁门一侧的铁艺 --- */
       { shape:'cyl', x:14.3, y:0, z:7.5, w:0.08, h:2.4, color:'#1a1410' },
       { shape:'cyl', x:16.7, y:0, z:7.5, w:0.08, h:2.4, color:'#1a1410' },
       { shape:'cyl', x:14.3, y:2.4, z:7.5, w:0.1, h:0.05, color:'#1a1410' },
       { shape:'cyl', x:16.7, y:2.4, z:7.5, w:0.1, h:0.05, color:'#1a1410' },
       { shape:'box', x:15.5, y:2.4, z:7.5, w:2.5, h:0.06, d:0.06, color:'#1a1410' },
-
-      /* --- 消防栓 --- */
       { shape:'cyl',    x:11.5, y:0, z:4.5, w:0.5, h:0.08, color:'#5a1510' },
       { shape:'cyl',    x:11.5, y:0.08, z:4.5, w:0.4, h:0.7, color:'#8a2424' },
       { shape:'sphere', x:11.5, y:0.85, z:4.5, w:0.42, color:'#8a2424' },
       { shape:'cyl',    x:11.2, y:0.35, z:4.5, w:0.1, h:0.18, color:'#5a1510' },
       { shape:'cyl',    x:11.8, y:0.35, z:4.5, w:0.1, h:0.18, color:'#5a1510' },
       { shape:'sphere', x:11.5, y:1.05, z:4.5, w:0.15, color:'#5a1510' },
-
-      /* --- 信箱 --- */
       { shape:'cyl',    x:18.5, y:0,    z:3.5, w:0.08, h:0.9, color:'#1a1814' },
       { shape:'bevelBox', x:18.5, y:0.9, z:3.5, w:0.5, h:0.6, d:0.4, bevel:0.05, color:'#3a2a1a' },
       { shape:'box',    x:18.5, y:1.5, z:3.5, w:0.55, h:0.04, d:0.45, color:'#2a1e10' },
-
-      /* --- 消防栓 --- */
       { shape:'cyl',    x:20.0, y:0,    z:11.5, w:0.4, h:0.08, color:'#5a1510' },
       { shape:'cyl',    x:20.0, y:0.08, z:11.5, w:0.3, h:0.5, color:'#8a2424' },
       { shape:'sphere', x:20.0, y:0.65, z:11.5, w:0.32, color:'#8a2424' },
-
-      /* --- 树 --- */
       { shape:'cyl',    x:18.5, y:0, z:7.5, w:0.4, h:2.4, color:'#0a0604' },
       { shape:'cyl',    x:18.5, y:2.4, z:7.5, w:0.6, h:0.1, color:'#0a0604' },
       { shape:'sphere', x:18.5, y:3.0, z:7.5, w:2.2, color:'#1a2010' },
       { shape:'sphere', x:17.8, y:3.3, z:7.8, w:1.6, color:'#16200c' },
       { shape:'sphere', x:19.2, y:3.2, z:7.2, w:1.8, color:'#16200c' },
-
-      /* --- 电线杆 × 2 --- */
       { shape:'cyl', x:5.5, y:0, z:6.5, w:0.15, h:5.5, color:'#1a1410' },
       { shape:'box', x:5.5, y:5.0, z:6.5, w:0.05, h:0.05, d:2.4, color:'#1a1410' },
       { shape:'box', x:5.5, y:4.7, z:6.5, w:0.05, h:0.05, d:1.8, color:'#1a1410' },
       { shape:'cyl', x:8.5, y:0, z:6.5, w:0.15, h:5.5, color:'#1a1410' },
       { shape:'box', x:8.5, y:5.0, z:6.5, w:0.05, h:0.05, d:2.4, color:'#1a1410' },
-
-      /* --- 悬挂物 --- */
       ...hangingMeat(15.3, 1.8, 6.5, 'w'),
       ...hangingMeat(15.3, 1.8, 8.5, 'w'),
       ...hangingMeat(21.4, 1.6, 3.5, 'w'),
       ...hangingMeat(21.4, 1.6, 5.5, 'w'),
       ...hangingMeat(21.4, 1.6, 9.5, 'w'),
       ...hangingMeat(21.4, 1.6, 11.5, 'w'),
-
-      /* --- 地面血迹 --- */
       ...bloodSpots(8.5, 7.5, 22, 1.8, '#2a0404'),
       ...bloodTrail(8.5, 7.5, 15.5, 7.5, 20, '#1e0303'),
       ...bloodSpots(3.5, 10.5, 12, 1.0, '#260303'),
       ...bloodSpots(13.5, 3.5, 14, 1.2, '#240303'),
       ...bloodSpots(18.5, 7.5, 12, 1.0, '#260303'),
-
-      /* --- 墙壁手印 --- */
       ...wallHandprint(1.6, 1.5, 4.5),
       ...wallHandprint(1.6, 1.0, 9.5),
       ...wallHandprint(21.4, 1.5, 6.5),
       ...wallHandprint(21.4, 1.2, 8.5),
       ...wallHandprint(21.4, 1.5, 7.5),
-
-      /* --- 烧痕 --- */
       ...burnMark(5.5, 11.5, 1.1),
       ...burnMark(16.5, 11.5, 0.9),
-
-      /* --- 自行车 --- */
       { shape:'torus', x:10.5, y:0.02, z:10.5, w:0.7, r2:0.04, color:'#1a1814' },
       { shape:'torus', x:11.5, y:0.02, z:10.5, w:0.7, r2:0.04, color:'#1a1814' },
       { shape:'box',   x:11.0, y:0.35, z:10.5, w:1.2, h:0.06, d:0.06, color:'#2a2018' },
       { shape:'box',   x:11.0, y:0.55, z:10.5, w:0.05, h:0.4, d:0.4, color:'#2a2018' },
-
-      /* --- 长椅 --- */
       { shape:'bevelBox', x:7.5, y:0.5, z:3.0, w:2.0, h:0.08, d:0.6, bevel:0.03, color:'#3a2a1a' },
       { shape:'box',      x:6.7, y:0, z:3.0, w:0.08, h:0.5, d:0.5, color:'#1a1410' },
       { shape:'box',      x:8.3, y:0, z:3.0, w:0.08, h:0.5, d:0.5, color:'#1a1410' },
@@ -612,55 +499,36 @@ window.__SCENES_3D__ = {
       '111111111111111'
     ],
     props: [
-      /* --- 房子正面 --- */
       { shape:'plate', x:5.5, y:1.4, z:2.0, w:1.2, h:1.2, color:'#050304' },
       { shape:'bevelBox', x:5.5, y:0, z:3.0, w:1.4, h:0.4, d:0.5, bevel:0.05, color:'#0a0605' },
-
-      /* --- 门（完整） --- */
       { shape:'plate', x:8.5, y:0.0, z:5.5, w:1.2, h:2.0, color:'#0a0605' },
       { shape:'arch',  x:8.5, y:0.0, z:5.5, w:1.0, h:2.3, d:0.1, seg:16, color:'#3a2218' },
-
-      /* --- 台阶 × 3 --- */
       { shape:'bevelBox', x:8.5, y:0,    z:10.5, w:2.2, h:0.14, d:0.6, bevel:0.04, color:'#0d0908' },
       { shape:'bevelBox', x:8.5, y:0.14, z:9.8,  w:1.8, h:0.14, d:0.6, bevel:0.04, color:'#0f0a08' },
       { shape:'bevelBox', x:8.5, y:0.28, z:9.1,  w:1.4, h:0.14, d:0.6, bevel:0.04, color:'#100b08' },
-
-      /* --- 台阶上的爪印 --- */
       { shape:'low', x:8.2, y:0.30, z:8.8, w:0.14, h:0.01, color:'#1a0808' },
       { shape:'low', x:8.6, y:0.30, z:8.6, w:0.14, h:0.01, color:'#1a0808' },
       { shape:'low', x:8.9, y:0.16, z:9.4, w:0.14, h:0.01, color:'#1a0808' },
       { shape:'low', x:8.5, y:0.16, z:9.2, w:0.14, h:0.01, color:'#1a0808' },
       { shape:'low', x:8.2, y:0.02, z:10.2, w:0.14, h:0.01, color:'#1a0808' },
       { shape:'low', x:8.6, y:0.02, z:10.0, w:0.14, h:0.01, color:'#1a0808' },
-
-      /* --- 门灯 × 2 --- */
       { shape:'cyl',    x:7.0, y:2.4, z:2.05, w:0.05, h:0.3, color:'#1a1410' },
       { shape:'cone',   x:7.0, y:2.25, z:2.15, w:0.32, h:0.2, color:'#1a1410' },
       { shape:'sphere', x:7.0, y:2.2, z:2.15, w:0.22, color:'#ffd27a' },
       { shape:'cyl',    x:10.0, y:2.4, z:2.05, w:0.05, h:0.3, color:'#1a1410' },
       { shape:'cone',   x:10.0, y:2.25, z:2.15, w:0.32, h:0.2, color:'#1a1410' },
       { shape:'sphere', x:10.0, y:2.2, z:2.15, w:0.22, color:'#ffd27a' },
-
-      /* --- 地面血迹 --- */
       ...bloodSpots(8.5, 11.5, 16, 1.2, '#2a0404'),
       ...bloodTrail(8.5, 11.5, 8.5, 7.5, 12, '#1e0303'),
-
-      /* --- 悬挂物 --- */
       ...hangingMeat(4.5, 1.6, 2.5, 's'),
       ...hangingMeat(6.5, 1.6, 2.5, 's'),
       ...hangingMeat(10.5, 1.6, 2.5, 's'),
-
-      /* --- 墙壁手印 --- */
       ...wallHandprint(2.0, 1.5, 5.5),
       ...wallHandprint(13.4, 1.4, 5.5),
       ...wallHandprint(13.4, 1.0, 8.5),
-
-      /* --- 花盆 --- */
       { shape:'cone',   x:12.5, y:0, z:3.5, w:0.5, h:0.5, color:'#0a0605' },
       { shape:'sphere', x:12.5, y:0.6, z:3.5, w:0.4, color:'#2a3018' },
       { shape:'sphere', x:12.5, y:0.75, z:3.5, w:0.25, color:'#3a4020' },
-
-      /* --- 井盖 --- */
       { shape:'cyl', x:11.5, y:0.008, z:8.5, w:0.7, h:0.02, color:'#0a0606' },
       { shape:'torus', x:11.5, y:0.02, z:8.5, w:0.65, r2:0.04, color:'#1a1410' }
     ],
@@ -695,75 +563,47 @@ window.__SCENES_3D__ = {
       '111111111111111'
     ],
     props: [
-      /* --- 窗户 --- */
       { shape:'plate', x:3.5, y:1.4, z:2.0, w:1.2, h:1.2, color:'#040204' },
       { shape:'plate', x:7.5, y:1.6, z:2.0, w:0.5, h:0.5, color:'#100a06' },
-
-      /* --- 书架（精细） --- */
       { shape:'bevelBox', x:2.0, y:0, z:6.5, w:0.5, h:2.0, d:1.2, bevel:0.04, color:'#0a0605' },
       { shape:'box',      x:2.0, y:0.6, z:6.5, w:0.55, h:0.04, d:1.25, color:'#1a1208' },
       { shape:'box',      x:2.0, y:1.2, z:6.5, w:0.55, h:0.04, d:1.25, color:'#1a1208' },
       { shape:'box',      x:2.0, y:1.8, z:6.5, w:0.55, h:0.04, d:1.25, color:'#1a1208' },
-
-      /* --- 台灯（精细） --- */
       { shape:'cyl',    x:12.5, y:0,    z:4.5, w:0.35, h:0.5, color:'#0a0605' },
       { shape:'cyl',    x:12.5, y:0.5,  z:4.5, w:0.12, h:0.8, color:'#0a0605' },
       { shape:'cone',   x:12.5, y:1.3,  z:4.5, w:0.7, h:0.5, color:'#1a1208' },
       { shape:'sphere', x:12.5, y:1.5,  z:4.5, w:0.35, color:'#3a2010' },
-
-      /* --- 相框 --- */
       { shape:'box', x:7.5, y:0.9, z:11.5, w:0.8, h:0.6, d:0.05, color:'#100a06' },
       { shape:'box', x:7.5, y:0.9, z:11.52, w:0.7, h:0.5, d:0.02, color:'#1a1208' },
-
-      /* --- 摇椅（精细） --- */
       { shape:'bevelBox', x:3.5, y:0,    z:9.5, w:0.9, h:0.15, d:1.1, bevel:0.04, color:'#0a0605' },
       { shape:'bevelBox', x:3.5, y:0.15, z:10.0, w:0.9, h:0.6, d:0.15, bevel:0.04, color:'#0a0605' },
       { shape:'cyl',      x:3.0, y:0.15, z:9.0, w:0.06, h:0.6, color:'#0a0605' },
       { shape:'cyl',      x:4.0, y:0.15, z:9.0, w:0.06, h:0.6, color:'#0a0605' },
-
-      /* --- 小碗（精细） --- */
       { shape:'cone',   x:4.5, y:0.02, z:11.5, w:0.35, h:0.12, color:'#1a0a08' },
       { shape:'torus',  x:4.5, y:0.12, z:11.5, w:0.32, r2:0.025, color:'#2a1a10' },
-
-      /* --- 桌子 --- */
       { shape:'bevelBox', x:7.5, y:0.5, z:5.0, w:1.8, h:0.1, d:0.7, bevel:0.05, color:'#1a1008' },
       { shape:'cyl', x:6.8, y:0, z:4.7, w:0.1, h:0.5, color:'#0a0605' },
       { shape:'cyl', x:8.2, y:0, z:4.7, w:0.1, h:0.5, color:'#0a0605' },
       { shape:'cyl', x:6.8, y:0, z:5.3, w:0.1, h:0.5, color:'#0a0605' },
       { shape:'cyl', x:8.2, y:0, z:5.3, w:0.1, h:0.5, color:'#0a0605' },
-
-      /* --- 门口的地毯 --- */
       { shape:'low', x:7.5, y:0.005, z:7.5, w:2.2, h:0.02, color:'#1a0a08' },
       { shape:'low', x:7.5, y:0.006, z:2.0, w:1.2, h:0.02, color:'#060404' },
-
-      /* --- 地面血迹 --- */
       ...bloodSpots(7.5, 10.5, 20, 1.6, '#2a0404'),
       ...bloodTrail(7.5, 10.5, 7.5, 4.5, 16, '#1e0303'),
       ...bloodTrail(7.5, 2.5, 3.5, 2.5, 12, '#240303'),
-
-      /* --- 悬挂物 --- */
       ...hangingMeat(13.4, 1.6, 6.5, 'w'),
       ...hangingMeat(13.4, 1.6, 8.5, 'w'),
       ...hangingMeat(13.4, 1.6, 10.5, 'w'),
-
       ...bloodSpots(12.5, 8.5, 16, 1.2, '#260303'),
-
-      /* --- 墙壁手印 --- */
       ...wallHandprint(2.0, 1.5, 4.5),
       ...wallHandprint(2.0, 1.2, 8.5),
       ...wallHandprint(13.4, 1.5, 3.5),
       ...wallHandprint(13.4, 1.2, 11.5),
-
-      /* --- 挂钟 --- */
       { shape:'cyl',    x:7.5, y:2.3, z:12.8, w:0.4, h:0.08, color:'#2a1a10' },
       { shape:'cyl',    x:7.5, y:2.28, z:12.85, w:0.32, h:0.05, color:'#d8c8a8' },
       { shape:'sphere', x:7.5, y:2.28, z:12.88, w:0.04, color:'#3a2010' },
-
-      /* --- 吊灯残骸 --- */
       { shape:'cyl',    x:7.5, y:2.6, z:7.5, w:0.03, h:0.5, color:'#0a0605' },
       { shape:'sphere', x:7.5, y:2.5, z:7.5, w:0.15, color:'#1a0a08' },
-
-      /* --- 杂物 --- */
       { shape:'bevelBox', x:10.5, y:0, z:10.5, w:0.5, h:0.6, d:0.5, bevel:0.04, color:'#0a0605' }
     ],
     things: [
@@ -800,51 +640,30 @@ window.__SCENES_3D__ = {
       '111111111111'
     ],
     props: [
-      /* --- 配电柜（完整） --- */
       { shape:'bevelBox', x:10.5, y:0, z:4.5, w:1.4, h:2.0, d:0.9, bevel:0.06, color:'#0d0a08' },
       { shape:'box',      x:10.5, y:1.3, z:4.5, w:0.5, h:0.2, d:0.1, color:'#2a0808' },
       { shape:'sphere',   x:10.5, y:1.4, z:4.42, w:0.1, color:'#ff2020' },
       { shape:'cyl',      x:9.8, y:0.02, z:5.0, w:0.1, h:0.4, color:'#1a0606' },
-
-      /* --- 保险丝盒 --- */
       { shape:'bevelBox', x:2.0, y:0.8, z:4.5, w:0.7, h:1.4, d:0.25, bevel:0.03, color:'#0d0a08' },
       { shape:'sphere',   x:2.0, y:1.5, z:4.35, w:0.06, color:'#40c040' },
       { shape:'sphere',   x:2.0, y:1.3, z:4.35, w:0.06, color:'#40c040' },
       { shape:'sphere',   x:2.0, y:1.1, z:4.35, w:0.06, color:'#40c040' },
       { shape:'sphere',   x:2.0, y:0.9, z:4.35, w:0.06, color:'#40c040' },
-
-      /* --- 工作台 --- */
       { shape:'bevelBox', x:7.5, y:0, z:9.5, w:1.8, h:0.7, d:1.0, bevel:0.05, color:'#0d0a08' },
       { shape:'plate',    x:7.5, y:0.7, z:9.5, w:0.7, h:0.4, color:'#2a1a10' },
-
-      /* --- 工作台上的日志 --- */
       { shape:'plate', x:7.5, y:0.72, z:9.3, w:0.4, h:0.1, color:'#3a2a1a' },
-
-      /* --- 血迹 --- */
       ...bloodSpots(7.5, 9.5, 12, 0.8, '#2a0404'),
       ...bloodTrail(7.5, 10.0, 2.0, 7.5, 14, '#1e0303'),
-
-      /* --- 高处小灯 --- */
       { shape:'cyl',    x:2.5, y:2.2, z:2.0, w:0.25, h:0.15, color:'#1a0606' },
       { shape:'sphere', x:2.5, y:2.15, z:2.0, w:0.2, color:'#ff8040' },
-
-      /* --- 支撑柱 --- */
       { shape:'cyl', x:7.5, y:0.5, z:2.0, w:0.05, h:1.8, color:'#0a0606' },
-
-      /* --- 悬挂物 --- */
       ...hangingMeat(10.4, 1.6, 7.5, 'w'),
       ...hangingMeat(10.4, 1.6, 9.5, 'w'),
       ...hangingMeat(1.6, 1.6, 4.5, 'e'),
       ...hangingMeat(1.6, 1.6, 7.5, 'e'),
-
-      /* --- 墙壁手印 --- */
       ...wallHandprint(1.6, 1.5, 9.5),
       ...wallHandprint(10.4, 1.5, 2.5),
-
-      /* --- 烧痕 --- */
       ...burnMark(4.5, 7.5, 0.8),
-
-      /* --- 油桶 --- */
       { shape:'cyl',   x:4.5, y:0, z:6.0, w:0.6, h:0.9, color:'#1a1410' },
       { shape:'torus', x:4.5, y:0.15, z:6.0, w:0.62, r2:0.02, color:'#0a0604' },
       { shape:'torus', x:4.5, y:0.75, z:6.0, w:0.62, r2:0.02, color:'#0a0604' }
@@ -880,55 +699,36 @@ window.__SCENES_3D__ = {
       '11111111111111111111'
     ],
     props: [
-      /* --- 天线（精细） --- */
       { shape:'cyl',    x:3.5, y:0,   z:2.0, w:0.12, h:2.5, color:'#0d0908' },
       { shape:'torus',  x:3.5, y:2.2, z:2.0, w:0.2, r2:0.03, color:'#1a1410' },
       { shape:'sphere', x:3.5, y:2.55, z:2.0, w:0.15, color:'#2a1d10' },
       { shape:'cyl',    x:3.5, y:2.5, z:2.0, w:0.06, h:0.3, color:'#0d0908' },
       { shape:'sphere', x:3.5, y:2.85, z:2.0, w:0.1, color:'#ff6060' },
-
-      /* --- 水塔（精细） --- */
       { shape:'cyl',    x:17.5, y:0,   z:2.0, w:0.9, h:1.2, color:'#0a0806' },
       { shape:'torus',  x:17.5, y:0.15, z:2.0, w:0.92, r2:0.03, color:'#1a1410' },
       { shape:'torus',  x:17.5, y:0.6,  z:2.0, w:0.92, r2:0.03, color:'#1a1410' },
       { shape:'torus',  x:17.5, y:1.05, z:2.0, w:0.92, r2:0.03, color:'#1a1410' },
       { shape:'cone',   x:17.5, y:1.2,  z:2.0, w:1.1, h:0.5, color:'#1a1410' },
       { shape:'sphere', x:17.5, y:1.75, z:2.0, w:0.15, color:'#0a0806' },
-
-      /* --- 晾衣架 --- */
       { shape:'cyl', x:9.5, y:0, z:3.5, w:0.08, h:2.0, color:'#0a0606' },
       { shape:'box', x:9.5, y:2.0, z:3.5, w:0.04, h:0.04, d:1.0, color:'#0a0606' },
       { shape:'cyl', x:9.5, y:0.5, z:6.0, w:0.05, h:1.6, color:'#2a1810' },
       ...hangingMeat(9.5, 1.2, 6.4, 's'),
       ...hangingMeat(9.5, 1.2, 5.6, 's'),
-
-      /* --- 矮墙 --- */
       { shape:'box', x:7.5, y:0, z:8.5, w:5.0, h:0.7, d:0.2, color:'#0a0806' },
-
-      /* --- 远处的红屋顶 --- */
       { shape:'bevelBox', x:15.5, y:0, z:4.5, w:1.5, h:1.2, d:1.2, bevel:0.08, color:'#0a0404' },
       { shape:'ramp',     x:15.5, y:1.2, z:4.5, w:1.6, h:0.5, d:1.3, dir:'n', color:'#3a0a08' },
       { shape:'sphere',   x:15.5, y:1.75, z:4.5, w:0.5, color:'#5a1010' },
-
-      /* --- 烟囱 --- */
       { shape:'cyl',    x:15.5, y:1.6, z:4.5, w:0.5, h:0.4, color:'#1a0a08' },
       { shape:'sphere', x:15.5, y:1.95, z:4.5, w:0.2, color:'#ff4020' },
-
-      /* --- 血迹 --- */
       ...bloodSpots(7.5, 11.5, 20, 1.8, '#2a0404'),
       ...bloodTrail(7.5, 11.5, 7.5, 6.5, 16, '#1e0303'),
       ...bloodSpots(15.5, 7.5, 14, 1.2, '#240303'),
-
-      /* --- 墙壁手印 --- */
       ...wallHandprint(1.6, 1.5, 6.5),
       ...wallHandprint(1.6, 1.2, 10.5),
       ...wallHandprint(18.4, 1.5, 6.5),
       ...wallHandprint(18.4, 1.2, 10.5),
-
-      /* --- 烧痕 --- */
       ...burnMark(15.5, 12.5, 1.3),
-
-      /* --- 通风管道 --- */
       { shape:'cyl',    x:5.5, y:0, z:11.5, w:0.5, h:0.3, color:'#2a1810' },
       { shape:'torus',  x:5.5, y:0.15, z:11.5, w:0.5, r2:0.04, color:'#1a1410' }
     ],
@@ -962,47 +762,28 @@ window.__SCENES_3D__ = {
       '1111111111111111'
     ],
     props: [
-      /* --- 楼梯（用层叠 box 表示台阶） --- */
       { shape:'bevelBox', x:3.5, y:0,   z:2.0, w:1.4, h:0.3, d:0.9, bevel:0.04, color:'#0a0808' },
       { shape:'bevelBox', x:3.5, y:0.3, z:2.5, w:1.2, h:0.3, d:0.5, bevel:0.04, color:'#0c0a08' },
       { shape:'bevelBox', x:3.5, y:0.6, z:2.9, w:1.0, h:0.3, d:0.4, bevel:0.04, color:'#0e0c0a' },
-
-      /* --- 墙上大字 --- */
       { shape:'plate', x:6.5, y:1.0, z:2.0, w:1.4, h:0.7, color:'#1a1008' },
-
-      /* --- 应急灯 --- */
       { shape:'box',    x:10.5, y:2.2, z:2.0, w:0.3, h:0.15, d:0.15, color:'#0a1408' },
       { shape:'sphere', x:10.5, y:2.15, z:2.0, w:0.15, color:'#40c040' },
-
-      /* --- 角落纸板 --- */
       { shape:'bevelBox', x:11.5, y:0, z:10.5, w:1.2, h:0.15, d:0.9, bevel:0.04, color:'#1a1208' },
       { shape:'bevelBox', x:11.5, y:0.15, z:10.5, w:0.8, h:0.12, d:0.7, bevel:0.04, color:'#1a1208' },
-
-      /* --- 配电房门 --- */
       { shape:'plate', x:14.4, y:0.0, z:7.5, w:0.8, h:1.7, color:'#0a0806' },
       { shape:'sphere', x:14.35, y:0.8, z:7.5, w:0.06, color:'#a08040' },
-
-      /* --- 血迹 --- */
       ...bloodSpots(6.5, 2.5, 8, 0.5, '#240303'),
       ...bloodSpots(11.5, 10.5, 12, 0.9, '#2a0404'),
       ...bloodTrail(3.5, 2.5, 3.5, 10.5, 16, '#1e0303'),
       ...bloodTrail(11.5, 10.5, 3.5, 10.5, 14, '#240303'),
       ...bloodSpots(7.5, 7.5, 18, 1.4, '#280404'),
-
-      /* --- 墙壁手印 --- */
       ...wallHandprint(1.6, 1.5, 5.5),
       ...wallHandprint(1.6, 1.2, 9.5),
       ...wallHandprint(14.4, 1.5, 5.5),
       ...wallHandprint(14.4, 1.2, 9.5),
-
-      /* --- 悬挂物 --- */
       ...hangingMeat(14.4, 1.6, 4.5, 'w'),
       ...hangingMeat(1.6, 1.6, 4.5, 'e'),
-
-      /* --- 烧痕 --- */
       ...burnMark(5.5, 11.5, 0.8),
-
-      /* --- 天花板管道 --- */
       { shape:'cyl',    x:7.5, y:2.5, z:7.5, w:0.15, h:0.15, color:'#2a1a10' },
       { shape:'torus',  x:7.5, y:2.5, z:7.5, w:0.18, r2:0.03, color:'#1a1410' },
       { shape:'box',    x:7.5, y:2.5, z:7.5, w:0.05, h:0.05, d:3.0, color:'#1a1410' }
@@ -1039,48 +820,31 @@ window.__SCENES_3D__ = {
       '111111111111111'
     ],
     props: [
-      /* --- 河堤路灯（完整） --- */
       ...buildFullLamp(3.5, 2.0),
-
-      /* --- 长椅（精细） --- */
       { shape:'bevelBox', x:7.5, y:0.6,  z:2.0, w:1.8, h:0.1, d:0.5, bevel:0.04, color:'#0a0605' },
       { shape:'bevelBox', x:7.5, y:0.7,  z:2.3, w:1.8, h:0.15, d:0.4, bevel:0.04, color:'#1a0e08' },
       { shape:'box',      x:7.5, y:0,    z:1.85, w:0.1, h:0.6, d:0.5, color:'#0a0605' },
       { shape:'box',      x:7.5, y:0,    z:2.15, w:0.1, h:0.6, d:0.5, color:'#0a0605' },
       { shape:'cyl',      x:6.7, y:0,    z:2.0, w:0.08, h:0.6, color:'#0a0605' },
       { shape:'cyl',      x:8.3, y:0,    z:2.0, w:0.08, h:0.6, color:'#0a0605' },
-
-      /* --- 丢弃的伞（精细） --- */
       { shape:'cone',   x:11.5, y:0.5, z:2.0, w:0.9, h:0.3, color:'#1a0a08' },
       { shape:'cyl',    x:11.5, y:0,   z:2.0, w:0.05, h:0.5, color:'#0a0606' },
       { shape:'sphere', x:11.5, y:0.85, z:2.0, w:0.1, color:'#0a0606' },
-
-      /* --- 河面反光 --- */
       { shape:'low', x:7.5, y:0.02, z:11.5, w:8.0, h:0.03, color:'#030408' },
-
-      /* --- 路灯下的杂物 --- */
       { shape:'cyl',    x:2.5, y:0, z:5.5, w:0.08, h:1.0, color:'#0a0806' },
       { shape:'torus',  x:2.5, y:1.0, z:5.5, w:0.1, r2:0.02, color:'#1a1410' },
       { shape:'cyl',    x:12.5, y:0, z:5.5, w:0.08, h:1.0, color:'#0a0806' },
-
-      /* --- 血迹 --- */
       ...bloodSpots(7.5, 2.0, 12, 0.7, '#2a0404'),
       ...hangingMeat(4.0, 1.5, 5.4, 's'),
       ...hangingMeat(10.5, 1.5, 5.4, 's'),
       ...bloodSpots(7.5, 7.5, 18, 1.6, '#2a0404'),
       ...bloodTrail(7.5, 7.5, 3.5, 7.5, 12, '#1e0303'),
-
-      /* --- 墙壁手印 --- */
       ...wallHandprint(1.6, 1.5, 5.5),
       ...wallHandprint(13.4, 1.5, 5.5),
       ...wallHandprint(13.4, 1.2, 9.5),
-
-      /* --- 岸边杂草 --- */
       { shape:'cone',   x:5.5, y:0, z:11.5, w:0.3, h:0.5, color:'#1a1210' },
       { shape:'cone',   x:6.2, y:0, z:11.6, w:0.25, h:0.45, color:'#1a1210' },
       { shape:'cone',   x:9.5, y:0, z:11.4, w:0.28, h:0.5, color:'#1a1210' },
-
-      /* --- 铁栏杆 --- */
       { shape:'cyl', x:7.5, y:0.5, z:5.5, w:0.1, h:0.1, color:'#0a0806' },
       { shape:'box', x:7.5, y:0.5, z:5.5, w:5.0, h:0.06, d:0.06, color:'#0a0806' },
       { shape:'cyl', x:5.5, y:0, z:5.5, w:0.06, h:0.5, color:'#0a0806' },
@@ -1096,7 +860,7 @@ window.__SCENES_3D__ = {
   },
 
   /* =====================================================
-     邻屋
+     邻屋 —— ★ 门已修正
      ===================================================== */
   neighbor: {
     wallTex: { type:'burnt', base:'#0a0606' },
@@ -1116,14 +880,14 @@ window.__SCENES_3D__ = {
       '111111111111111'
     ],
     props: [
-      /* --- 窗户（大火后的焦黑窗户） --- */
+      /* --- 窗户 --- */
       { shape:'plate', x:7.5, y:1.4, z:2.0, w:1.8, h:1.6, color:'#0a0404' },
       { shape:'plate', x:7.5, y:1.7, z:1.95, w:0.6, h:0.4, color:'#3a0808' },
 
       /* --- 日历 --- */
       { shape:'plate', x:3.5, y:1.6, z:2.0, w:0.5, h:0.7, color:'#2a1e10' },
 
-      /* --- 小床（精细） --- */
+      /* --- 小床 --- */
       { shape:'bevelBox', x:12.5, y:0,   z:7.5, w:2.2, h:0.5, d:1.2, bevel:0.06, color:'#0a0605' },
       { shape:'bevelBox', x:12.5, y:0.5, z:7.5, w:2.0, h:0.1, d:1.0, bevel:0.04, color:'#1a1008' },
       { shape:'low',      x:12.5, y:0.6, z:7.5, w:0.9, h:0.04, color:'#0a0605' },
@@ -1137,12 +901,31 @@ window.__SCENES_3D__ = {
       { shape:'low', x:9.5, y:0.005, z:9.5, w:0.14, h:0.01, color:'#1a0808' },
       { shape:'low', x:11.5, y:0.005, z:7.5, w:0.14, h:0.01, color:'#1a0808' },
 
-      /* --- 门 --- */
-      { shape:'plate', x:14.4, y:0.0, z:7.5, w:1.0, h:2.0, color:'#060404' },
-      { shape:'arch',  x:14.4, y:0.0, z:7.5, w:0.9, h:2.3, d:0.1, seg:16, color:'#1a0a08' },
+      /* ★★★ 修正：通向院子的门 —— 嵌在东墙 x=14 上 ★★★ */
+      /* 门框 —— 凸出墙面 */
+      { shape:'box', x:13.85, y:0, z:7.5, w:0.30, h:2.60, d:1.70, color:'#1a0a08' },
+      /* 门板 —— 凹进去 */
+      { shape:'box', x:13.94, y:0.10, z:7.5, w:0.08, h:2.35, d:1.40, color:'#5a2814' },
+      /* 门板装饰横线 × 3 */
+      { shape:'box', x:13.90, y:0.55, z:7.5, w:0.04, h:0.04, d:1.20, color:'#3a1808' },
+      { shape:'box', x:13.90, y:1.20, z:7.5, w:0.04, h:0.04, d:1.20, color:'#3a1808' },
+      { shape:'box', x:13.90, y:1.85, z:7.5, w:0.04, h:0.04, d:1.20, color:'#3a1808' },
+      /* 门把手 */
+      { shape:'sphere', x:13.80, y:1.10, z:7.05, w:0.10, color:'#d0a040' },
+      /* 门楣横板 */
+      { shape:'box', x:13.87, y:2.50, z:7.5, w:0.25, h:0.14, d:1.80, color:'#3a2418' },
+      /* 门两侧壁柱 */
+      { shape:'box', x:13.87, y:0, z:6.60, w:0.24, h:2.58, d:0.14, color:'#3a2418' },
+      { shape:'box', x:13.87, y:0, z:8.40, w:0.24, h:2.58, d:0.14, color:'#3a2418' },
+      /* 门牌号 */
+      { shape:'sphere', x:13.76, y:2.15, z:7.5, w:0.09, color:'#8a6a3a' },
+      /* 门槛石 */
+      { shape:'box', x:13.90, y:0, z:7.5, w:0.2, h:0.05, d:1.5, color:'#2a1a12' },
 
-      /* --- 屋后门 --- */
-      { shape:'plate', x:2.5, y:0.0, z:11.5, w:1.2, h:2.0, color:'#080606' },
+      /* --- 屋后门（西墙）--- */
+      { shape:'box', x:1.10, y:0, z:11.5, w:0.24, h:2.40, d:1.50, color:'#1a0a08' },
+      { shape:'box', x:1.20, y:0.08, z:11.5, w:0.08, h:2.20, d:1.20, color:'#4a2412' },
+      { shape:'sphere', x:1.30, y:1.05, z:11.15, w:0.09, color:'#a08040' },
 
       /* --- 血迹 --- */
       ...bloodSpots(7.5, 5.5, 16, 1.4, '#2a0404'),
@@ -1159,14 +942,14 @@ window.__SCENES_3D__ = {
       ...wallHandprint(14.4, 1.5, 6.5),
       ...wallHandprint(14.4, 1.2, 9.5),
 
-      /* --- 桌上的物品 --- */
+      /* --- 桌子 --- */
       { shape:'bevelBox', x:3.5, y:0.5, z:8.5, w:1.0, h:0.5, d:0.7, bevel:0.04, color:'#0a0605' },
       { shape:'sphere',   x:3.5, y:1.1, z:8.5, w:0.2, color:'#1a0a08' },
 
       /* --- 地毯 --- */
       { shape:'low', x:5.5, y:0.006, z:4.5, w:1.8, h:0.015, color:'#3a0404' },
 
-      /* --- 门边的挂钟 --- */
+      /* --- 门边挂钟 --- */
       { shape:'cyl',    x:1.8, y:2.2, z:7.5, w:0.35, h:0.06, color:'#1a0a08' },
       { shape:'sphere', x:1.78, y:2.2, z:7.5, w:0.05, color:'#3a1010' }
     ],
@@ -1176,7 +959,7 @@ window.__SCENES_3D__ = {
       { id:'neighborFloor',    x:7.5,  y:7.5,  icon:'🐾', label:'地板上的爪印',     scale:0.7 },
       { id:'neighborBed',      x:12.5, y:7.5,  icon:'🛏', label:'塌了一半的小床',   scale:1.0 },
       { id:'back',             x:2.5,  y:11.5, icon:'⬅',  label:'来的路',           scale:0.8 },
-      { id:'exit',             x:14.4, y:7.5,  icon:'➡',  label:'通向院子的门',     scale:0.9 }
+      { id:'exit',             x:13.5, y:7.5,  icon:'➡',  label:'通向院子的门',     scale:0.9 }
     ]
   }
 };
