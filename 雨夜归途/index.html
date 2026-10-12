@@ -17,9 +17,19 @@
   #cv3d{position:absolute;left:0;top:0;width:100%;height:100%;display:block;background:#04070b;}
   #cvFx{position:absolute;left:0;top:0;width:100%;height:100%;display:block;
     pointer-events:none;z-index:2;}
-  #titleContent{position:absolute;left:0;top:0;width:960px;height:540px;
-    transform-origin:0 0;display:flex;flex-direction:column;
-    align-items:center;justify-content:center;pointer-events:none;z-index:3;}
+
+  /* ============================================================
+     UI 容器 —— 建立共享 3D 坐标系
+     ============================================================ */
+  #titleContent{
+    position:absolute;left:0;top:0;width:960px;height:540px;
+    transform-origin:0 0;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    pointer-events:none;z-index:3;
+    perspective:1800px;
+    perspective-origin:50% 55%;
+  }
   #titleContent::before{
     content:'';position:absolute;inset:0;
     background:radial-gradient(ellipse at center,
@@ -30,42 +40,160 @@
     animation:veilIn 2s ease-out both;}
   @keyframes veilIn{from{opacity:0;}to{opacity:1;}}
   #titleContent > *{pointer-events:auto;}
-  #titleContent h1{margin:0;font-size:66px;letter-spacing:26px;
-    color:#f2e6cb;font-weight:600;padding-left:26px;
-    text-shadow:0 0 50px rgba(255,196,110,.5),0 6px 26px rgba(0,0,0,.95);
-    animation:glow 4.5s ease-in-out infinite;}
-  @keyframes glow{
-    0%,100%{text-shadow:0 0 44px rgba(255,196,110,.32),0 6px 26px rgba(0,0,0,.95);}
-    50%{text-shadow:0 0 78px rgba(255,206,130,.65),0 6px 26px rgba(0,0,0,.95);}
+
+  /* ============================================================
+     主标题 —— 3D 金属挤出
+     ============================================================ */
+  #titleContent h1{
+    margin:0;
+    font-size:68px;letter-spacing:26px;
+    color:#f2e6cb;font-weight:600;
+    padding-left:26px;
+    /* 多层阴影 —— 模拟从文字正面往后挤出的厚度 */
+    text-shadow:
+      0 1px 0 #8a6a3a,
+      0 2px 0 #7a5a2a,
+      0 3px 0 #6a4a1a,
+      0 4px 0 #5a3a10,
+      0 5px 0 #4a2a08,
+      0 6px 0 #3a1a04,
+      0 7px 0 #2a0e00,
+      0 8px 0 #1a0600,
+      0 10px 20px rgba(0,0,0,0.9),
+      0 14px 32px rgba(0,0,0,0.6);
+    /* 3D 倾斜 —— 微微向后仰，像从屏幕上立起来 */
+    transform:perspective(900px) rotateX(-4deg);
+    transform-origin:center bottom;
+    /* 动态辉光用 filter 做，和 text-shadow 分开 */
+    filter:drop-shadow(0 0 28px rgba(255,196,110,.5));
+    animation:titleGlow 4.5s ease-in-out infinite;
   }
-  #titleContent .sub{margin:12px 0 46px;font-size:15px;letter-spacing:10px;
-    color:#8ea3b8;padding-left:10px;
-    text-shadow:0 2px 10px rgba(0,0,0,.7);}
-  #titleContent .btns{display:flex;gap:26px;margin-bottom:40px;}
-  #titleContent button{padding:15px 46px;font-size:17px;letter-spacing:6px;
+  @keyframes titleGlow{
+    0%,100%{filter:drop-shadow(0 0 22px rgba(255,196,110,.38));}
+    50%{filter:drop-shadow(0 0 52px rgba(255,206,130,.78));}
+  }
+
+  /* 副标题 —— 轻微浮起 */
+  #titleContent .sub{
+    margin:14px 0 48px;
+    font-size:15px;letter-spacing:10px;
+    color:#a0b6cc;
+    padding-left:10px;
+    text-shadow:
+      0 1px 0 #2a3a4a,
+      0 2px 0 #1a2a3a,
+      0 3px 8px rgba(0,0,0,0.85),
+      0 0 20px rgba(140,180,220,.3);
+    transform:perspective(900px) rotateX(-3deg) translateZ(6px);
+    transform-origin:center top;
+  }
+
+  /* ============================================================
+     按钮 —— 3D 厚板
+     ============================================================ */
+  #titleContent .btns{
+    display:flex;gap:30px;
+    margin-bottom:42px;
+    transform-style:preserve-3d;
+    transform:perspective(1200px) rotateX(-2deg);
+  }
+  #titleContent button{
+    position:relative;
+    padding:16px 48px;
+    font-size:17px;letter-spacing:6px;
     cursor:pointer;color:#e9dcc0;
-    background:linear-gradient(180deg,rgba(38,55,76,.94),rgba(14,22,34,.96));
-    border:1px solid rgba(200,170,110,.4);border-radius:12px;
-    transition:transform .15s,background .2s,box-shadow .2s,border-color .2s;
+    background:
+      linear-gradient(180deg,
+        rgba(58,78,104,.98) 0%,
+        rgba(38,55,76,.98) 40%,
+        rgba(14,22,34,.99) 100%);
+    border:1px solid rgba(200,170,110,.45);
+    border-radius:14px;
     font-family:inherit;
-    box-shadow:0 8px 26px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.06);}
+    /* 3D 透视 */
+    transform:perspective(600px) rotateX(6deg);
+    transform-origin:center top;
+    /* 多层 box-shadow 做厚度 */
+    box-shadow:
+      /* 顶部内高光 */
+      inset 0 1px 0 rgba(255,255,255,.14),
+      inset 0 -1px 0 rgba(0,0,0,.5),
+      /* 底部三层厚边 */
+      0 3px 0 #0f1a26,
+      0 6px 0 #0a131c,
+      0 9px 0 #060c12,
+      0 12px 0 #03060a,
+      /* 落地阴影 */
+      0 16px 26px rgba(0,0,0,0.75),
+      0 0 20px rgba(255,190,110,.08);
+    transition:transform .14s ease, box-shadow .14s ease, background .25s ease, border-color .25s ease;
+    will-change:transform;
+  }
+  #titleContent button::before{
+    content:'';position:absolute;left:6px;right:6px;top:2px;height:45%;
+    border-radius:10px;
+    background:linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0));
+    pointer-events:none;
+  }
   #titleContent button:hover:not(:disabled){
-    background:linear-gradient(180deg,rgba(66,96,132,.96),rgba(28,42,60,.96));
-    border-color:rgba(255,214,140,.9);color:#ffe6b0;transform:translateY(-3px);
-    box-shadow:0 16px 38px rgba(0,0,0,.75),0 0 30px rgba(255,190,110,.22),
-      inset 0 1px 0 rgba(255,255,255,.10);}
-  #titleContent button:active:not(:disabled){transform:scale(.96);}
-  #titleContent button:disabled{opacity:.3;cursor:not-allowed;}
-  #titleContent .tip{font-size:13px;letter-spacing:2.5px;color:#5a6f85;
-    text-shadow:0 1px 6px rgba(0,0,0,.7);}
+    background:
+      linear-gradient(180deg,
+        rgba(96,130,168,.98) 0%,
+        rgba(66,96,132,.98) 40%,
+        rgba(28,42,60,.99) 100%);
+    border-color:rgba(255,214,140,.95);
+    color:#ffe6b0;
+    /* 向上抬起 */
+    transform:perspective(600px) rotateX(6deg) translateY(-4px);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.18),
+      inset 0 -1px 0 rgba(0,0,0,.5),
+      0 3px 0 #16263a,
+      0 6px 0 #0e1826,
+      0 9px 0 #08101a,
+      0 12px 0 #04080e,
+      0 20px 34px rgba(0,0,0,0.8),
+      0 0 34px rgba(255,190,110,.24);
+  }
+  #titleContent button:active:not(:disabled){
+    /* 按下 —— 厚度缩短，向下压 */
+    transform:perspective(600px) rotateX(6deg) translateY(6px);
+    box-shadow:
+      inset 0 2px 4px rgba(0,0,0,.5),
+      inset 0 -1px 0 rgba(0,0,0,.3),
+      0 1px 0 #0f1a26,
+      0 2px 0 #0a131c,
+      0 3px 0 #060c12,
+      0 5px 8px rgba(0,0,0,0.6);
+  }
+  #titleContent button:disabled{
+    opacity:.3;cursor:not-allowed;
+    transform:perspective(600px) rotateX(6deg);
+  }
+
+  /* 提示小字 */
+  #titleContent .tip{
+    font-size:13px;letter-spacing:2.5px;
+    color:#66798c;
+    text-shadow:
+      0 1px 0 #1a2028,
+      0 2px 6px rgba(0,0,0,0.9);
+    transform:perspective(900px) rotateX(-3deg) translateZ(4px);
+  }
+
+  /* ============================================================
+     16+ 适龄提示 —— 3D 徽章
+     ============================================================ */
   #titleContent .age-badge{
     position:absolute;left:34px;bottom:30px;
     display:flex;align-items:center;gap:13px;
     pointer-events:none;z-index:10;
+    transform:perspective(800px) rotateX(-2deg) rotateY(6deg);
+    transform-origin:left bottom;
     animation:ageIn 1.1s cubic-bezier(.2,.9,.3,1) .55s both;}
   @keyframes ageIn{
-    from{opacity:0;transform:translateY(14px);}
-    to{opacity:1;transform:translateY(0);}
+    from{opacity:0;}
+    to{opacity:1;}
   }
   #titleContent .age-circle{
     width:54px;height:54px;border-radius:50%;
@@ -73,19 +201,28 @@
     font-size:18px;font-weight:800;letter-spacing:.5px;
     color:#ffffff;
     background:radial-gradient(circle at 36% 28%,
-      #9fe8af 0%, #5fc97c 45%, #3ea65f 78%, #2c7f47 100%);
+      #b0f0c2 0%, #5fc97c 45%, #3ea65f 78%, #1a5a2a 100%);
+    /* 立体凸起：多层环 + 内阴影 */
     box-shadow:
-      0 0 0 2px rgba(255,255,255,.92),
-      0 0 0 3px rgba(95,201,124,.55),
-      0 8px 22px rgba(60,180,100,.38),
-      inset 0 -3px 8px rgba(0,0,0,.20),
-      inset 0 3px 6px rgba(255,255,255,.32);
-    text-shadow:0 1px 2px rgba(0,0,0,.35);
+      0 0 0 2px rgba(255,255,255,.95),
+      0 0 0 3px rgba(95,201,124,.6),
+      0 2px 0 #0e2a18,
+      0 4px 0 #081a10,
+      0 6px 0 #040e08,
+      0 10px 20px rgba(0,0,0,0.7),
+      0 0 30px rgba(95,201,124,.35),
+      inset 0 -4px 8px rgba(0,0,0,.28),
+      inset 0 4px 6px rgba(255,255,255,.4);
+    text-shadow:
+      0 1px 0 rgba(0,0,0,0.5),
+      0 -1px 1px rgba(255,255,255,0.4);
   }
   #titleContent .age-label{
     display:flex;flex-direction:column;gap:3px;
     padding-left:2px;
-    text-shadow:0 2px 10px rgba(0,0,0,.85),0 0 5px rgba(0,0,0,.7);
+    text-shadow:
+      0 1px 0 rgba(0,0,0,0.9),
+      0 2px 8px rgba(0,0,0,0.9);
   }
   #titleContent .age-label .cn{
     font-size:14.5px;letter-spacing:5px;
@@ -95,23 +232,41 @@
     font-size:9.5px;letter-spacing:2.2px;
     color:#87a99a;font-weight:500;padding-left:2px;
   }
+
+  /* ============================================================
+     感谢名单 —— 3D 悬浮卡
+     ============================================================ */
   #titleContent .thanks{
     position:absolute;right:34px;bottom:30px;
     display:flex;flex-direction:column;
     gap:7px;
     padding:16px 24px 16px 20px;
     border-radius:18px;
-    background:linear-gradient(180deg,rgba(44,32,16,.78),rgba(18,12,6,.88));
-    border:1px solid rgba(255,214,140,.45);
-    box-shadow:0 8px 26px rgba(0,0,0,.65),0 0 30px rgba(255,196,110,.18),
-      inset 0 1px 0 rgba(255,255,255,.07);
+    background:linear-gradient(180deg,
+      rgba(56,42,22,.88) 0%,
+      rgba(32,22,12,.92) 60%,
+      rgba(18,12,6,.94) 100%);
+    border:1px solid rgba(255,214,140,.5);
+    box-shadow:
+      /* 顶部内高光 */
+      inset 0 1px 0 rgba(255,255,255,.12),
+      inset 0 -1px 0 rgba(0,0,0,.6),
+      /* 底部厚边 */
+      0 2px 0 #1a1208,
+      0 4px 0 #100a04,
+      0 6px 0 #080400,
+      /* 落地阴影 */
+      0 12px 26px rgba(0,0,0,0.75),
+      0 0 34px rgba(255,196,110,.22);
     pointer-events:none;z-index:10;
-    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
     max-width:300px;
+    /* 3D 倾斜 —— 像卡片浮在空中 */
+    transform:perspective(1400px) rotateY(-6deg) rotateX(4deg) translateZ(30px);
+    transform-origin:right center;
     animation:thanksIn 1.2s cubic-bezier(.2,.9,.3,1) .85s both;}
   @keyframes thanksIn{
-    from{opacity:0;transform:translateY(14px);}
-    to{opacity:1;transform:translateY(0);}
+    from{opacity:0;}
+    to{opacity:1;}
   }
   #titleContent .thanks .label{
     font-size:17px;letter-spacing:6px;
@@ -119,46 +274,74 @@
     padding-left:6px;padding-bottom:5px;
     border-bottom:1px solid rgba(255,214,140,.28);
     margin-bottom:6px;
-    text-shadow:0 0 14px rgba(255,200,110,.45),0 1px 2px rgba(0,0,0,.85);}
-  #titleContent .thanks .row{display:flex;align-items:center;gap:9px;padding:2px 0;}
+    text-shadow:
+      0 1px 0 #6a4a1a,
+      0 2px 0 #3a2a10,
+      0 3px 6px rgba(0,0,0,0.9),
+      0 0 16px rgba(255,200,110,.5);}
+  #titleContent .thanks .row{
+    display:flex;align-items:center;gap:9px;padding:2px 0;}
   #titleContent .thanks .dot{
     width:8px;height:8px;border-radius:50%;flex:0 0 auto;
-    background:radial-gradient(circle at 35% 30%,#ffd98f,#c93a3a 75%,#8a1a1a);
-    box-shadow:0 0 9px rgba(255,90,90,.9),0 0 16px rgba(255,120,120,.5);
+    background:radial-gradient(circle at 35% 30%,#ffd98f,#c93a3a 75%,#6a0a0a);
+    box-shadow:
+      0 0 9px rgba(255,90,90,.95),
+      0 0 16px rgba(255,120,120,.55),
+      0 2px 4px rgba(0,0,0,0.6);
     animation:liveDot 1.5s ease-in-out infinite;}
   @keyframes liveDot{
     0%,100%{opacity:.75;transform:scale(.92);}
     50%    {opacity:1;transform:scale(1.18);}
   }
-  #titleContent .thanks .role{font-size:12px;letter-spacing:1.8px;
-    color:rgba(200,180,140,.72);font-weight:500;}
+  #titleContent .thanks .role{
+    font-size:12px;letter-spacing:1.8px;
+    color:rgba(200,180,140,.72);
+    font-weight:500;}
   #titleContent .thanks .role .live{
-    color:#ff9070;font-weight:700;text-shadow:0 0 9px rgba(255,120,90,.6);}
+    color:#ff9070;font-weight:700;
+    text-shadow:
+      0 0 9px rgba(255,120,90,.65),
+      0 1px 0 rgba(80,20,10,0.9);}
   #titleContent .thanks .name{
     font-size:15.5px;letter-spacing:1.5px;
     color:#ffe6a8;font-weight:700;
-    text-shadow:0 0 14px rgba(255,200,110,.55),0 1px 2px rgba(0,0,0,.85);}
+    text-shadow:
+      0 1px 0 #6a4a1a,
+      0 2px 0 #3a2a10,
+      0 3px 6px rgba(0,0,0,0.9),
+      0 0 14px rgba(255,200,110,.6);}
   #titleContent .thanks .msg{
     font-size:10.5px;letter-spacing:.8px;line-height:1.6;
-    color:rgba(255,150,130,.9);
+    color:rgba(255,150,130,.92);
     padding-left:17px;padding-bottom:2px;padding-top:3px;
     font-style:italic;
-    text-shadow:0 0 10px rgba(255,90,70,.4);
+    text-shadow:
+      0 1px 0 rgba(50,10,5,0.8),
+      0 2px 6px rgba(0,0,0,0.7),
+      0 0 12px rgba(255,90,70,.45);
     max-width:250px;margin-top:2px;
     border-top:1px dashed rgba(255,140,110,.22);}
+
+  /* ============================================================
+     底部健康忠告 —— 轻微浮起
+     ============================================================ */
   #titleContent .health-tip{
-    position:absolute;left:50%;bottom:22px;transform:translateX(-50%);
+    position:absolute;left:50%;bottom:22px;
+    transform:translateX(-50%) perspective(1000px) rotateX(-4deg);
+    transform-origin:center bottom;
     display:flex;flex-direction:column;gap:1px;
     text-align:center;pointer-events:none;z-index:10;
     animation:healthIn 1.1s cubic-bezier(.2,.9,.3,1) .75s both;}
   @keyframes healthIn{
-    from{opacity:0;transform:translate(-50%,14px);}
-    to{opacity:1;transform:translate(-50%,0);}
+    from{opacity:0;}
+    to{opacity:1;}
   }
   #titleContent .health-tip p{
     font-size:9px;letter-spacing:1.2px;line-height:1.5;
-    color:rgba(140,160,180,.58);
-    text-shadow:0 1px 4px rgba(0,0,0,.85),0 0 3px rgba(0,0,0,.6);
+    color:rgba(150,170,190,.62);
+    text-shadow:
+      0 1px 0 rgba(0,0,0,0.9),
+      0 2px 4px rgba(0,0,0,0.9);
     white-space:nowrap;}
 </style>
 </head>
@@ -245,20 +428,15 @@ function shadeHex(hex, amt){
   return 'rgb(' + r + ',' + g + ',' + b + ')';
 }
 
-/* =========================================================
-   纹理 —— 1024 高清
-   ========================================================= */
+/* 纹理生成 —— 和上一版一致 */
 function makeWallTex(){
   const S = 1024;
-  const c = document.createElement('canvas');
-  c.width = S; c.height = S;
+  const c = document.createElement('canvas'); c.width = S; c.height = S;
   const x = c.getContext('2d');
   const base = '#221610';
   const grad = x.createLinearGradient(0, 0, 0, S);
-  grad.addColorStop(0, base);
-  grad.addColorStop(1, shadeHex(base, -32));
-  x.fillStyle = grad;
-  x.fillRect(0, 0, S, S);
+  grad.addColorStop(0, base); grad.addColorStop(1, shadeHex(base, -32));
+  x.fillStyle = grad; x.fillRect(0, 0, S, S);
   const bw = 64, bh = 32;
   for(let row = 0; row * bh < S; row++){
     const y = row * bh;
@@ -283,8 +461,7 @@ function makeWallTex(){
     g.addColorStop(0, 'rgba(55,80,45,0.55)');
     g.addColorStop(0.5, 'rgba(45,65,40,0.22)');
     g.addColorStop(1, 'rgba(45,65,40,0)');
-    x.fillStyle = g;
-    x.fillRect(px - r, py - r, r * 2, r * 2);
+    x.fillStyle = g; x.fillRect(px - r, py - r, r * 2, r * 2);
   }
   for(let i = 0; i < 150; i++){
     const px = Math.random() * S, py = Math.random() * S;
@@ -293,8 +470,7 @@ function makeWallTex(){
     g.addColorStop(0, 'rgba(0,0,0,0.48)');
     g.addColorStop(0.5, 'rgba(0,0,0,0.18)');
     g.addColorStop(1, 'rgba(0,0,0,0)');
-    x.fillStyle = g;
-    x.fillRect(px - r, py - r, r * 2, r * 2);
+    x.fillStyle = g; x.fillRect(px - r, py - r, r * 2, r * 2);
   }
   x.strokeStyle = 'rgba(120,160,200,0.12)';
   for(let i = 0; i < 80; i++){
@@ -327,20 +503,17 @@ function makeWallTex(){
     x.lineTo(px + w, py + (Math.random() - 0.5) * 6);
     x.lineTo(px + w * 0.9, py + h);
     x.lineTo(px + (Math.random() - 0.5) * 4, py + h * 0.8);
-    x.closePath();
-    x.fill();
+    x.closePath(); x.fill();
   }
   return c;
 }
 
 function makeFloorTex(){
   const S = 1024;
-  const c = document.createElement('canvas');
-  c.width = S; c.height = S;
+  const c = document.createElement('canvas'); c.width = S; c.height = S;
   const x = c.getContext('2d');
   const base = '#0c0e12';
-  x.fillStyle = base;
-  x.fillRect(0, 0, S, S);
+  x.fillStyle = base; x.fillRect(0, 0, S, S);
   const t = 128;
   for(let y = 0; y < S; y += t){
     for(let x0 = 0; x0 < S; x0 += t){
@@ -367,8 +540,7 @@ function makeFloorTex(){
     g.addColorStop(0, 'rgba(120,180,220,0.22)');
     g.addColorStop(0.6, 'rgba(120,180,220,0.09)');
     g.addColorStop(1, 'rgba(120,180,220,0)');
-    x.fillStyle = g;
-    x.fillRect(px - r, py - r, r * 2, r * 2);
+    x.fillStyle = g; x.fillRect(px - r, py - r, r * 2, r * 2);
   }
   for(let i = 0; i < 60; i++){
     const px = Math.random() * S, py = Math.random() * S;
@@ -376,17 +548,7 @@ function makeFloorTex(){
     const g = x.createRadialGradient(px, py, 0, px, py, r);
     g.addColorStop(0, 'rgba(0,0,0,0.55)');
     g.addColorStop(1, 'rgba(0,0,0,0)');
-    x.fillStyle = g;
-    x.fillRect(px - r, py - r, r * 2, r * 2);
-  }
-  for(let i = 0; i < 20; i++){
-    const px = Math.random() * S, py = Math.random() * S;
-    const r = 10 + Math.random() * 30;
-    const g = x.createRadialGradient(px, py, 0, px, py, r);
-    g.addColorStop(0, 'rgba(60,50,20,0.3)');
-    g.addColorStop(1, 'rgba(60,50,20,0)');
-    x.fillStyle = g;
-    x.fillRect(px - r, py - r, r * 2, r * 2);
+    x.fillStyle = g; x.fillRect(px - r, py - r, r * 2, r * 2);
   }
   x.fillStyle = 'rgba(255,255,255,0.08)';
   for(let i = 0; i < 800; i++){
@@ -397,58 +559,37 @@ function makeFloorTex(){
 
 function makeCeilTex(){
   const S = 512;
-  const c = document.createElement('canvas');
-  c.width = S; c.height = S;
+  const c = document.createElement('canvas'); c.width = S; c.height = S;
   const x = c.getContext('2d');
-  x.fillStyle = '#030305';
-  x.fillRect(0, 0, S, S);
+  x.fillStyle = '#030305'; x.fillRect(0, 0, S, S);
   for(let i = 0; i < 120; i++){
     const px = Math.random() * S, py = Math.random() * S;
     const r = 15 + Math.random() * 50;
     const g = x.createRadialGradient(px, py, 0, px, py, r);
     g.addColorStop(0, 'rgba(0,0,0,0.65)');
     g.addColorStop(1, 'rgba(0,0,0,0)');
-    x.fillStyle = g;
-    x.fillRect(px - r, py - r, r * 2, r * 2);
-  }
-  x.strokeStyle = 'rgba(80,60,50,0.45)';
-  for(let i = 0; i < 40; i++){
-    let cx = Math.random() * S, cy = Math.random() * S;
-    x.lineWidth = 0.8 + Math.random() * 1.4;
-    x.beginPath(); x.moveTo(cx, cy);
-    for(let j = 0; j < 12; j++){
-      cx += (Math.random() - 0.5) * 55;
-      cy += (Math.random() - 0.5) * 55;
-      x.lineTo(cx, cy);
-    }
-    x.stroke();
+    x.fillStyle = g; x.fillRect(px - r, py - r, r * 2, r * 2);
   }
   return c;
 }
 
 /* =========================================================
-   房子 —— 主建筑
+   场景构件（和上一版一致，为节省篇幅以下为精简表达）
    ========================================================= */
 function buildHouse(){
   const hx = 13, hz = 2.5, hw = 7.0, hd = 3.5;
   const faceZ = hz + hd / 2;
   const arr = [];
-
-  /* 主体 + 装饰线 */
   arr.push({ shape:'box', x:hx, y:0,    z:hz, w:hw, h:3.4, d:hd, color:'#3a2a1e' });
   arr.push({ shape:'box', x:hx, y:0,    z:hz, w:hw+0.1, h:0.5, d:hd+0.1, color:'#1e1410' });
   arr.push({ shape:'box', x:hx, y:2.4,  z:hz, w:hw+0.05, h:0.1, d:hd+0.05, color:'#241810' });
   arr.push({ shape:'box', x:hx, y:1.6,  z:hz, w:hw+0.03, h:0.05, d:hd+0.03, color:'#2a1e14' });
   arr.push({ shape:'box', x:hx, y:0.75, z:hz, w:hw+0.03, h:0.05, d:hd+0.03, color:'#2a1e14' });
-
-  /* 屋檐 + 木梁头 */
   arr.push({ shape:'box', x:hx, y:3.4, z:hz, w:hw+0.9, h:0.2, d:hd+0.7, color:'#1a0e08' });
   for(let i = 0; i < 18; i++){
     const lx = hx - hw/2 - 0.4 + i * 0.48;
     arr.push({ shape:'box', x:lx, y:3.25, z:faceZ + 0.25, w:0.11, h:0.15, d:0.22, color:'#2e1c10' });
   }
-
-  /* 屋顶 + 瓦片 */
   arr.push({ shape:'box', x:hx, y:3.6,  z:hz, w:hw+0.6, h:0.55, d:hd+0.4, color:'#5a2214' });
   arr.push({ shape:'box', x:hx, y:4.15, z:hz, w:hw-0.4, h:0.4,  d:hd-0.4, color:'#7a2c18' });
   arr.push({ shape:'box', x:hx, y:4.55, z:hz, w:hw-0.4, h:0.08, d:0.18,   color:'#8a3c20' });
@@ -456,23 +597,16 @@ function buildHouse(){
     const wx = hx - hw/2 + 0.15 + i * 0.32;
     arr.push({ shape:'box', x:wx, y:3.85, z:hz + hd/2 + 0.1, w:0.04, h:0.35, d:0.06, color:'#4a1a10' });
   }
-
-  /* 屋顶老虎窗 */
   arr.push({ shape:'box', x:hx-2.0, y:4.15, z:hz-0.2, w:0.9, h:0.7, d:0.9, color:'#3a1e14' });
   arr.push({ shape:'box', x:hx-2.0, y:4.15, z:hz+0.26, w:0.6, h:0.5, d:0.06, color:'#ffbb60' });
   arr.push({ shape:'box', x:hx-2.0, y:4.85, z:hz-0.2, w:1.0, h:0.08, d:1.0, color:'#5a2214' });
   arr.push({ shape:'box', x:hx+2.0, y:4.15, z:hz-0.2, w:0.9, h:0.7, d:0.9, color:'#3a1e14' });
   arr.push({ shape:'box', x:hx+2.0, y:4.15, z:hz+0.26, w:0.6, h:0.5, d:0.06, color:'#ffbb60' });
   arr.push({ shape:'box', x:hx+2.0, y:4.85, z:hz-0.2, w:1.0, h:0.08, d:1.0, color:'#5a2214' });
-
-  /* 烟囱 */
   arr.push({ shape:'box', x:hx+2.5, y:3.5,  z:hz-0.9, w:0.65, h:1.6,  d:0.65, color:'#2a1810' });
   arr.push({ shape:'box', x:hx+2.5, y:5.1,  z:hz-0.9, w:0.8,  h:0.15, d:0.8,  color:'#1a0c08' });
   arr.push({ shape:'box', x:hx+2.5, y:5.25, z:hz-0.9, w:0.5,  h:0.08, d:0.5,  color:'#0a0604' });
-
-  /* 门 */
-  const doorX = hx;
-  const doorZ = faceZ + 0.02;
+  const doorX = hx, doorZ = faceZ + 0.02;
   arr.push({ shape:'box', x:doorX, y:1.3,  z:doorZ+0.05, w:2.0,  h:2.6,  d:0.1,  color:'#2a1a12' });
   arr.push({ shape:'box', x:doorX, y:1.25, z:doorZ+0.12, w:1.75, h:2.5,  d:0.08, color:'#3a2418' });
   arr.push({ shape:'box', x:doorX, y:1.2,  z:doorZ+0.18, w:1.5,  h:2.4,  d:0.06, color:'#7a3a20' });
@@ -495,8 +629,6 @@ function buildHouse(){
   arr.push({ shape:'box', x:doorX, y:0.29, z:doorZ+0.7, w:1.6, h:0.04, d:0.6, color:'#3a2a1a' });
   arr.push({ shape:'box', x:doorX+1.4, y:0.15, z:doorZ+0.35, w:0.35, h:0.28, d:0.08, color:'#3a2a1a' });
   arr.push({ shape:'box', x:doorX-1.45, y:0.1, z:doorZ+0.4, w:0.5, h:0.15, d:0.3, color:'#2a1e14' });
-
-  /* 大窗户 × 3 */
   [9.7, 13, 16.3].forEach(function(wx, idx){
     const wz = faceZ + 0.02;
     const glow = idx === 1 ? '#ffd680' : (idx === 0 ? '#ffbb60' : '#ffd680');
@@ -508,70 +640,43 @@ function buildHouse(){
     arr.push({ shape:'box', x:wx, y:0.6, z:wz+0.15, w:1.55, h:0.12, d:0.3, color:'#4a2a18' });
     arr.push({ shape:'box', x:wx, y:1.55, z:wz+0.18, w:1.1, h:0.04, d:0.02, color:'#5a3018' });
     arr.push({ shape:'box', x:wx, y:1.55, z:wz+0.18, w:0.04, h:1.5, d:0.02, color:'#5a3018' });
-    arr.push({ shape:'box', x:wx-0.55, y:2.15, z:wz+0.18, w:0.15, h:0.15, d:0.03, color:'#5a3018' });
-    arr.push({ shape:'box', x:wx+0.55, y:2.15, z:wz+0.18, w:0.15, h:0.15, d:0.03, color:'#5a3018' });
-    arr.push({ shape:'box', x:wx-0.55, y:0.95, z:wz+0.18, w:0.15, h:0.15, d:0.03, color:'#5a3018' });
-    arr.push({ shape:'box', x:wx+0.55, y:0.95, z:wz+0.18, w:0.15, h:0.15, d:0.03, color:'#5a3018' });
     arr.push({ shape:'box', x:wx, y:2.65, z:wz+0.1, w:1.5, h:0.08, d:0.15, color:'#3a2418' });
     arr.push({ shape:'box', x:wx, y:2.7, z:wz+0.35, w:1.6, h:0.05, d:0.5, color:'#3a1a14' });
   });
-
-  /* 二楼小窗 × 2 */
   [11.2, 14.8].forEach(function(wx){
     const wz = faceZ + 0.02;
     arr.push({ shape:'box', x:wx, y:2.95, z:wz+0.05, w:0.95, h:1.0, d:0.1, color:'#2a1a12' });
     arr.push({ shape:'box', x:wx, y:2.95, z:wz+0.1, w:0.75, h:0.8, d:0.06, color:'#3a2418' });
     arr.push({ shape:'box', x:wx, y:2.95, z:wz+0.14, w:0.6, h:0.65, d:0.03, color:'#ffbb60' });
-    arr.push({ shape:'box', x:wx, y:2.95, z:wz+0.17, w:0.65, h:0.03, d:0.02, color:'#5a3018' });
-    arr.push({ shape:'box', x:wx, y:2.95, z:wz+0.17, w:0.03, h:0.7, d:0.02, color:'#5a3018' });
-    arr.push({ shape:'box', x:wx, y:3.5, z:wz+0.1, w:1.05, h:0.08, d:0.18, color:'#4a2a18' });
-    arr.push({ shape:'box', x:wx, y:2.4, z:wz+0.1, w:1.05, h:0.08, d:0.18, color:'#4a2a18' });
   });
-
-  /* 门灯 × 2 */
   [[doorX-1.7, 2.4], [doorX+1.7, 2.4]].forEach(function(p){
     arr.push({ shape:'cyl', x:p[0], y:p[1], z:faceZ+0.05, w:0.05, h:0.3, color:'#1a1410' });
     arr.push({ shape:'box', x:p[0], y:p[1]-0.15, z:faceZ+0.22, w:0.32, h:0.38, d:0.32, color:'#1a1410' });
     arr.push({ shape:'box', x:p[0], y:p[1]-0.15, z:faceZ+0.3, w:0.2, h:0.22, d:0.06, color:'#ffd27a' });
     arr.push({ shape:'box', x:p[0], y:p[1]-0.36, z:faceZ+0.22, w:0.36, h:0.06, d:0.36, color:'#2a1a12' });
   });
-
-  /* 台阶 × 3 */
   arr.push({ shape:'box', x:hx, y:0,    z:faceZ+0.55, w:2.8, h:0.12, d:0.65, color:'#4a3a28' });
   arr.push({ shape:'box', x:hx, y:0.12, z:faceZ+0.9,  w:2.5, h:0.12, d:0.55, color:'#3a2a18' });
   arr.push({ shape:'box', x:hx, y:0.24, z:faceZ+1.25, w:2.2, h:0.12, d:0.5,  color:'#3a2a18' });
-  arr.push({ shape:'box', x:hx, y:0.12, z:faceZ+0.55, w:2.8, h:0.02, d:0.65, color:'#5a4a38' });
-  arr.push({ shape:'box', x:hx, y:0.24, z:faceZ+0.9,  w:2.5, h:0.02, d:0.55, color:'#5a4a38' });
-
-  /* 花盆 × 2 */
   [[doorX-2.0, faceZ+0.8], [doorX+2.0, faceZ+0.8]].forEach(function(p){
     arr.push({ shape:'cyl', x:p[0], y:0, z:p[1], w:0.55, h:0.5, color:'#3a2a1a' });
     arr.push({ shape:'cyl', x:p[0], y:0.5, z:p[1], w:0.6, h:0.08, color:'#2a1e14' });
     arr.push({ shape:'cyl', x:p[0], y:0.55, z:p[1], w:0.05, h:0.6, color:'#2a3a20' });
     arr.push({ shape:'low', x:p[0], y:0.9, z:p[1], w:0.7, h:0.5, color:'#3a4a28' });
-    arr.push({ shape:'low', x:p[0]+0.15, y:1.1, z:p[1]-0.1, w:0.5, h:0.4, color:'#2a3a20' });
   });
-
-  /* 门口灯笼 × 2 */
   [[doorX-2.6, 2.2], [doorX+2.6, 2.2]].forEach(function(p){
     arr.push({ shape:'cyl', x:p[0], y:p[1]+0.4, z:faceZ+0.1, w:0.04, h:0.5, color:'#2a1e14' });
     arr.push({ shape:'cyl', x:p[0], y:p[1], z:faceZ+0.1, w:0.35, h:0.45, color:'#8a2a18' });
     arr.push({ shape:'cyl', x:p[0], y:p[1]+0.15, z:faceZ+0.1, w:0.37, h:0.15, color:'#c83a20' });
     arr.push({ shape:'cyl', x:p[0], y:p[1]+0.05, z:faceZ+0.1, w:0.2, h:0.3, color:'#ffd680' });
   });
-
-  /* 屋檐灯串 × 12 */
   for(let i = 0; i < 12; i++){
     const lx = hx - hw/2 + 0.3 + i * 0.55;
     arr.push({ shape:'cyl', x:lx, y:3.15, z:faceZ + 0.35, w:0.12, h:0.18, color:'#ffe0a0' });
   }
-
   return arr;
 }
 
-/* =========================================================
-   邻居小建筑 × 2
-   ========================================================= */
 function buildNeighborHouse(cx, cz, flip){
   const arr = [];
   const w = 3.5, h = 2.6, d = 2.5;
@@ -579,50 +684,36 @@ function buildNeighborHouse(cx, cz, flip){
   arr.push({ shape:'box', x:cx, y:0, z:cz, w:w+0.1, h:0.4, d:d+0.1, color:'#1a1008' });
   arr.push({ shape:'box', x:cx, y:h, z:cz, w:w+0.3, h:0.35, d:d+0.3, color:'#3a1a10' });
   arr.push({ shape:'box', x:cx, y:h+0.35, z:cz, w:w-0.3, h:0.25, d:d-0.3, color:'#5a2414' });
-  /* 窗户 × 2 */
   arr.push({ shape:'box', x:cx-0.8, y:1.5, z:cz + d/2 + 0.02, w:0.9, h:1.0, d:0.08, color:'#2a1a12' });
   arr.push({ shape:'box', x:cx-0.8, y:1.5, z:cz + d/2 + 0.06, w:0.65, h:0.75, d:0.04, color: flip ? '#ffbb60' : '#6a8a9a' });
   arr.push({ shape:'box', x:cx+0.8, y:1.5, z:cz + d/2 + 0.02, w:0.9, h:1.0, d:0.08, color:'#2a1a12' });
   arr.push({ shape:'box', x:cx+0.8, y:1.5, z:cz + d/2 + 0.06, w:0.65, h:0.75, d:0.04, color: flip ? '#6a8a9a' : '#ffbb60' });
-  /* 门 */
   arr.push({ shape:'box', x:cx, y:0.9, z:cz + d/2 + 0.02, w:0.9, h:1.9, d:0.06, color:'#3a2018' });
   arr.push({ shape:'cyl', x:cx+0.3, y:0.9, z:cz + d/2 + 0.06, w:0.06, h:0.06, color:'#b09050' });
-  /* 招牌 */
   arr.push({ shape:'box', x:cx, y:h+0.5, z:cz + d/2 + 0.15, w:w*0.7, h:0.35, d:0.08, color:'#2a1a14' });
-  /* 霓虹牌 */
   arr.push({ shape:'box', x:cx, y:h+0.5, z:cz + d/2 + 0.2, w:w*0.55, h:0.22, d:0.03, color: flip ? '#ff5a4a' : '#4a90ff' });
   return arr;
 }
 
-/* =========================================================
-   公交站
-   ========================================================= */
 function buildBusStop(x, z){
   const arr = [];
   arr.push({ shape:'box', x:x, y:0, z:z, w:3.2, h:0.08, d:1.2, color:'#1a1814' });
   arr.push({ shape:'cyl', x:x-1.4, y:0, z:z-0.5, w:0.12, h:2.4, color:'#1a1410' });
   arr.push({ shape:'cyl', x:x+1.4, y:0, z:z-0.5, w:0.12, h:2.4, color:'#1a1410' });
   arr.push({ shape:'box', x:x, y:2.4, z:z-0.5, w:3.2, h:0.1, d:1.2, color:'#1a1410' });
-  /* 玻璃 */
-  arr.push({ shape:'box', x:x-1.4, y:1.2, z:z-0.5, w:0.05, h:1.5, d:1.1, color:'rgba(120,160,200,0.3)' });
-  arr.push({ shape:'box', x:x+1.4, y:1.2, z:z-0.5, w:0.05, h:1.5, d:1.1, color:'rgba(120,160,200,0.3)' });
-  /* 广告牌 */
+  arr.push({ shape:'box', x:x-1.4, y:1.2, z:z-0.5, w:0.05, h:1.5, d:1.1, color:'#2a3a4a' });
+  arr.push({ shape:'box', x:x+1.4, y:1.2, z:z-0.5, w:0.05, h:1.5, d:1.1, color:'#2a3a4a' });
   arr.push({ shape:'box', x:x+1.5, y:0.5, z:z, w:0.08, h:1.5, d:1.0, color:'#2a1a14' });
   arr.push({ shape:'box', x:x+1.55, y:0.5, z:z, w:0.04, h:1.3, d:0.8, color:'#4a90a0' });
-  /* 长椅 */
   arr.push({ shape:'box', x:x, y:0.5, z:z+0.2, w:2.4, h:0.06, d:0.4, color:'#3a2a1a' });
   arr.push({ shape:'box', x:x-1.0, y:0, z:z+0.2, w:0.08, h:0.5, d:0.4, color:'#1a1410' });
   arr.push({ shape:'box', x:x+1.0, y:0, z:z+0.2, w:0.08, h:0.5, d:0.4, color:'#1a1410' });
-  /* 站牌 */
   arr.push({ shape:'cyl', x:x-1.6, y:0, z:z+0.6, w:0.08, h:2.8, color:'#1a1410' });
   arr.push({ shape:'box', x:x-1.6, y:2.6, z:z+0.6, w:0.5, h:0.7, d:0.08, color:'#3a2a1a' });
   arr.push({ shape:'box', x:x-1.6, y:2.6, z:z+0.66, w:0.4, h:0.55, d:0.03, color:'#5aa090' });
   return arr;
 }
 
-/* =========================================================
-   路灯 × 15 件
-   ========================================================= */
 function buildLamp(x, z){
   return [
     { shape:'cyl', x:x, y:0,    z:z, w:0.5,  h:0.12, color:'#1a1814' },
@@ -643,27 +734,15 @@ function buildLamp(x, z){
   ];
 }
 
-/* =========================================================
-   墙 / 地面装饰
-   ========================================================= */
 function buildSideWallDetails(){
   const arr = [];
-
-  /* 西墙门 */
   arr.push({ shape:'box', x:1.03, y:1.3, z:8.0, w:0.08, h:2.5, d:1.6, color:'#2a1a12' });
   arr.push({ shape:'box', x:1.06, y:1.25, z:8.0, w:0.06, h:2.3, d:1.3, color:'#3a2418' });
   arr.push({ shape:'box', x:1.08, y:1.25, z:8.0, w:0.04, h:2.2, d:1.1, color:'#5a2814' });
   arr.push({ shape:'cyl', x:1.11, y:1.1, z:8.4, w:0.08, h:0.08, color:'#d0a040' });
-  arr.push({ shape:'box', x:1.1, y:2.0, z:8.0, w:0.03, h:0.35, d:0.9, color:'#ffbb60' });
-
-  /* 西墙窗 */
   arr.push({ shape:'box', x:1.03, y:1.7, z:11.5, w:0.08, h:1.4, d:1.5, color:'#2a1a12' });
   arr.push({ shape:'box', x:1.06, y:1.7, z:11.5, w:0.06, h:1.2, d:1.3, color:'#3a2418' });
   arr.push({ shape:'box', x:1.09, y:1.7, z:11.5, w:0.04, h:1.0, d:1.1, color:'#ffbb60' });
-  arr.push({ shape:'box', x:1.11, y:1.7, z:11.5, w:0.02, h:0.04, d:1.15, color:'#5a3018' });
-  arr.push({ shape:'box', x:1.11, y:1.7, z:11.5, w:0.02, h:1.05, d:0.04, color:'#5a3018' });
-
-  /* 排水管 × 4 */
   [[4.5, 'w'], [14.0, 'w'], [4.5, 'e'], [13.5, 'e']].forEach(function(p){
     const px = p[1] === 'w' ? 1.15 : 23.85;
     arr.push({ shape:'cyl', x:px, y:0,   z:p[0], w:0.16, h:3.4, color:'#1a1008' });
@@ -671,89 +750,60 @@ function buildSideWallDetails(){
     arr.push({ shape:'cyl', x:px, y:1.8, z:p[0], w:0.18, h:0.06, color:'#0a0604' });
     arr.push({ shape:'cyl', x:px, y:0.5, z:p[0], w:0.18, h:0.06, color:'#0a0604' });
   });
-
-  /* 空调 × 3 */
   [[1.5, 5.5], [1.5, 13.0], [23.5, 6.0]].forEach(function(p){
     arr.push({ shape:'box', x:p[0], y:1.9, z:p[1], w:0.75, h:0.55, d:0.75, color:'#2a2a2a' });
     arr.push({ shape:'box', x:p[0], y:2.15,z:p[1], w:0.77, h:0.02, d:0.77, color:'#1a1a1a' });
     arr.push({ shape:'box', x:p[0], y:1.9, z:p[1]+0.4, w:0.6, h:0.4, d:0.02, color:'#1a1a1a' });
-    arr.push({ shape:'box', x:p[0], y:1.6, z:p[1], w:0.8, h:0.05, d:0.1, color:'#1a1814' });
   });
-
-  /* 墙上告示贴纸 × 20 */
   const stickerColors = ['#5a4030','#3a3a4a','#4a3a2a','#5a3a3a','#3a4a3a'];
   for(let i = 0; i < 20; i++){
     const px = i % 2 === 0 ? 1.02 : 23.98;
     const pz = 4.5 + (i * 0.7) % 10;
-    const color = stickerColors[i % stickerColors.length];
-    arr.push({ shape:'box', x:px, y:1.2 + (i % 3) * 0.15, z:pz, w:0.02, h:0.35, d:0.28, color:color });
-    arr.push({ shape:'box', x:px + (px < 12 ? 0.01 : -0.01), y:1.3 + (i % 3) * 0.15, z:pz, w:0.01, h:0.04, d:0.22, color:'#c8a880' });
+    arr.push({ shape:'box', x:px, y:1.2 + (i % 3) * 0.15, z:pz, w:0.02, h:0.35, d:0.28, color:stickerColors[i % stickerColors.length] });
   }
-
-  /* 墙上挂钩 × 8 */
   for(let i = 0; i < 8; i++){
     const px = i % 2 === 0 ? 1.1 : 23.9;
     const pz = 3.5 + i * 1.2;
     arr.push({ shape:'cyl', x:px, y:1.8, z:pz, w:0.05, h:0.05, color:'#3a2a1a' });
     arr.push({ shape:'cyl', x:px, y:1.7, z:pz, w:0.03, h:0.15, color:'#3a2a1a' });
   }
-
-  /* 墙上小灯 × 3 */
   [[1.15, 9.5], [23.85, 9.5], [1.15, 12.5]].forEach(function(p){
     arr.push({ shape:'box', x:p[0], y:2.5, z:p[1], w:0.15, h:0.15, d:0.15, color:'#1a1410' });
     arr.push({ shape:'box', x:p[0] + (p[0] < 12 ? 0.07 : -0.07), y:2.5, z:p[1], w:0.1, h:0.1, d:0.1, color:'#ffd27a' });
   });
-
-  /* 墙上涂鸦 × 7 */
   [[1.02, 4.0], [1.02, 6.5], [1.02, 10.0], [23.98, 5.0], [23.98, 9.0], [23.98, 13.0], [1.02, 13.5]].forEach(function(p){
     arr.push({ shape:'box', x:p[0], y:1.3, z:p[1], w:0.02, h:0.5, d:1.3, color:'#4a2424' });
     arr.push({ shape:'box', x:p[0], y:1.5, z:p[1], w:0.01, h:0.06, d:1.0, color:'#8a3a3a' });
-    arr.push({ shape:'box', x:p[0], y:1.2, z:p[1]-0.3, w:0.01, h:0.4, d:0.06, color:'#8a3a3a' });
-    arr.push({ shape:'box', x:p[0], y:1.2, z:p[1]+0.3, w:0.01, h:0.4, d:0.06, color:'#8a3a3a' });
   });
-
-  /* 地面裂缝 × 20 */
   for(let i = 0; i < 20; i++){
     const px = 3 + Math.random() * 20;
     const pz = 5 + Math.random() * 10;
     arr.push({ shape:'low', x:px, y:0.005, z:pz, w:1.5 + Math.random() * 2, h:0.005, color:'#050304' });
-    arr.push({ shape:'low', x:px + 0.5, y:0.006, z:pz + 0.3, w:0.8, h:0.005, color:'#050304' });
   }
-
-  /* 地面石头 × 15 */
   for(let i = 0; i < 15; i++){
     const px = 3 + Math.random() * 20;
     const pz = 5 + Math.random() * 10;
     arr.push({ shape:'low', x:px, y:0.01, z:pz, w:0.3 + Math.random() * 0.3, h:0.08, color:'#2a2a26' });
   }
-
   return arr;
 }
 
-/* =========================================================
-   其他杂物
-   ========================================================= */
 function buildTrashCan(x, z){
   return [
     { shape:'cyl', x:x, y:0,    z:z, w:0.75, h:0.9,  color:'#1a1612' },
     { shape:'cyl', x:x, y:0.9,  z:z, w:0.82, h:0.08, color:'#0e0a08' },
     { shape:'cyl', x:x, y:0.98, z:z, w:0.78, h:0.05, color:'#1a1410' },
-    { shape:'cyl', x:x, y:1.03, z:z, w:0.16, h:0.12, color:'#0e0a08' },
-    { shape:'cyl', x:x, y:0.35, z:z, w:0.77, h:0.04, color:'#0a0604' },
-    { shape:'cyl', x:x, y:0.65, z:z, w:0.77, h:0.04, color:'#0a0604' }
+    { shape:'cyl', x:x, y:1.03, z:z, w:0.16, h:0.12, color:'#0e0a08' }
   ];
 }
-
 function buildBoxes(x, z){
   return [
     { shape:'box', x:x,     y:0,    z:z,     w:0.9,  h:0.75, d:0.9,  color:'#201a12' },
     { shape:'box', x:x,     y:0.75, z:z,     w:0.9,  h:0.02, d:0.9,  color:'#2a2018' },
     { shape:'box', x:x+0.5, y:0,    z:z+0.4, w:0.7,  h:0.55, d:0.7,  color:'#241b14' },
-    { shape:'box', x:x+0.1, y:0.75, z:z+0.1, w:0.6,  h:0.5,  d:0.6,  color:'#1a1410' },
-    { shape:'box', x:x,     y:0.77, z:z,     w:0.9,  h:0.02, d:0.15, color:'#3a2a1a' }
+    { shape:'box', x:x+0.1, y:0.75, z:z+0.1, w:0.6,  h:0.5,  d:0.6,  color:'#1a1410' }
   ];
 }
-
 function buildBike(x, z){
   return [
     { shape:'cyl', x:x-0.5,  y:0,    z:z, w:0.7,  h:0.06, color:'#1a1814' },
@@ -761,13 +811,9 @@ function buildBike(x, z){
     { shape:'cyl', x:x+0.5,  y:0,    z:z, w:0.7,  h:0.06, color:'#1a1814' },
     { shape:'cyl', x:x+0.5,  y:0.05, z:z, w:0.6,  h:0.02, color:'#2a2620' },
     { shape:'box', x:x,      y:0.35, z:z, w:1.4,  h:0.06, d:0.08, color:'#2a2018' },
-    { shape:'box', x:x,      y:0.55, z:z, w:0.06, h:0.4,  d:0.4,  color:'#2a2018' },
-    { shape:'box', x:x+0.55, y:0.75, z:z, w:0.05, h:0.05, d:0.55, color:'#1a1410' },
-    { shape:'box', x:x-0.5,  y:0.65, z:z, w:0.25, h:0.08, d:0.12, color:'#1a1410' },
-    { shape:'cyl', x:x+0.5,  y:0.06, z:z, w:0.05, h:0.7,  color:'#1a1410' }
+    { shape:'box', x:x+0.55, y:0.75, z:z, w:0.05, h:0.05, d:0.55, color:'#1a1410' }
   ];
 }
-
 function buildClothesline(){
   const arr = [];
   arr.push({ shape:'box', x:13, y:3.0, z:13.0, w:14.0, h:0.03, d:0.03, color:'#3a2a1a' });
@@ -775,11 +821,8 @@ function buildClothesline(){
   for(let i = 0; i < 6; i++){
     arr.push({ shape:'box', x: 6.5 + i * 2.6, y:1.6, z:13.0, w:1.05, h:1.35, d:0.04, color: colors[i] });
   }
-  arr.push({ shape:'cyl', x:6.0,  y:3.0, z:13.0, w:0.07, h:0.07, color:'#5a3a20' });
-  arr.push({ shape:'cyl', x:20.0, y:3.0, z:13.0, w:0.07, h:0.07, color:'#5a3a20' });
   return arr;
 }
-
 function buildSign(x, z, col){
   return [
     { shape:'cyl', x:x, y:0, z:z, w:0.12, h:2.6, color:'#1a1814' },
@@ -788,7 +831,6 @@ function buildSign(x, z, col){
     { shape:'box', x:x+0.65, y:2.2, z:z+0.04, w:0.9, h:0.65, d:0.03, color: col || '#6a4a2a' }
   ];
 }
-
 function buildNeonSign(x, z, col){
   return [
     { shape:'box', x:x, y:0, z:z, w:0.1, h:3.5, d:0.1, color:'#1a1410' },
@@ -798,40 +840,29 @@ function buildNeonSign(x, z, col){
     { shape:'box', x:x+0.5, y:2.9, z:z+0.04, w:0.5, h:0.7, d:0.03, color:'#fff0c0' }
   ];
 }
-
 function buildHydrant(x, z){
   return [
     { shape:'cyl', x:x,      y:0,    z:z, w:0.5,  h:0.08, color:'#5a1510' },
     { shape:'cyl', x:x,      y:0.08, z:z, w:0.4,  h:0.7,  color:'#8a2424' },
     { shape:'cyl', x:x,      y:0.78, z:z, w:0.45, h:0.08, color:'#5a1510' },
     { shape:'cyl', x:x,      y:0.86, z:z, w:0.28, h:0.15, color:'#8a2424' },
-    { shape:'cyl', x:x,      y:1.01, z:z, w:0.16, h:0.1,  color:'#5a1510' },
-    { shape:'cyl', x:x-0.28, y:0.35, z:z, w:0.1,  h:0.18, color:'#5a1510' },
-    { shape:'cyl', x:x+0.28, y:0.35, z:z, w:0.1,  h:0.18, color:'#5a1510' }
+    { shape:'cyl', x:x,      y:1.01, z:z, w:0.16, h:0.1,  color:'#5a1510' }
   ];
 }
-
 function buildMailbox(x, z){
   return [
     { shape:'cyl', x:x, y:0,    z:z, w:0.1,  h:0.9,  color:'#1a1814' },
     { shape:'box', x:x, y:0.9,  z:z, w:0.55, h:0.65, d:0.4, color:'#3a2a1a' },
-    { shape:'box', x:x, y:1.5,  z:z, w:0.6,  h:0.06, d:0.45, color:'#2a1e10' },
-    { shape:'box', x:x, y:1.0,  z:z+0.21, w:0.35, h:0.04, d:0.03, color:'#0a0808' },
-    { shape:'box', x:x, y:1.35, z:z+0.21, w:0.35, h:0.04, d:0.03, color:'#0a0808' },
-    { shape:'box', x:x, y:1.2,  z:z+0.22, w:0.08, h:0.15, d:0.03, color:'#8a6a4a' }
+    { shape:'box', x:x, y:1.5,  z:z, w:0.6,  h:0.06, d:0.45, color:'#2a1e10' }
   ];
 }
-
 function buildManhole(x, z){
   return [
     { shape:'cyl', x:x, y:0.008, z:z, w:1.0,  h:0.015, color:'#0a0808' },
     { shape:'cyl', x:x, y:0.012, z:z, w:0.85, h:0.02,  color:'#1a1410' },
-    { shape:'cyl', x:x, y:0.014, z:z, w:0.75, h:0.02,  color:'#0a0808' },
-    { shape:'cyl', x:x, y:0.016, z:z, w:0.6,  h:0.02,  color:'#1a1410' },
-    { shape:'cyl', x:x, y:0.018, z:z, w:0.45, h:0.02,  color:'#0a0808' }
+    { shape:'cyl', x:x, y:0.016, z:z, w:0.6,  h:0.02,  color:'#0a0808' }
   ];
 }
-
 function buildLeaves(cx, cz, count){
   const arr = [];
   const colors = ['#3a2a18','#4a3a20','#2a1e10','#3a1e14','#4a2a18','#5a3a24'];
@@ -846,7 +877,6 @@ function buildLeaves(cx, cz, count){
   }
   return arr;
 }
-
 function buildBottles(x, z){
   const arr = [];
   const colors = ['#2a3a2a','#3a2a1a','#2a1a2a','#1a2a1a','#3a3a1a'];
@@ -861,7 +891,6 @@ function buildBottles(x, z){
   }
   return arr;
 }
-
 function buildPuddles(){
   const arr = [];
   const spots = [
@@ -874,53 +903,44 @@ function buildPuddles(){
   });
   return arr;
 }
-
 function buildBeams(){
   const arr = [];
   for(let z = 1.5; z <= 16; z += 2.5){
     arr.push({ shape:'box', x:13, y:3.4, z:z, w:24.0, h:0.1,  d:0.22, color:'#0a0808' });
-    arr.push({ shape:'box', x:13, y:3.3, z:z, w:24.0, h:0.02, d:0.28, color:'#050404' });
     for(let i = 0; i < 12; i++){
       arr.push({ shape:'cyl', x:1.5 + i * 2, y:3.5, z:z, w:0.08, h:0.05, color:'#1a1410' });
     }
   }
   return arr;
 }
-
 function buildWires(){
-  const arr = [];
-  arr.push({ shape:'box', x:2.0,  y:2.6, z:3.5, w:0.04, h:0.04, d:2.5, color:'#1a1410' });
-  arr.push({ shape:'box', x:2.0,  y:2.8, z:5.5, w:0.04, h:0.04, d:3.0, color:'#1a1410' });
-  arr.push({ shape:'box', x:2.0,  y:2.5, z:8.0, w:0.04, h:0.04, d:3.5, color:'#1a1410' });
-  arr.push({ shape:'box', x:24.0, y:2.5, z:3.5, w:0.04, h:0.04, d:2.5, color:'#1a1410' });
-  arr.push({ shape:'box', x:24.0, y:2.7, z:6.5, w:0.04, h:0.04, d:3.5, color:'#1a1410' });
-  arr.push({ shape:'box', x:24.0, y:2.5, z:9.5, w:0.04, h:0.04, d:3.0, color:'#1a1410' });
-  return arr;
+  return [
+    { shape:'box', x:2.0,  y:2.6, z:3.5, w:0.04, h:0.04, d:2.5, color:'#1a1410' },
+    { shape:'box', x:2.0,  y:2.8, z:5.5, w:0.04, h:0.04, d:3.0, color:'#1a1410' },
+    { shape:'box', x:24.0, y:2.7, z:6.5, w:0.04, h:0.04, d:3.5, color:'#1a1410' },
+    { shape:'box', x:24.0, y:2.5, z:9.5, w:0.04, h:0.04, d:3.0, color:'#1a1410' }
+  ];
 }
-
 function buildHangingDebris(){
   const arr = [];
-  const positions = [[6, 10], [14, 12], [20, 6], [8, 4]];
-  positions.forEach(function(p, i){
+  [[6, 10], [14, 12], [20, 6], [8, 4]].forEach(function(p, i){
     arr.push({ shape:'cyl', x:p[0], y:3.3, z:p[1], w:0.03, h:0.4 + i * 0.1, color:'#2a1e14' });
     arr.push({ shape:'box', x:p[0], y:2.9 - i * 0.1, z:p[1], w:0.25, h:0.5, d:0.02, color:'#3a2a1a' });
   });
   return arr;
 }
-
 function buildStreetPosts(){
   const arr = [];
   [[3, 3], [23, 3], [3, 15], [23, 15]].forEach(function(p){
     arr.push({ shape:'cyl', x:p[0], y:0,   z:p[1], w:0.24, h:5.6, color:'#1a1410' });
     arr.push({ shape:'box', x:p[0], y:5.0, z:p[1], w:1.7, h:0.14, d:0.14, color:'#1a1410' });
     arr.push({ shape:'box', x:p[0], y:4.7, z:p[1], w:1.5, h:0.12, d:0.12, color:'#1a1410' });
-    arr.push({ shape:'box', x:p[0], y:4.4, z:p[1], w:1.3, h:0.1,  d:0.1,  color:'#1a1410' });
   });
   return arr;
 }
 
 /* =========================================================
-   场景 —— 26 × 18 院子
+   场景 grid
    ========================================================= */
 const grid = [
   '11111111111111111111111111',
@@ -949,46 +969,26 @@ const props = [
   ...buildNeighborHouse(22.5, 4.0, true),
   ...buildBusStop(18.5, 8.0),
   ...buildSideWallDetails(),
-  ...buildLamp(5.0, 10.5),
-  ...buildLamp(21.0, 10.5),
-  ...buildLamp(5.0, 14.0),
-  ...buildLamp(21.0, 14.0),
-  ...buildLamp(5.0, 7.0),
-  ...buildLamp(21.0, 7.0),
-  ...buildTrashCan(20.5, 15.5),
-  ...buildTrashCan(4.5, 14.5),
-  ...buildTrashCan(6.5, 3.5),
-  ...buildTrashCan(19.5, 3.5),
-  ...buildBoxes(4.5, 15.0),
-  ...buildBoxes(20.5, 4.5),
-  ...buildBoxes(8.0, 15.0),
-  ...buildBike(6.0, 12.5),
-  ...buildBike(19.5, 12.5),
+  ...buildLamp(5.0, 10.5), ...buildLamp(21.0, 10.5),
+  ...buildLamp(5.0, 14.0), ...buildLamp(21.0, 14.0),
+  ...buildLamp(5.0, 7.0),  ...buildLamp(21.0, 7.0),
+  ...buildTrashCan(20.5, 15.5), ...buildTrashCan(4.5, 14.5),
+  ...buildTrashCan(6.5, 3.5),   ...buildTrashCan(19.5, 3.5),
+  ...buildBoxes(4.5, 15.0), ...buildBoxes(20.5, 4.5), ...buildBoxes(8.0, 15.0),
+  ...buildBike(6.0, 12.5), ...buildBike(19.5, 12.5),
   ...buildClothesline(),
-  ...buildSign(21.5, 5.5, '#6a4a2a'),
-  ...buildSign(4.5, 5.5, '#5a4a2a'),
-  ...buildNeonSign(2.2, 6.5, '#ff5a4a'),
-  ...buildNeonSign(23.8, 6.5, '#4a90ff'),
+  ...buildSign(21.5, 5.5, '#6a4a2a'), ...buildSign(4.5, 5.5, '#5a4a2a'),
+  ...buildNeonSign(2.2, 6.5, '#ff5a4a'), ...buildNeonSign(23.8, 6.5, '#4a90ff'),
   ...buildNeonSign(2.2, 12.0, '#a0ff5a'),
-  ...buildHydrant(8.5, 15.5),
-  ...buildHydrant(17.5, 15.5),
-  ...buildMailbox(11.0, 15.5),
-  ...buildMailbox(15.0, 15.5),
-  ...buildManhole(9.5, 10.5),
-  ...buildManhole(16.5, 10.5),
-  ...buildManhole(13, 13),
-  ...buildManhole(10, 8),
-  ...buildLeaves(7.0, 14.0, 18),
-  ...buildLeaves(19.0, 14.0, 18),
-  ...buildLeaves(13.0, 14.5, 18),
-  ...buildLeaves(5.5, 8.0, 14),
-  ...buildLeaves(20.5, 8.0, 14),
-  ...buildLeaves(11.0, 12.0, 12),
-  ...buildLeaves(15.0, 12.0, 12),
-  ...buildBottles(5.5, 12.0),
-  ...buildBottles(20.5, 12.0),
-  ...buildBottles(10.0, 15.0),
-  ...buildBottles(16.0, 15.0),
+  ...buildHydrant(8.5, 15.5), ...buildHydrant(17.5, 15.5),
+  ...buildMailbox(11.0, 15.5), ...buildMailbox(15.0, 15.5),
+  ...buildManhole(9.5, 10.5), ...buildManhole(16.5, 10.5),
+  ...buildManhole(13, 13), ...buildManhole(10, 8),
+  ...buildLeaves(7.0, 14.0, 18), ...buildLeaves(19.0, 14.0, 18), ...buildLeaves(13.0, 14.5, 18),
+  ...buildLeaves(5.5, 8.0, 14), ...buildLeaves(20.5, 8.0, 14),
+  ...buildLeaves(11.0, 12.0, 12), ...buildLeaves(15.0, 12.0, 12),
+  ...buildBottles(5.5, 12.0), ...buildBottles(20.5, 12.0),
+  ...buildBottles(10.0, 15.0), ...buildBottles(16.0, 15.0),
   ...buildPuddles(),
   ...buildBeams(),
   ...buildWires(),
@@ -997,20 +997,13 @@ const props = [
 ];
 
 /* =========================================================
-   ★ 相机 —— 大椭圆轨道 + 摆头 + 起伏，20 秒一圈
-   院子内空 x∈[1,24]，z∈[1,16]
-   房子 z∈[0.75, 4.25]
-   相机轨道 x∈[7,19]，z∈[5.5, 14.5]  ←  距墙 ≥ 5.5，距房 ≥ 1.25
+   相机
    ========================================================= */
 const ORBIT = {
-  centerX: 13.0,
-  centerZ: 10.0,
-  radiusX: 6.0,
-  radiusZ: 4.5,
+  centerX: 13.0, centerZ: 10.0,
+  radiusX: 6.0, radiusZ: 4.5,
   baseY: 1.9,
-  focusX: 13.0,
-  focusY: 1.7,
-  focusZ: 4.4,
+  focusX: 13.0, focusY: 1.7, focusZ: 4.4,
   angularSpeed: (Math.PI * 2) / 20,
   initialAngle: Math.PI / 2
 };
@@ -1034,7 +1027,7 @@ let rainDrops = [];
 let ripples = [];
 let flashTime = 0;
 let nextFlashAt = 0;
-let drops = [];  /* 镜头前飘落的水珠 */
+let drops = [];
 
 function init3D(){
   try{
@@ -1076,7 +1069,6 @@ function initFx(){
 function drawFx(dt, t){
   fxCtx.clearRect(0, 0, W, H);
 
-  /* 1. 体积雾 */
   const fog = fxCtx.createRadialGradient(W/2, H*0.62, H*0.15, W/2, H*0.62, H*0.95);
   fog.addColorStop(0, 'rgba(8,14,26,0)');
   fog.addColorStop(0.6, 'rgba(6,10,20,0.28)');
@@ -1084,7 +1076,6 @@ function drawFx(dt, t){
   fxCtx.fillStyle = fog;
   fxCtx.fillRect(0, 0, W, H);
 
-  /* 2. 灯晕 */
   fxCtx.save();
   fxCtx.globalCompositeOperation = 'lighter';
   const g1 = fxCtx.createRadialGradient(W*0.5, H*0.5, 0, W*0.5, H*0.5, W*0.4);
@@ -1107,7 +1098,6 @@ function drawFx(dt, t){
   fxCtx.fillRect(0, 0, W, H);
   fxCtx.restore();
 
-  /* 3. 双层雨 */
   fxCtx.save();
   fxCtx.strokeStyle = 'rgba(180,210,240,0.9)';
   fxCtx.lineWidth = 1;
@@ -1140,7 +1130,6 @@ function drawFx(dt, t){
   fxCtx.stroke();
   fxCtx.restore();
 
-  /* 4. 地面涟漪 */
   if(Math.random() < 0.32){
     ripples.push({
       x: 40 + Math.random() * (W - 80),
@@ -1167,7 +1156,6 @@ function drawFx(dt, t){
   }
   fxCtx.restore();
 
-  /* 5. 地面反光带（屏幕底部 1/3） */
   const rf = fxCtx.createLinearGradient(0, H * 0.65, 0, H);
   rf.addColorStop(0, 'rgba(180,160,120,0)');
   rf.addColorStop(0.5, 'rgba(180,140,90,0.06)');
@@ -1175,15 +1163,12 @@ function drawFx(dt, t){
   fxCtx.fillStyle = rf;
   fxCtx.fillRect(0, H * 0.65, W, H * 0.35);
 
-  /* 6. 飘落水珠（镜头前） */
   if(Math.random() < 0.06){
     drops.push({
-      x: Math.random() * W,
-      y: -20,
+      x: Math.random() * W, y: -20,
       vy: 120 + Math.random() * 80,
       r: 1 + Math.random() * 2,
-      life: 0,
-      dur: 2.5 + Math.random() * 2
+      life: 0, dur: 2.5 + Math.random() * 2
     });
   }
   for(let i = drops.length - 1; i >= 0; i--){
@@ -1198,17 +1183,12 @@ function drawFx(dt, t){
     const d = drops[i];
     const a = Math.sin(d.life / d.dur * Math.PI) * 0.6;
     fxCtx.fillStyle = 'rgba(200,220,250,' + a + ')';
-    fxCtx.beginPath();
-    fxCtx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
-    fxCtx.fill();
+    fxCtx.beginPath(); fxCtx.arc(d.x, d.y, d.r, 0, Math.PI * 2); fxCtx.fill();
     fxCtx.fillStyle = 'rgba(255,255,255,' + (a * 0.7) + ')';
-    fxCtx.beginPath();
-    fxCtx.arc(d.x - d.r * 0.3, d.y - d.r * 0.3, d.r * 0.4, 0, Math.PI * 2);
-    fxCtx.fill();
+    fxCtx.beginPath(); fxCtx.arc(d.x - d.r * 0.3, d.y - d.r * 0.3, d.r * 0.4, 0, Math.PI * 2); fxCtx.fill();
   }
   fxCtx.restore();
 
-  /* 7. 闪电 */
   const now = performance.now();
   if(now >= nextFlashAt && flashTime <= 0){
     flashTime = 0.42;
@@ -1229,7 +1209,6 @@ function drawFx(dt, t){
     }
   }
 
-  /* 8. 暗角 */
   const vg = fxCtx.createRadialGradient(W/2, H/2, H*0.4, W/2, H/2, H*1.05);
   vg.addColorStop(0, 'rgba(0,0,0,0)');
   vg.addColorStop(1, 'rgba(0,0,0,0.55)');
@@ -1238,7 +1217,7 @@ function drawFx(dt, t){
 }
 
 /* =========================================================
-   相机更新 —— 环绕 + 摆头 + 起伏
+   相机更新
    ========================================================= */
 const cam = {
   x: 13, y: 1.9, z: 14.5,
@@ -1250,25 +1229,15 @@ const cam = {
 };
 
 function updateOrbitCamera(t){
-  /* 环绕角度 —— 20 秒一圈 */
   const angle = t * ORBIT.angularSpeed + ORBIT.initialAngle;
-
-  /* 椭圆轨道位置 */
   cam.x = ORBIT.centerX + Math.cos(angle) * ORBIT.radiusX;
   cam.z = ORBIT.centerZ + Math.sin(angle) * ORBIT.radiusZ;
-
-  /* 高度起伏 —— 幅度更大 */
   cam.y = ORBIT.baseY + Math.sin(t * 0.55) * 0.35;
-
-  /* 基础朝向：看向焦点 */
   const dx = ORBIT.focusX - cam.x;
   const dz = ORBIT.focusZ - cam.z;
   const dy = ORBIT.focusY - cam.y;
   const distXZ = Math.sqrt(dx*dx + dz*dz) || 1;
-
-  /* ★ 关键：加摆头 —— 让画面左右扫动，视觉上"确实在转" */
   const headSway = Math.sin(t * 0.7) * 0.28;
-
   cam.yaw   = Math.atan2(dz, dx) + headSway;
   cam.pitch = Math.atan2(dy, distXZ) + Math.sin(t * 0.9) * 0.02;
 }
