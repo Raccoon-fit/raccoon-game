@@ -1,6 +1,6 @@
 /* =========================================================
-   3D 场景定义 —— 暗夜模式专属 v4
-   v3 基础 + 使用新几何体（sphere/cone/torus/arch/ramp/bevelBox）
+   3D 场景定义 —— 暗夜模式专属 v5
+   v4 + 通用 buildDoor 门构造函数，所有门贴墙且把手朝内
    ========================================================= */
 (function(){
 'use strict';
@@ -102,6 +102,90 @@ function burnMark(cx, cz, radius){
   return arr;
 }
 
+/* =========================================================
+   ★ 通用门构造函数
+   wall: 'n' | 's' | 'e' | 'w' —— 门所在的墙
+        'n' 北墙（z 小的一侧）—— 门朝 +z 方向（房间内）
+        's' 南墙（z 大的一侧）—— 门朝 -z 方向（房间内）
+        'w' 西墙（x 小的一侧）—— 门朝 +x 方向（房间内）
+        'e' 东墙（x 大的一侧）—— 门朝 -x 方向（房间内）
+   x, z: 门中心在墙内表面上的位置
+   w: 门洞宽（沿墙方向）
+   h: 门洞高
+   color: 门板主色
+   ========================================================= */
+function buildDoor(wall, x, z, w, h, color){
+  const arr = [];
+  const col = color || '#5a2814';
+  const frameCol = '#1a0a08';
+  const trimCol = '#3a1808';
+  const pillarCol = '#3a2418';
+  const handleCol = '#d0a040';
+  const sillCol = '#2a1a12';
+
+  if(wall === 'n' || wall === 's'){
+    /* 南北墙 —— 门宽沿 x 轴，把手朝房间内（n → +z，s → -z） */
+    const zDir = (wall === 'n') ? 1 : -1;
+
+    const zFrame  = z + zDir * 0.06;
+    const zDoor   = z + zDir * 0.14;
+    const zTrim   = z + zDir * 0.18;
+    const zHandle = z + zDir * 0.20;
+
+    /* 门框（凸出） */
+    arr.push({ shape:'box', x:x, y:0, z:zFrame, w:w + 0.20, h:h + 0.20, d:0.10, color: frameCol });
+    /* 门板 */
+    arr.push({ shape:'box', x:x, y:0.05, z:zDoor, w:w - 0.10, h:h - 0.15, d:0.08, color: col });
+    /* 3 条装饰横线 */
+    arr.push({ shape:'box', x:x, y:0.40, z:zTrim, w:w - 0.30, h:0.04, d:0.02, color: trimCol });
+    arr.push({ shape:'box', x:x, y:1.00, z:zTrim, w:w - 0.30, h:0.04, d:0.02, color: trimCol });
+    arr.push({ shape:'box', x:x, y:1.60, z:zTrim, w:w - 0.30, h:0.04, d:0.02, color: trimCol });
+    /* 门把手（在门板正面，靠右侧，朝房间内） */
+    arr.push({ shape:'sphere', x:x + w * 0.35, y:h * 0.5, z:zHandle, w:0.10, color: handleCol });
+    /* 门楣 */
+    arr.push({ shape:'box', x:x, y:h + 0.05, z:zFrame, w:w + 0.26, h:0.12, d:0.14, color: pillarCol });
+    /* 两侧壁柱 */
+    arr.push({ shape:'box', x:x - w/2 - 0.08, y:0, z:zFrame, w:0.14, h:h + 0.15, d:0.15, color: pillarCol });
+    arr.push({ shape:'box', x:x + w/2 + 0.08, y:0, z:zFrame, w:0.14, h:h + 0.15, d:0.15, color: pillarCol });
+    /* 门槛 */
+    arr.push({ shape:'box', x:x, y:0, z:zDoor, w:w + 0.10, h:0.05, d:0.24, color: sillCol });
+    /* 门口微光（房间内侧地面反光） */
+    arr.push({ shape:'low', x:x, y:0.02, z:z + zDir * 0.5, w:w + 0.3, h:0.02, color:'#1a0e08' });
+  } else {
+    /* 东西墙 —— 门宽沿 z 轴，把手朝房间内（e → -x，w → +x） */
+    const xDir = (wall === 'w') ? 1 : -1;
+
+    const xFrame  = x + xDir * 0.06;
+    const xDoor   = x + xDir * 0.14;
+    const xTrim   = x + xDir * 0.18;
+    const xHandle = x + xDir * 0.20;
+
+    /* 门框 */
+    arr.push({ shape:'box', x:xFrame, y:0, z:z, w:0.10, h:h + 0.20, d:w + 0.20, color: frameCol });
+    /* 门板 */
+    arr.push({ shape:'box', x:xDoor, y:0.05, z:z, w:0.08, h:h - 0.15, d:w - 0.10, color: col });
+    /* 3 条装饰横线 */
+    arr.push({ shape:'box', x:xTrim, y:0.40, z:z, w:0.02, h:0.04, d:w - 0.30, color: trimCol });
+    arr.push({ shape:'box', x:xTrim, y:1.00, z:z, w:0.02, h:0.04, d:w - 0.30, color: trimCol });
+    arr.push({ shape:'box', x:xTrim, y:1.60, z:z, w:0.02, h:0.04, d:w - 0.30, color: trimCol });
+    /* 门把手（朝房间内） */
+    arr.push({ shape:'sphere', x:xHandle, y:h * 0.5, z:z + w * 0.35, w:0.10, color: handleCol });
+    /* 门楣 */
+    arr.push({ shape:'box', x:xFrame, y:h + 0.05, z:z, w:0.14, h:0.12, d:w + 0.26, color: pillarCol });
+    /* 两侧壁柱 */
+    arr.push({ shape:'box', x:xFrame, y:0, z:z - w/2 - 0.08, w:0.15, h:h + 0.15, d:0.14, color: pillarCol });
+    arr.push({ shape:'box', x:xFrame, y:0, z:z + w/2 + 0.08, w:0.15, h:h + 0.15, d:0.14, color: pillarCol });
+    /* 门槛 */
+    arr.push({ shape:'box', x:xDoor, y:0, z:z, w:0.24, h:0.05, d:w + 0.10, color: sillCol });
+    /* 门口微光 */
+    arr.push({ shape:'low', x:x + xDir * 0.5, y:0.02, z:z, w:0.3, h:0.02, color:'#1a0e08' });
+  }
+  return arr;
+}
+
+/* =========================================================
+   通用建筑构件
+   ========================================================= */
 function buildFullLamp(x, z){
   return [
     { shape:'cyl',    x:x, y:0,    z:z, w:0.55, h:0.08, color:'#1a1814' },
@@ -147,9 +231,7 @@ function buildFullTrashCan(x, z){
    ========================================================= */
 window.__SCENES_3D__ = {
 
-  /* =====================================================
-     雨巷
-     ===================================================== */
+  /* ================== 雨巷（9×20） ================== */
   alley: {
     wallTex: { type:'burnt', base:'#150c0a' },
     floorTex: { base: '#0a0607' },
@@ -174,6 +256,10 @@ window.__SCENES_3D__ = {
       ...buildFullLamp(1.9, 2.2),
       ...buildFullLamp(5.6, 9.5),
       ...buildFullLamp(1.9, 17.8),
+
+      /* ★ 巷子深处 —— 北墙 z=1，门朝 +z（房间内） */
+      ...buildDoor('n', 4.5, 1.12, 1.6, 2.30, '#3a2218'),
+
       ...buildFullTrashCan(5.5, 6.5),
       ...buildFullTrashCan(5.5, 7.5),
       ...buildCrate(3.8, 0, 2.5, 0.9, 0.7, 0.9, '#1a1410'),
@@ -209,8 +295,10 @@ window.__SCENES_3D__ = {
       { shape:'plate', x:1.6, y:1.0, z:6.5, w:0.8, h:0.5, color:'#1c1614' },
       ...hangingMeat(7.3, 1.5, 5.5, 'w'),
       ...hangingMeat(7.3, 1.5, 7.5, 'w'),
-      { shape:'plate', x:1.6, y:0.0, z:17.3, w:0.7, h:1.6, color:'#050303' },
-      { shape:'plate', x:5.5, y:0.0, z:1.5,  w:1.6, h:2.2, color:'#12080a' },
+      /* 墙根窄缝（bloodExit）—— 西墙 x=1 小缝 */
+      { shape:'box', x:1.06, y:0, z:17.0, w:0.15, h:2.2, d:0.3, color:'#0a0406' },
+      { shape:'box', x:1.06, y:0, z:17.6, w:0.15, h:2.2, d:0.3, color:'#0a0406' },
+      { shape:'box', x:1.09, y:0.05, z:17.3, w:0.04, h:2.0, d:0.18, color:'#5a3a10' },
       { shape:'cyl', x:4.5, y:0, z:11.5, w:0.06, h:0.3, color:'#2a1a10' },
       { shape:'cyl', x:4.7, y:0, z:11.6, w:0.06, h:0.28, color:'#2a1a10' },
       { shape:'cyl', x:4.3, y:0, z:11.7, w:0.06, h:0.32, color:'#2a1a10' },
@@ -229,13 +317,11 @@ window.__SCENES_3D__ = {
       { id:'pawprints', x:4.3, y:14.4, icon:'🐾', label:'一串小爪印',     scale:0.6,
         ack: true, ackId: 'pawprints' },
       { id:'bloodExit', x:1.6, y:17.3, icon:'🚪', label:'墙根窄缝',       scale:0.8 },
-      { id:'exit',      x:5.5, y:1.5,  icon:'➡',  label:'巷子深处',       scale:0.9 }
+      { id:'exit',      x:4.5, y:2.5,  icon:'➡',  label:'巷子深处',       scale:0.9 }
     ]
   },
 
-  /* =====================================================
-     后巷
-     ===================================================== */
+  /* ================== 后巷（20×16） ================== */
   backstreet: {
     wallTex: { type:'burnt', base:'#100806' },
     floorTex: { base: '#080505' },
@@ -258,6 +344,7 @@ window.__SCENES_3D__ = {
       '11111111111111111111'
     ],
     props: [
+      /* 消防梯 */
       { shape:'box',   x:4.5, y:0,    z:1.6, w:2.4, h:0.1, d:0.2, color:'#0f0a08' },
       { shape:'cyl',   x:3.4, y:0,    z:1.7, w:0.12, h:2.5, color:'#0d0908' },
       { shape:'cyl',   x:5.6, y:0,    z:1.7, w:0.12, h:2.5, color:'#0d0908' },
@@ -267,12 +354,18 @@ window.__SCENES_3D__ = {
       { shape:'cyl',   x:5.6, y:2.0,  z:1.7, w:0.14, h:0.04, color:'#1a1410' },
       { shape:'cyl',   x:4.5, y:0.3,  z:1.6, w:0.05, h:2.0, color:'#2a1810' },
       ...hangingMeat(4.5, 1.8, 2.2, 's'),
+
+      /* 纸箱堆 */
       ...buildCrate(2.5, 0, 8.5, 0.9, 0.7, 0.9, '#100a06'),
       ...buildCrate(3.2, 0, 8.4, 0.6, 0.4, 0.6, '#0d0804'),
       ...buildCrate(2.0, 0, 9.2, 0.7, 0.5, 0.7, '#0e0805'),
-      { shape:'plate', x:13.4, y:0.0, z:7.5, w:1.3, h:2.2, color:'#050303' },
-      { shape:'arch',  x:13.5, y:0.0, z:7.5, w:0.9, h:2.5, d:0.1, seg:16, color:'#2a1a12' },
-      { shape:'plate', x:10.5, y:0.0, z:11.5, w:0.8, h:1.5, color:'#0d0a08' },
+
+      /* ★ 后门 —— 东墙 x=19，门朝 -x（房间内） */
+      ...buildDoor('e', 18.62, 7.5, 1.4, 2.30, '#5a2814'),
+
+      /* ★ 配电房 —— 南墙 z=15，门朝 -z（房间内） */
+      ...buildDoor('s', 10.5, 14.62, 1.0, 1.80, '#2a1a12'),
+
       ...hangingMeat(9.4, 1.6, 4.5, 'w'),
       ...hangingMeat(9.4, 1.6, 6.5, 'w'),
       ...hangingMeat(9.4, 1.6, 8.5, 'w'),
@@ -300,17 +393,15 @@ window.__SCENES_3D__ = {
       { id:'box',       x:2.5,  y:8.5, icon:'📦', label:'塌掉的纸箱',     scale:0.9 },
       { id:'cat',       x:3.5,  y:8.5, icon:'🩸', label:'一团灰烬',       scale:0.9,
         cond: () => !F().catGone },
-      { id:'door',      x:13.5, y:7.5, icon:'🚪', label:'后门',           scale:1.1 },
-      { id:'powerDoor', x:10.5, y:11.5, icon:'⚡', label:'配电房',         scale:0.9 },
+      { id:'door',      x:17.0, y:7.5, icon:'🚪', label:'后门',           scale:1.1 },
+      { id:'powerDoor', x:10.5, y:13.0, icon:'⚡', label:'配电房',         scale:0.9 },
       { id:'ropeEnd',   x:4.5,  y:2.3, icon:'🪢', label:'消防梯下的断绳', scale:0.7,
         ack: true, ackId: 'ropeEnd' },
       { id:'back',      x:1.5,  y:7.5, icon:'⬅',  label:'回到雨巷',       scale:0.8 }
     ]
   },
 
-  /* =====================================================
-     便利店
-     ===================================================== */
+  /* ================== 便利店（15×13） ================== */
   shop: {
     wallTex: { type:'burnt', base:'#130b0a' },
     floorTex: { base: '#0b0708' },
@@ -342,7 +433,10 @@ window.__SCENES_3D__ = {
       { shape:'bevelBox', x:10.5, y:0, z:7.6, w:0.6, h:0.6, d:0.6, bevel:0.04, color:'#0a0606' },
       { shape:'box',    x:11.5, y:1.0, z:7.4, w:0.6, h:0.4, d:0.4, color:'#050303' },
       { shape:'plate',  x:11.5, y:1.0, z:7.2, w:0.5, h:0.3, color:'#2a0a0a' },
-      { shape:'plate', x:1.7, y:0.8, z:7.5, w:0.6, h:1.4, color:'#050408' },
+
+      /* ★ 后窗 / 回后巷门 —— 西墙 x=1，门朝 +x（房间内） */
+      ...buildDoor('w', 1.10, 7.5, 1.2, 2.20, '#3a2218'),
+
       { shape:'low', x:3.5, y:0.012, z:8.5, w:0.15, h:0.01, color:'#1a0808' },
       { shape:'low', x:4.0, y:0.012, z:8.3, w:0.15, h:0.01, color:'#1a0808' },
       { shape:'low', x:4.5, y:0.012, z:8.5, w:0.15, h:0.01, color:'#1a0808' },
@@ -374,14 +468,12 @@ window.__SCENES_3D__ = {
       { id:'counter', x:11.5, y:7.5, icon:'💳', label:'翻倒的收银台',   scale:1.0 },
       { id:'shelf',   x:4.5,  y:5.5, icon:'📚', label:'烧毁的货架',     scale:1.1 },
       { id:'floor',   x:7.5,  y:9.5, icon:'🐾', label:'地板上的脚印',   scale:0.7 },
-      { id:'window',  x:1.7,  y:7.5, icon:'🪟', label:'后窗',           scale:0.8 },
-      { id:'back',    x:2.5,  y:9.5, icon:'⬅',  label:'回到后巷',       scale:0.8 }
+      { id:'window',  x:2.5,  y:7.5, icon:'🪟', label:'后窗',           scale:0.8 },
+      { id:'back',    x:2.5,  y:7.5, icon:'⬅',  label:'回到后巷',       scale:0.8 }
     ]
   },
 
-  /* =====================================================
-     街道
-     ===================================================== */
+  /* ================== 街道（22×13） ================== */
   street: {
     wallTex: { type:'burnt', base:'#120c0a' },
     floorTex: { base: '#0a0806' },
@@ -407,30 +499,64 @@ window.__SCENES_3D__ = {
       { shape:'bevelBox', x:4.5, y:0, z:2.0, w:0.9, h:1.8, d:0.6, bevel:0.05, color:'#0d0a08' },
       { shape:'plate',    x:4.5, y:1.4, z:1.65, w:0.5, h:0.2, color:'#3a0a0a' },
       { shape:'sphere',   x:4.9, y:1.0, z:1.68, w:0.08, color:'#d0a040' },
-      { shape:'box', x:15.5, y:0, z:7.5, w:2.2, h:2.4, d:0.15, color:'#0d0a0a' },
-      { shape:'plate', x:15.5, y:1.5, z:7.35, w:0.9, h:0.14, color:'#3a0a0a' },
-      { shape:'cyl', x:14.3, y:0, z:7.5, w:0.08, h:2.4, color:'#1a1410' },
-      { shape:'cyl', x:16.7, y:0, z:7.5, w:0.08, h:2.4, color:'#1a1410' },
-      { shape:'cyl', x:14.3, y:2.4, z:7.5, w:0.1, h:0.05, color:'#1a1410' },
-      { shape:'cyl', x:16.7, y:2.4, z:7.5, w:0.1, h:0.05, color:'#1a1410' },
-      { shape:'box', x:15.5, y:2.4, z:7.5, w:2.5, h:0.06, d:0.06, color:'#1a1410' },
+
+      /* ★ 铁门 —— 东西向横跨街道（把街道截断成两半） */
+      /* 门柱 × 2 */
+      { shape:'box', x:15.5, y:0, z:0.6, w:0.3, h:2.8, d:0.3, color:'#2a1d10' },
+      { shape:'box', x:15.5, y:0, z:12.4, w:0.3, h:2.8, d:0.3, color:'#2a1d10' },
+      /* 顶部横梁 */
+      { shape:'box', x:15.5, y:2.6, z:6.5, w:0.18, h:0.18, d:11.8, color:'#1a1410' },
+      /* 中部横梁 */
+      { shape:'box', x:15.5, y:1.4, z:6.5, w:0.16, h:0.1, d:11.8, color:'#1a1410' },
+      /* 底部横梁 */
+      { shape:'box', x:15.5, y:0.15, z:6.5, w:0.18, h:0.18, d:11.8, color:'#1a1410' },
+      /* 竖栏杆 × 18（沿 z 均匀分布） */
+      { shape:'box', x:15.5, y:0, z:1.1, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:1.75, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:2.4, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:3.05, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:3.7, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:4.35, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:5.0, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:5.65, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:6.3, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:6.95, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:7.6, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:8.25, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:8.9, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:9.55, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:10.2, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:10.85, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:11.5, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      /* 封条（红布条）*/
+      { shape:'box', x:15.55, y:1.6, z:6.5, w:0.02, h:0.5, d:0.6, color:'#5a0a0a' },
+
+      /* 消防栓 */
       { shape:'cyl',    x:11.5, y:0, z:4.5, w:0.5, h:0.08, color:'#5a1510' },
       { shape:'cyl',    x:11.5, y:0.08, z:4.5, w:0.4, h:0.7, color:'#8a2424' },
       { shape:'sphere', x:11.5, y:0.85, z:4.5, w:0.42, color:'#8a2424' },
       { shape:'cyl',    x:11.2, y:0.35, z:4.5, w:0.1, h:0.18, color:'#5a1510' },
       { shape:'cyl',    x:11.8, y:0.35, z:4.5, w:0.1, h:0.18, color:'#5a1510' },
       { shape:'sphere', x:11.5, y:1.05, z:4.5, w:0.15, color:'#5a1510' },
+
+      /* 信箱 */
       { shape:'cyl',    x:18.5, y:0,    z:3.5, w:0.08, h:0.9, color:'#1a1814' },
       { shape:'bevelBox', x:18.5, y:0.9, z:3.5, w:0.5, h:0.6, d:0.4, bevel:0.05, color:'#3a2a1a' },
       { shape:'box',    x:18.5, y:1.5, z:3.5, w:0.55, h:0.04, d:0.45, color:'#2a1e10' },
+
+      /* 消防栓（远处）*/
       { shape:'cyl',    x:20.0, y:0,    z:11.5, w:0.4, h:0.08, color:'#5a1510' },
       { shape:'cyl',    x:20.0, y:0.08, z:11.5, w:0.3, h:0.5, color:'#8a2424' },
       { shape:'sphere', x:20.0, y:0.65, z:11.5, w:0.32, color:'#8a2424' },
+
+      /* 树 */
       { shape:'cyl',    x:18.5, y:0, z:7.5, w:0.4, h:2.4, color:'#0a0604' },
       { shape:'cyl',    x:18.5, y:2.4, z:7.5, w:0.6, h:0.1, color:'#0a0604' },
       { shape:'sphere', x:18.5, y:3.0, z:7.5, w:2.2, color:'#1a2010' },
       { shape:'sphere', x:17.8, y:3.3, z:7.8, w:1.6, color:'#16200c' },
       { shape:'sphere', x:19.2, y:3.2, z:7.2, w:1.8, color:'#16200c' },
+
+      /* 电线杆 */
       { shape:'cyl', x:5.5, y:0, z:6.5, w:0.15, h:5.5, color:'#1a1410' },
       { shape:'box', x:5.5, y:5.0, z:6.5, w:0.05, h:0.05, d:2.4, color:'#1a1410' },
       { shape:'box', x:5.5, y:4.7, z:6.5, w:0.05, h:0.05, d:1.8, color:'#1a1410' },
@@ -477,9 +603,7 @@ window.__SCENES_3D__ = {
     ]
   },
 
-  /* =====================================================
-     门前
-     ===================================================== */
+  /* ================== 门前（15×13） ================== */
   doorstep: {
     wallTex: { type:'burnt', base:'#150d0a' },
     floorTex: { base: '#0a0605' },
@@ -499,25 +623,37 @@ window.__SCENES_3D__ = {
       '111111111111111'
     ],
     props: [
+      /* 左侧窗户（房子的窗户） */
       { shape:'plate', x:5.5, y:1.4, z:2.0, w:1.2, h:1.2, color:'#050304' },
       { shape:'bevelBox', x:5.5, y:0, z:3.0, w:1.4, h:0.4, d:0.5, bevel:0.05, color:'#0a0605' },
-      { shape:'plate', x:8.5, y:0.0, z:5.5, w:1.2, h:2.0, color:'#0a0605' },
-      { shape:'arch',  x:8.5, y:0.0, z:5.5, w:1.0, h:2.3, d:0.1, seg:16, color:'#3a2218' },
+
+      /* ★ 主门（通向红屋顶）—— 北墙 z=1，门朝 +z */
+      ...buildDoor('n', 8.5, 1.12, 1.4, 2.40, '#6a3020'),
+
+      /* ★ 回街道门 —— 西墙 x=1，门朝 +x */
+      ...buildDoor('w', 1.12, 7.5, 1.2, 2.20, '#3a2218'),
+
+      /* 台阶 × 3 */
       { shape:'bevelBox', x:8.5, y:0,    z:10.5, w:2.2, h:0.14, d:0.6, bevel:0.04, color:'#0d0908' },
       { shape:'bevelBox', x:8.5, y:0.14, z:9.8,  w:1.8, h:0.14, d:0.6, bevel:0.04, color:'#0f0a08' },
       { shape:'bevelBox', x:8.5, y:0.28, z:9.1,  w:1.4, h:0.14, d:0.6, bevel:0.04, color:'#100b08' },
+
+      /* 台阶爪印 */
       { shape:'low', x:8.2, y:0.30, z:8.8, w:0.14, h:0.01, color:'#1a0808' },
       { shape:'low', x:8.6, y:0.30, z:8.6, w:0.14, h:0.01, color:'#1a0808' },
       { shape:'low', x:8.9, y:0.16, z:9.4, w:0.14, h:0.01, color:'#1a0808' },
       { shape:'low', x:8.5, y:0.16, z:9.2, w:0.14, h:0.01, color:'#1a0808' },
       { shape:'low', x:8.2, y:0.02, z:10.2, w:0.14, h:0.01, color:'#1a0808' },
       { shape:'low', x:8.6, y:0.02, z:10.0, w:0.14, h:0.01, color:'#1a0808' },
+
+      /* 门灯 × 2 */
       { shape:'cyl',    x:7.0, y:2.4, z:2.05, w:0.05, h:0.3, color:'#1a1410' },
       { shape:'cone',   x:7.0, y:2.25, z:2.15, w:0.32, h:0.2, color:'#1a1410' },
       { shape:'sphere', x:7.0, y:2.2, z:2.15, w:0.22, color:'#ffd27a' },
       { shape:'cyl',    x:10.0, y:2.4, z:2.05, w:0.05, h:0.3, color:'#1a1410' },
       { shape:'cone',   x:10.0, y:2.25, z:2.15, w:0.32, h:0.2, color:'#1a1410' },
       { shape:'sphere', x:10.0, y:2.2, z:2.15, w:0.22, color:'#ffd27a' },
+
       ...bloodSpots(8.5, 11.5, 16, 1.2, '#2a0404'),
       ...bloodTrail(8.5, 11.5, 8.5, 7.5, 12, '#1e0303'),
       ...hangingMeat(4.5, 1.6, 2.5, 's'),
@@ -535,15 +671,13 @@ window.__SCENES_3D__ = {
     things: [
       { id:'window', x:5.5,  y:2.0,  icon:'🪟', label:'烧穿的窗户',     scale:1.0 },
       { id:'lamp',   x:8.5,  y:2.0,  icon:'🕯', label:'烧化的门灯',     scale:0.7 },
-      { id:'door',   x:8.5,  y:5.5,  icon:'🚪', label:'门',             scale:1.2 },
+      { id:'door',   x:8.5,  y:2.5,  icon:'🚪', label:'门',             scale:1.2 },
       { id:'steps',  x:8.5,  y:10.5, icon:'🐾', label:'台阶上的脚印',   scale:0.6 },
       { id:'back',   x:2.5,  y:7.5,  icon:'⬅',  label:'回到街道',       scale:0.8 }
     ]
   },
 
-  /* =====================================================
-     红屋顶
-     ===================================================== */
+  /* ================== 红屋顶（15×13） ================== */
   house: {
     wallTex: { type:'burnt', base:'#100806' },
     floorTex: { base: '#0c0604' },
@@ -564,7 +698,10 @@ window.__SCENES_3D__ = {
     ],
     props: [
       { shape:'plate', x:3.5, y:1.4, z:2.0, w:1.2, h:1.2, color:'#040204' },
-      { shape:'plate', x:7.5, y:1.6, z:2.0, w:0.5, h:0.5, color:'#100a06' },
+
+      /* ★ 回门前的出口 —— 北墙 z=1，门朝 +z */
+      ...buildDoor('n', 7.5, 1.12, 1.4, 2.30, '#3a2218'),
+
       { shape:'bevelBox', x:2.0, y:0, z:6.5, w:0.5, h:2.0, d:1.2, bevel:0.04, color:'#0a0605' },
       { shape:'box',      x:2.0, y:0.6, z:6.5, w:0.55, h:0.04, d:1.25, color:'#1a1208' },
       { shape:'box',      x:2.0, y:1.2, z:6.5, w:0.55, h:0.04, d:1.25, color:'#1a1208' },
@@ -615,13 +752,11 @@ window.__SCENES_3D__ = {
         ack: true, ackId: 'photoBack' },
       { id:'chair',  x:3.5,  y:9.5,  icon:'🪑', label:'翻倒的摇椅',     scale:1.0 },
       { id:'bowl',   x:4.5,  y:11.5, icon:'🥣', label:'小碗',           scale:0.6 },
-      { id:'back',   x:2.5,  y:7.5,  icon:'⬅',  label:'回到门前',       scale:0.8 }
+      { id:'back',   x:7.5,  y:2.5,  icon:'⬅',  label:'回到门前',       scale:0.8 }
     ]
   },
 
-  /* =====================================================
-     配电房
-     ===================================================== */
+  /* ================== 配电房（12×11） ================== */
   powerstation: {
     wallTex: { type:'burnt', base:'#0e0c0c' },
     floorTex: { base: '#080606' },
@@ -676,9 +811,7 @@ window.__SCENES_3D__ = {
     ]
   },
 
-  /* =====================================================
-     屋顶
-     ===================================================== */
+  /* ================== 屋顶（20×16） ================== */
   rooftop: {
     wallTex: { type:'burnt', base:'#0c0a08' },
     floorTex: { base: '#060604' },
@@ -741,9 +874,7 @@ window.__SCENES_3D__ = {
     ]
   },
 
-  /* =====================================================
-     地下通道
-     ===================================================== */
+  /* ================== 地下通道（16×12） ================== */
   underpass: {
     wallTex: { type:'burnt', base:'#0e0e10' },
     floorTex: { base: '#060606' },
@@ -770,8 +901,10 @@ window.__SCENES_3D__ = {
       { shape:'sphere', x:10.5, y:2.15, z:2.0, w:0.15, color:'#40c040' },
       { shape:'bevelBox', x:11.5, y:0, z:10.5, w:1.2, h:0.15, d:0.9, bevel:0.04, color:'#1a1208' },
       { shape:'bevelBox', x:11.5, y:0.15, z:10.5, w:0.8, h:0.12, d:0.7, bevel:0.04, color:'#1a1208' },
-      { shape:'plate', x:14.4, y:0.0, z:7.5, w:0.8, h:1.7, color:'#0a0806' },
-      { shape:'sphere', x:14.35, y:0.8, z:7.5, w:0.06, color:'#a08040' },
+
+      /* ★ 配电房门 —— 东墙 x=15，门朝 -x（房间内） */
+      ...buildDoor('e', 14.62, 7.5, 1.0, 1.80, '#2a1a12'),
+
       ...bloodSpots(6.5, 2.5, 8, 0.5, '#240303'),
       ...bloodSpots(11.5, 10.5, 12, 0.9, '#2a0404'),
       ...bloodTrail(3.5, 2.5, 3.5, 10.5, 16, '#1e0303'),
@@ -793,14 +926,12 @@ window.__SCENES_3D__ = {
       { id:'graffiti',  x:6.5,  y:2.0,  icon:'✍',  label:'墙上的字',       scale:0.8 },
       { id:'emergency', x:10.5, y:2.0,  icon:'💡', label:'应急灯',         scale:0.7 },
       { id:'trash',     x:11.5, y:10.5, icon:'📦', label:'角落里的纸板',   scale:0.9 },
-      { id:'room',      x:14.4, y:7.5,  icon:'⚡', label:'配电房的门',     scale:0.9 },
+      { id:'room',      x:13.0, y:7.5,  icon:'⚡', label:'配电房的门',     scale:0.9 },
       { id:'back',      x:1.5,  y:7.5,  icon:'⬅',  label:'回到街道',       scale:0.8 }
     ]
   },
 
-  /* =====================================================
-     河堤
-     ===================================================== */
+  /* ================== 河堤（15×11） ================== */
   riverside: {
     wallTex: { type:'burnt', base:'#0c0a0c' },
     floorTex: { base: '#060608' },
@@ -859,9 +990,7 @@ window.__SCENES_3D__ = {
     ]
   },
 
-  /* =====================================================
-     邻屋 —— ★ 门已修正
-     ===================================================== */
+  /* ================== 邻屋（15×13） ================== */
   neighbor: {
     wallTex: { type:'burnt', base:'#0a0606' },
     floorTex: { base: '#060404' },
@@ -880,19 +1009,19 @@ window.__SCENES_3D__ = {
       '111111111111111'
     ],
     props: [
-      /* --- 窗户 --- */
+      /* 窗户 */
       { shape:'plate', x:7.5, y:1.4, z:2.0, w:1.8, h:1.6, color:'#0a0404' },
       { shape:'plate', x:7.5, y:1.7, z:1.95, w:0.6, h:0.4, color:'#3a0808' },
 
-      /* --- 日历 --- */
+      /* 日历 */
       { shape:'plate', x:3.5, y:1.6, z:2.0, w:0.5, h:0.7, color:'#2a1e10' },
 
-      /* --- 小床 --- */
+      /* 小床 */
       { shape:'bevelBox', x:12.5, y:0,   z:7.5, w:2.2, h:0.5, d:1.2, bevel:0.06, color:'#0a0605' },
       { shape:'bevelBox', x:12.5, y:0.5, z:7.5, w:2.0, h:0.1, d:1.0, bevel:0.04, color:'#1a1008' },
       { shape:'low',      x:12.5, y:0.6, z:7.5, w:0.9, h:0.04, color:'#0a0605' },
 
-      /* --- 地板爪印 --- */
+      /* 地板爪印 */
       { shape:'low', x:7.5, y:0.005, z:5.5, w:0.14, h:0.01, color:'#1a0808' },
       { shape:'low', x:7.5, y:0.005, z:7.5, w:0.14, h:0.01, color:'#1a0808' },
       { shape:'low', x:7.5, y:0.005, z:9.5, w:0.14, h:0.01, color:'#1a0808' },
@@ -901,55 +1030,24 @@ window.__SCENES_3D__ = {
       { shape:'low', x:9.5, y:0.005, z:9.5, w:0.14, h:0.01, color:'#1a0808' },
       { shape:'low', x:11.5, y:0.005, z:7.5, w:0.14, h:0.01, color:'#1a0808' },
 
-      /* ★★★ 修正：通向院子的门 —— 嵌在东墙 x=14 上 ★★★ */
-      /* 门框 —— 凸出墙面 */
-      { shape:'box', x:13.85, y:0, z:7.5, w:0.30, h:2.60, d:1.70, color:'#1a0a08' },
-      /* 门板 —— 凹进去 */
-      { shape:'box', x:13.94, y:0.10, z:7.5, w:0.08, h:2.35, d:1.40, color:'#5a2814' },
-      /* 门板装饰横线 × 3 */
-      { shape:'box', x:13.90, y:0.55, z:7.5, w:0.04, h:0.04, d:1.20, color:'#3a1808' },
-      { shape:'box', x:13.90, y:1.20, z:7.5, w:0.04, h:0.04, d:1.20, color:'#3a1808' },
-      { shape:'box', x:13.90, y:1.85, z:7.5, w:0.04, h:0.04, d:1.20, color:'#3a1808' },
-      /* 门把手 */
-      { shape:'sphere', x:13.80, y:1.10, z:7.05, w:0.10, color:'#d0a040' },
-      /* 门楣横板 */
-      { shape:'box', x:13.87, y:2.50, z:7.5, w:0.25, h:0.14, d:1.80, color:'#3a2418' },
-      /* 门两侧壁柱 */
-      { shape:'box', x:13.87, y:0, z:6.60, w:0.24, h:2.58, d:0.14, color:'#3a2418' },
-      { shape:'box', x:13.87, y:0, z:8.40, w:0.24, h:2.58, d:0.14, color:'#3a2418' },
-      /* 门牌号 */
-      { shape:'sphere', x:13.76, y:2.15, z:7.5, w:0.09, color:'#8a6a3a' },
-      /* 门槛石 */
-      { shape:'box', x:13.90, y:0, z:7.5, w:0.2, h:0.05, d:1.5, color:'#2a1a12' },
+      /* ★ 通向院子的门 —— 东墙 x=14，门朝 -x */
+      ...buildDoor('e', 13.62, 7.5, 1.4, 2.30, '#5a2814'),
 
-      /* --- 屋后门（西墙）--- */
-      { shape:'box', x:1.10, y:0, z:11.5, w:0.24, h:2.40, d:1.50, color:'#1a0a08' },
-      { shape:'box', x:1.20, y:0.08, z:11.5, w:0.08, h:2.20, d:1.20, color:'#4a2412' },
-      { shape:'sphere', x:1.30, y:1.05, z:11.15, w:0.09, color:'#a08040' },
+      /* ★ 来的路 —— 南墙 z=12，门朝 -z */
+      ...buildDoor('s', 3.5, 11.62, 1.2, 2.20, '#3a2218'),
 
-      /* --- 血迹 --- */
       ...bloodSpots(7.5, 5.5, 16, 1.4, '#2a0404'),
       ...bloodTrail(7.5, 5.5, 12.5, 7.5, 14, '#1e0303'),
-
-      /* --- 悬挂物 --- */
       ...hangingMeat(1.6, 1.6, 5.5, 'e'),
       ...hangingMeat(1.6, 1.6, 9.5, 'e'),
       ...hangingMeat(14.4, 1.6, 4.5, 'w'),
       ...hangingMeat(14.4, 1.6, 10.5, 'w'),
-
-      /* --- 墙壁手印 --- */
       ...wallHandprint(1.6, 1.5, 7.5),
       ...wallHandprint(14.4, 1.5, 6.5),
       ...wallHandprint(14.4, 1.2, 9.5),
-
-      /* --- 桌子 --- */
       { shape:'bevelBox', x:3.5, y:0.5, z:8.5, w:1.0, h:0.5, d:0.7, bevel:0.04, color:'#0a0605' },
       { shape:'sphere',   x:3.5, y:1.1, z:8.5, w:0.2, color:'#1a0a08' },
-
-      /* --- 地毯 --- */
       { shape:'low', x:5.5, y:0.006, z:4.5, w:1.8, h:0.015, color:'#3a0404' },
-
-      /* --- 门边挂钟 --- */
       { shape:'cyl',    x:1.8, y:2.2, z:7.5, w:0.35, h:0.06, color:'#1a0a08' },
       { shape:'sphere', x:1.78, y:2.2, z:7.5, w:0.05, color:'#3a1010' }
     ],
@@ -958,8 +1056,8 @@ window.__SCENES_3D__ = {
       { id:'neighborCalendar', x:3.5,  y:2.0,  icon:'📅', label:'停在那一夜的日历', scale:0.8 },
       { id:'neighborFloor',    x:7.5,  y:7.5,  icon:'🐾', label:'地板上的爪印',     scale:0.7 },
       { id:'neighborBed',      x:12.5, y:7.5,  icon:'🛏', label:'塌了一半的小床',   scale:1.0 },
-      { id:'back',             x:2.5,  y:11.5, icon:'⬅',  label:'来的路',           scale:0.8 },
-      { id:'exit',             x:13.5, y:7.5,  icon:'➡',  label:'通向院子的门',     scale:0.9 }
+      { id:'back',             x:3.5,  y:10.5, icon:'⬅',  label:'来的路',           scale:0.8 },
+      { id:'exit',             x:12.5, y:7.5,  icon:'➡',  label:'通向院子的门',     scale:0.9 }
     ]
   }
 };
