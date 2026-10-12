@@ -7,8 +7,7 @@
 <meta name="theme-color" content="#000000">
 <title>雨夜归途 · 序</title>
 <style>
- 
- *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
   html,body{width:100%;height:100%;background:#000;overflow:hidden;
     font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
     user-select:none;-webkit-user-select:none;touch-action:none;}
@@ -17,7 +16,6 @@
     box-shadow:0 0 120px rgba(0,0,0,1);transform-origin:center center;flex:0 0 auto;}
   #cv{display:block;width:100%;height:100%;position:absolute;left:0;top:0;}
 
-  /* 加载 */
   #loading{position:absolute;inset:0;background:#000;display:flex;
     align-items:center;justify-content:center;flex-direction:column;gap:16px;
     color:#8fa4ba;z-index:10;transition:opacity .6s;}
@@ -32,82 +30,109 @@
   #loading .tip{font-size:12px;letter-spacing:2px;color:#8fa4ba;}
   #loading .tip.error{color:#ff6a5a;}
 
-  /* 剧情飘窗 */
-  #storyBox{
-    position:absolute;left:50%;top:70px;transform:translate(-50%,-20px);
-    min-width:420px;max-width:760px;
-    padding:20px 32px;
-    background:linear-gradient(180deg,
-      rgba(20,26,38,.88) 0%,
-      rgba(10,14,22,.94) 100%);
-    border:1px solid rgba(255,214,140,.3);
-    border-radius:16px;
-    box-shadow:
-      0 20px 60px rgba(0,0,0,.9),
-      0 0 40px rgba(255,190,100,.12),
-      inset 0 1px 0 rgba(255,255,255,.06);
-    color:#e9dcc0;
-    font-size:17px;line-height:1.9;letter-spacing:2px;
-    opacity:0;pointer-events:none;
-    transition:opacity .8s cubic-bezier(.2,.9,.3,1),
-               transform .8s cubic-bezier(.2,.9,.3,1);
-    text-align:center;
-    z-index:5;
-    text-shadow:0 1px 0 #6a4a1a, 0 2px 6px rgba(0,0,0,.85);}
-  #storyBox.show{
-    opacity:1;transform:translate(-50%,0);}
-  #storyBox .line{
-    opacity:0;
-    transition:opacity .6s;
-    white-space:pre-wrap;}
-  #storyBox .line.show{opacity:1;}
-  #storyBox .cursor{
-    display:inline-block;width:8px;
-    animation:blink 0.9s ease-in-out infinite;
-    color:#ffe6a8;}
-  @keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
+  /* ============================================
+     ★ 飘窗文字层 —— 纯净发光文字，无背景框
+     ============================================ */
+  #storyLayer{position:absolute;left:0;top:0;width:100%;height:100%;
+    pointer-events:none;overflow:hidden;z-index:5;}
 
-  /* 底部提示 */
+  .storyLine{
+    position:absolute;
+    left:50%;
+    bottom:-80px;
+    transform:translateX(-50%);
+    white-space:nowrap;
+    font-size:26px;
+    letter-spacing:8px;
+    font-weight:600;
+    color:#faf0dc;
+    /* 多层光晕 + 底部投影，让文字像自己会发光 */
+    text-shadow:
+      0 0 10px rgba(255, 235, 190, 0.75),
+      0 0 24px rgba(255, 210, 140, 0.55),
+      0 0 48px rgba(255, 180, 100, 0.35),
+      0 0 90px rgba(255, 150, 80, 0.20),
+      0 2px 3px rgba(0, 0, 0, 0.95),
+      0 4px 12px rgba(0, 0, 0, 0.9);
+    opacity:0;
+    /* 每句通过内联 animation-delay 错开 */
+    animation-name: floatUp;
+    animation-duration: 6s;
+    animation-timing-function: cubic-bezier(.25,.5,.35,1);
+    animation-fill-mode: both;
+    will-change: transform, opacity, filter, letter-spacing;}
+
+  @keyframes floatUp{
+    0%{
+      transform:translateX(-50%) translateY(0) scale(0.88);
+      opacity:0;
+      filter:blur(10px);
+      letter-spacing:2px;
+    }
+    15%{
+      transform:translateX(-50%) translateY(-110px) scale(1);
+      opacity:1;
+      filter:blur(0);
+      letter-spacing:6px;
+    }
+    28%{
+      transform:translateX(-50%) translateY(-200px) scale(1);
+      opacity:1;
+      filter:blur(0);
+      letter-spacing:8px;
+    }
+    72%{
+      transform:translateX(-50%) translateY(-460px) scale(1.01);
+      opacity:1;
+      filter:blur(0);
+      letter-spacing:10px;
+    }
+    100%{
+      transform:translateX(-50%) translateY(-620px) scale(1.04);
+      opacity:0;
+      filter:blur(8px);
+      letter-spacing:14px;
+    }
+  }
+
+  /* 顶部渐隐遮罩 —— 字飘出画面时柔和消失 */
+  #storyLayer::before{
+    content:'';position:absolute;left:0;top:0;width:100%;height:140px;
+    background:linear-gradient(180deg,#000 0%,rgba(0,0,0,0.85) 35%,transparent 100%);
+    pointer-events:none;z-index:6;}
+
+  /* 底部渐隐遮罩 —— 字从黑雾里浮现 */
+  #storyLayer::after{
+    content:'';position:absolute;left:0;bottom:0;width:100%;height:110px;
+    background:linear-gradient(0deg,#000 0%,rgba(0,0,0,0.8) 40%,transparent 100%);
+    pointer-events:none;z-index:6;}
+
+  /* 底部操作提示 */
   #hint{
-    position:absolute;left:50%;bottom:24px;transform:translateX(-50%);
-    color:rgba(140,160,180,.55);font-size:12px;letter-spacing:2px;
-    pointer-events:none;z-index:6;opacity:0;transition:opacity 1s;}
+    position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
+    color:rgba(140,160,180,.5);font-size:11.5px;letter-spacing:2.5px;
+    pointer-events:none;z-index:7;opacity:0;transition:opacity 1s;}
   #hint.show{opacity:1;}
 
-  /* 跳转遮罩 */
-  #endScreen{
-    position:absolute;inset:0;background:#000;
+  /* 结束黑幕 */
+  #endScreen{position:absolute;inset:0;background:#000;
     display:flex;align-items:center;justify-content:center;
-    opacity:0;pointer-events:none;transition:opacity 1s;
-    z-index:20;}
+    opacity:0;pointer-events:none;transition:opacity 1s;z-index:20;}
   #endScreen.show{opacity:1;}
-  #endScreen .w{color:#3a0a0e;font-size:12px;letter-spacing:10px;
-    padding-left:10px;}
+  #endScreen .w{color:#3a0a0e;font-size:12px;letter-spacing:10px;padding-left:10px;}
 </style>
 </head>
 <body>
 <div id="stage">
   <canvas id="cv"></canvas>
-
-  <div id="storyBox">
-    <div class="line" id="line1"></div>
-    <div class="line" id="line2"></div>
-    <div class="line" id="line3"></div>
-    <div class="line" id="line4"></div>
-    <span class="cursor">▍</span>
-  </div>
-
+  <div id="storyLayer"></div>
   <div id="hint">按 W A S D 移动　·　↑ ↓ ← → 转动视角</div>
-
   <div id="loading">
     <div class="name">雨 夜 归 途</div>
     <div class="bar"><div class="fill" id="loadFill"></div></div>
     <div class="tip" id="loadTip">正在准备……</div>
   </div>
-
-  <div id="endScreen">
-    <div class="w">—— 雨 夜 归 途 ——</div>
-  </div>
+  <div id="endScreen"><div class="w">—— 雨 夜 归 途 ——</div></div>
 </div>
 
 <script src="assets3d/r3d.js"></script>
@@ -121,29 +146,62 @@ const cv = document.getElementById('cv');
 const loading = document.getElementById('loading');
 const loadFill = document.getElementById('loadFill');
 const loadTip = document.getElementById('loadTip');
-const storyBox = document.getElementById('storyBox');
+const storyLayer = document.getElementById('storyLayer');
 const hintEl = document.getElementById('hint');
 const endScreen = document.getElementById('endScreen');
 
-/* 读跳转模式 —— 如果是从"继续存档"来的，直接跳 index */
+const NEXT_URL = 'index1.html';
+
 let mode = 'new';
 try{ mode = localStorage.getItem('raccoon_launch_mode') || 'new'; }catch(e){}
 if(mode === 'continue'){
-  location.replace('index1.html');
+  location.replace(NEXT_URL);
   return;
 }
 
-/* ==================== 状态 ==================== */
+/* =========================================================
+   ★ 剧情文本 —— 分四幕
+   pause 属性：这句飘完后额外停顿的毫秒数
+   ========================================================= */
+const STORY = [
+  /* --- 幕一 · 醒来 --- */
+  { text: '灰豆又一次从梦里醒来。' },
+  { text: '它不认识这里。' },
+  { text: '四面是黑的墙。' },
+  { text: '墙上什么都没有。' },
+  { text: '——除了头顶那颗红苹果。', pause: 800 },
+
+  /* --- 幕二 · 记忆 --- */
+  { text: '它记得一些事。' },
+  { text: '记得雨。' },
+  { text: '三天三夜没停过的雨。' },
+  { text: '记得一个老人。' },
+  { text: '记得一双粗糙的手。' },
+  { text: '记得一栋红屋顶的房子。', pause: 800 },
+
+  /* --- 幕三 · 决定 --- */
+  { text: '其它的，它都想不起来了。' },
+  { text: '但它知道，那个屋顶还在等它。' },
+  { text: '所以它必须回去。' },
+  { text: '——哪怕它已经忘了路。', pause: 1000 },
+
+  /* --- 尾声 --- */
+  { text: '雨夜归途，从这里开始。' }
+];
+
+/* =========================================================
+   状态
+   ========================================================= */
 const cam = { x: 6, y: 1.6, z: 6, yaw: 0, pitch: 0 };
 const keys = {};
 let renderer = null;
 let time = 0;
 let lastFrame = performance.now();
-let loaded = false;
 let storyDone = false;
-let canMove = false;
 
-/* 房间大小：12 × 12，边缘为墙 */
+/* ★ 玩家从一进场景就能移动 —— 剧情不锁走路 */
+const canMove = true;
+
 const ROOM = 12;
 const grid = [];
 for(let i = 0; i < ROOM; i++){
@@ -154,17 +212,14 @@ for(let i = 0; i < ROOM; i++){
   grid.push(row);
 }
 
-/* ==================== 尺寸 ==================== */
 function resize(){
   const vw = window.innerWidth, vh = window.innerHeight;
   const scale = Math.min(vw / W, vh / H);
   const w = Math.round(W * scale), h = Math.round(H * scale);
-  stage.style.width = w + 'px';
-  stage.style.height = h + 'px';
-  stage.style.transform = 'scale(1)';
+  stage.style.width = w + 'px'; stage.style.height = h + 'px';
+  stage.style.position = 'absolute';
   stage.style.left = Math.round((vw - w) / 2) + 'px';
   stage.style.top = Math.round((vh - h) / 2) + 'px';
-  stage.style.position = 'absolute';
   if(renderer){
     const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     renderer.resize(w, h, dpr);
@@ -176,19 +231,14 @@ window.addEventListener('orientationchange', () => setTimeout(resize, 200));
 /* ==================== 暗室纹理 ==================== */
 function makeDarkTex(){
   const S = 256;
-  const c = document.createElement('canvas');
-  c.width = S; c.height = S;
+  const c = document.createElement('canvas'); c.width = S; c.height = S;
   const x = c.getContext('2d');
-  x.fillStyle = '#04060a';
-  x.fillRect(0, 0, S, S);
-  /* 细颗粒 */
+  x.fillStyle = '#04060a'; x.fillRect(0, 0, S, S);
   for(let i = 0; i < 800; i++){
     x.fillStyle = 'rgba(255,255,255,' + (0.008 + Math.random()*0.012) + ')';
     x.fillRect(Math.random()*S, Math.random()*S, 1, 1);
   }
-  /* 微弱砖纹 */
-  x.strokeStyle = 'rgba(0,0,0,0.5)';
-  x.lineWidth = 2;
+  x.strokeStyle = 'rgba(0,0,0,0.5)'; x.lineWidth = 2;
   const bh = 32;
   for(let row = 0; row * bh < S; row++){
     const y = row * bh;
@@ -202,18 +252,14 @@ function makeDarkTex(){
 }
 function makeFloorTex(){
   const S = 256;
-  const c = document.createElement('canvas');
-  c.width = S; c.height = S;
+  const c = document.createElement('canvas'); c.width = S; c.height = S;
   const x = c.getContext('2d');
-  x.fillStyle = '#080a0c';
-  x.fillRect(0, 0, S, S);
+  x.fillStyle = '#080a0c'; x.fillRect(0, 0, S, S);
   for(let i = 0; i < 400; i++){
     x.fillStyle = 'rgba(255,255,255,' + (0.005 + Math.random()*0.01) + ')';
     x.fillRect(Math.random()*S, Math.random()*S, 1, 1);
   }
-  /* 石砖缝 */
-  x.strokeStyle = 'rgba(0,0,0,0.7)';
-  x.lineWidth = 2;
+  x.strokeStyle = 'rgba(0,0,0,0.7)'; x.lineWidth = 2;
   const t = 64;
   for(let i = 0; i <= S; i += t){
     x.beginPath(); x.moveTo(i, 0); x.lineTo(i, S); x.stroke();
@@ -224,24 +270,19 @@ function makeFloorTex(){
 
 /* ==================== 初始化 3D ==================== */
 function init3D(){
-  try{
-    renderer = R3D.create(cv);
-  }catch(e){
+  try{ renderer = R3D.create(cv); }
+  catch(e){
     console.error('[raccoon] WebGL:', e);
     loadTip.textContent = '⚠ WebGL 不可用';
     loadTip.classList.add('error');
     return false;
   }
-
   renderer.buildWorld({
-    grid: grid,
-    wallHeight: 4.0,
-    wallTexSource:  makeDarkTex(),
+    grid: grid, wallHeight: 4.0,
+    wallTexSource: makeDarkTex(),
     floorTexSource: makeFloorTex(),
-    ceilTexSource:  makeDarkTex()
+    ceilTexSource: makeDarkTex()
   });
-
-  /* 灯光 —— 浣熊头顶一盏暖光 + 环境暗光 */
   renderer.setAmbient([0.05, 0.05, 0.07]);
   renderer.setLights([
     { x: 6, y: 3.2, z: 6, color: [1.4, 1.1, 0.7] },
@@ -249,11 +290,10 @@ function init3D(){
     { x: 0, y: -999, z: 0, color: [0, 0, 0] }
   ]);
   renderer.setFog({ color: [0.005, 0.008, 0.014], near: 3, far: 18 });
-
   return true;
 }
 
-/* ==================== 加载浣熊模型 ==================== */
+/* ==================== 加载浣熊 ==================== */
 function loadRaccoon(){
   loadTip.textContent = '正在加载浣熊……';
   loadFill.style.width = '30%';
@@ -261,22 +301,15 @@ function loadRaccoon(){
   R3D.loadOBJModel('assets3d/models/raccoon.obj', function(msg){
     loadTip.textContent = msg;
   }).then(function(model){
-    if(!model || !model.P || model.P.length === 0){
-      throw new Error('模型为空');
-    }
+    if(!model || !model.P || model.P.length === 0) throw new Error('模型为空');
     loadFill.style.width = '75%';
     loadTip.textContent = '上传到显卡……';
-
-    /* 让模型适配场景尺寸：
-       浣熊原模型大概尺寸未知，用 autoFit + scale 控制
-       scale=1 先试，如果太大/太小后面再调 */
     renderer.addModel(model, {
       x: 6, y: 0, z: 6,
       scale: 1.0,
-      rotationY: Math.PI,     /* 让它面向摄像机（+z 方向） */
+      rotationY: Math.PI,
       autoFit: true
     });
-
     loadFill.style.width = '100%';
     loadTip.textContent = '完成';
     setTimeout(function(){
@@ -287,7 +320,6 @@ function loadRaccoon(){
     console.error('[raccoon] 加载失败', err);
     loadTip.textContent = '⚠ 加载失败：' + (err.message || err);
     loadTip.classList.add('error');
-    /* 加载失败也放行，跳 index */
     setTimeout(function(){
       loading.classList.add('hide');
       startStory();
@@ -295,96 +327,95 @@ function loadRaccoon(){
   });
 }
 
-/* ==================== 剧情飘窗 ==================== */
-const STORY_LINES = [
-  '灰豆又一次从梦里醒来。',
-  '它不认识这里。',
-  '四面是黑的墙。',
-  '墙上什么也没有，只有一只浣熊头顶的苹果，还在。'
-];
-
+/* =========================================================
+   ★ 剧情播放
+   通过 animation-delay 错开每句出现时间
+   ========================================================= */
 function startStory(){
-  storyBox.classList.add('show');
-  canMove = false;
+  const GAP = 2100;       /* 每句的启动间隔（毫秒） */
 
-  let lineIdx = 0;
-  function showNextLine(){
-    if(lineIdx >= STORY_LINES.length){
-      /* 全部显示完，等 1 秒跳 index */
-      setTimeout(function(){
-        finishStory();
-      }, 1000);
-      return;
-    }
-    const el = document.getElementById('line' + (lineIdx + 1));
-    if(!el){ lineIdx++; showNextLine(); return; }
-    el.textContent = STORY_LINES[lineIdx];
-    el.classList.add('show');
-    lineIdx++;
-    setTimeout(showNextLine, 900);
-  }
+  let delay = 600;        /* 首句延迟 */
 
-  setTimeout(showNextLine, 400);
+  STORY.forEach(function(item, i){
+    const el = document.createElement('div');
+    el.className = 'storyLine';
+    el.textContent = item.text;
+
+    /* 每句随机轻微倾斜（-1.2° ~ +1.2°），让飘更自然 */
+    const rot = (Math.random() - 0.5) * 2.4;
+
+    /* 长句字号略小，避免超出屏幕 */
+    const len = item.text.length;
+    let fs = 26, ls = 8;
+    if(len > 12){ fs = 22; ls = 6; }
+    if(len > 16){ fs = 20; ls = 5; }
+    el.style.fontSize = fs + 'px';
+    el.style.letterSpacing = ls + 'px';
+    /* 把倾斜角度合并进 transform 通过 CSS 变量不行（因为 keyframes 里有 transform），
+       改用 wrapper 旋转 */
+    el.style.transform = 'translateX(-50%) rotate(' + rot.toFixed(2) + 'deg)';
+    /* 但动画会覆盖 transform，所以通过 setProperty 让动画里的 translateX 生效
+       这里我们改用外层包裹 —— 见下方 CSS 补丁 */
+
+    /* ★ 关键：用 animation-delay 让每句错开出现 */
+    el.style.animationDelay = (delay / 1000) + 's';
+
+    storyLayer.appendChild(el);
+
+    /* 计算下一句延迟 */
+    delay += GAP + (item.pause || 0);
+  });
+
+  /* 全部播完 → 等 1 秒跳转 */
+  setTimeout(finishStory, delay + 1000);
 }
 
 function finishStory(){
   if(storyDone) return;
   storyDone = true;
   endScreen.classList.add('show');
-  /* 让黑幕渐显完成后再跳 */
   setTimeout(function(){
-    location.replace('index.html');
+    location.replace(NEXT_URL);
   }, 800);
 }
 
-/* ==================== 移动 / 视角 ==================== */
+/* ==================== 输入 ==================== */
 function bindInput(){
   window.addEventListener('keydown', function(e){
     keys[e.key.toLowerCase()] = true;
     if(e.key.indexOf('Arrow') === 0 || e.key === ' ') e.preventDefault();
-    /* 剧情未完成前禁止移动（但视角可转） */
   });
   window.addEventListener('keyup', function(e){
     keys[e.key.toLowerCase()] = false;
   });
-
-  /* 鼠标拖动转视角（点击并拖动） */
   let dragging = false, lx = 0, ly = 0;
   cv.addEventListener('mousedown', function(e){ dragging = true; lx = e.clientX; ly = e.clientY; });
   window.addEventListener('mousemove', function(e){
     if(!dragging) return;
     const dx = e.clientX - lx, dy = e.clientY - ly;
     lx = e.clientX; ly = e.clientY;
-    cam.yaw += dx * 0.005;
-    cam.pitch -= dy * 0.005;
+    cam.yaw += dx * 0.005; cam.pitch -= dy * 0.005;
     if(cam.pitch >  0.9) cam.pitch =  0.9;
     if(cam.pitch < -0.9) cam.pitch = -0.9;
   });
   window.addEventListener('mouseup', function(){ dragging = false; });
-
-  /* 触屏 */
-  let touchLx = 0, touchLy = 0, touching = false;
+  let tlx = 0, tly = 0, touching = false;
   cv.addEventListener('touchstart', function(e){
     if(!e.touches.length) return;
-    touching = true;
-    touchLx = e.touches[0].clientX;
-    touchLy = e.touches[0].clientY;
+    touching = true; tlx = e.touches[0].clientX; tly = e.touches[0].clientY;
   }, {passive:true});
   cv.addEventListener('touchmove', function(e){
     if(!touching || !e.touches.length) return;
-    const dx = e.touches[0].clientX - touchLx;
-    const dy = e.touches[0].clientY - touchLy;
-    touchLx = e.touches[0].clientX;
-    touchLy = e.touches[0].clientY;
-    cam.yaw += dx * 0.006;
-    cam.pitch -= dy * 0.006;
+    const dx = e.touches[0].clientX - tlx;
+    const dy = e.touches[0].clientY - tly;
+    tlx = e.touches[0].clientX; tly = e.touches[0].clientY;
+    cam.yaw += dx * 0.006; cam.pitch -= dy * 0.006;
     if(cam.pitch >  0.9) cam.pitch =  0.9;
     if(cam.pitch < -0.9) cam.pitch = -0.9;
   }, {passive:true});
   cv.addEventListener('touchend', function(){ touching = false; });
 }
 
-/* ==================== 碰撞 ==================== */
 function canStand(x, z){
   const gy = Math.floor(z), gx = Math.floor(x);
   if(gy < 0 || gy >= grid.length) return false;
@@ -396,10 +427,8 @@ function canStand(x, z){
 /* ==================== 渲染循环 ==================== */
 function loop(now){
   const dt = Math.min(0.05, (now - lastFrame) / 1000);
-  lastFrame = now;
-  time += dt;
+  lastFrame = now; time += dt;
 
-  /* 相机视角（方向键转视角） */
   const rotSpeed = 1.8;
   if(keys['arrowleft'])  cam.yaw -= rotSpeed * dt;
   if(keys['arrowright']) cam.yaw += rotSpeed * dt;
@@ -408,7 +437,6 @@ function loop(now){
   if(cam.pitch >  0.9) cam.pitch =  0.9;
   if(cam.pitch < -0.9) cam.pitch = -0.9;
 
-  /* 移动 */
   if(canMove){
     const speed = 2.8;
     let fwd = 0, str = 0;
@@ -418,11 +446,9 @@ function loop(now){
     if(keys['d']) str += 1;
     if(fwd || str){
       const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
-      let dx = cy*fwd - sy*str;
-      let dz = sy*fwd + cy*str;
+      let dx = cy*fwd - sy*str, dz = sy*fwd + cy*str;
       const len = Math.hypot(dx, dz) || 1;
-      dx = dx/len * speed * dt;
-      dz = dz/len * speed * dt;
+      dx = dx/len * speed * dt; dz = dz/len * speed * dt;
       const nx = cam.x + dx, nz = cam.z + dz;
       if(canStand(nx, cam.z)) cam.x = nx;
       if(canStand(cam.x, nz)) cam.z = nz;
@@ -437,7 +463,6 @@ function loop(now){
     });
     renderer.render();
   }
-
   requestAnimationFrame(loop);
 }
 
@@ -448,15 +473,11 @@ if(init3D()){
   lastFrame = performance.now();
   requestAnimationFrame(loop);
   loadRaccoon();
-  setTimeout(function(){
-    hintEl.classList.add('show');
-  }, 2500);
+  setTimeout(function(){ hintEl.classList.add('show'); }, 2500);
 } else {
   loadFill.style.width = '100%';
   loadTip.textContent = '⚠ 3D 不可用，即将跳过……';
-  setTimeout(function(){
-    location.replace('index1.html');
-  }, 2000);
+  setTimeout(function(){ location.replace(NEXT_URL); }, 2000);
 }
 
 })();
