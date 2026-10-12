@@ -7,6 +7,219 @@
 <meta name="theme-color" content="#04070b">
 <title>雨夜归途</title>
 <link rel="stylesheet" href="styles.css">
+<style>
+/* ============================================================
+   ★ 商店面板样式（内联）
+   ============================================================ */
+
+/* 商店按钮 —— 放在设置按钮左边 */
+#btnShop{
+  position:absolute;right:76px;top:18px;width:46px;height:46px;border-radius:13px;
+  background:linear-gradient(180deg,rgba(20,32,46,.85),rgba(9,15,24,.9));
+  border:1px solid rgba(150,190,230,.22);color:#9fb6cc;font-size:21px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  pointer-events:auto;transition:.2s;font-family:inherit;}
+#btnShop:active{transform:scale(.9);}
+
+/* 主播模式的"临时点亮"按钮往左挪一格，避免和商店按钮重叠 */
+#btnTempLight{right:132px !important;}
+
+/* 商店面板 */
+#shopPanel{
+  position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%) scale(.94);
+  width:620px;max-height:600px;border-radius:20px;
+  background:linear-gradient(180deg,
+    rgba(16,22,34,.988),
+    rgba(8,12,20,.995));
+  border:1px solid rgba(255,214,140,.35);
+  box-shadow:
+    0 40px 100px rgba(0,0,0,.95),
+    0 0 60px rgba(255,196,110,.12),
+    inset 0 1px 0 rgba(255,255,255,.05);
+  opacity:0;pointer-events:none;
+  transition:opacity .25s,transform .25s;
+  overflow:hidden;z-index:35;
+  display:flex;flex-direction:column;}
+#shopPanel.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1);}
+
+#shopPanel .close-x{
+  position:absolute;right:16px;top:16px;z-index:3;
+  width:38px;height:38px;border-radius:11px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;cursor:pointer;font-family:inherit;
+  color:#9fb6cc;background:rgba(22,34,50,.9);
+  border:1px solid rgba(140,180,220,.28);
+  transition:transform .15s,color .15s,border-color .15s,background .15s;}
+#shopPanel .close-x:hover{color:#ffd98f;border-color:rgba(255,214,140,.7);background:rgba(34,50,70,.95);}
+#shopPanel .close-x:active{transform:scale(.88);}
+
+/* 头部 */
+.shop-head{
+  padding:20px 28px 14px;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid rgba(255,214,140,.12);
+  flex:0 0 auto;
+  padding-right:70px;}
+.shop-head h3{
+  font-size:20px;letter-spacing:10px;color:#ffd98f;font-weight:700;
+  padding-left:10px;
+  text-shadow:0 0 22px rgba(255,200,120,.5),
+              0 1px 0 #6a4a1a,
+              0 2px 0 #3a2a10;}
+
+.shop-currency{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 18px;border-radius:14px;
+  background:linear-gradient(180deg,rgba(40,30,14,.85),rgba(20,14,6,.9));
+  border:1px solid rgba(255,214,140,.35);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06);}
+.shop-currency .coin{font-size:20px;}
+.shop-currency .amount{
+  font-size:20px;font-weight:800;color:#ffe6a8;
+  font-variant-numeric:tabular-nums;
+  text-shadow:0 0 12px rgba(255,200,110,.5);}
+.shop-currency .label{
+  font-size:11px;letter-spacing:2px;color:rgba(200,180,140,.7);}
+
+/* 滚动区 */
+.shop-scroll{
+  padding:16px 22px 20px;
+  overflow-y:auto;flex:1 1 auto;
+  -webkit-overflow-scrolling:touch;}
+
+.shop-section-title{
+  font-size:12px;letter-spacing:6px;
+  color:rgba(255,214,140,.65);
+  padding:8px 4px 12px;font-weight:600;}
+
+/* 限时礼包 */
+.shop-featured{display:flex;gap:14px;margin-bottom:20px;}
+
+.featured-card{
+  position:relative;flex:1;
+  padding:16px 14px 14px;
+  border-radius:14px;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255,214,140,.14), transparent 60%),
+    linear-gradient(180deg,rgba(44,30,18,.9),rgba(20,14,8,.95));
+  border:1px solid rgba(255,214,140,.35);
+  box-shadow:
+    0 6px 20px rgba(0,0,0,.6),
+    inset 0 1px 0 rgba(255,255,255,.06);
+  cursor:pointer;
+  transition:transform .15s,border-color .2s,box-shadow .2s;}
+.featured-card:hover{
+  border-color:rgba(255,214,140,.75);
+  transform:translateY(-2px);
+  box-shadow:
+    0 10px 28px rgba(0,0,0,.7),
+    0 0 30px rgba(255,200,120,.2);}
+.featured-card:active{transform:scale(.98);}
+
+.fc-tag{
+  position:absolute;left:10px;top:-8px;
+  padding:3px 10px;border-radius:8px;
+  font-size:10px;letter-spacing:2px;font-weight:800;
+  background:linear-gradient(180deg,#e0a040,#a06a20);
+  color:#1a0e04;
+  box-shadow:0 3px 10px rgba(0,0,0,.5);}
+.fc-tag.hot{
+  background:linear-gradient(180deg,#ff6a5a,#c9342a);
+  color:#fff;}
+
+.fc-icon{font-size:32px;margin-bottom:6px;
+  filter:drop-shadow(0 4px 10px rgba(0,0,0,.7));}
+.fc-name{
+  font-size:14px;font-weight:700;letter-spacing:1.5px;
+  color:#ffe6a8;margin-bottom:4px;
+  text-shadow:0 0 10px rgba(255,200,110,.4);}
+.fc-desc{
+  font-size:10.5px;line-height:1.6;
+  color:rgba(180,200,220,.7);margin-bottom:10px;}
+.fc-price{display:flex;align-items:baseline;gap:8px;}
+.fc-price .old{
+  font-size:11px;color:rgba(150,150,150,.6);
+  text-decoration:line-through;}
+.fc-price .now{
+  font-size:18px;font-weight:800;color:#ffd98f;
+  text-shadow:0 0 14px rgba(255,200,110,.5);}
+
+/* 小鱼干网格 */
+.shop-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;margin-bottom:20px;}
+
+.shop-item{
+  position:relative;
+  padding:16px 10px 12px;
+  border-radius:14px;
+  background:linear-gradient(180deg,
+    rgba(26,38,54,.92),
+    rgba(10,16,26,.95));
+  border:1px solid rgba(150,190,230,.22);
+  box-shadow:
+    0 4px 16px rgba(0,0,0,.55),
+    inset 0 1px 0 rgba(255,255,255,.05);
+  text-align:center;cursor:pointer;
+  transition:transform .15s,border-color .2s,box-shadow .2s;}
+.shop-item:hover{
+  border-color:rgba(255,214,140,.7);
+  transform:translateY(-2px);
+  box-shadow:
+    0 8px 24px rgba(0,0,0,.7),
+    0 0 26px rgba(255,200,120,.18);}
+.shop-item:active{transform:scale(.97);}
+
+.si-double{
+  position:absolute;left:50%;top:-8px;transform:translateX(-50%);
+  padding:3px 12px;border-radius:8px;white-space:nowrap;
+  font-size:10px;letter-spacing:1.5px;font-weight:800;
+  background:linear-gradient(180deg,#ffd98f,#e0a040);
+  color:#1a0e04;
+  box-shadow:0 3px 12px rgba(255,180,80,.5);
+  animation:doublePulse 2s ease-in-out infinite;}
+@keyframes doublePulse{
+  0%,100%{box-shadow:0 3px 12px rgba(255,180,80,.5);}
+  50%{box-shadow:0 3px 20px rgba(255,200,120,.85);}
+}
+
+.si-tag{
+  position:absolute;right:8px;top:8px;
+  font-size:9px;letter-spacing:1px;
+  color:#7ff0b0;font-weight:700;
+  text-shadow:0 0 8px rgba(80,240,150,.5);}
+
+.si-icon{font-size:26px;margin-bottom:4px;
+  filter:drop-shadow(0 3px 8px rgba(0,0,0,.6));}
+.si-amount{
+  font-size:22px;font-weight:800;color:#ffe6a8;
+  font-variant-numeric:tabular-nums;
+  text-shadow:0 0 14px rgba(255,200,110,.5);
+  margin-bottom:2px;}
+.si-price{
+  font-size:12px;letter-spacing:1px;
+  color:rgba(180,200,220,.75);}
+
+/* 支付方式行 */
+.shop-pay-row{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 4px;margin-bottom:10px;
+  border-top:1px solid rgba(255,214,140,.08);
+  border-bottom:1px solid rgba(255,214,140,.08);}
+.pay-icon{font-size:18px;opacity:.7;}
+.pay-text{
+  font-size:11px;letter-spacing:1.5px;
+  color:rgba(140,160,180,.6);}
+
+/* 底部提示 */
+.shop-notice{
+  font-size:9.5px;letter-spacing:1.2px;
+  color:rgba(120,140,160,.45);
+  text-align:center;line-height:1.8;
+  padding-top:8px;}
+</style>
 </head>
 <body>
 <div id="stage">
@@ -15,6 +228,7 @@
     <div id="hud">
       <div id="inv"></div>
       <button id="btnTempLight">✨ 临时点亮全局</button>
+      <button id="btnShop">🛒</button>
       <button id="btnSet">⚙</button>
     </div>
 
@@ -102,6 +316,98 @@
         <div class="row">
           <span>游戏进度</span>
           <button class="danger" id="btnReset">清除所有进度</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ★ 商店面板 -->
+    <div id="shopPanel">
+      <button class="close-x" id="btnCloseShop">✕</button>
+
+      <div class="shop-head">
+        <h3>补 给 站</h3>
+        <div class="shop-currency">
+          <span class="coin">🐟</span>
+          <span class="amount">0</span>
+          <span class="label">小鱼干</span>
+        </div>
+      </div>
+
+      <div class="shop-scroll">
+        <!-- 限时礼包 -->
+        <div class="shop-section-title">限 时 礼 包</div>
+        <div class="shop-featured">
+          <div class="featured-card">
+            <div class="fc-tag">限时</div>
+            <div class="fc-icon">🎁</div>
+            <div class="fc-name">老周的杂货袋</div>
+            <div class="fc-desc">猫粮 × 10 · 手电电池 × 3 · 钩爪 × 1</div>
+            <div class="fc-price">
+              <span class="old">¥ 68</span>
+              <span class="now">¥ 30</span>
+            </div>
+          </div>
+          <div class="featured-card">
+            <div class="fc-tag hot">热卖</div>
+            <div class="fc-icon">🔦</div>
+            <div class="fc-name">雨夜寻路包</div>
+            <div class="fc-desc">手电筒（亮） × 1 · 电池 × 5</div>
+            <div class="fc-price">
+              <span class="old">¥ 30</span>
+              <span class="now">¥ 12</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 小鱼干充值 -->
+        <div class="shop-section-title">小 鱼 干 充 值</div>
+        <div class="shop-grid">
+          <div class="shop-item" data-amount="6">
+            <div class="si-double">首充双倍</div>
+            <div class="si-icon">🐟</div>
+            <div class="si-amount">6</div>
+            <div class="si-price">¥ 6</div>
+          </div>
+          <div class="shop-item" data-amount="30">
+            <div class="si-icon">🐟</div>
+            <div class="si-amount">30</div>
+            <div class="si-price">¥ 30</div>
+          </div>
+          <div class="shop-item" data-amount="68">
+            <div class="si-tag">送 6</div>
+            <div class="si-icon">🐟</div>
+            <div class="si-amount">68</div>
+            <div class="si-price">¥ 68</div>
+          </div>
+          <div class="shop-item" data-amount="128">
+            <div class="si-tag">送 15</div>
+            <div class="si-icon">🐟</div>
+            <div class="si-amount">128</div>
+            <div class="si-price">¥ 128</div>
+          </div>
+          <div class="shop-item" data-amount="328">
+            <div class="si-tag">送 45</div>
+            <div class="si-icon">🐟</div>
+            <div class="si-amount">328</div>
+            <div class="si-price">¥ 328</div>
+          </div>
+          <div class="shop-item" data-amount="648">
+            <div class="si-tag">送 100</div>
+            <div class="si-icon">🐟</div>
+            <div class="si-amount">648</div>
+            <div class="si-price">¥ 648</div>
+          </div>
+        </div>
+
+        <!-- 支付方式（装饰） -->
+        <div class="shop-pay-row">
+          <span class="pay-icon">💳</span>
+          <span class="pay-icon">📱</span>
+          <span class="pay-text">支持微信支付 · 支付宝 · 银行卡</span>
+        </div>
+
+        <div class="shop-notice">
+          抵制不良游戏，拒绝盗版游戏。适度游戏益脑，沉迷游戏伤身。
         </div>
       </div>
     </div>
@@ -239,5 +545,89 @@
 </div>
 
 <script src="game.js"></script>
+<script>
+/* ============================================================
+   ★ 商店逻辑（内联 IIFE，不污染 game.js 作用域）
+   ============================================================ */
+(function(){
+'use strict';
+
+var shopPanel = document.getElementById('shopPanel');
+var btnShop   = document.getElementById('btnShop');
+var btnClose  = document.getElementById('btnCloseShop');
+var shopToastTimer = null;
+
+if(!shopPanel || !btnShop) return;
+
+/* ---------- 打开 / 关闭 ---------- */
+function openShop(){
+  shopPanel.classList.add('show');
+}
+function closeShop(){
+  shopPanel.classList.remove('show');
+}
+
+btnShop.addEventListener('click', function(e){
+  e.stopPropagation();
+  openShop();
+});
+btnClose.addEventListener('click', function(e){
+  e.stopPropagation();
+  closeShop();
+});
+shopPanel.addEventListener('click', function(e){
+  if(e.target === shopPanel) closeShop();
+});
+
+/* ---------- 商店内 toast 反馈（复用 #toast 元素） ---------- */
+function shopToast(msg){
+  var t = document.getElementById('toast');
+  if(!t) return;
+  t.textContent = msg;
+  t.classList.remove('gold');
+  void t.offsetWidth;
+  t.classList.add('gold');
+  t.classList.add('show');
+  clearTimeout(shopToastTimer);
+  shopToastTimer = setTimeout(function(){
+    t.classList.remove('show');
+    t.classList.remove('gold');
+  }, 2800);
+}
+
+/* ---------- 档位点击反馈 ---------- */
+var items = document.querySelectorAll('.shop-item, .featured-card');
+for(var i = 0; i < items.length; i++){
+  (function(el){
+    el.addEventListener('click', function(e){
+      e.stopPropagation();
+      var amount = el.getAttribute('data-amount');
+      if(amount){
+        shopToast('🐟 小鱼干 × ' + amount + ' · 感谢支持！');
+      } else {
+        shopToast('🎁 礼包已放入背包 · 感谢支持！');
+      }
+    });
+  })(items[i]);
+}
+
+/* ---------- Esc 关闭（捕获阶段，优先于 game.js 的处理） ---------- */
+window.addEventListener('keydown', function(e){
+  if(e.key !== 'Escape') return;
+  if(!shopPanel.classList.contains('show')) return;
+  e.stopImmediatePropagation();
+  e.preventDefault();
+  closeShop();
+}, true);
+
+/* ---------- 返回键关闭（捕获阶段） ---------- */
+window.addEventListener('popstate', function(e){
+  if(!shopPanel.classList.contains('show')) return;
+  e.stopImmediatePropagation();
+  closeShop();
+}, true);
+
+})();
+</script>
 </body>
 </html>
