@@ -49,7 +49,6 @@
     font-size:68px;letter-spacing:26px;
     color:#f2e6cb;font-weight:600;
     padding-left:26px;
-    /* 多层阴影 —— 模拟从文字正面往后挤出的厚度 */
     text-shadow:
       0 1px 0 #8a6a3a,
       0 2px 0 #7a5a2a,
@@ -61,10 +60,8 @@
       0 8px 0 #1a0600,
       0 10px 20px rgba(0,0,0,0.9),
       0 14px 32px rgba(0,0,0,0.6);
-    /* 3D 倾斜 —— 微微向后仰，像从屏幕上立起来 */
     transform:perspective(900px) rotateX(-4deg);
     transform-origin:center bottom;
-    /* 动态辉光用 filter 做，和 text-shadow 分开 */
     filter:drop-shadow(0 0 28px rgba(255,196,110,.5));
     animation:titleGlow 4.5s ease-in-out infinite;
   }
@@ -73,7 +70,6 @@
     50%{filter:drop-shadow(0 0 52px rgba(255,206,130,.78));}
   }
 
-  /* 副标题 —— 轻微浮起 */
   #titleContent .sub{
     margin:14px 0 48px;
     font-size:15px;letter-spacing:10px;
@@ -110,20 +106,15 @@
     border:1px solid rgba(200,170,110,.45);
     border-radius:14px;
     font-family:inherit;
-    /* 3D 透视 */
     transform:perspective(600px) rotateX(6deg);
     transform-origin:center top;
-    /* 多层 box-shadow 做厚度 */
     box-shadow:
-      /* 顶部内高光 */
       inset 0 1px 0 rgba(255,255,255,.14),
       inset 0 -1px 0 rgba(0,0,0,.5),
-      /* 底部三层厚边 */
       0 3px 0 #0f1a26,
       0 6px 0 #0a131c,
       0 9px 0 #060c12,
       0 12px 0 #03060a,
-      /* 落地阴影 */
       0 16px 26px rgba(0,0,0,0.75),
       0 0 20px rgba(255,190,110,.08);
     transition:transform .14s ease, box-shadow .14s ease, background .25s ease, border-color .25s ease;
@@ -143,7 +134,6 @@
         rgba(28,42,60,.99) 100%);
     border-color:rgba(255,214,140,.95);
     color:#ffe6b0;
-    /* 向上抬起 */
     transform:perspective(600px) rotateX(6deg) translateY(-4px);
     box-shadow:
       inset 0 1px 0 rgba(255,255,255,.18),
@@ -156,7 +146,6 @@
       0 0 34px rgba(255,190,110,.24);
   }
   #titleContent button:active:not(:disabled){
-    /* 按下 —— 厚度缩短，向下压 */
     transform:perspective(600px) rotateX(6deg) translateY(6px);
     box-shadow:
       inset 0 2px 4px rgba(0,0,0,.5),
@@ -171,7 +160,6 @@
     transform:perspective(600px) rotateX(6deg);
   }
 
-  /* 提示小字 */
   #titleContent .tip{
     font-size:13px;letter-spacing:2.5px;
     color:#66798c;
@@ -202,7 +190,6 @@
     color:#ffffff;
     background:radial-gradient(circle at 36% 28%,
       #b0f0c2 0%, #5fc97c 45%, #3ea65f 78%, #1a5a2a 100%);
-    /* 立体凸起：多层环 + 内阴影 */
     box-shadow:
       0 0 0 2px rgba(255,255,255,.95),
       0 0 0 3px rgba(95,201,124,.6),
@@ -248,19 +235,15 @@
       rgba(18,12,6,.94) 100%);
     border:1px solid rgba(255,214,140,.5);
     box-shadow:
-      /* 顶部内高光 */
       inset 0 1px 0 rgba(255,255,255,.12),
       inset 0 -1px 0 rgba(0,0,0,.6),
-      /* 底部厚边 */
       0 2px 0 #1a1208,
       0 4px 0 #100a04,
       0 6px 0 #080400,
-      /* 落地阴影 */
       0 12px 26px rgba(0,0,0,0.75),
       0 0 34px rgba(255,196,110,.22);
     pointer-events:none;z-index:10;
     max-width:300px;
-    /* 3D 倾斜 —— 像卡片浮在空中 */
     transform:perspective(1400px) rotateY(-6deg) rotateX(4deg) translateZ(30px);
     transform-origin:right center;
     animation:thanksIn 1.2s cubic-bezier(.2,.9,.3,1) .85s both;}
@@ -323,7 +306,7 @@
     border-top:1px dashed rgba(255,140,110,.22);}
 
   /* ============================================================
-     底部健康忠告 —— 轻微浮起
+     底部健康忠告
      ============================================================ */
   #titleContent .health-tip{
     position:absolute;left:50%;bottom:22px;
@@ -391,6 +374,11 @@
       <div class="row">
         <span class="dot"></span>
         <span class="role"><span class="live">主播</span></span>
+        <span class="name">小椰家的傻芙芙</span>
+      </div>
+      <div class="row">
+        <span class="dot"></span>
+        <span class="role"><span class="live">主播</span></span>
         <span class="name">水水_SSS</span>
       </div>
       <div class="msg">第一个不打主线直接挑战血腥线的勇者</div>
@@ -428,7 +416,6 @@ function shadeHex(hex, amt){
   return 'rgb(' + r + ',' + g + ',' + b + ')';
 }
 
-/* 纹理生成 —— 和上一版一致 */
 function makeWallTex(){
   const S = 1024;
   const c = document.createElement('canvas'); c.width = S; c.height = S;
@@ -573,9 +560,6 @@ function makeCeilTex(){
   return c;
 }
 
-/* =========================================================
-   场景构件（和上一版一致，为节省篇幅以下为精简表达）
-   ========================================================= */
 function buildHouse(){
   const hx = 13, hz = 2.5, hw = 7.0, hd = 3.5;
   const faceZ = hz + hd / 2;
@@ -939,9 +923,6 @@ function buildStreetPosts(){
   return arr;
 }
 
-/* =========================================================
-   场景 grid
-   ========================================================= */
 const grid = [
   '11111111111111111111111111',
   '10000000000000000000000001',
@@ -996,9 +977,6 @@ const props = [
   ...buildStreetPosts()
 ];
 
-/* =========================================================
-   相机
-   ========================================================= */
 const ORBIT = {
   centerX: 13.0, centerZ: 10.0,
   radiusX: 6.0, radiusZ: 4.5,
@@ -1019,9 +997,6 @@ const fogColor    = [0.010, 0.018, 0.035];
 const fogNear     = 4.5;
 const fogFar      = 22.0;
 
-/* =========================================================
-   初始化
-   ========================================================= */
 let renderer = null;
 let rainDrops = [];
 let ripples = [];
@@ -1216,9 +1191,6 @@ function drawFx(dt, t){
   fxCtx.fillRect(0, 0, W, H);
 }
 
-/* =========================================================
-   相机更新
-   ========================================================= */
 const cam = {
   x: 13, y: 1.9, z: 14.5,
   yaw: -Math.PI / 2,
@@ -1242,9 +1214,6 @@ function updateOrbitCamera(t){
   cam.pitch = Math.atan2(dy, distXZ) + Math.sin(t * 0.9) * 0.02;
 }
 
-/* =========================================================
-   主循环
-   ========================================================= */
 let time = 0;
 let lastFrame = performance.now();
 
@@ -1278,9 +1247,6 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 
-/* =========================================================
-   resize
-   ========================================================= */
 function resize(){
   const vw = window.innerWidth, vh = window.innerHeight;
   const scale = Math.min(vw / W, vh / H);
@@ -1302,9 +1268,6 @@ function resize(){
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', function(){ setTimeout(resize, 200); });
 
-/* =========================================================
-   存档 / 按钮
-   ========================================================= */
 const btnNew  = document.getElementById('btnNew');
 const btnCont = document.getElementById('btnCont');
 
@@ -1329,9 +1292,6 @@ btnCont.addEventListener('click', function(){
   goGame('continue');
 });
 
-/* =========================================================
-   启动
-   ========================================================= */
 function start(){
   const ok = init3D();
   initFx();
