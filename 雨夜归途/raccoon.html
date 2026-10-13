@@ -30,9 +30,6 @@
   #loading .tip{font-size:12px;letter-spacing:2px;color:#8fa4ba;}
   #loading .tip.error{color:#ff6a5a;}
 
-  /* ============================================
-     ★ 飘窗文字层 —— 纯净发光文字
-     ============================================ */
   #storyLayer{position:absolute;left:0;top:0;width:100%;height:100%;
     pointer-events:none;overflow:hidden;z-index:5;}
 
@@ -193,7 +190,6 @@ let time = 0;
 let lastFrame = performance.now();
 let storyDone = false;
 
-/* ★ 玩家一进场景就能移动 */
 const canMove = true;
 
 const ROOM = 12;
@@ -279,11 +275,8 @@ function init3D(){
   });
   renderer.setAmbient([0.08, 0.08, 0.11]);
   renderer.setLights([
-    /* 主光 —— 头顶照浣熊 */
     { x: 6, y: 3.4, z: 4.5, color: [2.0, 1.6, 1.0] },
-    /* 侧逆光 —— 勾边 */
     { x: 4, y: 2.5, z: 2.5, color: [0.7, 0.9, 1.2] },
-    /* 相机方向补光 */
     { x: 6, y: 2.0, z: 9.0, color: [0.9, 0.8, 0.6] }
   ]);
   renderer.setFog({ color: [0.005, 0.008, 0.014], near: 3, far: 18 });
@@ -300,7 +293,7 @@ function loadRaccoon(){
   }).then(function(model){
     if(!model || !model.P || model.P.length === 0) throw new Error('模型为空');
 
-    /* ★ 计算包围盒 —— 自动适配房间尺寸 */
+    /* 计算包围盒 */
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
     let minZ = Infinity, maxZ = -Infinity;
@@ -311,7 +304,7 @@ function loadRaccoon(){
       if(pz < minZ) minZ = pz; if(pz > maxZ) maxZ = pz;
     }
     const height = maxY - minY;
-    const targetHeight = 2.4;   /* 浣熊目标高度 2.4 米 */
+    const targetHeight = 2.4;
     const autoScale = targetHeight / Math.max(height, 0.001);
 
     console.log('[raccoon] 包围盒 X:',
@@ -324,7 +317,6 @@ function loadRaccoon(){
     loadFill.style.width = '75%';
     loadTip.textContent = '上传到显卡……';
 
-    /* ★ 放在 (6, 0, 4) —— 相机从 (6, 1.8, 10.5) 看向 -z 方向 */
     renderer.addModel(model, {
       x: 6, y: 0, z: 4,
       scale: autoScale,
@@ -350,18 +342,17 @@ function loadRaccoon(){
 }
 
 /* =========================================================
-   ★ 剧情播放 —— 用 animation-delay 错开每句
+   ★ 剧情播放
    ========================================================= */
 function startStory(){
-  const GAP = 2100;       /* 每句启动间隔（毫秒） */
-  let delay = 600;        /* 首句延迟 */
+  const GAP = 2100;
+  let delay = 600;
 
   STORY.forEach(function(item){
     const el = document.createElement('div');
     el.className = 'storyLine';
     el.textContent = item.text;
 
-    /* 长句字号略小 */
     const len = item.text.length;
     let fs = 26, ls = 8;
     if(len > 12){ fs = 22; ls = 6; }
@@ -369,7 +360,6 @@ function startStory(){
     el.style.fontSize = fs + 'px';
     el.style.letterSpacing = ls + 'px';
 
-    /* ★ 关键：用 animation-delay 让每句错开 */
     el.style.animationDelay = (delay / 1000) + 's';
 
     storyLayer.appendChild(el);
@@ -377,7 +367,6 @@ function startStory(){
     delay += GAP + (item.pause || 0);
   });
 
-  /* 全部播完 → 等 1 秒跳转 */
   setTimeout(finishStory, delay + 1000);
 }
 
@@ -483,6 +472,7 @@ function loop(now){
 /* ==================== 启动 ==================== */
 resize();
 if(init3D()){
+  resize();        /* ★ 关键修复：renderer 已创建，再调一次让 canvas / viewport 尺寸正确 */
   bindInput();
   lastFrame = performance.now();
   requestAnimationFrame(loop);
