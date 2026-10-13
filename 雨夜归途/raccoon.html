@@ -152,17 +152,14 @@ if(mode === 'continue'){
 
 /* =========================================================
    ★ 剧情文本
-   pause 属性：这句播完后额外停顿的毫秒数
    ========================================================= */
 const STORY = [
-  /* --- 幕一 · 醒来 --- */
   { text: '灰豆又一次从梦里醒来。' },
   { text: '它不认识这里。' },
   { text: '四面是黑的墙。' },
   { text: '墙上什么都没有。' },
   { text: '——除了头顶那颗红苹果。', pause: 800 },
 
-  /* --- 幕二 · 记忆 --- */
   { text: '它记得一些事。' },
   { text: '记得雨。' },
   { text: '三天三夜没停过的雨。' },
@@ -170,13 +167,11 @@ const STORY = [
   { text: '记得一双粗糙的手。' },
   { text: '记得一栋红屋顶的房子。', pause: 800 },
 
-  /* --- 幕三 · 决定 --- */
   { text: '其它的，它都想不起来了。' },
   { text: '但它知道，那个屋顶还在等它。' },
   { text: '所以它必须回去。' },
   { text: '——哪怕它已经忘了路。', pause: 1000 },
 
-  /* --- 尾声 --- */
   { text: '雨夜归途，从这里开始。' }
 ];
 
@@ -273,11 +268,15 @@ function init3D(){
     floorTexSource: makeFloorTex(),
     ceilTexSource: makeDarkTex()
   });
-  renderer.setAmbient([0.08, 0.08, 0.11]);
+
+  /* ★ 环境光 0.18 —— 暗但能看清 */
+  renderer.setAmbient([0.18, 0.18, 0.22]);
+
+  /* 4 个方向补光，确保浣熊任何朝向都被照亮 */
   renderer.setLights([
-    { x: 6, y: 3.4, z: 4.5, color: [2.0, 1.6, 1.0] },
-    { x: 4, y: 2.5, z: 2.5, color: [0.7, 0.9, 1.2] },
-    { x: 6, y: 2.0, z: 9.0, color: [0.9, 0.8, 0.6] }
+    { x: 6,  y: 3.4, z: 4.5, color: [2.4, 1.9, 1.2] },   /* 顶部主光 */
+    { x: 6,  y: 2.0, z: 8.5, color: [1.6, 1.5, 1.3] },   /* 从相机方向打过来 */
+    { x: 3.5, y: 2.0, z: 4.0, color: [0.9, 1.1, 1.4] }    /* 左侧偏冷 */
   ]);
   renderer.setFog({ color: [0.005, 0.008, 0.014], near: 3, far: 18 });
   return true;
@@ -293,7 +292,6 @@ function loadRaccoon(){
   }).then(function(model){
     if(!model || !model.P || model.P.length === 0) throw new Error('模型为空');
 
-    /* 计算包围盒 */
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
     let minZ = Infinity, maxZ = -Infinity;
@@ -320,7 +318,7 @@ function loadRaccoon(){
     renderer.addModel(model, {
       x: 6, y: 0, z: 4,
       scale: autoScale,
-      rotationY: Math.PI,
+      rotationY: 0,       /* ★ 从 Math.PI 改成 0，正面朝相机 */
       autoFit: true
     });
 
@@ -341,9 +339,7 @@ function loadRaccoon(){
   });
 }
 
-/* =========================================================
-   ★ 剧情播放
-   ========================================================= */
+/* ==================== 剧情播放 ==================== */
 function startStory(){
   const GAP = 2100;
   let delay = 600;
@@ -359,11 +355,9 @@ function startStory(){
     if(len > 16){ fs = 20; ls = 5; }
     el.style.fontSize = fs + 'px';
     el.style.letterSpacing = ls + 'px';
-
     el.style.animationDelay = (delay / 1000) + 's';
 
     storyLayer.appendChild(el);
-
     delay += GAP + (item.pause || 0);
   });
 
@@ -472,7 +466,7 @@ function loop(now){
 /* ==================== 启动 ==================== */
 resize();
 if(init3D()){
-  resize();        /* ★ 关键修复：renderer 已创建，再调一次让 canvas / viewport 尺寸正确 */
+  resize();        /* ★ renderer 已创建，再调一次让 canvas / viewport 尺寸正确 */
   bindInput();
   lastFrame = performance.now();
   requestAnimationFrame(loop);
