@@ -1,6 +1,6 @@
 /* =========================================================
-   r3d.js — 极简真 3D 引擎 v5
-   v4 + OBJ 模型加载 + 自动分块（支持大模型）
+   r3d.js — 极简真 3D 引擎 v6
+   v5 + 修复 addModel 中心偏移 / 补 setBillboards / 支持 bevelBox·ramp
    ========================================================= */
 (function(global){
 'use strict';
@@ -272,7 +272,7 @@ function buildTorus(P, N, U, I, cx, y0, cz, R, r, segU, segV){
   }
 }
 
-/* ==================== ★ OBJ 加载 ==================== */
+/* ==================== OBJ 加载 ==================== */
 function parseOBJ(text){
   const V=[], VT=[], VN=[];
   const outP=[], outN=[], outU=[], outI=[];
@@ -283,7 +283,7 @@ function parseOBJ(text){
   const lines = text.split('\n');
   for(let li=0; li<lines.length; li++){
     const line = lines[li];
-    if(!line || line.charCodeAt(0) === 35) continue; /* # 注释 */
+    if(!line || line.charCodeAt(0) === 35) continue;
     const sp = line.indexOf(' ');
     if(sp < 0) continue;
     const tag = line.slice(0, sp);
@@ -440,7 +440,7 @@ function Renderer(canvas){
   this.ceilMesh=null; this.ceilTex=null; this.ceilHasTex=false;
 
   this.props = [];
-  this.models = [];  /* ★ 大模型 */
+  this.models = [];
 
   this._vp = M4.create();
   this._proj = M4.create();
@@ -482,6 +482,12 @@ Renderer.prototype.setFog = function(f){
   if(f.near !== undefined) this.fog.near = f.near;
   if(f.far !== undefined) this.fog.far = f.far;
 };
+
+/* ★ 新增：engine.js 需要，v5 里没有 */
+Renderer.prototype.setBillboards = function(list){
+  /* no-op：本引擎不支持 billboard，直接忽略 */
+};
+
 Renderer.prototype.textureFromCanvas = function(source, opts){ return makeTexture(this.gl, source, opts); };
 Renderer.prototype._loadTex = function(existing, source, opts){
   const gl = this.gl;
@@ -554,7 +560,10 @@ Renderer.prototype.buildProps = function(list){
     const h = p.h!==undefined?p.h:0.6;
     const d = p.d!==undefined?p.d:(p.w||0.6);
     const cx=p.x, y0=p.y!==undefined?p.y:0, cz=p.z;
+    /* ★ 新增 bevelBox / ramp 支持（scenes.js 里大量使用） */
     if(shape==='box') buildBox(P,N,U,I,cx,y0,cz,w,h,d);
+    else if(shape==='bevelBox') buildBox(P,N,U,I,cx,y0,cz,w,h,d);
+    else if(shape==='ramp') buildBox(P,N,U,I,cx,y0,cz,w,h,d);
     else if(shape==='cyl') buildCylinder(P,N,U,I,cx,y0,cz,w/2,h,p.seg||24);
     else if(shape==='plate') buildBox(P,N,U,I,cx,y0,cz,w,h,0.06);
     else if(shape==='low') buildCylinder(P,N,U,I,cx,y0,cz,w/2,h,p.seg||12);
@@ -577,7 +586,12 @@ Renderer.prototype.buildProps = function(list){
   }
 };
 
-/* ★★★ 大模型加载 —— 分块上传 ★★★ */
+/* =========================================================
+   ★ addModel —— v6 修复：
+     1. 用包围盒中心（不是顶点平均值）做居中
+     2. 变换顺序：先居中归零 → 缩放 → 旋转 → 平移到目标位置
+     3. 原来"先旋转后偏移"的顺序在 rotationY 非 0 时会把模型甩飞
+   ========================================================= */
 Renderer.prototype.addModel = function(model, options){
   const gl = this.gl;
   options = options || {};
@@ -586,37 +600,47 @@ Renderer.prototype.addModel = function(model, options){
   const oz = options.z || 0;
   const scale = options.scale !== undefined ? options.scale : 1;
   const rotationY = options.rotationY || 0;
-  const autoFit = options.autoFit !== false; /* 自动把底部对齐到 y=0 */
+  const autoFit = options.autoFit !== false;
 
   const srcP = model.P, srcN = model.N, srcU = model.U, srcI = model.I;
 
-  /* 计算包围盒，用于自动对齐底部和居中 */
+  /* ---- 计算包围盒 ---- */
+  let minX = Infinity, maxX = -Infinity;
   let minY = Infinity, maxY = -Infinity;
-  let sumX = 0, sumZ = 0;
+  let minZ = Infinity, maxZ = -Infinity;
   for(let i = 0; i < srcP.length; i += 3){
-    sumX += srcP[i];
-    sumZ += srcP[i+2];
-    if(srcP[i+1] < minY) minY = srcP[i+1];
-    if(srcP[i+1] > maxY) maxY = srcP[i+1];
+    const x = srcP[i], y = srcP[i+1], z = srcP[i+2];
+    if(x < minX) minX = x; if(x > maxX) maxX = x;
+    if(y < minY) minY = y; if(y > maxY) maxY = y;
+    if(z < minZ) minZ = z; if(z > maxZ) maxZ = z;
   }
-  const vertCount = srcP.length / 3;
-  const avgX = sumX / vertCount;
-  const avgZ = sumZ / vertCount;
-
-  const bottomOffset = autoFit ? -minY * scale : 0;
-  const centerX = autoFit ? -avgX * scale : 0;
-  const centerZ = autoFit ? -avgZ * scale : 0;
+  const boxCX = (minX + maxX) / 2;
+  const boxCZ = (minZ + maxZ) / 2;
 
   const cosR = Math.cos(rotationY), sinR = Math.sin(rotationY);
 
   const P = new Float32Array(srcP.length);
   for(let i = 0; i < srcP.length; i += 3){
-    const x = srcP[i] * scale;
-    const y = srcP[i+1] * scale + bottomOffset;
-    const z = srcP[i+2] * scale;
-    P[i]   = x * cosR + z * sinR + ox + centerX;
-    P[i+1] = y + oy;
-    P[i+2] = -x * sinR + z * cosR + oz + centerZ;
+    let px = srcP[i];
+    let py = srcP[i+1];
+    let pz = srcP[i+2];
+    /* ★ 步骤 1：模型自身坐标系里，把中心移到原点、底部贴到 y=0 */
+    if(autoFit){
+      px -= boxCX;
+      pz -= boxCZ;
+      py -= minY;
+    }
+    /* ★ 步骤 2：缩放（此时原点在模型中心，缩放不会再偏移） */
+    px *= scale;
+    py *= scale;
+    pz *= scale;
+    /* ★ 步骤 3：绕 Y 轴旋转 */
+    const rx =  px * cosR + pz * sinR;
+    const rz = -px * sinR + pz * cosR;
+    /* ★ 步骤 4：平移到世界坐标 */
+    P[i]   = rx + ox;
+    P[i+1] = py + oy;
+    P[i+2] = rz + oz;
   }
 
   const N = new Float32Array(srcN.length);
@@ -747,7 +771,6 @@ Renderer.prototype.render = function(){
     this._drawMesh(p.mesh, null, false, p.color[0], p.color[1], p.color[2], 0);
   }
 
-  /* ★ 大模型（多块） */
   for(let i=0;i<this.models.length;i++){
     const m = this.models[i];
     this._drawMesh(m.mesh, m.tex, m.hasTex, m.color[0], m.color[1], m.color[2], 0);
