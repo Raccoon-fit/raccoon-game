@@ -1,6 +1,7 @@
 /* =========================================================
-   r3d.js — 极简真 3D 引擎 v6
-   v5 + 修复 addModel 中心偏移 / 补 setBillboards / 支持 bevelBox·ramp
+   r3d.js — 极简真 3D 引擎 v7
+   v6 + 修复：addModel 用 Uint32 索引一次性上传
+        （原分块逻辑对 171K 顶点模型存在隐藏 bug）
    ========================================================= */
 (function(global){
 'use strict';
@@ -149,7 +150,7 @@ function makeTexture(gl, source, opts){
 
 /* ==================== 网格 ==================== */
 function createMesh(gl){
-  return { vbo: gl.createBuffer(), ibo: gl.createBuffer(), indexCount: 0, vertexCount: 0 };
+  return { vbo: gl.createBuffer(), ibo: gl.createBuffer(), indexCount: 0, vertexCount: 0, uint32: false };
 }
 function uploadMesh(gl, mesh, P, N, U, I){
   const n = P.length / 3;
@@ -165,6 +166,25 @@ function uploadMesh(gl, mesh, P, N, U, I){
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(I), gl.STATIC_DRAW);
   mesh.indexCount = I.length;
   mesh.vertexCount = n;
+  mesh.uint32 = false;
+}
+
+/* ★ v7 新增：32 位索引上传 */
+function uploadMeshU32(gl, mesh, P, N, U, I){
+  const n = P.length / 3;
+  const data = new Float32Array(n * 8);
+  for(let i = 0; i < n; i++){
+    data[i*8+0]=P[i*3+0]; data[i*8+1]=P[i*3+1]; data[i*8+2]=P[i*3+2];
+    data[i*8+3]=N[i*3+0]; data[i*8+4]=N[i*3+1]; data[i*8+5]=N[i*3+2];
+    data[i*8+6]=U[i*2+0]; data[i*8+7]=U[i*2+1];
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vbo);
+  gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ibo);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(I), gl.STATIC_DRAW);
+  mesh.indexCount = I.length;
+  mesh.vertexCount = n;
+  mesh.uint32 = true;
 }
 
 /* ==================== 几何体生成器 ==================== */
@@ -483,9 +503,9 @@ Renderer.prototype.setFog = function(f){
   if(f.far !== undefined) this.fog.far = f.far;
 };
 
-/* ★ 新增：engine.js 需要，v5 里没有 */
+/* ★ engine.js 需要的空实现 */
 Renderer.prototype.setBillboards = function(list){
-  /* no-op：本引擎不支持 billboard，直接忽略 */
+  /* no-op：本引擎不支持 billboard */
 };
 
 Renderer.prototype.textureFromCanvas = function(source, opts){ return makeTexture(this.gl, source, opts); };
@@ -560,7 +580,6 @@ Renderer.prototype.buildProps = function(list){
     const h = p.h!==undefined?p.h:0.6;
     const d = p.d!==undefined?p.d:(p.w||0.6);
     const cx=p.x, y0=p.y!==undefined?p.y:0, cz=p.z;
-    /* ★ 新增 bevelBox / ramp 支持（scenes.js 里大量使用） */
     if(shape==='box') buildBox(P,N,U,I,cx,y0,cz,w,h,d);
     else if(shape==='bevelBox') buildBox(P,N,U,I,cx,y0,cz,w,h,d);
     else if(shape==='ramp') buildBox(P,N,U,I,cx,y0,cz,w,h,d);
@@ -587,10 +606,9 @@ Renderer.prototype.buildProps = function(list){
 };
 
 /* =========================================================
-   ★ addModel —— v6 修复：
-     1. 用包围盒中心（不是顶点平均值）做居中
-     2. 变换顺序：先居中归零 → 缩放 → 旋转 → 平移到目标位置
-     3. 原来"先旋转后偏移"的顺序在 rotationY 非 0 时会把模型甩飞
+   ★ v7 addModel —— 关键修复：
+     用 Uint32 索引一次性上传所有顶点+索引
+     （旧版分块逻辑对 17 万顶点模型存在隐藏 bug，导致模型不显示）
    ========================================================= */
 Renderer.prototype.addModel = function(model, options){
   const gl = this.gl;
@@ -604,7 +622,7 @@ Renderer.prototype.addModel = function(model, options){
 
   const srcP = model.P, srcN = model.N, srcU = model.U, srcI = model.I;
 
-  /* ---- 计算包围盒 ---- */
+  /* ---- 包围盒 ---- */
   let minX = Infinity, maxX = -Infinity;
   let minY = Infinity, maxY = -Infinity;
   let minZ = Infinity, maxZ = -Infinity;
@@ -624,20 +642,14 @@ Renderer.prototype.addModel = function(model, options){
     let px = srcP[i];
     let py = srcP[i+1];
     let pz = srcP[i+2];
-    /* ★ 步骤 1：模型自身坐标系里，把中心移到原点、底部贴到 y=0 */
     if(autoFit){
       px -= boxCX;
       pz -= boxCZ;
       py -= minY;
     }
-    /* ★ 步骤 2：缩放（此时原点在模型中心，缩放不会再偏移） */
-    px *= scale;
-    py *= scale;
-    pz *= scale;
-    /* ★ 步骤 3：绕 Y 轴旋转 */
+    px *= scale; py *= scale; pz *= scale;
     const rx =  px * cosR + pz * sinR;
     const rz = -px * sinR + pz * cosR;
-    /* ★ 步骤 4：平移到世界坐标 */
     P[i]   = rx + ox;
     P[i+1] = py + oy;
     P[i+2] = rz + oz;
@@ -657,14 +669,27 @@ Renderer.prototype.addModel = function(model, options){
   const hasTex = !!tex;
   const color = options.color || [1, 1, 1];
 
-  const MAX_VERTS = 60000;
   const totalVerts = P.length / 3;
+  const totalIndexes = I.length;
+  console.log('[R3D] addModel 顶点:', totalVerts, '索引:', totalIndexes);
 
-  if(totalVerts <= MAX_VERTS){
+  /* ★ 优先用 Uint32 一次性上传 */
+  const ext32 = gl.getExtension('OES_element_index_uint');
+
+  if(ext32){
     const mesh = createMesh(gl);
-    uploadMesh(gl, mesh, Array.from(P), Array.from(N), Array.from(U), Array.from(I));
+    uploadMeshU32(gl, mesh, P, N, U, I);
     this.models.push({ mesh, tex, hasTex, color });
+    console.log('[R3D] ✅ Uint32 一次性上传成功');
+  } else if(totalVerts <= 65535 && totalIndexes <= 65535){
+    const mesh = createMesh(gl);
+    uploadMesh(gl, mesh, P, N, U, I);
+    this.models.push({ mesh, tex, hasTex, color });
+    console.log('[R3D] ✅ Uint16 一次性上传成功');
   } else {
+    /* 最后兜底：分块（无 Uint32 扩展 + 模型过大） */
+    console.warn('[R3D] ⚠ 不支持 Uint32 且模型过大，走降级分块');
+    const MAX_VERTS = 60000;
     const triCount = I.length / 3;
     let chunkMap = new Map();
     let chunkP = [], chunkN = [], chunkU = [], chunkI = [];
@@ -726,7 +751,9 @@ Renderer.prototype._drawMesh = function(mesh, tex, hasTex, r, g, b, alphaTest){
   gl.vertexAttribPointer(this.attr.normal, 3, gl.FLOAT, false, 32, 12);
   gl.vertexAttribPointer(this.attr.uv,     2, gl.FLOAT, false, 32, 24);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ibo);
-  gl.drawElements(gl.TRIANGLES, mesh.indexCount, gl.UNSIGNED_SHORT, 0);
+  /* ★ 根据索引类型选择 UNSIGNED_INT / UNSIGNED_SHORT */
+  gl.drawElements(gl.TRIANGLES, mesh.indexCount,
+    mesh.uint32 ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT, 0);
 };
 
 Renderer.prototype.render = function(){
