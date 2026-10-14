@@ -1,6 +1,6 @@
 /* =========================================================
-   map.js — 雨痕地图 v1
-   11 节点 · 手绘图标 · 雨痕蔓延传送
+   map.js — 雨痕地图 v2
+   修复：动画卡住导致点击失效 / 节点状态区分"去过"和"可达"
    ========================================================= */
 (function(global){
 'use strict';
@@ -54,15 +54,23 @@ function hasSeenScene(k){
 }
 
 /* ==================== 解锁规则 ==================== */
+let curScene = 'alley';
+
+/* 相邻于当前所在节点 —— 可点，但没去过就不发光 */
+function isAdjacentToCurrent(key){
+  const nb = NEIGHBORS[curScene] || [];
+  return nb.indexOf(key) >= 0;
+}
+
 const UNLOCK = {
   alley:        () => true,
-  backstreet:   () => true,
-  street:       () => true,
-  powerstation: () => true,
-  underpass:    () => hasSeenScene('backstreet'),
-  riverside:    () => hasSeenScene('backstreet'),
-  rooftop:      () => hasSeenScene('shop'),
-  shop:         () => getFlag('doorOpen'),
+  backstreet:   () => hasSeenScene('backstreet')   || isAdjacentToCurrent('backstreet'),
+  powerstation: () => hasSeenScene('powerstation') || isAdjacentToCurrent('powerstation'),
+  rooftop:      () => hasSeenScene('rooftop')      || isAdjacentToCurrent('rooftop'),
+  shop:         () => getFlag('doorOpen')          || isAdjacentToCurrent('shop'),
+  street:       () => hasSeenScene('street')       || isAdjacentToCurrent('street'),
+  underpass:    () => hasSeenScene('underpass')    || hasSeenScene('street'),
+  riverside:    () => hasSeenScene('riverside')    || hasSeenScene('street'),
   doorstep:     () => getFlag('gateOpen'),
   house:        () => getFlag('gateOpen'),
   neighbor:     () => getFlag('gateOpen')
@@ -70,16 +78,15 @@ const UNLOCK = {
 
 /* ==================== 状态 ==================== */
 let canvas, ctx, dpr;
-let opened = 0;              // 0 关 1 开
+let opened = 0;
 let targetOpened = 0;
 let visible = false;
-let curScene = 'alley';
 let hoverNode = null;
-let travelAnim = null;       // 雨痕动画
+let travelAnim = null;
 let onTravel = null;
 let rafId = 0;
 let lastTime = 0;
-let sceneEnterTime = 0;
+let fallbackTimer = 0;
 
 /* ==================== 工具 ==================== */
 function px(n){ return n * W; }
@@ -88,9 +95,8 @@ function dist2(ax,ay,bx,by){ const dx=ax-bx,dy=ay-by; return dx*dx+dy*dy; }
 function ease(t){ return t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2; }
 function clamp(v,a,b){ return v<a?a:v>b?b:v; }
 
-/* ==================== 纸面绘制 ==================== */
+/* ==================== 纸面 ==================== */
 function drawPaper(t){
-  /* 底色 */
   const bg = ctx.createRadialGradient(W*0.55, H*0.45, 80, W*0.55, H*0.45, W*0.75);
   bg.addColorStop(0,   '#3d2c1d');
   bg.addColorStop(0.55,'#2e2015');
@@ -98,7 +104,6 @@ function drawPaper(t){
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
 
-  /* 纸纹噪点 */
   ctx.save();
   for(let i = 0; i < 2200; i++){
     const x = (i * 137.5) % W;
@@ -108,7 +113,6 @@ function drawPaper(t){
   }
   ctx.restore();
 
-  /* 大块水渍（底部） */
   ctx.save();
   const ws = ctx.createRadialGradient(W*0.42, H*0.96, 20, W*0.42, H*0.96, 280);
   ws.addColorStop(0,   'rgba(40,55,70,0.32)');
@@ -118,7 +122,6 @@ function drawPaper(t){
   ctx.fillRect(0, H*0.55, W, H*0.45);
   ctx.restore();
 
-  /* 折痕 —— 横一道竖一道 */
   ctx.save();
   ctx.strokeStyle = 'rgba(0,0,0,0.32)';
   ctx.lineWidth = 1.5;
@@ -134,7 +137,6 @@ function drawPaper(t){
   ctx.stroke();
   ctx.restore();
 
-  /* 焦角 —— 右上角 */
   ctx.save();
   const cj = ctx.createRadialGradient(W-20, 20, 5, W-20, 20, 140);
   cj.addColorStop(0,   'rgba(15,8,4,0.95)');
@@ -157,7 +159,6 @@ function drawPaper(t){
   ctx.fill();
   ctx.restore();
 
-  /* 手绘"回家"墨迹 */
   ctx.save();
   ctx.font = 'italic 22px "KaiTi","STKaiti",serif';
   ctx.fillStyle = 'rgba(80,50,30,0.55)';
@@ -166,13 +167,12 @@ function drawPaper(t){
   ctx.restore();
 }
 
-/* ==================== 路径绘制 ==================== */
+/* ==================== 路径 ==================== */
 function drawEdge(a, b, t, highlight, waterProgress){
   const A = NODES[a], B = NODES[b];
   const ax = px(A.x), ay = py(A.y);
   const bx = px(B.x), by = py(B.y);
 
-  /* 手绘感的曲线（用 3 段贝塞尔） */
   const midX = (ax + bx) / 2;
   const midY = (ay + by) / 2;
   const nx = -(by - ay);
@@ -184,7 +184,6 @@ function drawEdge(a, b, t, highlight, waterProgress){
   const cx2 = midX - (nx/nl) * wobbleAmp * 0.7;
   const cy2 = midY - (ny/nl) * wobbleAmp * 0.7;
 
-  /* 底层阴影 */
   ctx.save();
   ctx.lineCap = 'round';
   ctx.lineWidth = 3.5;
@@ -195,7 +194,6 @@ function drawEdge(a, b, t, highlight, waterProgress){
   ctx.stroke();
   ctx.restore();
 
-  /* 亮线（从当前节点出发，微微发光） */
   if(highlight){
     ctx.save();
     ctx.lineCap = 'round';
@@ -211,14 +209,12 @@ function drawEdge(a, b, t, highlight, waterProgress){
     ctx.restore();
   }
 
-  /* 雨痕水渍覆盖（动画中） */
   if(waterProgress > 0){
     drawWaterStreak(ax, ay, cx1, cy1, cx2, cy2, bx, by, waterProgress, a + b);
   }
 }
 
 function drawWaterStreak(ax, ay, cx1, cy1, cx2, cy2, bx, by, progress, seed){
-  /* 计算贝塞尔曲线上 progress 位置 */
   const steps = 32;
   const N = Math.max(1, Math.floor(steps * progress));
   const pts = [];
@@ -227,12 +223,10 @@ function drawWaterStreak(ax, ay, cx1, cy1, cx2, cy2, bx, by, progress, seed){
     const it = 1 - t;
     const x = it*it*it*ax + 3*it*it*t*cx1 + 3*it*t*t*cx2 + t*t*t*bx;
     const y = it*it*it*ay + 3*it*it*t*cy1 + 3*it*t*t*cy2 + t*t*t*by;
-    /* 加入随机抖动，让水痕边缘不规则 */
     const jitter = Math.sin(t * 21 + seed.charCodeAt(0)) * 2.5 + Math.sin(t * 37 + seed.charCodeAt(1)) * 1.5;
     pts.push([x + jitter, y + Math.cos(t*29 + seed.charCodeAt(0))*2]);
   }
 
-  /* 主体水痕 */
   ctx.save();
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
@@ -242,14 +236,12 @@ function drawWaterStreak(ax, ay, cx1, cy1, cx2, cy2, bx, by, progress, seed){
   pts.forEach((p, i) => i === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]));
   ctx.stroke();
 
-  /* 亮高光 */
   ctx.strokeStyle = 'rgba(180,210,230,0.45)';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   pts.forEach((p, i) => i === 0 ? ctx.moveTo(p[0], p[1] - 1.5) : ctx.lineTo(p[0], p[1] - 1.5));
   ctx.stroke();
 
-  /* 暗边 */
   ctx.strokeStyle = 'rgba(30,45,58,0.35)';
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -258,7 +250,7 @@ function drawWaterStreak(ax, ay, cx1, cy1, cx2, cy2, bx, by, progress, seed){
   ctx.restore();
 }
 
-/* ==================== 图标绘制（11 个） ==================== */
+/* ==================== 图标 ==================== */
 function stroke(color, width){
   ctx.strokeStyle = color || '#2a1a10';
   ctx.lineWidth = width || 1.8;
@@ -267,7 +259,6 @@ function stroke(color, width){
 }
 
 const ICONS = {
-  /* 路灯 */
   lamp(){
     stroke();
     ctx.beginPath();
@@ -276,31 +267,23 @@ const ICONS = {
     ctx.moveTo(5, 14); ctx.lineTo(3, 8);
     ctx.moveTo(0, 8); ctx.lineTo(0, -6);
     ctx.stroke();
-    /* 灯罩 */
     ctx.beginPath();
     ctx.moveTo(-9, -6); ctx.lineTo(9, -6);
     ctx.lineTo(5, -14); ctx.lineTo(-5, -14);
     ctx.closePath();
     ctx.stroke();
-    /* 灯芯 */
     ctx.fillStyle = 'rgba(255,220,150,0.9)';
-    ctx.beginPath();
-    ctx.arc(0, -3, 2, 0, Math.PI*2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(0, -3, 2, 0, Math.PI*2); ctx.fill();
   },
-  /* 消防梯 */
   ladder(){
     stroke();
     ctx.beginPath();
     ctx.moveTo(-8, -14); ctx.lineTo(-8, 14);
     ctx.moveTo(8, -14);  ctx.lineTo(8, 14);
     ctx.stroke();
-    /* 挂钩 */
     ctx.beginPath();
     ctx.arc(-6, -14, 3, Math.PI, 0);
-    ctx.moveTo(-3, -14); ctx.lineTo(-3, -14);
     ctx.stroke();
-    /* 横档 */
     for(let i = -1; i <= 1; i++){
       const y = i * 8;
       ctx.beginPath();
@@ -308,7 +291,6 @@ const ICONS = {
       ctx.stroke();
     }
   },
-  /* 闪电 */
   bolt(){
     stroke();
     ctx.beginPath();
@@ -323,33 +305,26 @@ const ICONS = {
     ctx.fillStyle = 'rgba(255,220,150,0.22)';
     ctx.fill();
   },
-  /* 水塔 */
   tower(){
     stroke();
-    /* 支架 */
     ctx.beginPath();
     ctx.moveTo(-9, 14); ctx.lineTo(-6, 4);
     ctx.moveTo(9, 14);  ctx.lineTo(6, 4);
     ctx.moveTo(-6, 4);  ctx.lineTo(6, 4);
     ctx.stroke();
-    /* 水箱 */
     ctx.beginPath();
     ctx.moveTo(-10, 4); ctx.lineTo(-10, -8);
     ctx.lineTo(10, -8); ctx.lineTo(10, 4);
     ctx.stroke();
-    /* 顶部锥盖 */
     ctx.beginPath();
     ctx.moveTo(-12, -8); ctx.lineTo(0, -16); ctx.lineTo(12, -8);
     ctx.stroke();
-    /* 水箱横线 */
     ctx.beginPath();
     ctx.moveTo(-10, 0); ctx.lineTo(10, 0);
     ctx.stroke();
   },
-  /* 罐头 */
   can(){
     stroke();
-    /* 罐体 */
     ctx.beginPath();
     ctx.ellipse(0, -12, 8, 3, 0, 0, Math.PI*2);
     ctx.stroke();
@@ -358,28 +333,22 @@ const ICONS = {
     ctx.moveTo(8, -12);  ctx.lineTo(8, 12);
     ctx.ellipse(0, 12, 8, 3, 0, 0, Math.PI*2);
     ctx.stroke();
-    /* 标签横线 */
     ctx.beginPath();
     ctx.moveTo(-8, -3); ctx.lineTo(8, -3);
     ctx.moveTo(-8, 5);  ctx.lineTo(8, 5);
     ctx.stroke();
-    /* 拉环 */
     ctx.beginPath();
     ctx.arc(0, -14, 2.5, 0, Math.PI*2);
     ctx.stroke();
   },
-  /* 红绿灯 */
   traffic(){
     stroke();
-    /* 灯杆 */
     ctx.beginPath();
     ctx.moveTo(0, 14); ctx.lineTo(0, -6);
     ctx.stroke();
-    /* 灯箱 */
     ctx.beginPath();
     ctx.rect(-6, -16, 12, 14);
     ctx.stroke();
-    /* 三个灯 */
     ctx.fillStyle = 'rgba(255,80,80,0.85)';
     ctx.beginPath(); ctx.arc(0, -13, 1.6, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = 'rgba(255,220,90,0.4)';
@@ -387,17 +356,14 @@ const ICONS = {
     ctx.fillStyle = 'rgba(120,255,140,0.4)';
     ctx.beginPath(); ctx.arc(0, -5, 1.6, 0, Math.PI*2); ctx.fill();
   },
-  /* 地下通道 */
   stairs(){
     stroke();
-    /* 洞口 */
     ctx.beginPath();
     ctx.moveTo(-12, 10);
     ctx.lineTo(-12, -2);
     ctx.arc(0, -2, 12, Math.PI, 0);
     ctx.lineTo(12, 10);
     ctx.stroke();
-    /* 台阶 */
     for(let i = 0; i < 3; i++){
       const w = 10 - i * 2;
       const y = 4 + i * 3;
@@ -405,7 +371,6 @@ const ICONS = {
       ctx.moveTo(-w, y); ctx.lineTo(w, y);
       ctx.stroke();
     }
-    /* 洞口内阴影 */
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath();
     ctx.moveTo(-9, 8);
@@ -414,7 +379,6 @@ const ICONS = {
     ctx.closePath();
     ctx.fill();
   },
-  /* 河堤波浪 */
   wave(){
     stroke();
     for(let k = 0; k < 3; k++){
@@ -429,7 +393,6 @@ const ICONS = {
       ctx.stroke();
     }
   },
-  /* 拱门 */
   arch(){
     stroke();
     ctx.beginPath();
@@ -438,26 +401,21 @@ const ICONS = {
     ctx.arc(0, -2, 10, Math.PI, 0);
     ctx.lineTo(10, 14);
     ctx.stroke();
-    /* 门里 */
     ctx.beginPath();
     ctx.moveTo(-7, 14);
     ctx.lineTo(-7, -2);
     ctx.arc(0, -2, 7, Math.PI, 0);
     ctx.lineTo(7, 14);
     ctx.stroke();
-    /* 门把手 */
     ctx.fillStyle = 'rgba(200,160,80,0.8)';
     ctx.beginPath(); ctx.arc(4, 6, 1.5, 0, Math.PI*2); ctx.fill();
   },
-  /* 红屋顶（唯一有颜色的节点） */
   house(){
     stroke();
-    /* 墙体 */
     ctx.beginPath();
     ctx.moveTo(-11, 4); ctx.lineTo(-11, 14);
     ctx.lineTo(11, 14); ctx.lineTo(11, 4);
     ctx.stroke();
-    /* 红屋顶 */
     ctx.fillStyle = 'rgba(170,60,40,0.85)';
     ctx.beginPath();
     ctx.moveTo(-14, 4); ctx.lineTo(0, -14); ctx.lineTo(14, 4);
@@ -465,24 +423,19 @@ const ICONS = {
     ctx.fill();
     stroke('rgba(120,35,25,0.9)', 1.4);
     ctx.stroke();
-    /* 门 */
     ctx.fillStyle = 'rgba(80,45,25,0.9)';
     ctx.fillRect(-3, 6, 6, 8);
-    /* 窗 */
     ctx.fillStyle = 'rgba(255,220,140,0.9)';
     ctx.fillRect(-9, 8, 4, 4);
     ctx.fillRect(5, 8, 4, 4);
   },
-  /* 邻屋（半塌） */
   ruin(){
     stroke();
-    /* 左半边：屋顶 + 墙 */
     ctx.beginPath();
     ctx.moveTo(-12, 6); ctx.lineTo(-6, -10); ctx.lineTo(0, 6);
     ctx.lineTo(0, 14); ctx.lineTo(-12, 14);
     ctx.closePath();
     ctx.stroke();
-    /* 右半边：断壁 */
     ctx.beginPath();
     ctx.moveTo(0, 6);
     ctx.lineTo(4, 4);
@@ -490,11 +443,9 @@ const ICONS = {
     ctx.lineTo(4, 14);
     ctx.lineTo(0, 14);
     ctx.stroke();
-    /* 断裂斜梁 */
     ctx.beginPath();
     ctx.moveTo(2, 2); ctx.lineTo(12, -6);
     ctx.stroke();
-    /* 残破的窗 */
     ctx.beginPath();
     ctx.moveTo(-9, 8); ctx.lineTo(-4, 8); ctx.lineTo(-4, 12);
     ctx.stroke();
@@ -507,6 +458,7 @@ function drawNode(key, t){
   const x = px(n.x), y = py(n.y);
   const unlocked = UNLOCK[key]();
   const isCurrent = key === curScene;
+  const isSeen = hasSeenScene(key);
   const isHover = key === hoverNode && unlocked;
 
   ctx.save();
@@ -515,12 +467,11 @@ function drawNode(key, t){
   /* 当前节点的水波 */
   if(isCurrent){
     const waveR = 26 + Math.sin(t * 2) * 6;
-    ctx.strokeStyle = 'rgba(140,200,230,0.35)';
-    ctx.lineWidth = 1.5;
     for(let k = 0; k < 2; k++){
       const r = waveR + k * 10;
       const a = 0.35 * (1 - k * 0.4);
       ctx.strokeStyle = `rgba(140,200,230,${a})`;
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.ellipse(0, 0, r, r * 0.55, 0, 0, Math.PI*2);
       ctx.stroke();
@@ -538,10 +489,10 @@ function drawNode(key, t){
     ctx.fill();
   }
 
-  /* 已解锁节点的暖光 */
-  if(unlocked && !isCurrent){
+  /* ★ 只有"去过的"节点发光 */
+  if(unlocked && !isCurrent && isSeen){
     const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 26);
-    g.addColorStop(0, 'rgba(255,200,120,0.12)');
+    g.addColorStop(0, 'rgba(255,200,120,0.14)');
     g.addColorStop(1, 'rgba(255,200,120,0)');
     ctx.fillStyle = g;
     ctx.beginPath();
@@ -552,13 +503,12 @@ function drawNode(key, t){
   /* 图标 */
   ICONS[n.icon]();
 
-  /* 未解锁：叠一层蓝灰水渍 */
+  /* 未解锁：叠水渍 */
   if(!unlocked){
     ctx.fillStyle = 'rgba(45,62,78,0.55)';
     ctx.beginPath();
     ctx.arc(0, 0, 18, 0, Math.PI*2);
     ctx.fill();
-    /* 不规则水渍边缘 */
     ctx.strokeStyle = 'rgba(45,62,78,0.35)';
     ctx.lineWidth = 1.2;
     for(let i = 0; i < 5; i++){
@@ -570,8 +520,8 @@ function drawNode(key, t){
     }
   }
 
-  /* 已去过的墨渍脚印 */
-  if(unlocked && hasSeenScene(key) && !isCurrent){
+  /* 去过的脚印墨渍 */
+  if(unlocked && isSeen && !isCurrent){
     ctx.fillStyle = 'rgba(60,40,25,0.5)';
     ctx.beginPath();
     ctx.ellipse(0, 17, 7, 2, 0, 0, Math.PI*2);
@@ -584,7 +534,7 @@ function drawNode(key, t){
   ctx.fillStyle = unlocked ? 'rgba(220,190,140,0.85)' : 'rgba(140,155,170,0.55)';
   ctx.fillText(n.name, 0, 30);
 
-  /* 未解锁的小字提示 */
+  /* 未解锁小字 */
   if(!unlocked){
     ctx.font = '10px "PingFang SC","Microsoft YaHei",sans-serif';
     ctx.fillStyle = 'rgba(140,155,170,0.45)';
@@ -602,29 +552,16 @@ function startTravel(fromKey, toKey, path){
     start: performance.now() / 1000,
     duration: short ? 2.0 : 1.5,
     mode: short ? 'spread' : 'flood',
-    edgeProgress: {},  // 每条边的水痕进度
+    edgeProgress: {},
     paw: null
   };
-
-  if(short){
-    /* 短途：按顺序蔓延 */
-    travelAnim.edgeProgress = {};
-    path.forEach((k, i) => {
-      if(i === 0) return;
-      const ekey = path[i-1] + '_' + k;
-      travelAnim.edgeProgress[ekey] = 0;
-    });
-  } else {
-    /* 长途：全部铺满，然后从起点收缩 */
-    path.forEach((k, i) => {
-      if(i === 0) return;
-      const ekey = path[i-1] + '_' + k;
-      travelAnim.edgeProgress[ekey] = 0;
-    });
-  }
+  path.forEach((k, i) => {
+    if(i === 0) return;
+    const ekey = path[i-1] + '_' + k;
+    travelAnim.edgeProgress[ekey] = 0;
+  });
 }
 
-/* BFS 找路径 */
 function findPath(from, to){
   if(from === to) return null;
   const visited = { [from]: true };
@@ -644,7 +581,7 @@ function findPath(from, to){
   return null;
 }
 
-/* ==================== 展开/收起动画 ==================== */
+/* ==================== 展开 ==================== */
 function updateOpenAnim(dt){
   const speed = 3.5;
   if(opened < targetOpened){
@@ -660,10 +597,8 @@ function render(t){
   if(eo <= 0.001) return;
 
   ctx.clearRect(0, 0, W, H);
-
   ctx.save();
 
-  /* 展开：从右上角按钮位置向全屏铺开 */
   const originX = W - 155;
   const originY = 41;
   const fullRadius = Math.hypot(Math.max(originX, W-originX), Math.max(originY, H-originY)) * 1.1;
@@ -673,31 +608,26 @@ function render(t){
   ctx.rect(0, 0, W, H);
   ctx.clip();
 
-  /* 卷轴展开遮罩：用一个圆形 clip 从按钮位置扩散 */
   ctx.save();
   ctx.beginPath();
   ctx.arc(originX, originY, radius, 0, Math.PI * 2);
   ctx.clip();
 
-  /* 纸面 */
   drawPaper(t);
 
-  /* 路径 */
-  const showIconsAt = Math.max(0, (eo - 0.4) / 0.6);   // 40% 之后开始显示节点
+  const showIconsAt = Math.max(0, (eo - 0.4) / 0.6);
   EDGES.forEach(e => {
     const fromIsCurrent = e[0] === curScene || e[1] === curScene;
-    const a = e[0], b = e[1];
     let wp = 0;
     if(travelAnim){
-      const key1 = a + '_' + b;
-      const key2 = b + '_' + a;
+      const key1 = e[0] + '_' + e[1];
+      const key2 = e[1] + '_' + e[0];
       if(travelAnim.edgeProgress[key1] !== undefined) wp = travelAnim.edgeProgress[key1];
       else if(travelAnim.edgeProgress[key2] !== undefined) wp = travelAnim.edgeProgress[key2];
     }
-    drawEdge(a, b, t, fromIsCurrent, wp * eo);
+    drawEdge(e[0], e[1], t, fromIsCurrent, wp * eo);
   });
 
-  /* 节点（延迟出现：40%~100% 之间逐个浮现） */
   const order = Object.keys(NODES);
   order.forEach((key, i) => {
     const appearAt = 0.4 + (i / order.length) * 0.5;
@@ -709,7 +639,6 @@ function render(t){
     ctx.restore();
   });
 
-  /* 爪印（到达） */
   if(travelAnim && travelAnim.paw){
     const p = travelAnim.paw;
     if(p.life > 0){
@@ -734,7 +663,6 @@ function render(t){
 
   ctx.restore();
 
-  /* 边缘暗角 */
   const vg = ctx.createRadialGradient(W/2, H/2, H*0.35, W/2, H/2, H*1.05);
   vg.addColorStop(0, 'rgba(0,0,0,0)');
   vg.addColorStop(0.75, 'rgba(0,0,0,0.28)');
@@ -749,14 +677,12 @@ function render(t){
 function update(dt, t){
   updateOpenAnim(dt);
 
-  /* 雨痕动画 */
   if(travelAnim){
     const el = t - travelAnim.start;
     const dur = travelAnim.duration;
     const k = clamp(el / dur, 0, 1);
 
     if(travelAnim.mode === 'spread'){
-      /* 短途：按顺序蔓延 */
       const edgeKeys = Object.keys(travelAnim.edgeProgress);
       const total = edgeKeys.length;
       edgeKeys.forEach((ek, i) => {
@@ -766,7 +692,6 @@ function update(dt, t){
         travelAnim.edgeProgress[ek] = local;
       });
     } else {
-      /* 长途：0~0.3 全部铺满，0.3~1 从起点收缩 */
       const edgeKeys = Object.keys(travelAnim.edgeProgress);
       if(k < 0.3){
         const fill = k / 0.3;
@@ -775,13 +700,10 @@ function update(dt, t){
         const shrink = (k - 0.3) / 0.7;
         const total = edgeKeys.length;
         edgeKeys.forEach((ek, i) => {
-          /* 从起点开始依次收缩 */
-          const order = i / total;   // 0 是第一条边（离起点最近）
+          const order = i / total;
           const localShrink = clamp((shrink - order * 0.7) / 0.3, 0, 1);
-          const before = 1;
           const after = 1 - localShrink;
-          travelAnim.edgeProgress[ek] = Math.max(after, i / total < shrink ? after : before);
-          /* 简化：从起点方向的边先归零 */
+          travelAnim.edgeProgress[ek] = Math.max(after, i / total < shrink ? after : 1);
           if(shrink > order){
             travelAnim.edgeProgress[ek] = Math.max(0, 1 - (shrink - order) * 2);
           }
@@ -789,14 +711,12 @@ function update(dt, t){
       }
     }
 
-    /* 到达：爪印 */
     if(k >= 1 && !travelAnim.paw){
       travelAnim.paw = { node: travelAnim.toKey, life: 1.0 };
     }
     if(travelAnim.paw){
       travelAnim.paw.life -= dt * 0.7;
       if(travelAnim.paw.life <= 0){
-        /* 动画结束，触发跳转 */
         const to = travelAnim.toKey;
         travelAnim = null;
         if(onTravel) onTravel(to);
@@ -811,6 +731,11 @@ function loop(now){
     rafId = 0;
     return;
   }
+
+  /* ★ 从后台恢复时，lastTime 可能是几秒前 —— 强制当成 50ms */
+  if(now - lastTime > 1000){
+    lastTime = now - 50;
+  }
   const dt = Math.min(0.05, (now - lastTime) / 1000);
   lastTime = now;
   const t = now / 1000;
@@ -819,7 +744,7 @@ function loop(now){
   rafId = requestAnimationFrame(loop);
 }
 
-/* ==================== 点击处理 ==================== */
+/* ==================== 点击 ==================== */
 function findNodeAt(mx, my){
   let best = null, bestD = 40 * 40;
   Object.keys(NODES).forEach(k => {
@@ -832,7 +757,8 @@ function findNodeAt(mx, my){
 }
 
 function onClick(e){
-  if(opened < 0.9) return;
+  /* ★ 放宽门槛：只要开了一半以上就能点（防动画卡住） */
+  if(opened < 0.5) return;
   if(travelAnim) return;
   const r = canvas.getBoundingClientRect();
   const mx = (e.clientX - r.left) * (W / r.width);
@@ -847,7 +773,7 @@ function onClick(e){
 }
 
 function onMove(e){
-  if(opened < 0.9 || travelAnim){
+  if(opened < 0.5 || travelAnim){
     hoverNode = null;
     return;
   }
@@ -857,7 +783,7 @@ function onMove(e){
   hoverNode = findNodeAt(mx, my);
 }
 
-/* ==================== 公开 API ==================== */
+/* ==================== API ==================== */
 function init(){
   canvas = document.getElementById('mapCanvas');
   if(!canvas){
@@ -873,17 +799,42 @@ function init(){
   canvas.addEventListener('click', onClick);
   canvas.addEventListener('mousemove', onMove);
   canvas.addEventListener('mouseleave', () => { hoverNode = null; });
+
+  /* ★ 从后台恢复时，如果地图开着就跳到终点 */
+  document.addEventListener('visibilitychange', function(){
+    if(!document.hidden && visible){
+      opened = 1;
+      targetOpened = 1;
+      lastTime = performance.now();
+      if(!rafId) rafId = requestAnimationFrame(loop);
+    }
+  });
 }
 
 function open(){
   if(visible) return;
+  if(!canvas){
+    init();
+    if(!canvas) return;
+  }
   visible = true;
   targetOpened = 1;
   canvas.parentNode.classList.add('show');
-  if(!rafId){
-    lastTime = performance.now();
-    rafId = requestAnimationFrame(loop);
-  }
+  lastTime = performance.now();
+  if(!rafId) rafId = requestAnimationFrame(loop);
+
+  /* ★ 1.2 秒保底：动画无论如何推到终点 */
+  clearTimeout(fallbackTimer);
+  fallbackTimer = setTimeout(function(){
+    if(visible){
+      opened = 1;
+      targetOpened = 1;
+      if(!rafId){
+        lastTime = performance.now();
+        rafId = requestAnimationFrame(loop);
+      }
+    }
+  }, 1200);
 }
 
 function close(){
@@ -893,6 +844,7 @@ function close(){
   canvas.parentNode.classList.remove('show');
   travelAnim = null;
   hoverNode = null;
+  clearTimeout(fallbackTimer);
 }
 
 function isOpen(){ return visible; }
