@@ -60,6 +60,28 @@
   position:absolute;inset:0;width:100%;height:100%;
   display:block;cursor:crosshair;}
 
+/* 地图右上角关闭按钮 */
+#btnCloseMap{
+  position:absolute;right:22px;top:22px;
+  width:44px;height:44px;border-radius:12px;
+  background:linear-gradient(180deg,rgba(56,42,22,.92),rgba(28,20,10,.95));
+  border:1px solid rgba(255,214,140,.5);
+  color:#ffe6a8;font-size:20px;line-height:1;
+  display:none;align-items:center;justify-content:center;
+  cursor:pointer;font-family:inherit;
+  box-shadow:
+    0 4px 14px rgba(0,0,0,.6),
+    0 0 20px rgba(255,190,110,.18),
+    inset 0 1px 0 rgba(255,255,255,.12);
+  transition:transform .15s,border-color .15s,background .15s;
+  z-index:2;}
+#mapPanel.show #btnCloseMap{display:flex;}
+#btnCloseMap:hover{
+  border-color:rgba(255,232,175,.95);
+  color:#fff2c8;
+  background:linear-gradient(180deg,rgba(80,60,30,.95),rgba(40,28,14,.98));}
+#btnCloseMap:active{transform:scale(.9);}
+
 /* ============================================
    商店主面板
    ============================================ */
@@ -670,6 +692,7 @@
     <!-- ★ 地图面板 -->
     <div id="mapPanel">
       <canvas id="mapCanvas"></canvas>
+      <button id="btnCloseMap" aria-label="关闭地图">✕</button>
     </div>
 
     <div id="achvPanel">
@@ -803,6 +826,7 @@
     <button id="btnForce">仍然继续</button>
   </div>
 </div>
+
 <script src="map.js"></script>
 <script src="game.js"></script>
 <script>
@@ -881,7 +905,7 @@ window.addEventListener('popstate', function(e){
 })();
 
 /* ============================================================
-   ★ 地图按钮初始化（手绘卷轴图标）
+   ★ 地图按钮初始化（手绘卷轴图标 + 开关行为 + 关闭按钮）
    ============================================================ */
 (function(){
 'use strict';
@@ -889,6 +913,7 @@ window.addEventListener('popstate', function(e){
 var btn = document.getElementById('btnMap');
 if(!btn) return;
 
+/* 手绘卷轴图标 */
 var dpr = Math.min(window.devicePixelRatio || 1, 2);
 var cv = document.createElement('canvas');
 cv.width = 32 * dpr;
@@ -902,16 +927,12 @@ g.lineCap = 'round';
 g.lineJoin = 'round';
 
 /* 上轴 */
-g.beginPath();
-g.moveTo(6, 9); g.lineTo(26, 9);
-g.stroke();
+g.beginPath(); g.moveTo(6, 9); g.lineTo(26, 9); g.stroke();
 g.beginPath(); g.ellipse(6, 9, 1.8, 2.2, 0, 0, Math.PI*2); g.stroke();
 g.beginPath(); g.ellipse(26, 9, 1.8, 2.2, 0, 0, Math.PI*2); g.stroke();
 
 /* 下轴 */
-g.beginPath();
-g.moveTo(6, 23); g.lineTo(26, 23);
-g.stroke();
+g.beginPath(); g.moveTo(6, 23); g.lineTo(26, 23); g.stroke();
 g.beginPath(); g.ellipse(6, 23, 1.8, 2.2, 0, 0, Math.PI*2); g.stroke();
 g.beginPath(); g.ellipse(26, 23, 1.8, 2.2, 0, 0, Math.PI*2); g.stroke();
 
@@ -927,14 +948,30 @@ g.beginPath(); g.arc(12, 15, 1.2, 0, Math.PI*2); g.fill();
 g.beginPath(); g.arc(16, 17.5, 1.4, 0, Math.PI*2); g.fill();
 g.beginPath(); g.arc(20, 14, 1.1, 0, Math.PI*2); g.fill();
 
+/* 地图按钮：开关行为 */
 btn.addEventListener('click', function(e){
   e.stopPropagation();
   if(typeof RaccoonMap === 'undefined'){
     console.warn('[map] RaccoonMap 未加载');
     return;
   }
-  RaccoonMap.open();
+  if(RaccoonMap.isOpen()){
+    RaccoonMap.close();
+  } else {
+    RaccoonMap.open();
+  }
 });
+
+/* 右上角关闭按钮 */
+var btnClose = document.getElementById('btnCloseMap');
+if(btnClose){
+  btnClose.addEventListener('click', function(e){
+    e.stopPropagation();
+    if(typeof RaccoonMap !== 'undefined' && RaccoonMap.isOpen()){
+      RaccoonMap.close();
+    }
+  });
+}
 
 })();
 </script>
