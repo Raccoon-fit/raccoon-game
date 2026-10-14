@@ -453,9 +453,8 @@ function sayChoice(promptText, options, onPick){
 }
 
 /* =========================================================
-   ★ D · 三道心结 的具体实现
+   ★ D · 三道心结
    ========================================================= */
-
 function triggerInjuredCat(){
   var myInv = getInv();
   if(myInv.indexOf('catfood') === -1){
@@ -636,9 +635,9 @@ function triggerPhotoChoice(){
    ★ B · 第二天早上
    ========================================================= */
 function startDaySequence(){
-  if(!S || !S.flags) return;
-  if(S.flags.dayStarted) return;
-  S.flags.dayStarted = true;
+  if(endingLock) return;
+  endingLock = true;
+  unlockAchievement('truth_daybreak');
   S.flags.daySequence = true;
   S.scene = 'alley_day';
   save();
@@ -659,12 +658,8 @@ function startDaySequence(){
    ========================================================= */
 var SCENES = {
 
-  /* =====================================================
-     白天雨巷
-     ===================================================== */
   alley_day: {
-    url: null,
-    label: '雨 巷 · 早',
+    url: null, label: '雨 巷 · 早',
     acts: {
       trash: function(){
         say('垃圾桶翻倒在墙边。');
@@ -710,12 +705,8 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     后巷 · 早
-     ===================================================== */
   backstreet_day: {
-    url: null,
-    label: '后 巷 · 早',
+    url: null, label: '后 巷 · 早',
     acts: {
       stairs: function(){
         say('消防梯锈得更厉害了。');
@@ -761,12 +752,8 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     便利店 · 早
-     ===================================================== */
   shop_day: {
-    url: null,
-    label: '便 利 店 · 早',
+    url: null, label: '便 利 店 · 早',
     acts: {
       counter: function(){
         if(is('zhouMet')){
@@ -831,12 +818,8 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     街道 · 早
-     ===================================================== */
   street_day: {
-    url: null,
-    label: '街 道 · 早',
+    url: null, label: '街 道 · 早',
     acts: {
       lamp: function(){
         say('路灯是关着的。');
@@ -887,12 +870,8 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     门前 · 早
-     ===================================================== */
   doorstep_day: {
-    url: null,
-    label: '门 前 · 早',
+    url: null, label: '门 前 · 早',
     acts: {
       window: function(){
         say('窗户里，有人在走动。');
@@ -921,12 +900,8 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     红屋顶 · 早 —— 主线真相线终章
-     ===================================================== */
   house_day: {
-    url: null,
-    label: '红 屋 顶 · 早',
+    url: null, label: '红 屋 顶 · 早',
     acts: {
       frame: function(){
         if(endingShown || endingLock) return;
@@ -947,7 +922,6 @@ var SCENES = {
         say('——但他笑了。');
         say('（主线 · 真相线 · 完结）', function(){
           endingLock = true;
-          unlockAchievement('truth_daybreak');
           setTimeout(function(){
             endingShown = true;
             syncState();
@@ -986,9 +960,6 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     雨巷
-     ===================================================== */
   alley: {
     url:'assets/scene1.html', label:'雨 巷',
     acts: {
@@ -1199,9 +1170,6 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     后巷
-     ===================================================== */
   backstreet: {
     url:'assets/scene2.html', label:'后 巷',
     acts: {
@@ -1337,13 +1305,10 @@ var SCENES = {
           return;
         }
         var missing = [];
-        /* ★ 修复：暗夜模式下不再要求 hook / photo1 */
-        if(!isBloodMode()){
-          if(myInv.indexOf('hook') === -1 && myInv.indexOf('grapnel') === -1)
-            missing.push('雨巷垃圾桶里的挂钩');
-          if(myInv.indexOf('photo1') === -1 && myInv.indexOf('photoFull') === -1 && !is('photo1Taken'))
-            missing.push('雨巷墙上的湿透的纸片');
-        }
+        if(myInv.indexOf('hook') === -1 && myInv.indexOf('grapnel') === -1)
+          missing.push('雨巷垃圾桶里的挂钩');
+        if(!isBloodMode() && myInv.indexOf('photo1') === -1 && myInv.indexOf('photoFull') === -1 && !is('photo1Taken'))
+          missing.push('雨巷墙上的湿透的纸片');
         if(missing.length > 0){
           say('钥匙插进锁孔，灰豆的动作停住了。');
           say('它回头看了一眼来时的路。');
@@ -1352,8 +1317,7 @@ var SCENES = {
           say('（请先往左边走回雨巷，把东西找齐。）');
           return;
         }
-        /* ★ 修复：暗夜模式下跳过主线电力检查 */
-        if(!isBloodMode() && !S.flags.powerCut){
+        if(!S.flags.powerCut){
           say('钥匙插进锁孔，转了一圈。');
           say('“咔哒”一声——');
           say('门却纹丝不动。');
@@ -1471,9 +1435,6 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     便利店
-     ===================================================== */
   shop: {
     url:'assets/scene3.html', label:'便 利 店',
     acts: {
@@ -1674,9 +1635,6 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     街道
-     ===================================================== */
   street: {
     url:'assets/scene4.html', label:'街 道',
     acts: {
@@ -1879,9 +1837,6 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     门前
-     ===================================================== */
   doorstep: {
     url:'assets/scene10.html', label:'门 前',
     acts: {
@@ -1984,9 +1939,6 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     红屋顶
-     ===================================================== */
   house: {
     url:'assets/scene5.html', label:'红 屋 顶',
     acts: {
@@ -2171,9 +2123,6 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     配电房
-     ===================================================== */
   powerstation: {
     url:'assets/scene6.html', label:'配 电 房',
     acts: {
@@ -2256,9 +2205,6 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     屋顶
-     ===================================================== */
   rooftop: {
     url:'assets/scene7.html', label:'屋 顶',
     acts: {
@@ -2320,9 +2266,6 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     地下通道
-     ===================================================== */
   underpass: {
     url:'assets/scene8.html', label:'地 下 通 道',
     acts: {
@@ -2381,9 +2324,6 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     河堤
-     ===================================================== */
   riverside: {
     url:'assets/scene9.html', label:'河 堤',
     acts: {
@@ -2432,10 +2372,6 @@ var SCENES = {
     }
   },
 
-  /* =====================================================
-     邻屋
-     ★ 修复：补上 back act
-     ===================================================== */
   neighbor: {
     url:'assets/scene11.html', label:'邻 屋',
     acts: {
@@ -2513,16 +2449,6 @@ var SCENES = {
         say('很久没有动。');
         say('——它记得脖子上有过一根一样的东西。');
         say('——但它不记得，绳子是什么时候断的。');
-      },
-      back: function(){
-        if(isBloodMode()){
-          say('灰豆退回到那条街。');
-          say('——铁门还在那里。');
-          say('——像是在等它。');
-        } else {
-          say('灰豆退回到那条街。');
-        }
-        changeScene('street', '街 道');
       },
       exit: function(){
         say('房间另一头，有一扇门。');
@@ -2663,7 +2589,13 @@ loadingRetryEl.addEventListener('click', function(){
 
 function changeScene(name, label){
   if(!SCENES[name]) return;
-  S.scene = name; save();
+  S.scene = name;
+  /* ★ 记录去过的场景（地图解锁用） */
+  if(!S.flags.seenScenes) S.flags.seenScenes = [];
+  if(S.flags.seenScenes.indexOf(name) < 0) S.flags.seenScenes.push(name);
+  save();
+  /* ★ 通知地图更新当前节点 */
+  try{ if(window.RaccoonMap) RaccoonMap.setCurrentScene(name); }catch(e){}
   showLoading(label || SCENES[name].label);
   createGameFrame(sceneURL(name));
 }
@@ -3187,6 +3119,13 @@ var historyOk = false;
 try{ history.pushState({ page:'game' }, '', location.href); historyOk = true; }catch(e){}
 function handleBack(){
   if(loadingActive) return true;
+
+  /* ★ 地图打开时，返回键先关地图 */
+  if(window.RaccoonMap && RaccoonMap.isOpen()){
+    RaccoonMap.close();
+    return true;
+  }
+
   if(achvPanelEl.classList.contains('show')){ closeAchvPanel(); return true; }
   if(currentDlg){ advanceDialog(); return true; }
   if(choiceBoxEl.classList.contains('show')) return true;
@@ -3205,6 +3144,13 @@ window.addEventListener('popstate', function(){
 });
 document.addEventListener('keydown', function(e){
   if(e.key === 'Escape'){
+
+    /* ★ ESC 优先关地图 */
+    if(window.RaccoonMap && RaccoonMap.isOpen()){
+      RaccoonMap.close();
+      return;
+    }
+
     if(achvPanelEl.classList.contains('show')){ closeAchvPanel(); return; }
     if(streamerBlockMask.classList.contains('show')){ streamerBlockMask.classList.remove('show'); return; }
     if(streamerWarnMask.classList.contains('show')){ streamerWarnMask.classList.remove('show'); return; }
@@ -3231,6 +3177,8 @@ function beginGame(state, isNew){
     createGameFrame(sceneURL(sceneName));
   }
   pendingOpeningMonologue = isNew;
+  /* ★ 通知地图当前场景 */
+  try{ if(window.RaccoonMap) RaccoonMap.setCurrentScene(sceneName); }catch(e){}
 }
 (function init(){
   try{
@@ -3251,6 +3199,20 @@ function beginGame(state, isNew){
       try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
       state = freshState(); isNew = true;
     }
+
+    /* ★ 初始化地图（必须在 beginGame 之前） */
+    try{
+      if(window.RaccoonMap){
+        RaccoonMap.init();
+        RaccoonMap.setCurrentScene(state.scene || 'alley');
+        RaccoonMap.setTravelCallback(function(sceneKey){
+          if(!SCENES[sceneKey]) return;
+          RaccoonMap.close();
+          changeScene(sceneKey, SCENES[sceneKey].label);
+        });
+      }
+    }catch(e){ console.error('[map init]', e); }
+
     beginGame(state, isNew); save();
   }catch(err){
     console.error('[init 失败]', err);
