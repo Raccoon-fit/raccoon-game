@@ -95,7 +95,9 @@
   <div id="endScreen"><div class="w">—— 雨 夜 归 途 ——</div></div>
 </div>
 
-<script src="assets3d/r3d.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
 <script>
 (function(){
 'use strict';
@@ -112,8 +114,13 @@ const endScreen = document.getElementById('endScreen');
 
 const NEXT_URL = 'index1.html';
 
-/* ★ 诊断模式：URL 加 ?debug=1 打开 —— 品红模型 + 全亮环境 */
-const DEBUG_MODEL = /[?&]debug=1/.test(location.search);
+/* three.js 可用性检查 */
+if(typeof THREE === 'undefined'){
+  loadTip.textContent = '⚠ three.js 加载失败（检查网络）';
+  loadTip.classList.add('error');
+  setTimeout(function(){ location.replace(NEXT_URL); }, 2500);
+  return;
+}
 
 let mode = 'new';
 try{ mode = localStorage.getItem('raccoon_launch_mode') || 'new'; }catch(e){}
@@ -122,6 +129,9 @@ if(mode === 'continue'){
   return;
 }
 
+/* =========================================================
+   ★ 剧情文本
+   ========================================================= */
 const STORY = [
   { text: '灰豆又一次从梦里醒来。' },
   { text: '它不认识这里。' },
@@ -144,246 +154,84 @@ const STORY = [
   { text: '雨夜归途，从这里开始。' }
 ];
 
-const cam = { x: 6, y: 1.8, z: 10.5, yaw: -Math.PI / 2, pitch: -0.15 };
-const keys = {};
-let renderer = null;
-let time = 0;
-let lastFrame = performance.now();
-let storyDone = false;
+/* =========================================================
+   three.js 场景
+   ========================================================= */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x02040a);
+scene.fog = new THREE.Fog(0x02040a, 2.5, 14);
 
-const canMove = true;
+const camera = new THREE.PerspectiveCamera(60, W / H, 0.06, 40);
 
+const renderer = new THREE.WebGLRenderer({
+  canvas: cv,
+  antialias: true,
+  alpha: false
+});
+renderer.setClearColor(0x02040a, 1);
+
+/* ---------- 房间 ---------- */
 const ROOM = 12;
-const grid = [];
-for(let i = 0; i < ROOM; i++){
-  let row = '';
-  for(let j = 0; j < ROOM; j++){
-    row += (i === 0 || i === ROOM-1 || j === 0 || j === ROOM-1) ? '1' : '0';
-  }
-  grid.push(row);
+const WALL_H = 4.0;
+
+const wallMat  = new THREE.MeshLambertMaterial({ color: 0x2a2030 });
+const floorMat = new THREE.MeshLambertMaterial({ color: 0x0a0810 });
+const ceilMat  = new THREE.MeshLambertMaterial({ color: 0x050408 });
+
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM, ROOM), floorMat);
+floor.rotation.x = -Math.PI / 2;
+floor.position.set(ROOM/2, 0, ROOM/2);
+scene.add(floor);
+
+const ceil = new THREE.Mesh(new THREE.PlaneGeometry(ROOM, ROOM), ceilMat);
+ceil.rotation.x = Math.PI / 2;
+ceil.position.set(ROOM/2, WALL_H, ROOM/2);
+scene.add(ceil);
+
+function makeWall(w, h, d, x, y, z){
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat);
+  m.position.set(x, y, z);
+  scene.add(m);
+}
+makeWall(ROOM, WALL_H, 1, ROOM/2, WALL_H/2, 0.5);
+makeWall(ROOM, WALL_H, 1, ROOM/2, WALL_H/2, ROOM-0.5);
+makeWall(1, WALL_H, ROOM, 0.5, WALL_H/2, ROOM/2);
+makeWall(1, WALL_H, ROOM, ROOM-0.5, WALL_H/2, ROOM/2);
+
+/* ---------- 灯光 ---------- */
+scene.add(new THREE.AmbientLight(0x8899bb, 0.35));
+
+const l1 = new THREE.PointLight(0xffd0a0, 3.5, 25, 2);
+l1.position.set(6, 3.5, 4.0);
+scene.add(l1);
+
+const l2 = new THREE.PointLight(0x90b0ff, 1.5, 25, 2);
+l2.position.set(6, 1.5, 8.5);
+scene.add(l2);
+
+const l3 = new THREE.PointLight(0x8090c0, 1.0, 25, 2);
+l3.position.set(3.5, 2.0, 4.0);
+scene.add(l3);
+
+/* ---------- 相机控制 ---------- */
+const cam = { x: 6, y: 1.8, z: 10.5, yaw: -Math.PI/2, pitch: -0.15 };
+const keys = {};
+
+function updateCamera(){
+  camera.position.set(cam.x, cam.y, cam.z);
+  const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  const cy = Math.cos(cam.yaw),   sy = Math.sin(cam.yaw);
+  const dx = cy*cp, dy = sp, dz = sy*cp;
+  camera.lookAt(cam.x + dx, cam.y + dy, cam.z + dz);
 }
 
-function resize(){
-  const vw = window.innerWidth, vh = window.innerHeight;
-  const scale = Math.min(vw / W, vh / H);
-  const w = Math.round(W * scale), h = Math.round(H * scale);
-  stage.style.width = w + 'px'; stage.style.height = h + 'px';
-  stage.style.position = 'absolute';
-  stage.style.left = Math.round((vw - w) / 2) + 'px';
-  stage.style.top = Math.round((vh - h) / 2) + 'px';
-  if(renderer){
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-    renderer.resize(w, h, dpr);
-  }
-}
-window.addEventListener('resize', resize);
-window.addEventListener('orientationchange', () => setTimeout(resize, 200));
-
-function makeDarkTex(){
-  const S = 256;
-  const c = document.createElement('canvas'); c.width = S; c.height = S;
-  const x = c.getContext('2d');
-  x.fillStyle = '#04060a'; x.fillRect(0, 0, S, S);
-  for(let i = 0; i < 800; i++){
-    x.fillStyle = 'rgba(255,255,255,' + (0.008 + Math.random()*0.012) + ')';
-    x.fillRect(Math.random()*S, Math.random()*S, 1, 1);
-  }
-  x.strokeStyle = 'rgba(0,0,0,0.5)'; x.lineWidth = 2;
-  const bh = 32;
-  for(let row = 0; row * bh < S; row++){
-    const y = row * bh;
-    x.beginPath(); x.moveTo(0, y); x.lineTo(S, y); x.stroke();
-    const off = (row % 2) ? 0 : 40;
-    for(let cx = off; cx < S; cx += 80){
-      x.beginPath(); x.moveTo(cx, y); x.lineTo(cx, y + bh); x.stroke();
-    }
-  }
-  return c;
-}
-function makeFloorTex(){
-  const S = 256;
-  const c = document.createElement('canvas'); c.width = S; c.height = S;
-  const x = c.getContext('2d');
-  x.fillStyle = '#080a0c'; x.fillRect(0, 0, S, S);
-  for(let i = 0; i < 400; i++){
-    x.fillStyle = 'rgba(255,255,255,' + (0.005 + Math.random()*0.01) + ')';
-    x.fillRect(Math.random()*S, Math.random()*S, 1, 1);
-  }
-  x.strokeStyle = 'rgba(0,0,0,0.7)'; x.lineWidth = 2;
-  const t = 64;
-  for(let i = 0; i <= S; i += t){
-    x.beginPath(); x.moveTo(i, 0); x.lineTo(i, S); x.stroke();
-    x.beginPath(); x.moveTo(0, i); x.lineTo(S, i); x.stroke();
-  }
-  return c;
-}
-
-/* ==================== 初始化 3D ==================== */
-function init3D(){
-  try{ renderer = R3D.create(cv); }
-  catch(e){
-    console.error('[raccoon] WebGL:', e);
-    loadTip.textContent = '⚠ WebGL 不可用';
-    loadTip.classList.add('error');
-    return false;
-  }
-  renderer.buildWorld({
-    grid: grid, wallHeight: 4.0,
-    wallTexSource: makeDarkTex(),
-    floorTexSource: makeFloorTex(),
-    ceilTexSource: makeDarkTex()
-  });
-
-  if(DEBUG_MODEL){
-    /* ★ 诊断模式：全亮环境 */
-    renderer.setAmbient([0.9, 0.9, 0.9]);
-    renderer.setLights([
-      { x: 6, y: 3.5, z: 4.0, color: [3.0, 3.0, 3.0] },
-      { x: 6, y: 1.5, z: 8.5, color: [3.0, 3.0, 3.0] },
-      { x: 3.5, y: 2.0, z: 4.0, color: [3.0, 3.0, 3.0] }
-    ]);
-    renderer.setFog({ color: [0.005, 0.008, 0.014], near: 50, far: 100 });
-    console.log('[raccoon] ★ debug 模式已开启：品红模型 + 全亮环境 + 无雾');
-  } else {
-    /* ★ 环境光跟暗夜线一致（暗） */
-    renderer.setAmbient([0.06, 0.06, 0.09]);
-    renderer.setLights([
-      /* 浣熊正上方主光 —— 保证模型一定被照亮 */
-      { x: 6.0, y: 3.5, z: 4.0, color: [1.6, 1.35, 0.95] },
-      /* 相机方向柔光 —— 照亮模型正面 */
-      { x: 6.0, y: 1.5, z: 8.5, color: [0.5, 0.6, 0.85] },
-      /* 左侧冷光 —— 增加对比 */
-      { x: 3.5, y: 2.0, z: 4.0, color: [0.35, 0.45, 0.65] }
-    ]);
-    renderer.setFog({ color: [0.005, 0.008, 0.014], near: 2.5, far: 14.0 });
-  }
+function canStand(x, z){
+  if(x < 1.2 || x > ROOM - 1.2) return false;
+  if(z < 1.2 || z > ROOM - 1.2) return false;
   return true;
 }
 
-/* ==================== 加载浣熊 ==================== */
-function loadRaccoon(){
-  loadTip.textContent = '正在加载浣熊……';
-  loadFill.style.width = '30%';
-
-  R3D.loadOBJModel('assets3d/models/raccoon.obj', function(msg){
-    loadTip.textContent = msg;
-  }).then(function(model){
-    if(!model || !model.P || model.P.length === 0) throw new Error('模型为空');
-
-    /* ---- 诊断输出：贴图 / 法线 ---- */
-    console.log('[raccoon] 贴图:',
-      model.texImage ? ('有 ' + model.texImage.naturalWidth + 'x' + model.texImage.naturalHeight) : '无');
-
-    const vertCount = model.N.length / 3;
-    let allUp = true;
-    const sample = Math.min(vertCount, 300);
-    for(let i = 0; i < sample; i++){
-      const nx = model.N[i*3], ny = model.N[i*3+1], nz = model.N[i*3+2];
-      if(Math.abs(nx) > 0.01 || Math.abs(ny - 1) > 0.01 || Math.abs(nz) > 0.01){
-        allUp = false; break;
-      }
-    }
-    console.log('[raccoon] 法线:', vertCount, '条 | 是否全部朝上(0,1,0):', allUp);
-    if(allUp && vertCount > 100){
-      console.warn('[raccoon] ⚠ 法线全朝上 —— OBJ 可能缺少 vn 数据，会导致模型侧面全黑');
-    }
-
-    /* ---- 包围盒 ---- */
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
-    let minZ = Infinity, maxZ = -Infinity;
-    for(let i = 0; i < model.P.length; i += 3){
-      const px = model.P[i], py = model.P[i+1], pz = model.P[i+2];
-      if(px < minX) minX = px; if(px > maxX) maxX = px;
-      if(py < minY) minY = py; if(py > maxY) maxY = py;
-      if(pz < minZ) minZ = pz; if(pz > maxZ) maxZ = pz;
-    }
-    const height = maxY - minY;
-    const targetHeight = 2.4;
-    const autoScale = targetHeight / Math.max(height, 0.001);
-
-    console.log('[raccoon] 包围盒 X:',
-      minX.toFixed(3), '~', maxX.toFixed(3),
-      '| Y:', minY.toFixed(3), '~', maxY.toFixed(3),
-      '| Z:', minZ.toFixed(3), '~', maxZ.toFixed(3),
-      '| 高度:', height.toFixed(4),
-      '| 自动缩放:', autoScale.toFixed(4));
-
-    loadFill.style.width = '75%';
-    loadTip.textContent = '上传到显卡……';
-
-    /* ★ debug 模式：品红色 + 无贴图，验证几何 */
-    if(DEBUG_MODEL){
-      model.texImage = null;
-      renderer.addModel(model, {
-        x: 6, y: 0, z: 4,
-        scale: autoScale,
-        rotationY: 0,
-        autoFit: true,
-        color: [1, 0, 1]
-      });
-      console.log('[raccoon] ★ debug：模型已强制品红色，无贴图');
-    } else {
-      renderer.addModel(model, {
-        x: 6, y: 0, z: 4,
-        scale: autoScale,
-        rotationY: 0,
-        autoFit: true
-      });
-    }
-
-    loadFill.style.width = '100%';
-    loadTip.textContent = '完成';
-    setTimeout(function(){
-      loading.classList.add('hide');
-      startStory();
-    }, 400);
-  }).catch(function(err){
-    console.error('[raccoon] 加载失败', err);
-    loadTip.textContent = '⚠ 加载失败：' + (err.message || err);
-    loadTip.classList.add('error');
-    setTimeout(function(){
-      loading.classList.add('hide');
-      startStory();
-    }, 1800);
-  });
-}
-
-/* ==================== 剧情播放 ==================== */
-function startStory(){
-  const GAP = 2100;
-  let delay = 600;
-
-  STORY.forEach(function(item){
-    const el = document.createElement('div');
-    el.className = 'storyLine';
-    el.textContent = item.text;
-
-    const len = item.text.length;
-    let fs = 26, ls = 8;
-    if(len > 12){ fs = 22; ls = 6; }
-    if(len > 16){ fs = 20; ls = 5; }
-    el.style.fontSize = fs + 'px';
-    el.style.letterSpacing = ls + 'px';
-    el.style.animationDelay = (delay / 1000) + 's';
-
-    storyLayer.appendChild(el);
-    delay += GAP + (item.pause || 0);
-  });
-
-  setTimeout(finishStory, delay + 1000);
-}
-
-function finishStory(){
-  if(storyDone) return;
-  storyDone = true;
-  endScreen.classList.add('show');
-  setTimeout(function(){
-    location.replace(NEXT_URL);
-  }, 800);
-}
-
-/* ==================== 输入 ==================== */
+/* ---------- 输入 ---------- */
 function bindInput(){
   window.addEventListener('keydown', function(e){
     keys[e.key.toLowerCase()] = true;
@@ -423,17 +271,139 @@ function bindInput(){
   cv.addEventListener('touchend', function(){ touching = false; });
 }
 
-function canStand(x, z){
-  const gy = Math.floor(z), gx = Math.floor(x);
-  if(gy < 0 || gy >= grid.length) return false;
-  const row = grid[gy];
-  if(gx < 0 || gx >= row.length) return false;
-  return row[gx] === '0';
+/* ---------- 放置浣熊到世界 ---------- */
+function placeRaccoon(model){
+  const box = new THREE.Box3().setFromObject(model);
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+
+  const targetHeight = 2.4;
+  const s = targetHeight / Math.max(size.y, 0.001);
+
+  model.scale.setScalar(s);
+  model.position.x = 6 - center.x * s;
+  model.position.y = 0 - box.min.y * s;
+  model.position.z = 4 - center.z * s;
+
+  scene.add(model);
+
+  console.log('[raccoon] 尺寸:', size.x.toFixed(3), '×', size.y.toFixed(3), '×', size.z.toFixed(3),
+              '| 中心:', center.x.toFixed(3), center.y.toFixed(3), center.z.toFixed(3),
+              '| 自动缩放:', s.toFixed(4));
 }
 
+/* ---------- 加载浣熊 ---------- */
+function loadRaccoon(){
+  loadTip.textContent = '正在加载浣熊……';
+  loadFill.style.width = '20%';
+
+  const BASE = 'assets3d/models/';
+
+  const mtlLoader = new THREE.MTLLoader();
+  mtlLoader.setPath(BASE);
+  mtlLoader.setResourcePath(BASE);
+  mtlLoader.load('raccoon.mtl', function(materials){
+    materials.preload();
+    loadFill.style.width = '45%';
+    loadTip.textContent = '加载模型……';
+
+    const objLoader = new THREE.OBJLoader();
+    objLoader.setMaterials(materials);
+    objLoader.setPath(BASE);
+    objLoader.load('raccoon.obj', function(model){
+      placeRaccoon(model);
+      loadFill.style.width = '100%';
+      loadTip.textContent = '完成';
+      setTimeout(function(){
+        loading.classList.add('hide');
+        startStory();
+      }, 400);
+    }, function(progress){
+      if(progress.total){
+        const pct = 45 + Math.round(progress.loaded / progress.total * 50);
+        loadFill.style.width = pct + '%';
+      }
+    }, function(err){
+      console.error('[raccoon] OBJ 加载失败', err);
+      loadTip.textContent = '⚠ OBJ 加载失败';
+      loadTip.classList.add('error');
+      setTimeout(function(){
+        loading.classList.add('hide');
+        startStory();
+      }, 1800);
+    });
+  }, function(progress){
+    if(progress.total){
+      loadFill.style.width = (10 + Math.round(progress.loaded / progress.total * 30)) + '%';
+    }
+  }, function(err){
+    /* MTL 失败 → 用普通材质加载 OBJ */
+    console.warn('[raccoon] MTL 加载失败，改用无贴图模式', err);
+    loadTip.textContent = '无贴图模式……';
+    const objLoader = new THREE.OBJLoader();
+    objLoader.setPath(BASE);
+    objLoader.load('raccoon.obj', function(model){
+      model.traverse(function(o){
+        if(o.isMesh) o.material = new THREE.MeshLambertMaterial({ color: 0x9a8a78 });
+      });
+      placeRaccoon(model);
+      loadFill.style.width = '100%';
+      loadTip.textContent = '完成（无贴图）';
+      setTimeout(function(){
+        loading.classList.add('hide');
+        startStory();
+      }, 400);
+    }, undefined, function(err2){
+      console.error('[raccoon] OBJ 也加载失败', err2);
+      loadTip.textContent = '⚠ 加载失败';
+      loadTip.classList.add('error');
+      setTimeout(function(){
+        loading.classList.add('hide');
+        startStory();
+      }, 1800);
+    });
+  });
+}
+
+/* =========================================================
+   剧情播放
+   ========================================================= */
+function startStory(){
+  const GAP = 2100;
+  let delay = 600;
+  STORY.forEach(function(item){
+    const el = document.createElement('div');
+    el.className = 'storyLine';
+    el.textContent = item.text;
+    const len = item.text.length;
+    let fs = 26, ls = 8;
+    if(len > 12){ fs = 22; ls = 6; }
+    if(len > 16){ fs = 20; ls = 5; }
+    el.style.fontSize = fs + 'px';
+    el.style.letterSpacing = ls + 'px';
+    el.style.animationDelay = (delay / 1000) + 's';
+    storyLayer.appendChild(el);
+    delay += GAP + (item.pause || 0);
+  });
+  setTimeout(finishStory, delay + 1000);
+}
+let storyDone = false;
+function finishStory(){
+  if(storyDone) return;
+  storyDone = true;
+  endScreen.classList.add('show');
+  setTimeout(function(){
+    location.replace(NEXT_URL);
+  }, 800);
+}
+
+/* =========================================================
+   主循环
+   ========================================================= */
+let lastFrame = performance.now();
 function loop(now){
   const dt = Math.min(0.05, (now - lastFrame) / 1000);
-  lastFrame = now; time += dt;
+  lastFrame = now;
 
   const rotSpeed = 1.8;
   if(keys['arrowleft'])  cam.yaw -= rotSpeed * dt;
@@ -443,48 +413,61 @@ function loop(now){
   if(cam.pitch >  0.9) cam.pitch =  0.9;
   if(cam.pitch < -0.9) cam.pitch = -0.9;
 
-  if(canMove){
-    const speed = 2.8;
-    let fwd = 0, str = 0;
-    if(keys['w']) fwd += 1;
-    if(keys['s']) fwd -= 1;
-    if(keys['a']) str -= 1;
-    if(keys['d']) str += 1;
-    if(fwd || str){
-      const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
-      let dx = cy*fwd - sy*str, dz = sy*fwd + cy*str;
-      const len = Math.hypot(dx, dz) || 1;
-      dx = dx/len * speed * dt; dz = dz/len * speed * dt;
-      const nx = cam.x + dx, nz = cam.z + dz;
-      if(canStand(nx, cam.z)) cam.x = nx;
-      if(canStand(cam.x, nz)) cam.z = nz;
-    }
+  const speed = 2.8;
+  let fwd = 0, str = 0;
+  if(keys['w']) fwd += 1;
+  if(keys['s']) fwd -= 1;
+  if(keys['a']) str -= 1;
+  if(keys['d']) str += 1;
+  if(fwd || str){
+    const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
+    let dx = cy*fwd - sy*str, dz = sy*fwd + cy*str;
+    const len = Math.hypot(dx, dz) || 1;
+    dx = dx/len * speed * dt; dz = dz/len * speed * dt;
+    const nx = cam.x + dx, nz = cam.z + dz;
+    if(canStand(nx, cam.z)) cam.x = nx;
+    if(canStand(cam.x, nz)) cam.z = nz;
   }
 
-  if(renderer){
-    renderer.setCamera({
-      x: cam.x, y: cam.y, z: cam.z,
-      yaw: cam.yaw, pitch: cam.pitch,
-      fov: Math.PI / 3.0, near: 0.06, far: 40
-    });
-    renderer.render();
-  }
+  updateCamera();
+  renderer.render(scene, camera);
   requestAnimationFrame(loop);
 }
 
+/* =========================================================
+   resize
+   ========================================================= */
+function resize(){
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const scale = Math.min(vw / W, vh / H);
+  const w = Math.round(W * scale), h = Math.round(H * scale);
+  stage.style.width = w + 'px';
+  stage.style.height = h + 'px';
+  stage.style.position = 'absolute';
+  stage.style.left = Math.round((vw - w) / 2) + 'px';
+  stage.style.top = Math.round((vh - h) / 2) + 'px';
+
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  renderer.setPixelRatio(dpr);
+  renderer.setSize(W, H, false);
+  cv.style.width = '100%';
+  cv.style.height = '100%';
+
+  camera.aspect = W / H;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', function(){ setTimeout(resize, 200); });
+
+/* =========================================================
+   启动
+   ========================================================= */
 resize();
-if(init3D()){
-  resize();
-  bindInput();
-  lastFrame = performance.now();
-  requestAnimationFrame(loop);
-  loadRaccoon();
-  setTimeout(function(){ hintEl.classList.add('show'); }, 2500);
-} else {
-  loadFill.style.width = '100%';
-  loadTip.textContent = '⚠ 3D 不可用，即将跳过……';
-  setTimeout(function(){ location.replace(NEXT_URL); }, 2000);
-}
+bindInput();
+updateCamera();
+loadRaccoon();
+setTimeout(function(){ hintEl.classList.add('show'); }, 2500);
+requestAnimationFrame(loop);
 
 })();
 </script>
