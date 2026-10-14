@@ -128,6 +128,19 @@ var endingLock = false;
 var bloodPuddleCount = 0;
 
 /* =========================================================
+   ★ 地图提示（只弹一次）
+   ========================================================= */
+function hintMap(){
+  if(!S || !S.flags) return;
+  if(S.flags.mapHintShown) return;
+  S.flags.mapHintShown = true;
+  save();
+  setTimeout(function(){
+    toast('🗺 打开地图，就能去别处');
+  }, 400);
+}
+
+/* =========================================================
    成就系统
    ========================================================= */
 var ACHIEVEMENTS = {
@@ -960,6 +973,9 @@ var SCENES = {
     }
   },
 
+  /* =====================================================
+     ★ 雨巷
+     ===================================================== */
   alley: {
     url:'assets/scene1.html', label:'雨 巷',
     acts: {
@@ -1156,20 +1172,26 @@ var SCENES = {
         });
       },
 
+      /* ★ 通道物件：暗夜保留 changeScene，主线只说话 */
       exit: function(){
         if(isBloodMode()){
           say('巷子深处更暗了。');
           say('——雨声里，混着一点**别的声音**。');
           say('像是谁，在后面**慢慢地走**。');
           say('灰豆没有回头。');
-        } else {
-          say('灰豆钻进了巷子深处。');
+          changeScene('backstreet', '后 巷');
+          return;
         }
-        changeScene('backstreet', '后 巷');
+        say('灰豆钻进了巷子深处。');
+        say('——再往前，就是后巷了。');
+        hintMap();
       }
     }
   },
 
+  /* =====================================================
+     ★ 后巷
+     ===================================================== */
   backstreet: {
     url:'assets/scene2.html', label:'后 巷',
     acts: {
@@ -1286,11 +1308,12 @@ var SCENES = {
         say('“别进去。”');
       },
 
+      /* ★ 后门：保留 doorOpen 逻辑，删 changeScene */
       door: function(){
         if(S.flags.doorOpen){
           say('门开着一条缝。');
-          changeScene('shop', '便 利 店');
-          say('灰豆侧着身子钻了进去。');
+          say('——里面的灯，是灰豆自己打开的。');
+          hintMap();
           return;
         }
         var myInv = getInv();
@@ -1337,13 +1360,16 @@ var SCENES = {
           say('像是有人在里面**洗手**。');
           say('灰豆停了一下。');
           say('——水声也停了一下。');
-        }
-        setTimeout(function(){
-          changeScene('shop', '便 利 店');
           say('灰豆侧着身子钻了进去。');
-        }, 220);
+          setTimeout(function(){ changeScene('shop', '便 利 店'); }, 220);
+          return;
+        }
+        say('——便利店就在里面。');
+        say('灰豆没有立刻进去。');
+        hintMap();
       },
 
+      /* ★ 配电房：保留 powerDoorSeen + powerFrom，删 changeScene */
       powerDoor: function(){
         if(!S.flags.powerDoorSeen){
           S.flags.powerDoorSeen = true; save(); syncState();
@@ -1356,27 +1382,33 @@ var SCENES = {
             say('——光在**呼吸**。');
             say('灰豆用肩膀顶了顶，门吱呀一声开了。');
             say('里面，传来一声很低的**叹息**。');
-          } else {
-            say('巷子的尽头，墙上嵌着一扇小铁门。');
-            say('门上钉着一块褪色的红牌子——');
-            say('“**配电**”。');
-            say('门缝里透出一点冷光，还有低低的嗡嗡声。');
-            say('灰豆用肩膀顶了顶，门吱呀一声开了。');
-            say('里面黑漆漆的。');
+            S.flags.powerFrom = 'backstreet'; save(); syncState();
+            setTimeout(function(){ changeScene('powerstation', '配 电 房'); }, 300);
+            return;
           }
-          setTimeout(function(){
-            S.flags.powerFrom = 'backstreet'; save(); syncState();
-            changeScene('powerstation', '配 电 房');
-          }, 300);
-        } else {
-          say('那扇配电房的小铁门还开着。');
-          say('里面黑漆漆的。', function(){
-            S.flags.powerFrom = 'backstreet'; save(); syncState();
-            changeScene('powerstation', '配 电 房');
-          });
+          say('巷子的尽头，墙上嵌着一扇小铁门。');
+          say('门上钉着一块褪色的红牌子——');
+          say('“**配电**”。');
+          say('门缝里透出一点冷光，还有低低的嗡嗡声。');
+          say('灰豆用肩膀顶了顶，门吱呀一声开了。');
+          say('里面黑漆漆的。');
+          say('——配电房，就是这里。');
+          hintMap();
+          return;
         }
+        if(isBloodMode()){
+          say('那扇配电房的小铁门还开着。');
+          say('里面黑漆漆的。');
+          S.flags.powerFrom = 'backstreet'; save(); syncState();
+          setTimeout(function(){ changeScene('powerstation', '配 电 房'); }, 200);
+          return;
+        }
+        say('那扇配电房的小铁门还开着。');
+        say('里面黑漆漆的。');
+        hintMap();
       },
 
+      /* ★ 消防梯：保留 rooftopSeen，删 changeScene */
       stairs: function(){
         if(isBloodMode()){
           say('头顶那架消防梯，锈得更厉害了。');
@@ -1385,6 +1417,7 @@ var SCENES = {
           say('像是**猫毛编的**。');
           say('——从上面垂下来。');
           say('一直垂到地面上。');
+          changeScene('rooftop', '屋 顶');
           return;
         }
         if(!S.flags.rooftopSeen){
@@ -1395,13 +1428,14 @@ var SCENES = {
           say('灰豆跳了一下，够不到。');
           say('又跳了一下。');
           say('这一次，爪尖勾住了一道铁横梁。');
-          say('——好吧，上去看看。');
+          say('——上去看看。');
         } else {
           say('消防梯上还留着它的爪印。');
           say('那只鸟窝，还挂在那里。');
           say('灰豆蹭了蹭铁栏杆。');
         }
-        changeScene('rooftop', '屋 顶');
+        say('——屋顶上，应该能看到很远。');
+        hintMap();
       },
 
       mold: function(){
@@ -1423,18 +1457,26 @@ var SCENES = {
         say('**红屋顶**。');
       },
 
+      /* ★ A 类：回到雨巷 */
       back: function(){
         if(isBloodMode()){
           say('灰豆退回到雨巷。');
           say('——雨，还在下。');
           say('——但**雨声停了**，大概半秒钟。');
           say('就在灰豆回头的那一瞬间。');
+          changeScene('alley', '雨 巷');
+          return;
         }
-        changeScene('alley', '雨 巷');
+        say('灰豆回头看了一眼巷口。');
+        say('——雨巷，就在那边。');
+        hintMap();
       }
     }
   },
 
+  /* =====================================================
+     ★ 便利店
+     ===================================================== */
   shop: {
     url:'assets/scene3.html', label:'便 利 店',
     acts: {
@@ -1540,6 +1582,7 @@ var SCENES = {
         });
       },
 
+      /* ★ 后窗：暗夜保留复杂剧情 + changeScene；主线改成"窗台太高，从地图走" */
       window: function(){
         if(isBloodMode()){
           if(is('bloodWindowPassed')){
@@ -1572,25 +1615,28 @@ var SCENES = {
           });
           return;
         }
-        changeScene('street', '街 道');
-        say('后窗外一片漆黑。');
+        say('后窗下面，是一条街。');
         say('灰豆探头往外看了看。');
-        say('——什么都看不见。');
-        say('');
-        say('但它知道，这条街，它必须走完。');
-        say('它从后窗翻了出去。');
-        say('窗台太高，回不去了。');
+        say('——雨很大。');
+        say('它用爪子试了试窗台。');
+        say('——太高了。');
+        say('跳下去，会摔。');
+        say('（还是从地图走比较稳。）');
+        hintMap();
       },
 
+      /* ★ A 类：回到后巷 */
       back: function(){
         if(isBloodMode()){
           say('灰豆退回到后门。');
           say('——门缝里透出的，还是那股腥甜。');
           say('——但它还是钻了出去。');
-        } else {
-          say('灰豆从后门钻了出去。');
+          changeScene('backstreet', '后 巷');
+          return;
         }
-        changeScene('backstreet', '后 巷');
+        say('灰豆回头看了一眼后门。');
+        say('——后巷，就在那边。');
+        hintMap();
       },
 
       floor: function(){
@@ -1635,23 +1681,34 @@ var SCENES = {
     }
   },
 
+  /* =====================================================
+     ★ 街道
+     ===================================================== */
   street: {
     url:'assets/scene4.html', label:'街 道',
     acts: {
+      /* ★ 配电房：保留 powerFrom，删 changeScene */
       power: function(){
         if(S.flags.powerCut){
           say('配电房的铁门半掩着。');
           say('里面黑漆漆的，只有应急灯一闪一闪。');
           say('灰豆已经来过了。');
-        }else{
-          say('墙边有一扇窄门。');
-          say('铁皮做的，刷着深灰色漆，门缝里透出一点冷光。');
-          say('门上挂着一块红底白字的牌子——“配电”。');
-          say('门没有锁。');
+          return;
+        }
+        say('墙边有一扇窄门。');
+        say('铁皮做的，刷着深灰色漆，门缝里透出一点冷光。');
+        say('门上挂着一块红底白字的牌子——“配电”。');
+        say('门没有锁。');
+        if(isBloodMode()){
           S.flags.powerFrom = 'street'; save(); syncState();
           changeScene('powerstation', '配 电 房');
+          return;
         }
+        say('——配电房，就在里面。');
+        hintMap();
       },
+
+      /* ★ 地下通道：保留 underpassSeen，删 changeScene */
       under: function(){
         if(!S.flags.underpassSeen){
           S.flags.underpassSeen = true; save(); syncState();
@@ -1659,25 +1716,37 @@ var SCENES = {
           say('牌子被雨打歪了，隐约能看到“地下通道”四个字。');
           say('灰豆探头往里看了看。');
           say('——黑得看不见底。');
-          say('但它还是下去了。');
         } else {
           say('还是那个向下的入口。');
-          say('灰豆这次没有犹豫。');
         }
-        changeScene('underpass', '地 下 通 道');
+        if(isBloodMode()){
+          say('灰豆下去了。');
+          changeScene('underpass', '地 下 通 道');
+          return;
+        }
+        say('——下面，是一条地下通道。');
+        hintMap();
       },
+
+      /* ★ 河堤：保留 riversideSeen，删 changeScene */
       river: function(){
         if(!S.flags.riversideSeen){
           S.flags.riversideSeen = true; save(); syncState();
           say('左侧有一道窄窄的缺口，通向河堤。');
           say('雨声在那儿忽然变大——');
           say('像是整条河都在下着。');
-          say('灰豆侧身钻了过去。');
         } else {
           say('缺口还在那里，风从那里穿过来。');
         }
-        changeScene('riverside', '河 堤');
+        if(isBloodMode()){
+          say('灰豆侧身钻了过去。');
+          changeScene('riverside', '河 堤');
+          return;
+        }
+        say('——河堤，就在那边。');
+        hintMap();
       },
+
       rope: function(){
         var myInv = getInv();
         if(myInv.indexOf('rope') !== -1 || myInv.indexOf('grapnel') !== -1){
@@ -1708,6 +1777,8 @@ var SCENES = {
         });
         say('绳子断了，它摔进了一堆落叶里。');
       },
+
+      /* ★ 铁门：保留 gateOpen，删 changeScene */
       gate: function(){
         if(isBloodMode()){
           say('铁门。');
@@ -1737,14 +1808,19 @@ var SCENES = {
           return;
         }
         if(getInv().indexOf('grapnel') !== -1){
+          if(S.flags.gateOpen){
+            say('铁门开着。');
+            say('——灰豆已经翻过来过了。');
+            hintMap();
+            return;
+          }
           S.flags.gateOpen = true; save(); syncState();
           say('灰豆甩出钩爪。');
           say('挂钩在空中划了一道弧，**咬住了门顶**。');
-          setTimeout(function(){
-            changeScene('doorstep', '门 前');
-            say('门那边，是一栋红屋顶的房子。');
-          }, 300);
-        }else{
+          say('——灰豆爬了上去，翻过了铁门。');
+          say('门那边，是一栋红屋顶的房子。');
+          hintMap();
+        } else {
           say('铁门比灰豆站起来还高。');
           say('栏杆冰凉，爪子抓不住。');
           say('门后是一栋{{红屋顶的房子}}。');
@@ -1752,6 +1828,7 @@ var SCENES = {
           say('——刚才那一盏灯，也被灰豆亲手关掉了。');
         }
       },
+
       fire: function(){
         if(isBloodMode()){
           say('消防栓锈死了。');
@@ -1770,6 +1847,7 @@ var SCENES = {
           say('但比雨暖一点。');
         }
       },
+
       mailbox: function(){
         if(isBloodMode()){
           say('一个旧信箱。');
@@ -1790,6 +1868,7 @@ var SCENES = {
         say('一个模糊了。另一个，是“灰豆”。');
         say('……打不开。');
       },
+
       tree: function(){
         if(isBloodMode()){
           say('街角那棵梧桐，烧得只剩一根主干。');
@@ -1806,6 +1885,7 @@ var SCENES = {
         say('灰豆在树根下转了一圈。');
         say('闻到一点熟悉的、干燥的味道。');
       },
+
       lamp: function(){
         if(isBloodMode()){
           say('这盏路灯也灭了。');
@@ -1823,20 +1903,27 @@ var SCENES = {
           say('灰豆的影子被拉得很长，一直伸到铁门下。');
         }
       },
+
+      /* ★ A 类：回后巷 */
       back: function(){
-        changeScene('backstreet', '后 巷');
         if(isBloodMode()){
           say('灰豆走回后巷。');
           say('——它很确定，刚刚后巷里**没有这个声音**。');
           say('——一个很低的、很轻的**哼声**。');
           say('像是谁在哄谁睡觉。');
-        } else {
-          say('灰豆走回了后巷。');
+          changeScene('backstreet', '后 巷');
+          return;
         }
+        say('灰豆回头看了一眼。');
+        say('——后巷，就在那边。');
+        hintMap();
       }
     }
   },
 
+  /* =====================================================
+     ★ 门前
+     ===================================================== */
   doorstep: {
     url:'assets/scene10.html', label:'门 前',
     acts: {
@@ -1856,6 +1943,8 @@ var SCENES = {
         say('上面长了一层薄薄的青苔。');
         say('——有人经常走。');
       },
+
+      /* ★ 主门：暗夜保留 changeScene，主线只说话 */
       door: function(){
         if(isBloodMode()){
           say('门关着。');
@@ -1889,13 +1978,11 @@ var SCENES = {
         }
         say('它用额头轻轻抵了抵门板。');
         say('门没有锁。');
-        say('——像是，一直在等谁。', function(){
-          setTimeout(function(){
-            changeScene('house', '红 屋 顶');
-            say('灰豆用爪子把门推开了一条缝。');
-          }, 400);
-        });
+        say('——像是在等谁。');
+        say('——红屋顶，就在里面。');
+        hintMap();
       },
+
       lamp: function(){
         if(isBloodMode()){
           say('门框上面那盏小灯，早就没了。');
@@ -1915,6 +2002,7 @@ var SCENES = {
           say('——但那些雨，正好让灯罩泛着一点点微光。');
         }
       },
+
       window: function(){
         if(isBloodMode()){
           say('窗户里什么都没有。');
@@ -1932,17 +2020,38 @@ var SCENES = {
           say('——但那个轮廓，就是它记得的那一栋。');
         }
       },
+
+      /* ★ A 类：回到街道 */
       back: function(){
-        changeScene('street', '街 道');
-        say('灰豆退回到铁门那边。');
+        if(isBloodMode()){
+          say('灰豆退回到铁门那边。');
+          changeScene('street', '街 道');
+          return;
+        }
+        say('灰豆回头看了一眼。');
+        say('——街道，就在那边。');
+        hintMap();
       }
     }
   },
 
+  /* =====================================================
+     ★ 红屋顶
+     ===================================================== */
   house: {
     url:'assets/scene5.html', label:'红 屋 顶',
     acts: {
-      back: function(){ changeScene('doorstep', '门 前'); },
+      /* ★ A 类：回到门前 */
+      back: function(){
+        if(isBloodMode()){
+          say('灰豆退回门前。');
+          changeScene('doorstep', '门 前');
+          return;
+        }
+        say('灰豆回头看了一眼门口。');
+        say('——门前，就在那里。');
+        hintMap();
+      },
 
       frame: function(){
         var myInv = getInv();
@@ -2123,6 +2232,9 @@ var SCENES = {
     }
   },
 
+  /* =====================================================
+     ★ 配电房
+     ===================================================== */
   powerstation: {
     url:'assets/scene6.html', label:'配 电 房',
     acts: {
@@ -2193,18 +2305,25 @@ var SCENES = {
         say('墨迹有点晕开了。');
         say('像是有谁，很久以前，在这页上落过一滴水。');
       },
+
+      /* ★ A 类：回去 */
       back: function(){
-        if(S.flags.powerFrom === 'street'){
-          changeScene('street', '街 道');
-          say('灰豆退回到街上。');
-        } else {
-          changeScene('backstreet', '后 巷');
-          say('灰豆退回到巷子里。');
+        var from = S.flags.powerFrom === 'street' ? 'street' : 'backstreet';
+        var label = from === 'street' ? '街 道' : '后 巷';
+        if(isBloodMode()){
+          changeScene(from, label);
+          return;
         }
+        say('灰豆回头看了一眼。');
+        say('——门外的雨，还在下。');
+        hintMap();
       }
     }
   },
 
+  /* =====================================================
+     ★ 屋顶
+     ===================================================== */
   rooftop: {
     url:'assets/scene7.html', label:'屋 顶',
     acts: {
@@ -2259,13 +2378,24 @@ var SCENES = {
           }
         }
       },
+
+      /* ★ A 类：回到后巷 */
       back: function(){
-        changeScene('backstreet', '后 巷');
-        say('灰豆顺着消防梯下去了。');
+        if(isBloodMode()){
+          say('灰豆顺着消防梯下去了。');
+          changeScene('backstreet', '后 巷');
+          return;
+        }
+        say('灰豆回头看了一眼消防梯。');
+        say('——后巷，就在下面。');
+        hintMap();
       }
     }
   },
 
+  /* =====================================================
+     ★ 地下通道（★ 新增 3 个物品）
+     ===================================================== */
   underpass: {
     url:'assets/scene8.html', label:'地 下 通 道',
     acts: {
@@ -2305,25 +2435,139 @@ var SCENES = {
         say('是一个易拉罐。空的。');
         say('它用爪子拨了一下，罐子滚了出去。');
       },
+
+      /* ★★ 新增物品 1：墙上的旧纸 */
+      oldPaper: function(){
+        if(isBloodMode()){
+          say('墙上贴着一张纸。');
+          say('——不对，不是“贴”。');
+          say('它**长**在墙上。');
+          say('像是被雨水一层层糊上去的。');
+          say('上面的字，全是红的。');
+          say('只有三个字，被反复描过——');
+          say('“**回来了**”。');
+          say('灰豆往后退了一步。');
+          say('墙上那块地方，比周围——');
+          say('**热一点**。');
+          return;
+        }
+        if(is('underpassPaperSeen')){
+          say('那张纸还在墙上。');
+          say('字迹被雨水泡得更糊了。');
+          say('——但“灰豆”两个字，还是能看清。');
+          return;
+        }
+        set('underpassPaperSeen', true);
+        save();
+        say('墙上贴着一张发黄的纸。');
+        say('——被雨水泡得鼓了起来，边角卷着。');
+        say('灰豆用爪子刮了刮。');
+        say('是一张**寻宠启事**。');
+        say('——但上面画的，不是猫，也不是狗。');
+        say('是一只**很小的浣熊**。');
+        say('照片下面写着一行字：');
+        say('“走丢了。它叫——灰豆。”');
+        say('');
+        say('灰豆盯着那行字，看了很久。');
+        say('“……老周。”');
+        say('联系人那一栏，写的是这个名字。');
+        say('——原来他也找过它。');
+        say('找过很久。');
+      },
+
+      /* ★★ 新增物品 2：地上的粉笔字 */
+      floorWords: function(){
+        if(isBloodMode()){
+          say('地上的字，变了。');
+          say('——刚才还是“走到哪了”。');
+          say('现在，只有三个字：');
+          say('“**就在这**”。');
+          say('灰豆低头看了一眼。');
+          say('——脚印在字旁边停住了。');
+          say('——不知道是谁的。');
+          return;
+        }
+        say('水泥地上，有人用粉笔写了一行字。');
+        say('——歪歪扭扭的。');
+        say('字很淡，被踩过几脚，边缘糊了。');
+        say('“**走到哪了？**”');
+        say('');
+        say('灰豆蹲下来，用爪子描了一遍。');
+        say('——它不知道这是谁写的。');
+        say('但它觉得，写这行字的人，');
+        say('一定等了很久。');
+      },
+
+      /* ★★ 新增物品 3：角落的铁皮盒 */
+      tinBox: function(){
+        if(isBloodMode()){
+          say('铁皮盒还在。');
+          say('——但里面的东西都不见了。');
+          say('盒子底下，有一片**干血**。');
+          say('——形状像一只很小很小的爪子。');
+          say('灰豆把盒子轻轻放回地上。');
+          return;
+        }
+        if(is('underpassBoxSeen')){
+          say('铁皮盒还在那里。');
+          say('盖子半开着。');
+          say('里面的东西，还是一样的。');
+          return;
+        }
+        set('underpassBoxSeen', true);
+        save();
+        say('角落里有一个铁皮盒。');
+        say('——生了锈，盖子半开着。');
+        say('灰豆用爪子把它拨正。');
+        say('里面有三样东西：');
+        say('一颗玻璃珠。');
+        say('一枚发夹。');
+        say('还有一张撕碎又拼过的旧照片。');
+        say('');
+        say('照片拼得不太对，缺了几块。');
+        say('只能看出——');
+        say('一个老人。');
+        say('和一只很小的、灰扑扑的东西。');
+        say('——看不出那是什么。');
+        say('但它忽然不想再看了。');
+      },
+
+      /* ★ 配电房门：保留 powerFrom，删 changeScene */
       room: function(){
         if(S.flags.powerCut){
           say('配电房的门。');
           say('里面还是黑的。');
           say('——灰豆已经进去过了。');
-        } else {
-          say('一扇铁皮门。门上贴着“配电房”。');
-          say('门缝里透出一点冷光。');
+          return;
+        }
+        say('一扇铁皮门。门上贴着“配电房”。');
+        say('门缝里透出一点冷光。');
+        if(isBloodMode()){
           S.flags.powerFrom = 'street'; save(); syncState();
           changeScene('powerstation', '配 电 房');
+          return;
         }
+        say('——配电房，就在里面。');
+        hintMap();
       },
+
+      /* ★ A 类：回到街道 */
       back: function(){
-        changeScene('street', '街 道');
-        say('灰豆顺着楼梯爬了上去。');
+        if(isBloodMode()){
+          say('灰豆顺着楼梯爬了上去。');
+          changeScene('street', '街 道');
+          return;
+        }
+        say('灰豆回头看了一眼楼梯。');
+        say('——街道，就在上面。');
+        hintMap();
       }
     }
   },
 
+  /* =====================================================
+     ★ 河堤
+     ===================================================== */
   riverside: {
     url:'assets/scene9.html', label:'河 堤',
     acts: {
@@ -2366,12 +2610,23 @@ var SCENES = {
         say('灰豆看了一会儿。');
         say('然后转身走了。');
       },
+
+      /* ★ A 类：回到街道 */
       back: function(){
-        changeScene('street', '街 道');
+        if(isBloodMode()){
+          changeScene('street', '街 道');
+          return;
+        }
+        say('灰豆回头看了一眼缺口。');
+        say('——街道，就在那边。');
+        hintMap();
       }
     }
   },
 
+  /* =====================================================
+     ★ 邻屋
+     ===================================================== */
   neighbor: {
     url:'assets/scene11.html', label:'邻 屋',
     acts: {
@@ -2450,20 +2705,44 @@ var SCENES = {
         say('——它记得脖子上有过一根一样的东西。');
         say('——但它不记得，绳子是什么时候断的。');
       },
+
+      /* ★ 通向院子的门：暗夜保留 changeScene，主线只说话 */
       exit: function(){
+        if(isBloodMode()){
+          say('房间另一头，有一扇门。');
+          say('门板烧得只剩半边。');
+          say('门缝里透出一线暗红的光。');
+          say('——是那栋房子的光。');
+          say('灰豆把爪子放在门上。');
+          say('——门没有锁。');
+          say('——像是在等它。', function(){
+            setTimeout(function(){
+              changeScene('doorstep', '门 前');
+              say('灰豆推开了门。');
+              say('外面，就是那栋房子的院子。');
+            }, 400);
+          });
+          return;
+        }
         say('房间另一头，有一扇门。');
         say('门板烧得只剩半边。');
-        say('门缝里透出一线暗红的光。');
-        say('——是那栋房子的光。');
+        say('门缝里透出一线微光。');
+        say('——那是院子里的光。');
         say('灰豆把爪子放在门上。');
         say('——门没有锁。');
-        say('——像是在等它。', function(){
-          setTimeout(function(){
-            changeScene('doorstep', '门 前');
-            say('灰豆推开了门。');
-            say('外面，就是那栋房子的院子。');
-          }, 400);
-        });
+        hintMap();
+      },
+
+      /* ★ A 类：来的路 */
+      back: function(){
+        if(isBloodMode()){
+          say('灰豆退回铁门那边。');
+          changeScene('street', '街 道');
+          return;
+        }
+        say('灰豆回头看了一眼来时的路。');
+        say('——铁门，就在那边。');
+        hintMap();
       }
     }
   }
@@ -3177,7 +3456,6 @@ function beginGame(state, isNew){
     createGameFrame(sceneURL(sceneName));
   }
   pendingOpeningMonologue = isNew;
-  /* ★ 通知地图当前场景 */
   try{ if(window.RaccoonMap) RaccoonMap.setCurrentScene(sceneName); }catch(e){}
 }
 (function init(){
