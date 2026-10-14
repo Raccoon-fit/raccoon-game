@@ -281,6 +281,7 @@ function placeRaccoon(model){
   const s = targetHeight / Math.max(size.y, 0.001);
 
   model.scale.setScalar(s);
+  model.rotation.y = -Math.PI / 2;      /* ★ 让浣熊正面朝相机 */
   model.position.x = 6 - center.x * s;
   model.position.y = 0 - box.min.y * s;
   model.position.z = 4 - center.z * s;
