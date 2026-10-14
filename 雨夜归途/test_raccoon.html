@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>浣熊模型验证</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:100%;height:100%;overflow:hidden;background:#0a0e14;font-family:"PingFang SC","Microsoft YaHei",sans-serif;}
+  #info{position:fixed;left:14px;top:14px;color:#dbe8f5;font-size:13px;line-height:1.9;z-index:10;
+    padding:12px 18px;background:rgba(10,18,28,.85);border-radius:10px;
+    border:1px solid rgba(140,180,220,.25);max-width:calc(100% - 28px);
+    box-shadow:0 6px 24px rgba(0,0,0,.6);}
+  #info b{color:#ffd98f;}
+  #info.err{color:#ff8a8a;}
+  #tip{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
+    color:rgba(140,170,200,.5);font-size:12px;letter-spacing:1px;pointer-events:none;}
+</style>
+</head>
+<body>
+<div id="info">加载中……</div>
+<div id="tip">鼠标拖拽旋转 · 滚轮缩放</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
+<script>
+(function(){
+'use strict';
+
+const info = document.getElementById('info');
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0e14);
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.01, 1000);
+camera.position.set(0, 1.5, 4);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
+
+/* 灯光 —— 保证任何朝向都有亮度 */
+scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+const d1 = new THREE.DirectionalLight(0xffffff, 0.9);  d1.position.set(5, 10, 7);   scene.add(d1);
+const d2 = new THREE.DirectionalLight(0x88aaff, 0.5);  d2.position.set(-5, 5, -7);  scene.add(d2);
+const d3 = new THREE.DirectionalLight(0xffcc88, 0.4);  d3.position.set(0, -3, 5);   scene.add(d3);
+
+/* 地面网格 —— 帮助判断模型大小和位置 */
+const grid = new THREE.GridHelper(10, 20, 0x445577, 0x223344);
+scene.add(grid);
+
+/* 模型加载 */
+const BASE = 'assets3d/models/';
+let modelLoaded = false;
+
+function onModelLoaded(obj){
+  modelLoaded = true;
+
+  /* 计算包围盒 */
+  const box = new THREE.Box3().setFromObject(obj);
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+
+  info.innerHTML =
+    '<b>模型加载成功</b><br>' +
+    '尺寸: ' + size.x.toFixed(3) + ' × ' + size.y.toFixed(3) + ' × ' + size.z.toFixed(3) + ' 米<br>' +
+    '中心: (' + center.x.toFixed(2) + ', ' + center.y.toFixed(2) + ', ' + center.z.toFixed(2) + ')<br>' +
+    '底部 Y: ' + box.min.y.toFixed(3) + '　顶部 Y: ' + box.max.y.toFixed(3);
+
+  /* 自动适配到 2 米高，底部贴地 */
+  const maxDim = Math.max(size.x, size.y, size.z) || 1;
+  const s = 2 / maxDim;
+  obj.scale.setScalar(s);
+  obj.position.x = -center.x * s;
+  obj.position.y = -box.min.y * s;
+  obj.position.z = -center.z * s;
+
+  scene.add(obj);
+
+  /* 相机绕模型 4 米处 */
+  camera.position.set(0, 1.5, 4);
+  camera.lookAt(0, 1, 0);
+}
+
+/* 先试 MTL + 贴图 */
+const mtlLoader = new THREE.MTLLoader();
+mtlLoader.setPath(BASE);
+mtlLoader.setResourcePath(BASE);   /* 贴图路径 */
+mtlLoader.load('raccoon.mtl', function(materials){
+  materials.preload();
+  const objLoader = new THREE.OBJLoader();
+  objLoader.setMaterials(materials);
+  objLoader.setPath(BASE);
+  objLoader.load('raccoon.obj', onModelLoaded, undefined, function(err){
+    info.classList.add('err');
+    info.textContent = '❌ OBJ 加载失败: ' + (err.message || err);
+    console.error(err);
+  });
+}, function(progress){
+  if(progress.total) info.textContent = '加载 MTL… ' + Math.round(progress.loaded / progress.total * 100) + '%';
+}, function(err){
+  /* MTL 失败 → 直接加载 OBJ，用普通材质 */
+  console.warn('[MTL 失败]', err);
+  info.textContent = '⚠ MTL 加载失败，尝试无贴图加载 OBJ…';
+  const objLoader = new THREE.OBJLoader();
+  objLoader.setPath(BASE);
+  objLoader.load('raccoon.obj', function(obj){
+    obj.traverse(function(o){
+      if(o.isMesh) o.material = new THREE.MeshNormalMaterial();
+    });
+    onModelLoaded(obj);
+    info.innerHTML += '<br><span style="color:#ff8a8a">（MTL 未加载，法线材质显示）</span>';
+  }, undefined, function(err2){
+    info.classList.add('err');
+    info.textContent = '❌ OBJ 也加载失败: ' + (err2.message || err2);
+    console.error(err2);
+  });
+});
+
+/* 交互 —— 鼠标拖拽 */
+let dragging = false, lx = 0, ly = 0;
+let theta = 0, phi = 1.35, radius = 4;
+renderer.domElement.addEventListener('mousedown', function(e){ dragging = true; lx = e.clientX; ly = e.clientY; });
+window.addEventListener('mouseup', function(){ dragging = false; });
+window.addEventListener('mousemove', function(e){
+  if(!dragging) return;
+  theta += (e.clientX - lx) * 0.008;
+  phi   -= (e.clientY - ly) * 0.008;
+  phi = Math.max(0.15, Math.min(Math.PI - 0.15, phi));
+  lx = e.clientX; ly = e.clientY;
+});
+renderer.domElement.addEventListener('wheel', function(e){
+  e.preventDefault();
+  radius *= 1 + (e.deltaY > 0 ? 0.1 : -0.1);
+  radius = Math.max(0.8, Math.min(30, radius));
+}, {passive:false});
+
+/* 触屏 */
+let tl = null;
+renderer.domElement.addEventListener('touchstart', function(e){
+  if(!e.touches.length) return;
+  tl = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+}, {passive:true});
+renderer.domElement.addEventListener('touchmove', function(e){
+  if(!tl || !e.touches.length) return;
+  theta += (e.touches[0].clientX - tl.x) * 0.008;
+  phi   -= (e.touches[0].clientY - tl.y) * 0.008;
+  phi = Math.max(0.15, Math.min(Math.PI - 0.15, phi));
+  tl = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+}, {passive:true});
+
+/* 主循环 */
+function loop(){
+  requestAnimationFrame(loop);
+  camera.position.x = Math.sin(theta) * Math.sin(phi) * radius;
+  camera.position.y = Math.cos(phi) * radius + 1;
+  camera.position.z = Math.cos(theta) * Math.sin(phi) * radius;
+  camera.lookAt(0, 1, 0);
+  renderer.render(scene, camera);
+}
+loop();
+
+window.addEventListener('resize', function(){
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+})();
+</script>
+</body>
+</html>
