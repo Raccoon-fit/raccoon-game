@@ -9,15 +9,11 @@
 <link rel="stylesheet" href="styles.css">
 <style>
 /* ============================================================
-   ★ 商店面板样式（华丽版 · 内联）
+   ★ 商店面板样式
    ============================================================ */
-
-/* 商店按钮 —— 放在设置按钮左边 */
 #btnShop{
   position:absolute;right:76px;top:18px;width:46px;height:46px;border-radius:13px;
-  background:linear-gradient(180deg,
-    rgba(255,214,140,.22),
-    rgba(120,80,20,.35));
+  background:linear-gradient(180deg, rgba(255,214,140,.22), rgba(120,80,20,.35));
   border:1px solid rgba(255,214,140,.55);color:#ffe6a8;font-size:21px;
   display:flex;align-items:center;justify-content:center;cursor:pointer;
   pointer-events:auto;transition:.25s;font-family:inherit;
@@ -35,8 +31,34 @@
   transform:translateY(-1px);}
 #btnShop:active{transform:scale(.9);}
 
-/* 主播模式的"临时点亮"按钮往左挪一格 */
-#btnTempLight{right:132px !important;}
+/* 主播模式的"临时点亮"按钮往左挪三格（地图 + 商店 + 设置） */
+#btnTempLight{right:188px !important;}
+
+/* ============================================
+   ★ 地图按钮
+   ============================================ */
+#btnMap{
+  position:absolute;right:132px;top:18px;width:46px;height:46px;border-radius:13px;
+  background:linear-gradient(180deg,rgba(20,32,46,.85),rgba(9,15,24,.9));
+  border:1px solid rgba(150,190,230,.22);color:#9fb6cc;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  pointer-events:auto;transition:.2s;font-family:inherit;
+  overflow:hidden;padding:0;}
+#btnMap:hover{border-color:rgba(255,214,140,.55);}
+#btnMap:active{transform:scale(.9);}
+#btnMap canvas{position:absolute;left:50%;top:50%;width:26px;height:26px;
+  transform:translate(-50%,-50%);display:block;pointer-events:none;}
+
+/* ============================================
+   ★ 地图面板
+   ============================================ */
+#mapPanel{
+  position:absolute;inset:0;z-index:45;
+  pointer-events:none;opacity:0;transition:opacity .3s;}
+#mapPanel.show{pointer-events:auto;opacity:1;}
+#mapCanvas{
+  position:absolute;inset:0;width:100%;height:100%;
+  display:block;cursor:crosshair;}
 
 /* ============================================
    商店主面板
@@ -102,9 +124,6 @@
   box-shadow:0 0 18px rgba(255,200,120,.35);}
 #shopPanel .close-x:active{transform:scale(.88);}
 
-/* ============================================
-   头部
-   ============================================ */
 .shop-head{
   position:relative;
   padding:22px 28px 18px;
@@ -176,9 +195,6 @@
   font-weight:500;
   padding-left:2px;}
 
-/* ============================================
-   滚动区
-   ============================================ */
 .shop-scroll{
   padding:18px 24px 22px;
   overflow-y:auto;flex:1 1 auto;
@@ -217,9 +233,6 @@
     rgba(255,214,140,.08) 40%,
     transparent 100%);}
 
-/* ============================================
-   限时礼包
-   ============================================ */
 .shop-featured{display:flex;gap:14px;margin-bottom:22px;}
 
 .featured-card{
@@ -337,9 +350,6 @@
     0 2px 0 #3a2a10;
   font-variant-numeric:tabular-nums;}
 
-/* ============================================
-   小鱼干网格
-   ============================================ */
 .shop-grid{
   display:grid;
   grid-template-columns:repeat(3,1fr);
@@ -442,9 +452,6 @@
   padding-top:6px;
   border-top:1px solid rgba(150,190,230,.15);}
 
-/* ============================================
-   支付方式行
-   ============================================ */
 .shop-pay-row{
   display:flex;align-items:center;justify-content:center;gap:12px;
   padding:14px 8px;margin-bottom:12px;
@@ -464,9 +471,6 @@
   color:rgba(170,190,210,.75);
   font-weight:500;}
 
-/* ============================================
-   底部提示
-   ============================================ */
 .shop-notice{
   font-size:10px;letter-spacing:1.5px;
   color:rgba(130,150,170,.55);
@@ -482,6 +486,7 @@
       <div id="inv"></div>
       <button id="btnTempLight">✨ 临时点亮全局</button>
       <button id="btnShop">🛒</button>
+      <button id="btnMap" aria-label="地图"></button>
       <button id="btnSet">⚙</button>
     </div>
 
@@ -662,6 +667,11 @@
       </div>
     </div>
 
+    <!-- ★ 地图面板 -->
+    <div id="mapPanel">
+      <canvas id="mapCanvas"></canvas>
+    </div>
+
     <div id="achvPanel">
       <button class="close-x" id="btnCloseAchv">✕</button>
       <div class="achv-head"><h3>已 达 成 的 结 局</h3></div>
@@ -795,9 +805,10 @@
 </div>
 
 <script src="game.js"></script>
+<script src="map.js"></script>
 <script>
 /* ============================================================
-   ★ 商店逻辑（内联 IIFE）
+   ★ 商店逻辑
    ============================================================ */
 (function(){
 'use strict';
@@ -809,12 +820,8 @@ var shopToastTimer = null;
 
 if(!shopPanel || !btnShop) return;
 
-function openShop(){
-  shopPanel.classList.add('show');
-}
-function closeShop(){
-  shopPanel.classList.remove('show');
-}
+function openShop(){ shopPanel.classList.add('show'); }
+function closeShop(){ shopPanel.classList.remove('show'); }
 
 btnShop.addEventListener('click', function(e){
   e.stopPropagation();
@@ -828,7 +835,6 @@ shopPanel.addEventListener('click', function(e){
   if(e.target === shopPanel) closeShop();
 });
 
-/* 商店内 toast 反馈（复用 #toast 元素） */
 function shopToast(msg){
   var t = document.getElementById('toast');
   if(!t) return;
@@ -844,7 +850,6 @@ function shopToast(msg){
   }, 2800);
 }
 
-/* 档位 / 礼包点击反馈 */
 var items = document.querySelectorAll('.shop-item, .featured-card');
 for(var i = 0; i < items.length; i++){
   (function(el){
@@ -860,7 +865,6 @@ for(var i = 0; i < items.length; i++){
   })(items[i]);
 }
 
-/* Esc 关闭（捕获阶段，优先于 game.js） */
 window.addEventListener('keydown', function(e){
   if(e.key !== 'Escape') return;
   if(!shopPanel.classList.contains('show')) return;
@@ -869,12 +873,69 @@ window.addEventListener('keydown', function(e){
   closeShop();
 }, true);
 
-/* 返回键关闭（捕获阶段） */
 window.addEventListener('popstate', function(e){
   if(!shopPanel.classList.contains('show')) return;
   e.stopImmediatePropagation();
   closeShop();
 }, true);
+
+})();
+
+/* ============================================================
+   ★ 地图按钮初始化（手绘卷轴图标）
+   ============================================================ */
+(function(){
+'use strict';
+
+var btn = document.getElementById('btnMap');
+if(!btn) return;
+
+var dpr = Math.min(window.devicePixelRatio || 1, 2);
+var cv = document.createElement('canvas');
+cv.width = 32 * dpr;
+cv.height = 32 * dpr;
+btn.appendChild(cv);
+var g = cv.getContext('2d');
+g.setTransform(dpr, 0, 0, dpr, 0, 0);
+g.strokeStyle = '#9fb6cc';
+g.lineWidth = 1.8;
+g.lineCap = 'round';
+g.lineJoin = 'round';
+
+/* 上轴 */
+g.beginPath();
+g.moveTo(6, 9); g.lineTo(26, 9);
+g.stroke();
+g.beginPath(); g.ellipse(6, 9, 1.8, 2.2, 0, 0, Math.PI*2); g.stroke();
+g.beginPath(); g.ellipse(26, 9, 1.8, 2.2, 0, 0, Math.PI*2); g.stroke();
+
+/* 下轴 */
+g.beginPath();
+g.moveTo(6, 23); g.lineTo(26, 23);
+g.stroke();
+g.beginPath(); g.ellipse(6, 23, 1.8, 2.2, 0, 0, Math.PI*2); g.stroke();
+g.beginPath(); g.ellipse(26, 23, 1.8, 2.2, 0, 0, Math.PI*2); g.stroke();
+
+/* 纸面左右边 */
+g.beginPath();
+g.moveTo(6, 9); g.lineTo(6, 23);
+g.moveTo(26, 9); g.lineTo(26, 23);
+g.stroke();
+
+/* 纸上的墨点 */
+g.fillStyle = 'rgba(159,182,204,0.75)';
+g.beginPath(); g.arc(12, 15, 1.2, 0, Math.PI*2); g.fill();
+g.beginPath(); g.arc(16, 17.5, 1.4, 0, Math.PI*2); g.fill();
+g.beginPath(); g.arc(20, 14, 1.1, 0, Math.PI*2); g.fill();
+
+btn.addEventListener('click', function(e){
+  e.stopPropagation();
+  if(typeof RaccoonMap === 'undefined'){
+    console.warn('[map] RaccoonMap 未加载');
+    return;
+  }
+  RaccoonMap.open();
+});
 
 })();
 </script>
