@@ -4168,16 +4168,19 @@ const SCENES = {
     ]
   },
   underpass: {
-    draw: drawUnderpassStatic, dynamic: drawUnderpassDynamic, rain: false,
-    spots: [
-      { id:'stairs',   x:60,  y:240, w:120, h:160, label:'上方的楼梯' },
-      { id:'graffiti', x:220, y:290, w:80,  h:120, label:'墙上的涂鸦' },
-      { id:'emergency',x:180, y:160, w:80,  h:40,  label:'应急灯' },
-      { id:'trash',    x:540, y:410, w:100, h:90,  label:'垃圾桶' },
-      { id:'room',     x:820, y:240, w:100, h:160, label:'配电房的门' },
-      { id:'back',     x:16,  y:244, w:52,  h:52,  label:'回到街道' }
-    ]
-  },
+  draw: drawUnderpassStatic, dynamic: drawUnderpassDynamic, rain: false,
+  spots: [
+    { id:'stairs',     x:60,  y:240, w:120, h:160, label:'上方的楼梯' },
+    { id:'graffiti',   x:220, y:290, w:80,  h:120, label:'墙上的涂鸦' },
+    { id:'emergency',  x:180, y:160, w:80,  h:40,  label:'应急灯' },
+    { id:'oldPaper',   x:620, y:180, w:80,  h:80,  label:'发黄的纸' },
+    { id:'trash',      x:540, y:410, w:100, h:90,  label:'垃圾桶' },
+    { id:'tinBox',     x:720, y:410, w:80,  h:70,  label:'铁皮盒' },
+    { id:'floorWords', x:380, y:440, w:140, h:60,  label:'地上的字' },
+    { id:'room',       x:820, y:240, w:100, h:160, label:'配电房的门' },
+    { id:'back',       x:16,  y:244, w:52,  h:52,  label:'回到街道' }
+  ]
+},
   riverside: {
     draw: drawRiversideStatic, dynamic: drawRiversideDynamic, rain: true,
     spots: [
