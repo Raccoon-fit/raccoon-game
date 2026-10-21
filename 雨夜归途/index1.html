@@ -31,7 +31,6 @@
   transform:translateY(-1px);}
 #btnShop:active{transform:scale(.9);}
 
-/* 主播模式的"临时点亮"按钮往左挪三格（地图 + 商店 + 设置） */
 #btnTempLight{right:188px !important;}
 
 /* ============================================
@@ -60,7 +59,6 @@
   position:absolute;inset:0;width:100%;height:100%;
   display:block;cursor:crosshair;}
 
-/* 地图右上角关闭按钮 */
 #btnCloseMap{
   position:absolute;right:22px;top:22px;
   width:44px;height:44px;border-radius:12px;
@@ -498,6 +496,184 @@
   color:rgba(130,150,170,.55);
   text-align:center;line-height:2;
   padding-top:10px;}
+
+/* ============================================================
+   ★ 新手引导聚光灯（普通 / 主播 分支）
+   ============================================================ */
+#tutorialLayer{
+  position:fixed;inset:0;z-index:9999;
+  display:none;pointer-events:none;
+}
+#tutorialLayer.active{display:block;}
+
+.tut-block{
+  position:fixed;
+  background:rgba(2,4,8,0.86);
+  pointer-events:auto;
+  z-index:1;
+  transition:
+    left .5s cubic-bezier(.4,0,.2,1),
+    top .5s cubic-bezier(.4,0,.2,1),
+    width .5s cubic-bezier(.4,0,.2,1),
+    height .5s cubic-bezier(.4,0,.2,1);
+}
+
+/* 洞本身拦截点击，避免穿透误触下层按钮 */
+#tutorialHole{
+  position:fixed;
+  z-index:2;
+  pointer-events:auto;
+  cursor:default;
+  border-radius:14px;
+  box-shadow:
+    0 0 0 2px rgba(255,214,140,0.6),
+    0 0 36px 6px rgba(255,206,130,0.5),
+    inset 0 0 24px rgba(255,214,140,0.2);
+  transition:
+    left .5s cubic-bezier(.4,0,.2,1),
+    top .5s cubic-bezier(.4,0,.2,1),
+    width .5s cubic-bezier(.4,0,.2,1),
+    height .5s cubic-bezier(.4,0,.2,1),
+    border-radius .4s ease;
+}
+
+#tutorialCard{
+  position:fixed;
+  z-index:3;
+  pointer-events:auto;
+  width:320px;
+  max-width:calc(100vw - 28px);
+  max-height:calc(100vh - 28px);
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:20px 22px 18px;
+  border-radius:16px;
+  background:linear-gradient(160deg, rgba(30,40,56,0.98), rgba(12,18,28,0.99));
+  border:1px solid rgba(255,214,140,0.55);
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.5),
+    0 0 30px rgba(255,196,110,0.25),
+    0 18px 44px rgba(0,0,0,0.9);
+  color:#e9dcc0;
+  transition:left .4s cubic-bezier(.4,0,.2,1), top .4s cubic-bezier(.4,0,.2,1);
+}
+#tutorialCard::-webkit-scrollbar{width:6px;}
+#tutorialCard::-webkit-scrollbar-thumb{
+  background:rgba(255,214,140,0.4);border-radius:3px;}
+
+/* 小屏：紧凑 */
+#tutorialCard.compact{
+  width:252px;
+  padding:14px 16px 12px;
+}
+#tutorialCard.compact .tut-head{margin-bottom:8px;}
+#tutorialCard.compact .tut-step{font-size:10px;padding:2px 8px;letter-spacing:1.5px;}
+#tutorialCard.compact .tut-close{width:22px;height:22px;font-size:12px;}
+#tutorialCard.compact .tut-title{
+  font-size:14px;letter-spacing:1.5px;margin-bottom:6px;
+}
+#tutorialCard.compact .tut-desc{
+  font-size:11.5px;line-height:1.6;letter-spacing:.5px;margin-bottom:12px;
+}
+#tutorialCard.compact .tut-actions button{
+  padding:7px 14px;font-size:12px;letter-spacing:1.5px;
+}
+
+/* 极窄：更紧凑 + 可滚动 */
+#tutorialCard.tiny{
+  width:220px;
+  padding:12px 13px 10px;
+  max-height:calc(100vh - 20px);
+}
+#tutorialCard.tiny .tut-step{font-size:9px;padding:2px 6px;}
+#tutorialCard.tiny .tut-title{font-size:13px;margin-bottom:5px;letter-spacing:1px;}
+#tutorialCard.tiny .tut-desc{
+  font-size:11px;line-height:1.55;margin-bottom:10px;
+}
+#tutorialCard.tiny .tut-actions button{
+  padding:6px 11px;font-size:11px;letter-spacing:1px;
+}
+
+.tut-head{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.tut-step{
+  font-size:11px;letter-spacing:2px;color:#ffcf87;font-weight:700;
+  padding:3px 9px;border-radius:20px;
+  background:rgba(255,196,110,0.12);
+  border:1px solid rgba(255,196,110,0.35);
+}
+.tut-close{
+  width:24px;height:24px;border:none;border-radius:50%;
+  background:rgba(255,255,255,0.06);color:#9fb2c4;
+  font-size:14px;line-height:1;cursor:pointer;font-family:inherit;
+  transition:background .2s,color .2s;
+}
+.tut-close:hover{background:rgba(255,120,90,0.2);color:#ff9070;}
+.tut-title{
+  font-size:17px;font-weight:700;letter-spacing:2px;color:#ffe6b0;
+  margin-bottom:8px;
+  text-shadow:0 1px 0 #6a4a1a,0 2px 8px rgba(0,0,0,0.7);
+}
+.tut-desc{
+  font-size:13px;line-height:1.75;letter-spacing:1px;
+  color:#a8bccc;margin-bottom:16px;
+}
+.tut-desc b{color:#ffcf87;font-weight:600;}
+.tut-actions{display:flex;gap:10px;justify-content:flex-end;}
+.tut-actions button{
+  padding:9px 18px;font-size:13px;letter-spacing:2px;
+  border-radius:10px;cursor:pointer;font-family:inherit;
+  transition:all .18s ease;
+}
+.tut-skip{
+  background:transparent;border:1px solid rgba(160,180,200,0.3);color:#8397a8;
+}
+.tut-skip:hover{border-color:rgba(160,180,200,0.6);color:#b8c8d8;}
+.tut-next{
+  background:linear-gradient(180deg,#d9a44a,#a87428);
+  border:1px solid #ffcf87;color:#2a1a08;font-weight:700;
+  box-shadow:0 2px 0 #5a3a10,0 6px 16px rgba(0,0,0,0.5),0 0 18px rgba(255,196,110,0.35);
+}
+.tut-next:hover{
+  background:linear-gradient(180deg,#f0be60,#c08a32);
+  transform:translateY(-1px);
+  box-shadow:0 3px 0 #5a3a10,0 10px 22px rgba(0,0,0,0.6),0 0 26px rgba(255,196,110,0.55);
+}
+.tut-next:active{transform:translateY(1px);}
+
+.tut-roles{
+  display:flex;flex-direction:column;gap:12px;
+  margin-bottom:6px;
+}
+.tut-role{
+  display:flex;align-items:center;gap:14px;
+  padding:14px 16px;border-radius:12px;
+  background:linear-gradient(180deg,rgba(58,78,104,0.6),rgba(20,30,46,0.8));
+  border:1px solid rgba(200,170,110,0.4);
+  color:#e9dcc0;cursor:pointer;font-family:inherit;
+  text-align:left;transition:all .18s ease;
+}
+.tut-role:hover{
+  border-color:rgba(255,214,140,0.95);
+  background:linear-gradient(180deg,rgba(80,110,140,0.7),rgba(30,42,60,0.9));
+  transform:translateY(-1px);
+  box-shadow:0 8px 20px rgba(0,0,0,0.5),0 0 20px rgba(255,196,110,0.2);
+}
+.tut-role:active{transform:translateY(0);}
+.role-icon{
+  font-size:28px;flex:0 0 auto;
+  filter:drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+}
+.role-body{display:flex;flex-direction:column;gap:3px;flex:1 1 auto;}
+.role-name{
+  font-size:15px;font-weight:700;letter-spacing:2px;color:#ffe6b0;
+  text-shadow:0 1px 0 #6a4a1a,0 2px 6px rgba(0,0,0,0.7);
+}
+.role-sub{
+  font-size:11px;letter-spacing:1px;color:#a8bccc;
+}
 </style>
 </head>
 <body>
@@ -827,6 +1003,45 @@
   </div>
 </div>
 
+<!-- ============================================================
+     ★ 新手引导聚光灯 DOM
+     ============================================================ -->
+<div id="tutorialLayer" aria-hidden="true">
+  <div class="tut-block" id="tutBlockTop"></div>
+  <div class="tut-block" id="tutBlockBottom"></div>
+  <div class="tut-block" id="tutBlockLeft"></div>
+  <div class="tut-block" id="tutBlockRight"></div>
+  <div id="tutorialHole"></div>
+  <div id="tutorialCard">
+    <div class="tut-head">
+      <span class="tut-step" id="tutStep">1 / 6</span>
+      <button class="tut-close" id="tutClose" aria-label="关闭引导">✕</button>
+    </div>
+    <div class="tut-title" id="tutTitle"></div>
+    <div class="tut-desc" id="tutDesc"></div>
+    <div class="tut-roles" id="tutRoles" style="display:none;">
+      <button class="tut-role" data-role="normal">
+        <span class="role-icon">🎮</span>
+        <span class="role-body">
+          <span class="role-name">普通玩家</span>
+          <span class="role-sub">开始新的旅程</span>
+        </span>
+      </button>
+      <button class="tut-role" data-role="streamer">
+        <span class="role-icon">🎙️</span>
+        <span class="role-body">
+          <span class="role-name">我是主播</span>
+          <span class="role-sub">了解主播相关功能</span>
+        </span>
+      </button>
+    </div>
+    <div class="tut-actions" id="tutActions">
+      <button class="tut-skip" id="tutSkip">跳 过</button>
+      <button class="tut-next" id="tutNext">下 一 步</button>
+    </div>
+  </div>
+</div>
+
 <script src="map.js"></script>
 <script src="game.js"></script>
 <script>
@@ -905,7 +1120,7 @@ window.addEventListener('popstate', function(e){
 })();
 
 /* ============================================================
-   ★ 地图按钮初始化（手绘卷轴图标 + 开关行为 + 关闭按钮）
+   ★ 地图按钮初始化
    ============================================================ */
 (function(){
 'use strict';
@@ -913,7 +1128,6 @@ window.addEventListener('popstate', function(e){
 var btn = document.getElementById('btnMap');
 if(!btn) return;
 
-/* 手绘卷轴图标 */
 var dpr = Math.min(window.devicePixelRatio || 1, 2);
 var cv = document.createElement('canvas');
 cv.width = 32 * dpr;
@@ -926,29 +1140,24 @@ g.lineWidth = 1.8;
 g.lineCap = 'round';
 g.lineJoin = 'round';
 
-/* 上轴 */
 g.beginPath(); g.moveTo(6, 9); g.lineTo(26, 9); g.stroke();
 g.beginPath(); g.ellipse(6, 9, 1.8, 2.2, 0, 0, Math.PI*2); g.stroke();
 g.beginPath(); g.ellipse(26, 9, 1.8, 2.2, 0, 0, Math.PI*2); g.stroke();
 
-/* 下轴 */
 g.beginPath(); g.moveTo(6, 23); g.lineTo(26, 23); g.stroke();
 g.beginPath(); g.ellipse(6, 23, 1.8, 2.2, 0, 0, Math.PI*2); g.stroke();
 g.beginPath(); g.ellipse(26, 23, 1.8, 2.2, 0, 0, Math.PI*2); g.stroke();
 
-/* 纸面左右边 */
 g.beginPath();
 g.moveTo(6, 9); g.lineTo(6, 23);
 g.moveTo(26, 9); g.lineTo(26, 23);
 g.stroke();
 
-/* 纸上的墨点 */
 g.fillStyle = 'rgba(159,182,204,0.75)';
 g.beginPath(); g.arc(12, 15, 1.2, 0, Math.PI*2); g.fill();
 g.beginPath(); g.arc(16, 17.5, 1.4, 0, Math.PI*2); g.fill();
 g.beginPath(); g.arc(20, 14, 1.1, 0, Math.PI*2); g.fill();
 
-/* 地图按钮：开关行为 */
 btn.addEventListener('click', function(e){
   e.stopPropagation();
   if(typeof RaccoonMap === 'undefined'){
@@ -962,7 +1171,6 @@ btn.addEventListener('click', function(e){
   }
 });
 
-/* 右上角关闭按钮 */
 var btnClose = document.getElementById('btnCloseMap');
 if(btnClose){
   btnClose.addEventListener('click', function(e){
@@ -971,6 +1179,669 @@ if(btnClose){
       RaccoonMap.close();
     }
   });
+}
+
+})();
+
+/* ============================================================
+   ★ 新手引导聚光灯（普通 / 主播 分支）
+   - 新游戏进入：每次都显示
+   - 继续存档：仅首次显示
+   ============================================================ */
+(function(){
+'use strict';
+
+var LAUNCH_KEY = 'raccoon_launch_mode';
+var TUTORIAL_DONE_KEY = 'raccoon_tutorial_done_v1';
+
+var launchMode = 'new';
+try { launchMode = localStorage.getItem(LAUNCH_KEY) || 'new'; } catch(e){}
+
+if(launchMode !== 'new'){
+  try {
+    if(localStorage.getItem(TUTORIAL_DONE_KEY) === '1') return;
+  } catch(e){}
+}
+
+function $(id){ return document.getElementById(id); }
+
+var layer = $('tutorialLayer');
+var hole = $('tutorialHole');
+var card = $('tutorialCard');
+var stepEl = $('tutStep');
+var titleEl = $('tutTitle');
+var descEl = $('tutDesc');
+var rolesEl = $('tutRoles');
+var actionsEl = $('tutActions');
+var nextBtn = $('tutNext');
+var skipBtn = $('tutSkip');
+var closeBtn = $('tutClose');
+var blockTop = $('tutBlockTop');
+var blockBottom = $('tutBlockBottom');
+var blockLeft = $('tutBlockLeft');
+var blockRight = $('tutBlockRight');
+
+if(!layer || !hole || !card) return;
+
+/* 洞内点击：吸收但不传递，避免误触下层按钮 */
+function absorb(e){
+  e.stopPropagation();
+  e.preventDefault();
+}
+hole.addEventListener('click', absorb, true);
+hole.addEventListener('pointerdown', absorb, true);
+hole.addEventListener('mousedown', absorb, true);
+hole.addEventListener('touchstart', absorb, true);
+
+/* ---------- 工具 ---------- */
+function isVisible(el){
+  if(!el || !el.isConnected) return false;
+  var st = window.getComputedStyle(el);
+  if(st.display === 'none' || st.visibility === 'hidden') return false;
+  if(parseFloat(st.opacity) < 0.01) return false;
+  if(el.offsetWidth === 0 && el.offsetHeight === 0) return false;
+  return true;
+}
+
+function isSettingsOpen(){
+  return isVisible($('settings'));
+}
+
+function getHudButtonsRect(){
+  var sel = ['#btnShop', '#btnMap', '#btnSet'];
+  var rects = [];
+  for(var i = 0; i < sel.length; i++){
+    var el = document.querySelector(sel[i]);
+    if(el && isVisible(el)) rects.push(el.getBoundingClientRect());
+  }
+  if(!rects.length) return null;
+  var left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+  for(var j = 0; j < rects.length; j++){
+    left = Math.min(left, rects[j].left);
+    top = Math.min(top, rects[j].top);
+    right = Math.max(right, rects[j].right);
+    bottom = Math.max(bottom, rects[j].bottom);
+  }
+  return { left: left, top: top, width: right - left, height: bottom - top };
+}
+
+/* ---------- 步骤定义 ---------- */
+var STEPS_NORMAL = [
+  {
+    target: 'hud-buttons',
+    title: '常用功能',
+    desc: '右上角是<b>商店</b>、<b>地图</b>和<b>设置</b>。<br>商店可以用小鱼干兑换补给，地图可以查看当前位置。',
+    placement: 'bottom',
+    padding: 12,
+    radius: 16
+  },
+  {
+    target: '#btnMap',
+    title: '查看地图',
+    desc: '点击地图按钮，可以查看你走过的街道。<br>有些地方只有看过地图才知道怎么去。',
+    placement: 'bottom',
+    padding: 8,
+    radius: 14
+  },
+  {
+    target: null,
+    title: '探索交互',
+    desc: '点击场景里<b>有反应的物件</b>进行探索。<br>有些线索藏在不起眼的角落，多试试看。',
+    placement: 'bottom',
+    padding: 0,
+    radius: 0,
+    edge: 40
+  },
+  {
+    target: '#btnTempLight',
+    title: '临时点亮全局',
+    desc: '看不清时，点击这里可以<b>短暂点亮</b>整个场景，方便找到可交互的物件。',
+    placement: 'bottom',
+    padding: 8,
+    radius: 14
+  },
+  {
+    target: 'highlightBtn',
+    title: '找不到东西？',
+    desc: '打开<b>设置</b>，点击 <b>🔍 高亮可交互</b>，所有能点的东西都会亮起来（持续 5 秒）。',
+    placement: 'left',
+    padding: 8,
+    radius: 14,
+    autoOpenSettings: true
+  },
+  {
+    target: 'textOptions',
+    title: '调整文字',
+    desc: '在设置里可以调整<b>文字速度</b>和<b>文字大小</b>，找到最舒服的阅读节奏。',
+    placement: 'left',
+    padding: 12,
+    radius: 14,
+    autoOpenSettings: true
+  }
+];
+
+var STEPS_STREAMER = [
+  {
+    target: 'hud-buttons',
+    title: '常用功能',
+    desc: '右上角是<b>商店</b>、<b>地图</b>和<b>设置</b>。<br>商店可以用小鱼干兑换补给，地图可以查看当前位置。',
+    placement: 'bottom',
+    padding: 12,
+    radius: 16
+  },
+  {
+    target: '#btnMap',
+    title: '查看地图',
+    desc: '点击地图按钮，可以查看你走过的街道。<br>有些地方只有看过地图才知道怎么去。',
+    placement: 'bottom',
+    padding: 8,
+    radius: 14
+  },
+  {
+    target: null,
+    title: '探索交互',
+    desc: '点击场景里<b>有反应的物件</b>进行探索。<br>有些线索藏在不起眼的角落，多试试看。',
+    placement: 'bottom',
+    padding: 0,
+    radius: 0,
+    edge: 40
+  },
+  {
+    target: '#btnTempLight',
+    title: '临时点亮全局',
+    desc: '看不清时点击这里，可以短暂点亮整个场景。<br><span style="color:#a8bccc;font-size:11px;">（暗夜模式下不可用）</span>',
+    placement: 'bottom',
+    padding: 8,
+    radius: 14
+  },
+  {
+    target: 'streamerMode',
+    title: '开启主播模式（可选）',
+    desc: '在设置中找到<b>主播模式</b>，开启后会显示物品名称常驻、粉丝团提示等权益。<br><span style="color:#a8bccc;font-size:11px;">不强制开启，可随时切换。</span>',
+    placement: 'left',
+    padding: 12,
+    radius: 14,
+    autoOpenSettings: true
+  },
+  {
+    target: 'highlightBtn',
+    title: '找不到东西？',
+    desc: '在设置中点击<b>🔍 高亮可交互</b>，所有能点的东西都会亮起来（持续 5 秒）。',
+    placement: 'left',
+    padding: 8,
+    radius: 14,
+    autoOpenSettings: true
+  },
+  {
+    target: 'textOptions',
+    title: '调整文字',
+    desc: '在设置里可以调整<b>文字速度</b>和<b>文字大小</b>，找到最舒服的阅读节奏。',
+    placement: 'left',
+    padding: 12,
+    radius: 14,
+    autoOpenSettings: true
+  }
+];
+
+var state = {
+  active: false,
+  phase: 'role',
+  role: null,
+  stepIndex: -1,
+  steps: [],
+  settingsOpenedByTutorial: false
+};
+
+/* ---------- 遮罩布局 ---------- */
+function setBlock(el, left, top, w, h){
+  if(!el) return;
+  el.style.left = left + 'px';
+  el.style.top = top + 'px';
+  el.style.width = Math.max(0, w) + 'px';
+  el.style.height = Math.max(0, h) + 'px';
+}
+
+function updateMasks(left, top, w, h, radius, animate){
+  if(!animate){
+    blockTop.style.transition = 'none';
+    blockBottom.style.transition = 'none';
+    blockLeft.style.transition = 'none';
+    blockRight.style.transition = 'none';
+    hole.style.transition = 'none';
+  }
+
+  var vw = window.innerWidth;
+  var vh = window.innerHeight;
+  var hRight = left + w;
+  var hBottom = top + h;
+
+  setBlock(blockTop, 0, 0, vw, top);
+  setBlock(blockBottom, 0, hBottom, vw, vh - hBottom);
+  setBlock(blockLeft, 0, top, left, h);
+  setBlock(blockRight, hRight, top, vw - hRight, h);
+
+  hole.style.left = left + 'px';
+  hole.style.top = top + 'px';
+  hole.style.width = w + 'px';
+  hole.style.height = h + 'px';
+  hole.style.borderRadius = radius + 'px';
+
+  if(!animate){
+    void hole.offsetWidth;
+    blockTop.style.transition = '';
+    blockBottom.style.transition = '';
+    blockLeft.style.transition = '';
+    blockRight.style.transition = '';
+    hole.style.transition = '';
+  }
+}
+
+/* ---------- 卡片尺寸自适应 ---------- */
+function applyCardSize(){
+  var vw = window.innerWidth, vh = window.innerHeight;
+  var mode = '';
+  if(vw < 380 || vh < 420){
+    mode = 'tiny';
+  } else if(vw < 520 || vh < 560){
+    mode = 'compact';
+  }
+  card.classList.remove('compact', 'tiny');
+  if(mode) card.classList.add(mode);
+}
+
+/* ---------- 卡片定位：自动避让 ---------- */
+function positionCard(rect, placement){
+  var vw = window.innerWidth, vh = window.innerHeight;
+  applyCardSize();
+
+  card.style.visibility = 'hidden';
+  var tw = card.offsetWidth;
+  var th = card.offsetHeight;
+  var gap = 16;
+
+  var spaceTop = rect.top - gap;
+  var spaceBottom = vh - (rect.top + rect.height) - gap;
+  var spaceLeft = rect.left - gap;
+  var spaceRight = vw - (rect.left + rect.width) - gap;
+
+  var can = {
+    top: spaceTop >= th,
+    bottom: spaceBottom >= th,
+    left: spaceLeft >= tw,
+    right: spaceRight >= tw
+  };
+
+  var all = ['bottom', 'top', 'right', 'left'];
+  var order = [];
+  if(all.indexOf(placement) >= 0) order.push(placement);
+  for(var i = 0; i < all.length; i++){
+    if(all[i] !== placement) order.push(all[i]);
+  }
+
+  var chosen = null;
+  for(var k = 0; k < order.length; k++){
+    if(can[order[k]]){ chosen = order[k]; break; }
+  }
+  if(!chosen){
+    var maxS = -Infinity;
+    for(var d = 0; d < all.length; d++){
+      var s = (all[d] === 'top') ? spaceTop :
+              (all[d] === 'bottom') ? spaceBottom :
+              (all[d] === 'left') ? spaceLeft : spaceRight;
+      if(s > maxS){ maxS = s; chosen = all[d]; }
+    }
+  }
+
+  var cx = rect.left + rect.width / 2;
+  var cy = rect.top + rect.height / 2;
+  var top, left;
+
+  if(chosen === 'bottom'){
+    top = rect.top + rect.height + gap;
+    left = cx - tw / 2;
+  } else if(chosen === 'top'){
+    top = rect.top - th - gap;
+    left = cx - tw / 2;
+  } else if(chosen === 'right'){
+    left = rect.left + rect.width + gap;
+    top = cy - th / 2;
+  } else {
+    left = rect.left - tw - gap;
+    top = cy - th / 2;
+  }
+
+  if(left + tw > vw - 14) left = vw - tw - 14;
+  if(left < 14) left = 14;
+  if(top + th > vh - 14) top = vh - th - 14;
+  if(top < 14) top = 14;
+
+  card.style.left = left + 'px';
+  card.style.top = top + 'px';
+  card.style.visibility = 'visible';
+}
+
+/* ---------- 无目标：贴边显示 ---------- */
+function placeEdgeCard(placement, edge){
+  var vw = window.innerWidth, vh = window.innerHeight;
+  applyCardSize();
+  var tw = card.offsetWidth;
+  var th = card.offsetHeight;
+  var pad = edge != null ? edge : 40;
+
+  var top, left;
+  if(placement === 'top'){
+    top = pad;
+    left = vw / 2 - tw / 2;
+  } else if(placement === 'bottom'){
+    top = vh - th - pad;
+    left = vw / 2 - tw / 2;
+  } else if(placement === 'left'){
+    left = pad;
+    top = vh / 2 - th / 2;
+  } else if(placement === 'right'){
+    left = vw - tw - pad;
+    top = vh / 2 - th / 2;
+  } else {
+    top = vh / 2 - th / 2;
+    left = vw / 2 - tw / 2;
+  }
+
+  if(left + tw > vw - 14) left = vw - tw - 14;
+  if(left < 14) left = 14;
+  if(top + th > vh - 14) top = vh - th - 14;
+  if(top < 14) top = 14;
+
+  card.style.left = left + 'px';
+  card.style.top = top + 'px';
+  card.style.visibility = 'visible';
+}
+
+/* ---------- 目标解析 ---------- */
+function scrollIntoViewIfNeeded(el){
+  if(!el) return;
+  try{
+    var vh = window.innerHeight;
+    var r = el.getBoundingClientRect();
+    if(r.top < 70 || r.bottom > vh - 70){
+      el.scrollIntoView({ block: 'center', behavior: 'instant' });
+    }
+  }catch(e){}
+}
+
+function resolveTargetRect(step){
+  if(step.target === 'hud-buttons'){
+    return getHudButtonsRect();
+  }
+  if(step.target === 'streamerMode'){
+    var optEl = document.querySelector('#settings [data-key="streamerMode"]');
+    var rowEl = optEl ? (optEl.closest('.row') || optEl.parentElement) : null;
+    if(rowEl){
+      scrollIntoViewIfNeeded(rowEl);
+      return rowEl.getBoundingClientRect();
+    }
+    return null;
+  }
+  if(step.target === 'highlightBtn'){
+    var btn = document.querySelector('#btnHighlight');
+    if(btn && isVisible(btn)){
+      scrollIntoViewIfNeeded(btn);
+      return btn.getBoundingClientRect();
+    }
+    return null;
+  }
+  if(step.target === 'textOptions'){
+    var speed = document.querySelector('#settings [data-key="textSpeed"]');
+    var size = document.querySelector('#settings [data-key="fontSize"]');
+    if(!speed || !size) return null;
+    var row1 = speed.closest('.row') || speed.parentElement;
+    var row2 = size.closest('.row') || size.parentElement;
+    if(!row1 || !row2) return null;
+    scrollIntoViewIfNeeded(row2);
+    var b1 = row1.getBoundingClientRect();
+    var b2 = row2.getBoundingClientRect();
+    return {
+      left: Math.min(b1.left, b2.left),
+      top: Math.min(b1.top, b2.top),
+      width: Math.max(b1.right, b2.right) - Math.min(b1.left, b2.left),
+      height: Math.max(b1.bottom, b2.bottom) - Math.min(b1.top, b2.top)
+    };
+  }
+  var el = document.querySelector(step.target);
+  if(el && isVisible(el)) return el.getBoundingClientRect();
+  return null;
+}
+
+/* ---------- 布局 ---------- */
+function updateLayoutForStep(step){
+  if(!state.active || state.phase !== 'steps') return;
+
+  if(!step.target){
+    var vw = window.innerWidth, vh = window.innerHeight;
+    updateMasks(vw / 2 - 1, vh / 2 - 1, 2, 2, 14, true);
+    requestAnimationFrame(function(){
+      if(state.active && state.phase === 'steps'){
+        placeEdgeCard(step.placement, step.edge);
+      }
+    });
+    return;
+  }
+
+  var rect = resolveTargetRect(step);
+  var vw2 = window.innerWidth, vh2 = window.innerHeight;
+
+  if(!rect || rect.width < 2 || rect.height < 2){
+    updateMasks(vw2 / 2 - 1, vh2 / 2 - 1, 2, 2, 14, true);
+    requestAnimationFrame(function(){
+      if(state.active && state.phase === 'steps'){
+        placeEdgeCard('center', 20);
+      }
+    });
+    return;
+  }
+
+  var pad = step.padding != null ? step.padding : 14;
+  var radius = step.radius != null ? step.radius : 14;
+  var holeRect = {
+    left: rect.left - pad,
+    top: rect.top - pad,
+    width: rect.width + pad * 2,
+    height: rect.height + pad * 2
+  };
+
+  updateMasks(holeRect.left, holeRect.top, holeRect.width, holeRect.height, radius, true);
+  requestAnimationFrame(function(){
+    if(state.active && state.phase === 'steps') positionCard(holeRect, step.placement);
+  });
+}
+
+/* ---------- 设置面板控制 ---------- */
+function openSettingsIfNeeded(cb){
+  if(isSettingsOpen()){
+    cb();
+    return;
+  }
+  var btn = $('btnSet');
+  if(btn){
+    btn.click();
+    state.settingsOpenedByTutorial = true;
+  }
+  setTimeout(cb, 360);
+}
+
+function closeSettingsIfNeeded(){
+  if(!isSettingsOpen()) return;
+  var btn = $('btnCloseSet');
+  if(btn) btn.click();
+}
+
+/* ---------- 卡片内容 ---------- */
+function setStepBadge(i, total){
+  if(i < 0){ stepEl.style.display = 'none'; return; }
+  stepEl.style.display = '';
+  stepEl.textContent = (i + 1) + ' / ' + total;
+}
+
+function renderRolePhase(){
+  state.phase = 'role';
+  applyCardSize();
+  setStepBadge(-1, 0);
+  titleEl.textContent = '欢迎来到雨夜归途';
+  descEl.innerHTML = '先选择你的身份，我们会展示对应的引导。<br><span style="color:#a8bccc;font-size:11px;">随时可以跳过，之后也能在设置里调整。</span>';
+  rolesEl.style.display = '';
+  nextBtn.style.display = 'none';
+  skipBtn.textContent = '跳 过 引 导';
+
+  var vw = window.innerWidth, vh = window.innerHeight;
+  updateMasks(vw / 2, vh / 2, 0, 0, 0, false);
+  requestAnimationFrame(function(){
+    placeEdgeCard('center', 0);
+  });
+}
+
+function renderStep(i){
+  state.phase = 'steps';
+  state.stepIndex = i;
+  var step = state.steps[i];
+
+  setStepBadge(i, state.steps.length);
+  titleEl.textContent = step.title;
+  descEl.innerHTML = step.desc;
+  rolesEl.style.display = 'none';
+  nextBtn.style.display = '';
+  nextBtn.textContent = (i === state.steps.length - 1) ? '完 成' : '下 一 步';
+  skipBtn.textContent = '跳 过';
+
+  function layout(){
+    if(!state.active || state.phase !== 'steps') return;
+    requestAnimationFrame(function(){
+      if(state.active && state.phase === 'steps') updateLayoutForStep(step);
+    });
+  }
+
+  if(step.autoOpenSettings){
+    openSettingsIfNeeded(function(){
+      if(!state.active) return;
+      setTimeout(layout, 90);
+    });
+  } else {
+    layout();
+  }
+}
+
+/* ---------- 流程控制 ---------- */
+function start(){
+  state.active = true;
+  state.role = null;
+  state.steps = [];
+  state.stepIndex = -1;
+  state.settingsOpenedByTutorial = false;
+
+  layer.classList.add('active');
+  layer.setAttribute('aria-hidden', 'false');
+  renderRolePhase();
+}
+
+function chooseRole(role){
+  state.role = role;
+  state.steps = (role === 'streamer') ? STEPS_STREAMER : STEPS_NORMAL;
+  renderStep(0);
+}
+
+function nextStep(){
+  if(state.phase !== 'steps') return;
+  if(state.stepIndex < state.steps.length - 1){
+    renderStep(state.stepIndex + 1);
+  } else {
+    finish();
+  }
+}
+
+function finish(){
+  if(!state.active) return;
+  state.active = false;
+
+  layer.classList.remove('active');
+  layer.setAttribute('aria-hidden', 'true');
+
+  if(state.settingsOpenedByTutorial){
+    closeSettingsIfNeeded();
+    state.settingsOpenedByTutorial = false;
+  }
+
+  card.style.visibility = '';
+  card.style.left = '';
+  card.style.top = '';
+  hole.style.left = '';
+  hole.style.top = '';
+  hole.style.width = '';
+  hole.style.height = '';
+
+  try { localStorage.setItem(TUTORIAL_DONE_KEY, '1'); } catch(e){}
+}
+
+/* ---------- 事件 ---------- */
+rolesEl.addEventListener('click', function(e){
+  var btn = e.target.closest('.tut-role');
+  if(!btn) return;
+  chooseRole(btn.getAttribute('data-role'));
+});
+
+nextBtn.addEventListener('click', nextStep);
+skipBtn.addEventListener('click', finish);
+closeBtn.addEventListener('click', finish);
+
+window.addEventListener('keydown', function(e){
+  if(!state.active) return;
+  if(e.key !== 'Escape') return;
+  e.stopImmediatePropagation();
+  e.preventDefault();
+}, true);
+
+/* ---------- 视口变化 ---------- */
+function relayout(){
+  if(!state.active) return;
+  if(state.phase === 'role'){
+    var vw = window.innerWidth, vh = window.innerHeight;
+    updateMasks(vw / 2, vh / 2, 0, 0, 0, false);
+    requestAnimationFrame(function(){
+      if(state.active && state.phase === 'role'){
+        placeEdgeCard('center', 0);
+      }
+    });
+  } else if(state.phase === 'steps'){
+    updateLayoutForStep(state.steps[state.stepIndex]);
+  }
+}
+
+window.addEventListener('resize', relayout);
+window.addEventListener('orientationchange', function(){
+  setTimeout(relayout, 220);
+});
+document.addEventListener('fullscreenchange', function(){
+  setTimeout(relayout, 120);
+  setTimeout(relayout, 460);
+});
+document.addEventListener('webkitfullscreenchange', function(){
+  setTimeout(relayout, 120);
+  setTimeout(relayout, 460);
+});
+
+/* ---------- 等待游戏就绪 ---------- */
+var waitStart = Date.now();
+function waitForGameReady(){
+  var loading = $('loadingScreen');
+  var elapsed = Date.now() - waitStart;
+  if(loading && isVisible(loading) && elapsed < 12000){
+    setTimeout(waitForGameReady, 250);
+    return;
+  }
+  setTimeout(start, 400);
+}
+
+if(document.readyState === 'complete'){
+  waitForGameReady();
+} else {
+  window.addEventListener('load', waitForGameReady);
 }
 
 })();
