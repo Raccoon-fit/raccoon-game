@@ -8,682 +8,120 @@
 <title>雨夜归途</title>
 <link rel="stylesheet" href="styles.css">
 <style>
-/* ============================================================
-   ★ 商店面板样式
-   ============================================================ */
-#btnShop{
-  position:absolute;right:76px;top:18px;width:46px;height:46px;border-radius:13px;
-  background:linear-gradient(180deg, rgba(255,214,140,.22), rgba(120,80,20,.35));
-  border:1px solid rgba(255,214,140,.55);color:#ffe6a8;font-size:21px;
-  display:flex;align-items:center;justify-content:center;cursor:pointer;
-  pointer-events:auto;transition:.25s;font-family:inherit;
-  box-shadow:
-    0 4px 14px rgba(0,0,0,.55),
-    0 0 18px rgba(255,190,100,.18),
-    inset 0 1px 0 rgba(255,255,255,.15);
-  text-shadow:0 0 10px rgba(255,200,110,.6);}
-#btnShop:hover{
-  border-color:rgba(255,232,175,.95);
-  box-shadow:
-    0 6px 20px rgba(0,0,0,.6),
-    0 0 28px rgba(255,200,120,.5),
-    inset 0 1px 0 rgba(255,255,255,.22);
-  transform:translateY(-1px);}
+#btnShop{position:absolute;right:76px;top:18px;width:46px;height:46px;border-radius:13px;background:linear-gradient(180deg, rgba(255,214,140,.22), rgba(120,80,20,.35));border:1px solid rgba(255,214,140,.55);color:#ffe6a8;font-size:21px;display:flex;align-items:center;justify-content:center;cursor:pointer;pointer-events:auto;transition:.25s;font-family:inherit;box-shadow:0 4px 14px rgba(0,0,0,.55),0 0 18px rgba(255,190,100,.18),inset 0 1px 0 rgba(255,255,255,.15);text-shadow:0 0 10px rgba(255,200,110,.6);}
+#btnShop:hover{border-color:rgba(255,232,175,.95);box-shadow:0 6px 20px rgba(0,0,0,.6),0 0 28px rgba(255,200,120,.5),inset 0 1px 0 rgba(255,255,255,.22);transform:translateY(-1px);}
 #btnShop:active{transform:scale(.9);}
-
 #btnTempLight{right:188px !important;}
-
-/* 教程期间强制显示「临时点亮」按钮 */
-#btnTempLight.tut-force-show{
-  display:flex !important;
-  visibility:visible !important;
-  opacity:1 !important;
-  pointer-events:none !important;
-  position:absolute !important;
-  right:188px !important;
-  top:18px !important;
-  width:46px !important;
-  height:46px !important;
-  animation:tempLightPulse 1.4s ease-in-out infinite;
-}
-@keyframes tempLightPulse{
-  0%,100%{box-shadow:0 0 0 0 rgba(255,214,140,.0),0 4px 14px rgba(0,0,0,.6);}
-  50%{box-shadow:0 0 22px 4px rgba(255,214,140,.55),0 4px 14px rgba(0,0,0,.6);}
-}
-
-/* ============================================
-   ★ 地图按钮
-   ============================================ */
-#btnMap{
-  position:absolute;right:132px;top:18px;width:46px;height:46px;border-radius:13px;
-  background:linear-gradient(180deg,rgba(20,32,46,.85),rgba(9,15,24,.9));
-  border:1px solid rgba(150,190,230,.22);color:#9fb6cc;
-  display:flex;align-items:center;justify-content:center;cursor:pointer;
-  pointer-events:auto;transition:.2s;font-family:inherit;
-  overflow:hidden;padding:0;}
+#btnTempLight.tut-force-show{display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:none !important;position:absolute !important;right:188px !important;top:18px !important;width:46px !important;height:46px !important;animation:tempLightPulse 1.4s ease-in-out infinite;}
+@keyframes tempLightPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,214,140,.0),0 4px 14px rgba(0,0,0,.6);}50%{box-shadow:0 0 22px 4px rgba(255,214,140,.55),0 4px 14px rgba(0,0,0,.6);}}
+#btnMap{position:absolute;right:132px;top:18px;width:46px;height:46px;border-radius:13px;background:linear-gradient(180deg,rgba(20,32,46,.85),rgba(9,15,24,.9));border:1px solid rgba(150,190,230,.22);color:#9fb6cc;display:flex;align-items:center;justify-content:center;cursor:pointer;pointer-events:auto;transition:.2s;font-family:inherit;overflow:hidden;padding:0;}
 #btnMap:hover{border-color:rgba(255,214,140,.55);}
 #btnMap:active{transform:scale(.9);}
-#btnMap canvas{position:absolute;left:50%;top:50%;width:26px;height:26px;
-  transform:translate(-50%,-50%);display:block;pointer-events:none;}
-
-/* ============================================
-   ★ 地图面板
-   ============================================ */
-#mapPanel{
-  position:absolute;inset:0;z-index:45;
-  pointer-events:none;opacity:0;transition:opacity .3s;}
+#btnMap canvas{position:absolute;left:50%;top:50%;width:26px;height:26px;transform:translate(-50%,-50%);display:block;pointer-events:none;}
+#mapPanel{position:absolute;inset:0;z-index:45;pointer-events:none;opacity:0;transition:opacity .3s;}
 #mapPanel.show{pointer-events:auto;opacity:1;}
-#mapCanvas{
-  position:absolute;inset:0;width:100%;height:100%;
-  display:block;cursor:crosshair;}
-
-#btnCloseMap{
-  position:absolute;right:22px;top:22px;
-  width:44px;height:44px;border-radius:12px;
-  background:linear-gradient(180deg,rgba(56,42,22,.92),rgba(28,20,10,.95));
-  border:1px solid rgba(255,214,140,.5);
-  color:#ffe6a8;font-size:20px;line-height:1;
-  display:none;align-items:center;justify-content:center;
-  cursor:pointer;font-family:inherit;
-  box-shadow:
-    0 4px 14px rgba(0,0,0,.6),
-    0 0 20px rgba(255,190,110,.18),
-    inset 0 1px 0 rgba(255,255,255,.12);
-  transition:transform .15s,border-color .15s,background .15s;
-  z-index:2;}
+#mapCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair;}
+#btnCloseMap{position:absolute;right:22px;top:22px;width:44px;height:44px;border-radius:12px;background:linear-gradient(180deg,rgba(56,42,22,.92),rgba(28,20,10,.95));border:1px solid rgba(255,214,140,.5);color:#ffe6a8;font-size:20px;line-height:1;display:none;align-items:center;justify-content:center;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(0,0,0,.6),0 0 20px rgba(255,190,110,.18),inset 0 1px 0 rgba(255,255,255,.12);transition:transform .15s,border-color .15s,background .15s;z-index:2;}
 #mapPanel.show #btnCloseMap{display:flex;}
-#btnCloseMap:hover{
-  border-color:rgba(255,232,175,.95);
-  color:#fff2c8;
-  background:linear-gradient(180deg,rgba(80,60,30,.95),rgba(40,28,14,.98));}
+#btnCloseMap:hover{border-color:rgba(255,232,175,.95);color:#fff2c8;background:linear-gradient(180deg,rgba(80,60,30,.95),rgba(40,28,14,.98));}
 #btnCloseMap:active{transform:scale(.9);}
-
-/* ============================================
-   商店主面板
-   ============================================ */
-#shopPanel{
-  position:absolute;left:50%;top:50%;
-  transform:translate(-50%,-50%) scale(.92);
-  width:680px;max-height:620px;border-radius:22px;
-  background:
-    radial-gradient(ellipse at 50% -10%,
-      rgba(255,214,140,.18) 0%,
-      rgba(255,190,110,.06) 35%,
-      transparent 70%),
-    linear-gradient(180deg,
-      rgba(24,30,44,.988) 0%,
-      rgba(14,20,32,.992) 45%,
-      rgba(8,12,20,.995) 100%);
-  border:1px solid rgba(255,214,140,.42);
-  box-shadow:
-    0 0 60px rgba(255,196,110,.18),
-    0 0 120px rgba(0,0,0,.95),
-    0 40px 100px rgba(0,0,0,.95),
-    inset 0 1px 0 rgba(255,236,180,.18),
-    inset 0 0 40px rgba(255,190,110,.05);
-  opacity:0;pointer-events:none;
-  transition:opacity .28s cubic-bezier(.2,.9,.3,1),
-             transform .28s cubic-bezier(.2,.9,.3,1);
-  overflow:hidden;z-index:35;
-  display:flex;flex-direction:column;}
-#shopPanel.show{
-  opacity:1;pointer-events:auto;
-  transform:translate(-50%,-50%) scale(1);}
-
-#shopPanel::before{
-  content:'';position:absolute;left:0;right:0;top:0;height:3px;
-  background:linear-gradient(90deg,
-    transparent 0%,
-    rgba(255,214,140,.3) 15%,
-    rgba(255,236,180,.95) 50%,
-    rgba(255,214,140,.3) 85%,
-    transparent 100%);
-  z-index:2;pointer-events:none;}
-
-#shopPanel::after{
-  content:'';position:absolute;left:0;right:0;bottom:0;height:2px;
-  background:linear-gradient(90deg,
-    transparent,
-    rgba(255,214,140,.5),
-    transparent);
-  z-index:2;pointer-events:none;}
-
-#shopPanel .close-x{
-  position:absolute;right:16px;top:16px;z-index:5;
-  width:38px;height:38px;border-radius:11px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:18px;cursor:pointer;font-family:inherit;
-  color:#c9b88c;background:rgba(30,24,16,.92);
-  border:1px solid rgba(255,214,140,.35);
-  transition:transform .15s,color .15s,border-color .15s,background .15s;}
-#shopPanel .close-x:hover{
-  color:#ffe6a8;border-color:rgba(255,236,180,.85);
-  background:rgba(50,40,20,.95);
-  box-shadow:0 0 18px rgba(255,200,120,.35);}
+#shopPanel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.92);width:680px;max-height:620px;border-radius:22px;background:radial-gradient(ellipse at 50% -10%,rgba(255,214,140,.18) 0%,rgba(255,190,110,.06) 35%,transparent 70%),linear-gradient(180deg,rgba(24,30,44,.988) 0%,rgba(14,20,32,.992) 45%,rgba(8,12,20,.995) 100%);border:1px solid rgba(255,214,140,.42);box-shadow:0 0 60px rgba(255,196,110,.18),0 0 120px rgba(0,0,0,.95),0 40px 100px rgba(0,0,0,.95),inset 0 1px 0 rgba(255,236,180,.18),inset 0 0 40px rgba(255,190,110,.05);opacity:0;pointer-events:none;transition:opacity .28s cubic-bezier(.2,.9,.3,1),transform .28s cubic-bezier(.2,.9,.3,1);overflow:hidden;z-index:35;display:flex;flex-direction:column;}
+#shopPanel.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1);}
+#shopPanel::before{content:'';position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,transparent 0%,rgba(255,214,140,.3) 15%,rgba(255,236,180,.95) 50%,rgba(255,214,140,.3) 85%,transparent 100%);z-index:2;pointer-events:none;}
+#shopPanel::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,transparent,rgba(255,214,140,.5),transparent);z-index:2;pointer-events:none;}
+#shopPanel .close-x{position:absolute;right:16px;top:16px;z-index:5;width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;font-family:inherit;color:#c9b88c;background:rgba(30,24,16,.92);border:1px solid rgba(255,214,140,.35);transition:transform .15s,color .15s,border-color .15s,background .15s;}
+#shopPanel .close-x:hover{color:#ffe6a8;border-color:rgba(255,236,180,.85);background:rgba(50,40,20,.95);box-shadow:0 0 18px rgba(255,200,120,.35);}
 #shopPanel .close-x:active{transform:scale(.88);}
-
-.shop-head{
-  position:relative;
-  padding:22px 28px 18px;
-  display:flex;align-items:center;justify-content:space-between;
-  border-bottom:1px solid rgba(255,214,140,.15);
-  flex:0 0 auto;
-  padding-right:70px;
-  background:linear-gradient(180deg,
-    rgba(255,214,140,.06),
-    transparent 100%);}
-
-.shop-head h3{
-  font-size:22px;letter-spacing:12px;font-weight:800;
-  color:#ffe6a8;
-  padding-left:12px;
-  text-shadow:
-    0 0 30px rgba(255,200,120,.6),
-    0 0 12px rgba(255,180,90,.4),
-    0 1px 0 #6a4a1a,
-    0 2px 0 #3a2a10,
-    0 3px 0 #1a0e04,
-    0 4px 8px rgba(0,0,0,.9);}
-
-.shop-head h3::before,
-.shop-head h3::after{
-  content:'✦';
-  display:inline-block;
-  color:rgba(255,214,140,.6);
-  font-size:14px;
-  vertical-align:middle;
-  text-shadow:0 0 10px rgba(255,200,110,.7);}
+.shop-head{position:relative;padding:22px 28px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,214,140,.15);flex:0 0 auto;padding-right:70px;background:linear-gradient(180deg,rgba(255,214,140,.06),transparent 100%);}
+.shop-head h3{font-size:22px;letter-spacing:12px;font-weight:800;color:#ffe6a8;padding-left:12px;text-shadow:0 0 30px rgba(255,200,120,.6),0 0 12px rgba(255,180,90,.4),0 1px 0 #6a4a1a,0 2px 0 #3a2a10,0 3px 0 #1a0e04,0 4px 8px rgba(0,0,0,.9);}
+.shop-head h3::before,.shop-head h3::after{content:'✦';display:inline-block;color:rgba(255,214,140,.6);font-size:14px;vertical-align:middle;text-shadow:0 0 10px rgba(255,200,110,.7);}
 .shop-head h3::before{margin-right:14px;}
 .shop-head h3::after{margin-left:0;}
-
-.shop-currency{
-  display:flex;align-items:center;gap:10px;
-  padding:10px 20px 10px 16px;border-radius:16px;
-  background:
-    radial-gradient(circle at 15% 30%,
-      rgba(255,214,140,.2), transparent 60%),
-    linear-gradient(180deg,
-      rgba(56,42,18,.95),
-      rgba(24,16,6,.98));
-  border:1px solid rgba(255,214,140,.5);
-  box-shadow:
-    0 4px 14px rgba(0,0,0,.6),
-    0 0 24px rgba(255,190,110,.18),
-    inset 0 1px 0 rgba(255,255,255,.1),
-    inset 0 -1px 0 rgba(0,0,0,.5);}
-
-.shop-currency .coin{
-  font-size:22px;
-  filter:drop-shadow(0 0 8px rgba(255,200,110,.8))
-         drop-shadow(0 2px 4px rgba(0,0,0,.7));}
-
-.shop-currency .amount{
-  font-size:22px;font-weight:900;color:#fff2c8;
-  font-variant-numeric:tabular-nums;
-  letter-spacing:1px;
-  text-shadow:
-    0 0 16px rgba(255,200,110,.7),
-    0 0 6px rgba(255,180,90,.5),
-    0 1px 0 #6a4a1a,
-    0 2px 0 #3a2a10;}
-
-.shop-currency .label{
-  font-size:11px;letter-spacing:2.5px;
-  color:rgba(230,210,170,.75);
-  font-weight:500;
-  padding-left:2px;}
-
-.shop-scroll{
-  padding:18px 24px 22px;
-  overflow-y:auto;flex:1 1 auto;
-  -webkit-overflow-scrolling:touch;}
+.shop-currency{display:flex;align-items:center;gap:10px;padding:10px 20px 10px 16px;border-radius:16px;background:radial-gradient(circle at 15% 30%,rgba(255,214,140,.2),transparent 60%),linear-gradient(180deg,rgba(56,42,18,.95),rgba(24,16,6,.98));border:1px solid rgba(255,214,140,.5);box-shadow:0 4px 14px rgba(0,0,0,.6),0 0 24px rgba(255,190,110,.18),inset 0 1px 0 rgba(255,255,255,.1),inset 0 -1px 0 rgba(0,0,0,.5);}
+.shop-currency .coin{font-size:22px;filter:drop-shadow(0 0 8px rgba(255,200,110,.8)) drop-shadow(0 2px 4px rgba(0,0,0,.7));}
+.shop-currency .amount{font-size:22px;font-weight:900;color:#fff2c8;font-variant-numeric:tabular-nums;letter-spacing:1px;text-shadow:0 0 16px rgba(255,200,110,.7),0 0 6px rgba(255,180,90,.5),0 1px 0 #6a4a1a,0 2px 0 #3a2a10;}
+.shop-currency .label{font-size:11px;letter-spacing:2.5px;color:rgba(230,210,170,.75);font-weight:500;padding-left:2px;}
+.shop-scroll{padding:18px 24px 22px;overflow-y:auto;flex:1 1 auto;-webkit-overflow-scrolling:touch;}
 .shop-scroll::-webkit-scrollbar{width:8px;}
 .shop-scroll::-webkit-scrollbar-track{background:transparent;}
-.shop-scroll::-webkit-scrollbar-thumb{
-  background:linear-gradient(180deg,rgba(255,214,140,.5),rgba(180,120,40,.5));
-  border-radius:4px;}
-.shop-scroll::-webkit-scrollbar-thumb:hover{
-  background:linear-gradient(180deg,rgba(255,214,140,.8),rgba(200,140,50,.8));}
-
-.shop-section-title{
-  position:relative;
-  font-size:12.5px;letter-spacing:7px;
-  color:#ffd98f;
-  padding:10px 4px 14px 18px;
-  font-weight:800;
-  text-shadow:
-    0 0 12px rgba(255,200,120,.5),
-    0 1px 0 #6a4a1a,
-    0 2px 0 #3a2a10;}
-
-.shop-section-title::before{
-  content:'';
-  position:absolute;left:0;top:11px;
-  width:4px;height:14px;border-radius:2px;
-  background:linear-gradient(180deg,#ffe6b0,#c98a2a);
-  box-shadow:0 0 12px rgba(255,200,120,.7);}
-
-.shop-section-title::after{
-  content:'';
-  position:absolute;left:0;right:0;bottom:6px;height:1px;
-  background:linear-gradient(90deg,
-    rgba(255,214,140,.45) 0%,
-    rgba(255,214,140,.08) 40%,
-    transparent 100%);}
-
+.shop-scroll::-webkit-scrollbar-thumb{background:linear-gradient(180deg,rgba(255,214,140,.5),rgba(180,120,40,.5));border-radius:4px;}
+.shop-scroll::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,rgba(255,214,140,.8),rgba(200,140,50,.8));}
+.shop-section-title{position:relative;font-size:12.5px;letter-spacing:7px;color:#ffd98f;padding:10px 4px 14px 18px;font-weight:800;text-shadow:0 0 12px rgba(255,200,120,.5),0 1px 0 #6a4a1a,0 2px 0 #3a2a10;}
+.shop-section-title::before{content:'';position:absolute;left:0;top:11px;width:4px;height:14px;border-radius:2px;background:linear-gradient(180deg,#ffe6b0,#c98a2a);box-shadow:0 0 12px rgba(255,200,120,.7);}
+.shop-section-title::after{content:'';position:absolute;left:0;right:0;bottom:6px;height:1px;background:linear-gradient(90deg,rgba(255,214,140,.45) 0%,rgba(255,214,140,.08) 40%,transparent 100%);}
 .shop-featured{display:flex;gap:14px;margin-bottom:22px;}
-
-.featured-card{
-  position:relative;flex:1;
-  padding:20px 16px 16px;
-  border-radius:16px;
-  background:
-    radial-gradient(circle at 15% 0%,
-      rgba(255,220,150,.22), transparent 55%),
-    radial-gradient(circle at 85% 100%,
-      rgba(180,120,40,.15), transparent 50%),
-    linear-gradient(180deg,
-      rgba(52,36,20,.95),
-      rgba(24,16,8,.98));
-  border:1px solid rgba(255,214,140,.42);
-  box-shadow:
-    0 8px 26px rgba(0,0,0,.7),
-    0 0 30px rgba(255,190,110,.1),
-    inset 0 1px 0 rgba(255,255,255,.1),
-    inset 0 -2px 6px rgba(0,0,0,.5);
-  cursor:pointer;
-  transition:transform .18s cubic-bezier(.2,.9,.3,1),
-             border-color .25s,
-             box-shadow .25s;
-  overflow:hidden;}
-
-.featured-card::before,
-.featured-card::after{
-  content:'';
-  position:absolute;width:14px;height:14px;
-  border:2px solid rgba(255,214,140,.6);
-  pointer-events:none;transition:border-color .25s;}
-.featured-card::before{
-  left:8px;top:8px;
-  border-right:none;border-bottom:none;
-  border-top-left-radius:6px;}
-.featured-card::after{
-  right:8px;bottom:8px;
-  border-left:none;border-top:none;
-  border-bottom-right-radius:6px;}
-
-.featured-card:hover{
-  border-color:rgba(255,236,180,.9);
-  transform:translateY(-4px);
-  box-shadow:
-    0 16px 36px rgba(0,0,0,.8),
-    0 0 44px rgba(255,200,120,.3),
-    inset 0 1px 0 rgba(255,255,255,.15);}
-.featured-card:hover::before,
-.featured-card:hover::after{
-  border-color:rgba(255,240,200,.95);}
+.featured-card{position:relative;flex:1;padding:20px 16px 16px;border-radius:16px;background:radial-gradient(circle at 15% 0%,rgba(255,220,150,.22),transparent 55%),radial-gradient(circle at 85% 100%,rgba(180,120,40,.15),transparent 50%),linear-gradient(180deg,rgba(52,36,20,.95),rgba(24,16,8,.98));border:1px solid rgba(255,214,140,.42);box-shadow:0 8px 26px rgba(0,0,0,.7),0 0 30px rgba(255,190,110,.1),inset 0 1px 0 rgba(255,255,255,.1),inset 0 -2px 6px rgba(0,0,0,.5);cursor:pointer;transition:transform .18s cubic-bezier(.2,.9,.3,1),border-color .25s,box-shadow .25s;overflow:hidden;}
+.featured-card::before,.featured-card::after{content:'';position:absolute;width:14px;height:14px;border:2px solid rgba(255,214,140,.6);pointer-events:none;transition:border-color .25s;}
+.featured-card::before{left:8px;top:8px;border-right:none;border-bottom:none;border-top-left-radius:6px;}
+.featured-card::after{right:8px;bottom:8px;border-left:none;border-top:none;border-bottom-right-radius:6px;}
+.featured-card:hover{border-color:rgba(255,236,180,.9);transform:translateY(-4px);box-shadow:0 16px 36px rgba(0,0,0,.8),0 0 44px rgba(255,200,120,.3),inset 0 1px 0 rgba(255,255,255,.15);}
+.featured-card:hover::before,.featured-card:hover::after{border-color:rgba(255,240,200,.95);}
 .featured-card:active{transform:scale(.98) translateY(-2px);}
-
-.fc-tag{
-  position:absolute;left:12px;top:-10px;z-index:2;
-  padding:4px 12px;border-radius:9px;
-  font-size:10px;letter-spacing:2.5px;font-weight:900;
-  background:linear-gradient(180deg,#ffdb8a,#c9861a);
-  color:#1a0e04;
-  box-shadow:
-    0 3px 12px rgba(255,180,80,.6),
-    0 0 20px rgba(255,200,120,.4),
-    inset 0 1px 0 rgba(255,255,255,.5);}
-.fc-tag.hot{
-  background:linear-gradient(180deg,#ff7a6a,#c92a1a);
-  color:#fff;
-  text-shadow:0 1px 2px rgba(0,0,0,.5);
-  box-shadow:
-    0 3px 12px rgba(255,90,70,.6),
-    0 0 22px rgba(255,90,70,.5),
-    inset 0 1px 0 rgba(255,255,255,.4);
-  animation:hotPulse 1.8s ease-in-out infinite;}
-@keyframes hotPulse{
-  0%,100%{box-shadow:0 3px 12px rgba(255,90,70,.6),0 0 22px rgba(255,90,70,.5),inset 0 1px 0 rgba(255,255,255,.4);}
-  50%{box-shadow:0 3px 18px rgba(255,120,90,.85),0 0 34px rgba(255,90,70,.75),inset 0 1px 0 rgba(255,255,255,.5);}
-}
-
-.fc-icon{
-  font-size:38px;margin-bottom:8px;
-  filter:
-    drop-shadow(0 4px 10px rgba(0,0,0,.8))
-    drop-shadow(0 0 12px rgba(255,200,120,.3));}
-
-.fc-name{
-  font-size:15px;font-weight:800;letter-spacing:2px;
-  color:#ffe6a8;margin-bottom:5px;
-  text-shadow:
-    0 0 12px rgba(255,200,110,.5),
-    0 1px 0 #6a4a1a,
-    0 2px 0 #3a2a10;}
-
-.fc-desc{
-  font-size:11px;line-height:1.7;
-  color:rgba(200,190,160,.75);
-  margin-bottom:12px;
-  letter-spacing:.5px;}
-
-.fc-price{
-  display:flex;align-items:baseline;gap:10px;
-  padding-top:6px;
-  border-top:1px dashed rgba(255,214,140,.2);}
-
-.fc-price .old{
-  font-size:11.5px;color:rgba(150,150,150,.55);
-  text-decoration:line-through;
-  font-weight:500;}
-
-.fc-price .now{
-  font-size:22px;font-weight:900;color:#ffe6b0;
-  letter-spacing:1px;
-  text-shadow:
-    0 0 16px rgba(255,200,110,.7),
-    0 0 6px rgba(255,180,90,.5),
-    0 1px 0 #6a4a1a,
-    0 2px 0 #3a2a10;
-  font-variant-numeric:tabular-nums;}
-
-.shop-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:14px;margin-bottom:22px;}
-
-.shop-item{
-  position:relative;
-  padding:18px 12px 14px;
-  border-radius:16px;
-  background:
-    radial-gradient(circle at 50% 0%,
-      rgba(255,220,150,.1), transparent 60%),
-    linear-gradient(180deg,
-      rgba(30,42,58,.95),
-      rgba(12,18,28,.98));
-  border:1px solid rgba(150,190,230,.28);
-  box-shadow:
-    0 4px 18px rgba(0,0,0,.6),
-    inset 0 1px 0 rgba(255,255,255,.08),
-    inset 0 -2px 4px rgba(0,0,0,.45);
-  text-align:center;cursor:pointer;
-  transition:transform .18s cubic-bezier(.2,.9,.3,1),
-             border-color .25s,
-             box-shadow .25s;
-  overflow:hidden;}
-
-.shop-item::before{
-  content:'';
-  position:absolute;left:50%;top:-40px;
-  width:120%;height:60px;
-  transform:translateX(-50%);
-  background:radial-gradient(ellipse,
-    rgba(255,214,140,.15), transparent 70%);
-  pointer-events:none;}
-
-.shop-item:hover{
-  border-color:rgba(255,214,140,.85);
-  transform:translateY(-3px);
-  box-shadow:
-    0 12px 28px rgba(0,0,0,.75),
-    0 0 36px rgba(255,200,120,.28),
-    inset 0 1px 0 rgba(255,255,255,.12);}
+.fc-tag{position:absolute;left:12px;top:-10px;z-index:2;padding:4px 12px;border-radius:9px;font-size:10px;letter-spacing:2.5px;font-weight:900;background:linear-gradient(180deg,#ffdb8a,#c9861a);color:#1a0e04;box-shadow:0 3px 12px rgba(255,180,80,.6),0 0 20px rgba(255,200,120,.4),inset 0 1px 0 rgba(255,255,255,.5);}
+.fc-tag.hot{background:linear-gradient(180deg,#ff7a6a,#c92a1a);color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5);box-shadow:0 3px 12px rgba(255,90,70,.6),0 0 22px rgba(255,90,70,.5),inset 0 1px 0 rgba(255,255,255,.4);animation:hotPulse 1.8s ease-in-out infinite;}
+@keyframes hotPulse{0%,100%{box-shadow:0 3px 12px rgba(255,90,70,.6),0 0 22px rgba(255,90,70,.5),inset 0 1px 0 rgba(255,255,255,.4);}50%{box-shadow:0 3px 18px rgba(255,120,90,.85),0 0 34px rgba(255,90,70,.75),inset 0 1px 0 rgba(255,255,255,.5);}}
+.fc-icon{font-size:38px;margin-bottom:8px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.8)) drop-shadow(0 0 12px rgba(255,200,120,.3));}
+.fc-name{font-size:15px;font-weight:800;letter-spacing:2px;color:#ffe6a8;margin-bottom:5px;text-shadow:0 0 12px rgba(255,200,110,.5),0 1px 0 #6a4a1a,0 2px 0 #3a2a10;}
+.fc-desc{font-size:11px;line-height:1.7;color:rgba(200,190,160,.75);margin-bottom:12px;letter-spacing:.5px;}
+.fc-price{display:flex;align-items:baseline;gap:10px;padding-top:6px;border-top:1px dashed rgba(255,214,140,.2);}
+.fc-price .old{font-size:11.5px;color:rgba(150,150,150,.55);text-decoration:line-through;font-weight:500;}
+.fc-price .now{font-size:22px;font-weight:900;color:#ffe6b0;letter-spacing:1px;text-shadow:0 0 16px rgba(255,200,110,.7),0 0 6px rgba(255,180,90,.5),0 1px 0 #6a4a1a,0 2px 0 #3a2a10;font-variant-numeric:tabular-nums;}
+.shop-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px;}
+.shop-item{position:relative;padding:18px 12px 14px;border-radius:16px;background:radial-gradient(circle at 50% 0%,rgba(255,220,150,.1),transparent 60%),linear-gradient(180deg,rgba(30,42,58,.95),rgba(12,18,28,.98));border:1px solid rgba(150,190,230,.28);box-shadow:0 4px 18px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.08),inset 0 -2px 4px rgba(0,0,0,.45);text-align:center;cursor:pointer;transition:transform .18s cubic-bezier(.2,.9,.3,1),border-color .25s,box-shadow .25s;overflow:hidden;}
+.shop-item::before{content:'';position:absolute;left:50%;top:-40px;width:120%;height:60px;transform:translateX(-50%);background:radial-gradient(ellipse,rgba(255,214,140,.15),transparent 70%);pointer-events:none;}
+.shop-item:hover{border-color:rgba(255,214,140,.85);transform:translateY(-3px);box-shadow:0 12px 28px rgba(0,0,0,.75),0 0 36px rgba(255,200,120,.28),inset 0 1px 0 rgba(255,255,255,.12);}
 .shop-item:active{transform:scale(.97) translateY(-1px);}
-
-.si-double{
-  position:absolute;left:50%;top:-9px;
-  transform:translateX(-50%);
-  padding:4px 14px;border-radius:9px;
-  white-space:nowrap;z-index:2;
-  font-size:10.5px;letter-spacing:2px;font-weight:900;
-  background:linear-gradient(180deg,#ffe6b0,#d99a2a);
-  color:#1a0e04;
-  box-shadow:
-    0 3px 14px rgba(255,180,80,.65),
-    0 0 24px rgba(255,200,120,.5),
-    inset 0 1px 0 rgba(255,255,255,.6);
-  animation:doublePulse 2s ease-in-out infinite;}
-@keyframes doublePulse{
-  0%,100%{
-    box-shadow:0 3px 14px rgba(255,180,80,.65),
-               0 0 24px rgba(255,200,120,.5),
-               inset 0 1px 0 rgba(255,255,255,.6);}
-  50%{
-    box-shadow:0 3px 22px rgba(255,200,120,.95),
-               0 0 40px rgba(255,210,140,.85),
-               inset 0 1px 0 rgba(255,255,255,.75);}
-}
-
-.si-tag{
-  position:absolute;right:10px;top:10px;
-  font-size:9.5px;letter-spacing:1.5px;
-  color:#8fffc0;font-weight:800;
-  padding:2px 7px;border-radius:6px;
-  background:rgba(40,80,50,.45);
-  border:1px solid rgba(120,240,160,.4);
-  text-shadow:0 0 8px rgba(80,240,150,.7);}
-
-.si-icon{
-  font-size:30px;margin-bottom:6px;
-  filter:
-    drop-shadow(0 3px 8px rgba(0,0,0,.7))
-    drop-shadow(0 0 10px rgba(255,200,120,.25));}
-
-.si-amount{
-  font-size:26px;font-weight:900;
-  color:#ffe6b0;
-  font-variant-numeric:tabular-nums;
-  letter-spacing:1px;
-  line-height:1;margin-bottom:6px;
-  text-shadow:
-    0 0 18px rgba(255,200,110,.75),
-    0 0 6px rgba(255,180,90,.5),
-    0 1px 0 #6a4a1a,
-    0 2px 0 #3a2a10,
-    0 3px 0 #1a0e04;}
-
-.si-price{
-  font-size:12.5px;letter-spacing:1.5px;font-weight:700;
-  color:rgba(200,215,230,.85);
-  padding-top:6px;
-  border-top:1px solid rgba(150,190,230,.15);}
-
-.shop-pay-row{
-  display:flex;align-items:center;justify-content:center;gap:12px;
-  padding:14px 8px;margin-bottom:12px;
-  border-top:1px solid rgba(255,214,140,.12);
-  border-bottom:1px solid rgba(255,214,140,.12);
-  background:linear-gradient(90deg,
-    transparent,
-    rgba(255,214,140,.04),
-    transparent);}
-
-.pay-icon{
-  font-size:20px;opacity:.85;
-  filter:drop-shadow(0 2px 4px rgba(0,0,0,.6));}
-
-.pay-text{
-  font-size:11.5px;letter-spacing:2px;
-  color:rgba(170,190,210,.75);
-  font-weight:500;}
-
-.shop-notice{
-  font-size:10px;letter-spacing:1.5px;
-  color:rgba(130,150,170,.55);
-  text-align:center;line-height:2;
-  padding-top:10px;}
-
-/* ============================================================
-   ★ 新手引导聚光灯（普通 / 主播 分支）
-   ============================================================ */
-#tutorialLayer{
-  position:fixed;inset:0;z-index:9999;
-  display:none;pointer-events:none;
-}
+.si-double{position:absolute;left:50%;top:-9px;transform:translateX(-50%);padding:4px 14px;border-radius:9px;white-space:nowrap;z-index:2;font-size:10.5px;letter-spacing:2px;font-weight:900;background:linear-gradient(180deg,#ffe6b0,#d99a2a);color:#1a0e04;box-shadow:0 3px 14px rgba(255,180,80,.65),0 0 24px rgba(255,200,120,.5),inset 0 1px 0 rgba(255,255,255,.6);animation:doublePulse 2s ease-in-out infinite;}
+@keyframes doublePulse{0%,100%{box-shadow:0 3px 14px rgba(255,180,80,.65),0 0 24px rgba(255,200,120,.5),inset 0 1px 0 rgba(255,255,255,.6);}50%{box-shadow:0 3px 22px rgba(255,200,120,.95),0 0 40px rgba(255,210,140,.85),inset 0 1px 0 rgba(255,255,255,.75);}}
+.si-tag{position:absolute;right:10px;top:10px;font-size:9.5px;letter-spacing:1.5px;color:#8fffc0;font-weight:800;padding:2px 7px;border-radius:6px;background:rgba(40,80,50,.45);border:1px solid rgba(120,240,160,.4);text-shadow:0 0 8px rgba(80,240,150,.7);}
+.si-icon{font-size:30px;margin-bottom:6px;filter:drop-shadow(0 3px 8px rgba(0,0,0,.7)) drop-shadow(0 0 10px rgba(255,200,120,.25));}
+.si-amount{font-size:26px;font-weight:900;color:#ffe6b0;font-variant-numeric:tabular-nums;letter-spacing:1px;line-height:1;margin-bottom:6px;text-shadow:0 0 18px rgba(255,200,110,.75),0 0 6px rgba(255,180,90,.5),0 1px 0 #6a4a1a,0 2px 0 #3a2a10,0 3px 0 #1a0e04;}
+.si-price{font-size:12.5px;letter-spacing:1.5px;font-weight:700;color:rgba(200,215,230,.85);padding-top:6px;border-top:1px solid rgba(150,190,230,.15);}
+.shop-pay-row{display:flex;align-items:center;justify-content:center;gap:12px;padding:14px 8px;margin-bottom:12px;border-top:1px solid rgba(255,214,140,.12);border-bottom:1px solid rgba(255,214,140,.12);background:linear-gradient(90deg,transparent,rgba(255,214,140,.04),transparent);}
+.pay-icon{font-size:20px;opacity:.85;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6));}
+.pay-text{font-size:11.5px;letter-spacing:2px;color:rgba(170,190,210,.75);font-weight:500;}
+.shop-notice{font-size:10px;letter-spacing:1.5px;color:rgba(130,150,170,.55);text-align:center;line-height:2;padding-top:10px;}
+#tutorialLayer{position:fixed;inset:0;z-index:9999;display:none;pointer-events:none;}
 #tutorialLayer.active{display:block;}
-
-.tut-block{
-  position:fixed;
-  background:rgba(2,4,8,0.86);
-  pointer-events:auto;
-  z-index:1;
-  transition:
-    left .5s cubic-bezier(.4,0,.2,1),
-    top .5s cubic-bezier(.4,0,.2,1),
-    width .5s cubic-bezier(.4,0,.2,1),
-    height .5s cubic-bezier(.4,0,.2,1);
-}
-
-/* 洞本身拦截点击，避免穿透误触下层按钮 */
-#tutorialHole{
-  position:fixed;
-  z-index:2;
-  pointer-events:auto;
-  cursor:default;
-  border-radius:14px;
-  box-shadow:
-    0 0 0 2px rgba(255,214,140,0.6),
-    0 0 36px 6px rgba(255,206,130,0.5),
-    inset 0 0 24px rgba(255,214,140,0.2);
-  transition:
-    left .5s cubic-bezier(.4,0,.2,1),
-    top .5s cubic-bezier(.4,0,.2,1),
-    width .5s cubic-bezier(.4,0,.2,1),
-    height .5s cubic-bezier(.4,0,.2,1),
-    border-radius .4s ease;
-}
-
-#tutorialCard{
-  position:fixed;
-  z-index:3;
-  pointer-events:auto;
-  width:320px;
-  max-width:calc(100vw - 28px);
-  max-height:calc(100vh - 28px);
-  overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
-  padding:20px 22px 18px;
-  border-radius:16px;
-  background:linear-gradient(160deg, rgba(30,40,56,0.98), rgba(12,18,28,0.99));
-  border:1px solid rgba(255,214,140,0.55);
-  box-shadow:
-    0 0 0 1px rgba(0,0,0,0.5),
-    0 0 30px rgba(255,196,110,0.25),
-    0 18px 44px rgba(0,0,0,0.9);
-  color:#e9dcc0;
-  transition:left .4s cubic-bezier(.4,0,.2,1), top .4s cubic-bezier(.4,0,.2,1);
-}
+.tut-block{position:fixed;background:rgba(2,4,8,0.86);pointer-events:auto;z-index:1;transition:left .5s cubic-bezier(.4,0,.2,1),top .5s cubic-bezier(.4,0,.2,1),width .5s cubic-bezier(.4,0,.2,1),height .5s cubic-bezier(.4,0,.2,1);}
+#tutorialHole{position:fixed;z-index:2;pointer-events:auto;cursor:default;border-radius:14px;box-shadow:0 0 0 2px rgba(255,214,140,0.6),0 0 36px 6px rgba(255,206,130,0.5),inset 0 0 24px rgba(255,214,140,0.2);transition:left .5s cubic-bezier(.4,0,.2,1),top .5s cubic-bezier(.4,0,.2,1),width .5s cubic-bezier(.4,0,.2,1),height .5s cubic-bezier(.4,0,.2,1),border-radius .4s ease;}
+#tutorialCard{position:fixed;z-index:3;pointer-events:auto;width:320px;max-width:calc(100vw - 28px);max-height:calc(100vh - 28px);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 22px 18px;border-radius:16px;background:linear-gradient(160deg, rgba(30,40,56,0.98), rgba(12,18,28,0.99));border:1px solid rgba(255,214,140,0.55);box-shadow:0 0 0 1px rgba(0,0,0,0.5),0 0 30px rgba(255,196,110,0.25),0 18px 44px rgba(0,0,0,0.9);color:#e9dcc0;transition:left .4s cubic-bezier(.4,0,.2,1), top .4s cubic-bezier(.4,0,.2,1);}
 #tutorialCard::-webkit-scrollbar{width:6px;}
-#tutorialCard::-webkit-scrollbar-thumb{
-  background:rgba(255,214,140,0.4);border-radius:3px;}
-
-#tutorialCard.compact{
-  width:252px;
-  padding:14px 16px 12px;
-}
+#tutorialCard::-webkit-scrollbar-thumb{background:rgba(255,214,140,0.4);border-radius:3px;}
+#tutorialCard.compact{width:252px;padding:14px 16px 12px;}
 #tutorialCard.compact .tut-head{margin-bottom:8px;}
 #tutorialCard.compact .tut-step{font-size:10px;padding:2px 8px;letter-spacing:1.5px;}
-#tutorialCard.compact .tut-title{
-  font-size:14px;letter-spacing:1.5px;margin-bottom:6px;
-}
-#tutorialCard.compact .tut-desc{
-  font-size:11.5px;line-height:1.6;letter-spacing:.5px;margin-bottom:12px;
-}
-#tutorialCard.compact .tut-actions button{
-  padding:7px 14px;font-size:12px;letter-spacing:1.5px;
-}
-
-#tutorialCard.tiny{
-  width:220px;
-  padding:12px 13px 10px;
-  max-height:calc(100vh - 20px);
-}
+#tutorialCard.compact .tut-title{font-size:14px;letter-spacing:1.5px;margin-bottom:6px;}
+#tutorialCard.compact .tut-desc{font-size:11.5px;line-height:1.6;letter-spacing:.5px;margin-bottom:12px;}
+#tutorialCard.compact .tut-actions button{padding:7px 14px;font-size:12px;letter-spacing:1.5px;}
+#tutorialCard.tiny{width:220px;padding:12px 13px 10px;max-height:calc(100vh - 20px);}
 #tutorialCard.tiny .tut-step{font-size:9px;padding:2px 6px;}
 #tutorialCard.tiny .tut-title{font-size:13px;margin-bottom:5px;letter-spacing:1px;}
-#tutorialCard.tiny .tut-desc{
-  font-size:11px;line-height:1.55;margin-bottom:10px;
-}
-#tutorialCard.tiny .tut-actions button{
-  padding:6px 11px;font-size:11px;letter-spacing:1px;
-}
-
-.tut-head{
-  display:flex;align-items:center;justify-content:space-between;
-  margin-bottom:10px;
-}
-.tut-step{
-  font-size:11px;letter-spacing:2px;color:#ffcf87;font-weight:700;
-  padding:3px 9px;border-radius:20px;
-  background:rgba(255,196,110,0.12);
-  border:1px solid rgba(255,196,110,0.35);
-}
-.tut-title{
-  font-size:17px;font-weight:700;letter-spacing:2px;color:#ffe6b0;
-  margin-bottom:8px;
-  text-shadow:0 1px 0 #6a4a1a,0 2px 8px rgba(0,0,0,0.7);
-}
-.tut-desc{
-  font-size:13px;line-height:1.75;letter-spacing:1px;
-  color:#a8bccc;margin-bottom:16px;
-}
+#tutorialCard.tiny .tut-desc{font-size:11px;line-height:1.55;margin-bottom:10px;}
+#tutorialCard.tiny .tut-actions button{padding:6px 11px;font-size:11px;letter-spacing:1px;}
+.tut-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.tut-step{font-size:11px;letter-spacing:2px;color:#ffcf87;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(255,196,110,0.12);border:1px solid rgba(255,196,110,0.35);}
+.tut-title{font-size:17px;font-weight:700;letter-spacing:2px;color:#ffe6b0;margin-bottom:8px;text-shadow:0 1px 0 #6a4a1a,0 2px 8px rgba(0,0,0,0.7);}
+.tut-desc{font-size:13px;line-height:1.75;letter-spacing:1px;color:#a8bccc;margin-bottom:16px;}
 .tut-desc b{color:#ffcf87;font-weight:600;}
 .tut-actions{display:flex;gap:10px;justify-content:flex-end;}
-.tut-actions button{
-  padding:9px 18px;font-size:13px;letter-spacing:2px;
-  border-radius:10px;cursor:pointer;font-family:inherit;
-  transition:all .18s ease;
-}
-.tut-next{
-  background:linear-gradient(180deg,#d9a44a,#a87428);
-  border:1px solid #ffcf87;color:#2a1a08;font-weight:700;
-  box-shadow:0 2px 0 #5a3a10,0 6px 16px rgba(0,0,0,0.5),0 0 18px rgba(255,196,110,0.35);
-}
-.tut-next:hover{
-  background:linear-gradient(180deg,#f0be60,#c08a32);
-  transform:translateY(-1px);
-  box-shadow:0 3px 0 #5a3a10,0 10px 22px rgba(0,0,0,0.6),0 0 26px rgba(255,196,110,0.55);
-}
+.tut-actions button{padding:9px 18px;font-size:13px;letter-spacing:2px;border-radius:10px;cursor:pointer;font-family:inherit;transition:all .18s ease;}
+.tut-next{background:linear-gradient(180deg,#d9a44a,#a87428);border:1px solid #ffcf87;color:#2a1a08;font-weight:700;box-shadow:0 2px 0 #5a3a10,0 6px 16px rgba(0,0,0,0.5),0 0 18px rgba(255,196,110,0.35);}
+.tut-next:hover{background:linear-gradient(180deg,#f0be60,#c08a32);transform:translateY(-1px);box-shadow:0 3px 0 #5a3a10,0 10px 22px rgba(0,0,0,0.6),0 0 26px rgba(255,196,110,0.55);}
 .tut-next:active{transform:translateY(1px);}
-
-.tut-roles{
-  display:flex;flex-direction:column;gap:12px;
-  margin-bottom:6px;
-}
-.tut-role{
-  display:flex;align-items:center;gap:14px;
-  padding:14px 16px;border-radius:12px;
-  background:linear-gradient(180deg,rgba(58,78,104,0.6),rgba(20,30,46,0.8));
-  border:1px solid rgba(200,170,110,0.4);
-  color:#e9dcc0;cursor:pointer;font-family:inherit;
-  text-align:left;transition:all .18s ease;
-}
-.tut-role:hover{
-  border-color:rgba(255,214,140,0.95);
-  background:linear-gradient(180deg,rgba(80,110,140,0.7),rgba(30,42,60,0.9));
-  transform:translateY(-1px);
-  box-shadow:0 8px 20px rgba(0,0,0,0.5),0 0 20px rgba(255,196,110,0.2);
-}
+.tut-roles{display:flex;flex-direction:column;gap:12px;margin-bottom:6px;}
+.tut-role{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;background:linear-gradient(180deg,rgba(58,78,104,0.6),rgba(20,30,46,0.8));border:1px solid rgba(200,170,110,0.4);color:#e9dcc0;cursor:pointer;font-family:inherit;text-align:left;transition:all .18s ease;}
+.tut-role:hover{border-color:rgba(255,214,140,0.95);background:linear-gradient(180deg,rgba(80,110,140,0.7),rgba(30,42,60,0.9));transform:translateY(-1px);box-shadow:0 8px 20px rgba(0,0,0,0.5),0 0 20px rgba(255,196,110,0.2);}
 .tut-role:active{transform:translateY(0);}
-.role-icon{
-  font-size:28px;flex:0 0 auto;
-  filter:drop-shadow(0 2px 6px rgba(0,0,0,0.6));
-}
+.role-icon{font-size:28px;flex:0 0 auto;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.6));}
 .role-body{display:flex;flex-direction:column;gap:3px;flex:1 1 auto;}
-.role-name{
-  font-size:15px;font-weight:700;letter-spacing:2px;color:#ffe6b0;
-  text-shadow:0 1px 0 #6a4a1a,0 2px 6px rgba(0,0,0,0.7);
-}
-.role-sub{
-  font-size:11px;letter-spacing:1px;color:#a8bccc;
-}
+.role-name{font-size:15px;font-weight:700;letter-spacing:2px;color:#ffe6b0;text-shadow:0 1px 0 #6a4a1a,0 2px 6px rgba(0,0,0,0.7);}
+.role-sub{font-size:11px;letter-spacing:1px;color:#a8bccc;}
 </style>
 </head>
 <body>
 <div id="stage">
   <div id="overlay">
-
     <div id="hud">
       <div id="inv"></div>
       <button id="btnTempLight">✨ 临时点亮全局</button>
@@ -691,325 +129,63 @@
       <button id="btnMap" aria-label="地图"></button>
       <button id="btnSet">⚙</button>
     </div>
-
     <div id="fanClub">✦ 欢迎加入粉丝团 ✦</div>
-
     <div id="streamerBadge"><span class="dot"></span>主播模式：开</div>
-
     <div id="toast"></div>
-
     <div id="sceneTitle"></div>
-
     <div id="dlgMask"></div>
-
     <div id="dlg"></div>
-
     <div id="choiceBox"></div>
-
     <div id="settings">
       <button class="close-x" id="btnCloseSet">✕</button>
       <div class="settings-body">
         <h3>设 置</h3>
-
-        <div class="row">
-          <span>提示</span>
-          <button class="highlight-btn" id="btnHighlight">🔍 高亮可交互（5秒）</button>
-        </div>
-
-        <div class="row achv-row">
-          <button class="achv-card" id="btnAchievements">
-            <span class="trophy">🏆</span>
-            <span class="achv-body">
-              <span class="achv-title">已 达 成 的 结 局</span>
-              <span class="achv-sub">你走过的每一条路</span>
-            </span>
-            <span class="achv-progress" id="achvProgress">0 / 5</span>
-            <span class="achv-arrow">›</span>
-          </button>
-        </div>
-
-        <div class="row">
-          <span>帧率</span>
-          <div class="opts" data-key="fps">
-            <button data-v="30">30</button>
-            <button data-v="45">45</button>
-            <button data-v="60">60</button>
-          </div>
-        </div>
-
-        <div class="row">
-          <span>画质</span>
-          <div class="opts" data-key="quality">
-            <button data-v="low">低</button>
-            <button data-v="medium">中</button>
-            <button data-v="high">高</button>
-          </div>
-        </div>
-
-        <div class="row">
-          <span>文字速度</span>
-          <div class="opts" data-key="textSpeed">
-            <button data-v="slow">慢</button>
-            <button data-v="normal">中</button>
-            <button data-v="fast">快</button>
-            <button data-v="instant">瞬显</button>
-          </div>
-        </div>
-
-        <div class="row">
-          <span>文字大小</span>
-          <div class="opts" data-key="fontSize">
-            <button data-v="17">小</button>
-            <button data-v="19">中</button>
-            <button data-v="22">大</button>
-          </div>
-        </div>
-
-        <div class="row">
-          <span>主播模式</span>
-          <div class="opts" data-key="streamerMode">
-            <button data-v="off">关</button>
-            <button data-v="on">开</button>
-          </div>
-        </div>
-
-        <div class="row">
-          <span>游戏进度</span>
-          <button class="danger" id="btnReset">清除所有进度</button>
-        </div>
+        <div class="row"><span>提示</span><button class="highlight-btn" id="btnHighlight">🔍 高亮可交互（5秒）</button></div>
+        <div class="row achv-row"><button class="achv-card" id="btnAchievements"><span class="trophy">🏆</span><span class="achv-body"><span class="achv-title">已 达 成 的 结 局</span><span class="achv-sub">你走过的每一条路</span></span><span class="achv-progress" id="achvProgress">0 / 5</span><span class="achv-arrow">›</span></button></div>
+        <div class="row"><span>帧率</span><div class="opts" data-key="fps"><button data-v="30">30</button><button data-v="45">45</button><button data-v="60">60</button></div></div>
+        <div class="row"><span>画质</span><div class="opts" data-key="quality"><button data-v="low">低</button><button data-v="medium">中</button><button data-v="high">高</button></div></div>
+        <div class="row"><span>文字速度</span><div class="opts" data-key="textSpeed"><button data-v="slow">慢</button><button data-v="normal">中</button><button data-v="fast">快</button><button data-v="instant">瞬显</button></div></div>
+        <div class="row"><span>文字大小</span><div class="opts" data-key="fontSize"><button data-v="17">小</button><button data-v="19">中</button><button data-v="22">大</button></div></div>
+        <div class="row"><span>主播模式</span><div class="opts" data-key="streamerMode"><button data-v="off">关</button><button data-v="on">开</button></div></div>
+        <div class="row"><span>游戏进度</span><button class="danger" id="btnReset">清除所有进度</button></div>
       </div>
     </div>
-
-    <!-- ★ 商店面板 -->
     <div id="shopPanel">
       <button class="close-x" id="btnCloseShop">✕</button>
-
-      <div class="shop-head">
-        <h3>补 给 站</h3>
-        <div class="shop-currency">
-          <span class="coin">🐟</span>
-          <span class="amount">0</span>
-          <span class="label">小鱼干</span>
-        </div>
-      </div>
-
+      <div class="shop-head"><h3>补 给 站</h3><div class="shop-currency"><span class="coin">🐟</span><span class="amount">0</span><span class="label">小鱼干</span></div></div>
       <div class="shop-scroll">
         <div class="shop-section-title">限 时 礼 包</div>
         <div class="shop-featured">
-          <div class="featured-card">
-            <div class="fc-tag">限时</div>
-            <div class="fc-icon">🎁</div>
-            <div class="fc-name">老周的杂货袋</div>
-            <div class="fc-desc">猫粮 × 10 · 手电电池 × 3 · 钩爪 × 1</div>
-            <div class="fc-price">
-              <span class="old">¥ 68</span>
-              <span class="now">¥ 30</span>
-            </div>
-          </div>
-          <div class="featured-card">
-            <div class="fc-tag hot">热卖</div>
-            <div class="fc-icon">🔦</div>
-            <div class="fc-name">雨夜寻路包</div>
-            <div class="fc-desc">手电筒（亮） × 1 · 电池 × 5</div>
-            <div class="fc-price">
-              <span class="old">¥ 30</span>
-              <span class="now">¥ 12</span>
-            </div>
-          </div>
+          <div class="featured-card"><div class="fc-tag">限时</div><div class="fc-icon">🎁</div><div class="fc-name">老周的杂货袋</div><div class="fc-desc">猫粮 × 10 · 手电电池 × 3 · 钩爪 × 1</div><div class="fc-price"><span class="old">¥ 68</span><span class="now">¥ 30</span></div></div>
+          <div class="featured-card"><div class="fc-tag hot">热卖</div><div class="fc-icon">🔦</div><div class="fc-name">雨夜寻路包</div><div class="fc-desc">手电筒（亮） × 1 · 电池 × 5</div><div class="fc-price"><span class="old">¥ 30</span><span class="now">¥ 12</span></div></div>
         </div>
-
         <div class="shop-section-title">小 鱼 干 充 值</div>
         <div class="shop-grid">
-          <div class="shop-item" data-amount="6">
-            <div class="si-double">首充双倍</div>
-            <div class="si-icon">🐟</div>
-            <div class="si-amount">6</div>
-            <div class="si-price">¥ 6</div>
-          </div>
-          <div class="shop-item" data-amount="30">
-            <div class="si-icon">🐟</div>
-            <div class="si-amount">30</div>
-            <div class="si-price">¥ 30</div>
-          </div>
-          <div class="shop-item" data-amount="68">
-            <div class="si-tag">送 6</div>
-            <div class="si-icon">🐟</div>
-            <div class="si-amount">68</div>
-            <div class="si-price">¥ 68</div>
-          </div>
-          <div class="shop-item" data-amount="128">
-            <div class="si-tag">送 15</div>
-            <div class="si-icon">🐟</div>
-            <div class="si-amount">128</div>
-            <div class="si-price">¥ 128</div>
-          </div>
-          <div class="shop-item" data-amount="328">
-            <div class="si-tag">送 45</div>
-            <div class="si-icon">🐟</div>
-            <div class="si-amount">328</div>
-            <div class="si-price">¥ 328</div>
-          </div>
-          <div class="shop-item" data-amount="648">
-            <div class="si-tag">送 100</div>
-            <div class="si-icon">🐟</div>
-            <div class="si-amount">648</div>
-            <div class="si-price">¥ 648</div>
-          </div>
+          <div class="shop-item" data-amount="6"><div class="si-double">首充双倍</div><div class="si-icon">🐟</div><div class="si-amount">6</div><div class="si-price">¥ 6</div></div>
+          <div class="shop-item" data-amount="30"><div class="si-icon">🐟</div><div class="si-amount">30</div><div class="si-price">¥ 30</div></div>
+          <div class="shop-item" data-amount="68"><div class="si-tag">送 6</div><div class="si-icon">🐟</div><div class="si-amount">68</div><div class="si-price">¥ 68</div></div>
+          <div class="shop-item" data-amount="128"><div class="si-tag">送 15</div><div class="si-icon">🐟</div><div class="si-amount">128</div><div class="si-price">¥ 128</div></div>
+          <div class="shop-item" data-amount="328"><div class="si-tag">送 45</div><div class="si-icon">🐟</div><div class="si-amount">328</div><div class="si-price">¥ 328</div></div>
+          <div class="shop-item" data-amount="648"><div class="si-tag">送 100</div><div class="si-icon">🐟</div><div class="si-amount">648</div><div class="si-price">¥ 648</div></div>
         </div>
-
-        <div class="shop-pay-row">
-          <span class="pay-icon">💳</span>
-          <span class="pay-icon">📱</span>
-          <span class="pay-text">支持微信支付 · 支付宝 · 银行卡</span>
-        </div>
-
-        <div class="shop-notice">
-          抵制不良游戏，拒绝盗版游戏。适度游戏益脑，沉迷游戏伤身。
-        </div>
+        <div class="shop-pay-row"><span class="pay-icon">💳</span><span class="pay-icon">📱</span><span class="pay-text">支持微信支付 · 支付宝 · 银行卡</span></div>
+        <div class="shop-notice">抵制不良游戏，拒绝盗版游戏。适度游戏益脑，沉迷游戏伤身。</div>
       </div>
     </div>
-
-    <!-- ★ 地图面板 -->
-    <div id="mapPanel">
-      <canvas id="mapCanvas"></canvas>
-      <button id="btnCloseMap" aria-label="关闭地图">✕</button>
-    </div>
-
-    <div id="achvPanel">
-      <button class="close-x" id="btnCloseAchv">✕</button>
-      <div class="achv-head"><h3>已 达 成 的 结 局</h3></div>
-      <div class="achv-scroll" id="achvList"></div>
-      <div class="achv-foot">
-        <div class="total" id="achvTotal">已达成 <b>0</b> / 5</div>
-      </div>
-    </div>
-
-    <div id="warnMask">
-      <div id="warnBox">
-        <div class="warn-ic">⚠️</div>
-        <h4>警 告</h4>
-        <p>即将清除<span class="hl">所有游戏进度</span>。</p>
-        <p>包括存档、物品、剧情记录。</p>
-        <p>成就记录<span class="hl">不会</span>被清除。</p>
-        <p>此操作<span class="hl">无法撤销</span>。</p>
-        <div class="warn-btns">
-          <button id="warnCancel">取 消</button>
-          <button id="warnConfirm">确 认 清 除</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="bloodWarnMask">
-      <div id="bloodWarnBox">
-        <div class="warn-ic">🩸</div>
-        <h4>暗 夜 模 式</h4>
-        <p>即将进入<span class="hl">暗夜模式</span>。</p>
-        <p>这里没有回头的路——也回不到原来的雨夜。</p>
-        <p>画面上会出现<span class="hl">令你不适的内容</span>。</p>
-        <p>暗夜模式的物品与主线<span class="hl">互不相通</span>。</p>
-        <p>视图会切换为 <span class="hl">3D 第一人称</span>。</p>
-        <p>若你只想走主线，请点击<span class="hl">「离 开」</span>。</p>
-        <div class="warn-btns">
-          <button id="bloodCancel">离 开</button>
-          <button id="bloodConfirm">继 续 深 入</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="streamerWarnMask">
-      <div id="streamerWarnBox">
-        <div class="warn-ic">ℹ️</div>
-        <h4>主 播 模 式 提 醒</h4>
-        <p>当前已处于<span class="hl">暗夜模式</span>。</p>
-        <p>主播模式的各项权益<span class="hl">依然生效</span>——</p>
-        <p>物品名称常显、粉丝团提示、状态徽标。</p>
-        <p>但<span class="hl">「临时点亮全局」在暗夜里不可用</span>。</p>
-        <p>暗夜模式的画面与文字也会<span class="hl">完整保留</span>。</p>
-        <div class="warn-btns">
-          <button id="streamerOkBtn">知 道 了</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="streamerBlockMask">
-      <div id="streamerBlockBox">
-        <div class="warn-ic">🚫</div>
-        <h4>暂 时 无 法 进 入</h4>
-        <p>当前处于<span class="hl">主播模式</span>，</p>
-        <p>暗夜模式<span class="hl">已被拦截</span>。</p>
-        <p>如果你想体验这段内容，可以：</p>
-        <p>① 先关闭主播模式 → ② 进入暗夜模式 → ③ 再开启主播模式。</p>
-        <p>（暗夜内容会保留，主播模式的各项权益也会生效。）</p>
-        <div class="warn-btns">
-          <button id="streamerBlockOk">知 道 了</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="ending">
-      <h2>雨 停 了</h2>
-      <p>第二天早上，红屋顶的房子门口，多了一只浣熊。<br>它在晒太阳。</p>
-      <button id="btnAgain">再 走 一 次</button>
-    </div>
-
-    <div id="bloodEnding">
-      <h2>雨 还 在 下</h2>
-      <p>灰豆把两片纸拼在一起。</p>
-      <p>照片上的老人没有笑。小浣熊在哭。</p>
-      <p class="dim">——不是它要找的那一张。</p>
-      <p>它想起来了。</p>
-      <p><span class="hl">全部。</span></p>
-      <p>那栋房子烧起来的那一夜，它从窗户跳了出去。</p>
-      <p>老人没有追出来。</p>
-      <p>——也许是因为，他追不动了。</p>
-      <p>灰豆一直都知道这件事。</p>
-      <p>它只是<span class="hl">不想承认</span>。</p>
-      <p>它跑了很多年。</p>
-      <p>回到这里，只是想告诉自己：</p>
-      <p class="dim">“那天，我只是迷路了。”</p>
-      <p>——但它没有。</p>
-      <p>它只是<span class="hl">跑掉了</span>。</p>
-      <button id="btnBloodAgain">结 束 了 …</button>
-    </div>
-
-    <div id="forgetEnding">
-      <h2>一 个 人 的 早 晨</h2>
-      <p>第二天早上，街上没有人。</p>
-      <p>巷子里没有小孩。</p>
-      <p>便利店锁着门。</p>
-      <p>门口的小碗，倒扣着。</p>
-      <p>——里面是干的。</p>
-      <p class="dim">台阶上什么都没有。</p>
-      <p>灰豆站在那里。</p>
-      <p>站了很久。</p>
-      <p>——它没有回头。</p>
-      <button id="btnForgetAgain">再 走 一 次</button>
-    </div>
-
+    <div id="mapPanel"><canvas id="mapCanvas"></canvas><button id="btnCloseMap" aria-label="关闭地图">✕</button></div>
+    <div id="achvPanel"><button class="close-x" id="btnCloseAchv">✕</button><div class="achv-head"><h3>已 达 成 的 结 局</h3></div><div class="achv-scroll" id="achvList"></div><div class="achv-foot"><div class="total" id="achvTotal">已达成 <b>0</b> / 5</div></div></div>
+    <div id="warnMask"><div id="warnBox"><div class="warn-ic">⚠️</div><h4>警 告</h4><p>即将清除<span class="hl">所有游戏进度</span>。</p><p>包括存档、物品、剧情记录。</p><p>成就记录<span class="hl">不会</span>被清除。</p><p>此操作<span class="hl">无法撤销</span>。</p><div class="warn-btns"><button id="warnCancel">取 消</button><button id="warnConfirm">确 认 清 除</button></div></div></div>
+    <div id="bloodWarnMask"><div id="bloodWarnBox"><div class="warn-ic">🩸</div><h4>暗 夜 模 式</h4><p>即将进入<span class="hl">暗夜模式</span>。</p><p>这里没有回头的路——也回不到原来的雨夜。</p><p>画面上会出现<span class="hl">令你不适的内容</span>。</p><p>暗夜模式的物品与主线<span class="hl">互不相通</span>。</p><p>视图会切换为 <span class="hl">3D 第一人称</span>。</p><p>若你只想走主线，请点击<span class="hl">「离 开」</span>。</p><div class="warn-btns"><button id="bloodCancel">离 开</button><button id="bloodConfirm">继 续 深 入</button></div></div></div>
+    <div id="streamerWarnMask"><div id="streamerWarnBox"><div class="warn-ic">ℹ️</div><h4>主 播 模 式 提 醒</h4><p>当前已处于<span class="hl">暗夜模式</span>。</p><p>主播模式的各项权益<span class="hl">依然生效</span>——</p><p>物品名称常显、粉丝团提示、状态徽标。</p><p>但<span class="hl">「临时点亮全局」在暗夜里不可用</span>。</p><p>暗夜模式的画面与文字也会<span class="hl">完整保留</span>。</p><div class="warn-btns"><button id="streamerOkBtn">知 道 了</button></div></div></div>
+    <div id="streamerBlockMask"><div id="streamerBlockBox"><div class="warn-ic">🚫</div><h4>暂 时 无 法 进 入</h4><p>当前处于<span class="hl">主播模式</span>，</p><p>暗夜模式<span class="hl">已被拦截</span>。</p><p>如果你想体验这段内容，可以：</p><p>① 先关闭主播模式 → ② 进入暗夜模式 → ③ 再开启主播模式。</p><p>（暗夜内容会保留，主播模式的各项权益也会生效。）</p><div class="warn-btns"><button id="streamerBlockOk">知 道 了</button></div></div></div>
+    <div id="ending"><h2>雨 停 了</h2><p>第二天早上，红屋顶的房子门口，多了一只浣熊。<br>它在晒太阳。</p><button id="btnAgain">再 走 一 次</button></div>
+    <div id="bloodEnding"><h2>雨 还 在 下</h2><p>灰豆把两片纸拼在一起。</p><p>照片上的老人没有笑。小浣熊在哭。</p><p class="dim">——不是它要找的那一张。</p><p>它想起来了。</p><p><span class="hl">全部。</span></p><p>那栋房子烧起来的那一夜，它从窗户跳了出去。</p><p>老人没有追出来。</p><p>——也许是因为，他追不动了。</p><p>灰豆一直都知道这件事。</p><p>它只是<span class="hl">不想承认</span>。</p><p>它跑了很多年。</p><p>回到这里，只是想告诉自己：</p><p class="dim">“那天，我只是迷路了。”</p><p>——但它没有。</p><p>它只是<span class="hl">跑掉了</span>。</p><button id="btnBloodAgain">结 束 了 …</button></div>
+    <div id="forgetEnding"><h2>一 个 人 的 早 晨</h2><p>第二天早上，街上没有人。</p><p>巷子里没有小孩。</p><p>便利店锁着门。</p><p>门口的小碗，倒扣着。</p><p>——里面是干的。</p><p class="dim">台阶上什么都没有。</p><p>灰豆站在那里。</p><p>站了很久。</p><p>——它没有回头。</p><button id="btnForgetAgain">再 走 一 次</button></div>
   </div>
-
-  <div id="loadingScreen">
-    <div class="loading-box">
-      <div class="loading-scene-name" id="loadingName">雨 夜 归 途</div>
-      <div class="loading-bar"><div class="loading-bar-fill" id="loadingFill"></div></div>
-      <div class="loading-row">
-        <span class="loading-tip" id="loadingTip">正在准备……</span>
-        <span class="loading-pct" id="loadingPct">0%</span>
-      </div>
-      <button class="loading-retry" id="loadingRetry">重 试</button>
-    </div>
-  </div>
-
-  <div id="rotate">
-    <div class="ic">📱</div>
-    <p>请 横 屏 使 用</p>
-    <button id="btnForce">仍然继续</button>
-  </div>
+  <div id="loadingScreen"><div class="loading-box"><div class="loading-scene-name" id="loadingName">雨 夜 归 途</div><div class="loading-bar"><div class="loading-bar-fill" id="loadingFill"></div></div><div class="loading-row"><span class="loading-tip" id="loadingTip">正在准备……</span><span class="loading-pct" id="loadingPct">0%</span></div><button class="loading-retry" id="loadingRetry">重 试</button></div></div>
+  <div id="rotate"><div class="ic">📱</div><p>请 横 屏 使 用</p><button id="btnForce">仍然继续</button></div>
 </div>
 
-<!-- ============================================================
-     ★ 新手引导聚光灯 DOM（不可关闭：无 ✕ / 无跳过）
-     ============================================================ -->
 <div id="tutorialLayer" aria-hidden="true">
   <div class="tut-block" id="tutBlockTop"></div>
   <div class="tut-block" id="tutBlockBottom"></div>
@@ -1017,30 +193,14 @@
   <div class="tut-block" id="tutBlockRight"></div>
   <div id="tutorialHole"></div>
   <div id="tutorialCard">
-    <div class="tut-head">
-      <span class="tut-step" id="tutStep">1 / 10</span>
-    </div>
+    <div class="tut-head"><span class="tut-step" id="tutStep">1 / 10</span></div>
     <div class="tut-title" id="tutTitle"></div>
     <div class="tut-desc" id="tutDesc"></div>
     <div class="tut-roles" id="tutRoles" style="display:none;">
-      <button class="tut-role" data-role="normal">
-        <span class="role-icon">🎮</span>
-        <span class="role-body">
-          <span class="role-name">普通玩家</span>
-          <span class="role-sub">开始新的旅程</span>
-        </span>
-      </button>
-      <button class="tut-role" data-role="streamer">
-        <span class="role-icon">🎙️</span>
-        <span class="role-body">
-          <span class="role-name">我是主播</span>
-          <span class="role-sub">了解主播相关功能</span>
-        </span>
-      </button>
+      <button class="tut-role" data-role="normal"><span class="role-icon">🎮</span><span class="role-body"><span class="role-name">普通玩家</span><span class="role-sub">开始新的旅程</span></span></button>
+      <button class="tut-role" data-role="streamer"><span class="role-icon">🎙️</span><span class="role-body"><span class="role-name">我是主播</span><span class="role-sub">了解主播相关功能</span></span></button>
     </div>
-    <div class="tut-actions" id="tutActions">
-      <button class="tut-next" id="tutNext">下 一 步</button>
-    </div>
+    <div class="tut-actions" id="tutActions"><button class="tut-next" id="tutNext">下 一 步</button></div>
   </div>
 </div>
 
@@ -1052,73 +212,43 @@
    ============================================================ */
 (function(){
 'use strict';
-
 var shopPanel = document.getElementById('shopPanel');
 var btnShop   = document.getElementById('btnShop');
 var btnClose  = document.getElementById('btnCloseShop');
 var shopToastTimer = null;
-
 if(!shopPanel || !btnShop) return;
-
 function openShop(){ shopPanel.classList.add('show'); }
 function closeShop(){ shopPanel.classList.remove('show'); }
-
-btnShop.addEventListener('click', function(e){
-  e.stopPropagation();
-  openShop();
-});
-btnClose.addEventListener('click', function(e){
-  e.stopPropagation();
-  closeShop();
-});
-shopPanel.addEventListener('click', function(e){
-  if(e.target === shopPanel) closeShop();
-});
-
+btnShop.addEventListener('click', function(e){ e.stopPropagation(); openShop(); });
+btnClose.addEventListener('click', function(e){ e.stopPropagation(); closeShop(); });
+shopPanel.addEventListener('click', function(e){ if(e.target === shopPanel) closeShop(); });
 function shopToast(msg){
-  var t = document.getElementById('toast');
-  if(!t) return;
-  t.textContent = msg;
-  t.classList.remove('gold');
-  void t.offsetWidth;
-  t.classList.add('gold');
-  t.classList.add('show');
+  var t = document.getElementById('toast'); if(!t) return;
+  t.textContent = msg; t.classList.remove('gold'); void t.offsetWidth;
+  t.classList.add('gold'); t.classList.add('show');
   clearTimeout(shopToastTimer);
-  shopToastTimer = setTimeout(function(){
-    t.classList.remove('show');
-    t.classList.remove('gold');
-  }, 2800);
+  shopToastTimer = setTimeout(function(){ t.classList.remove('show'); t.classList.remove('gold'); }, 2800);
 }
-
 var items = document.querySelectorAll('.shop-item, .featured-card');
 for(var i = 0; i < items.length; i++){
   (function(el){
     el.addEventListener('click', function(e){
       e.stopPropagation();
       var amount = el.getAttribute('data-amount');
-      if(amount){
-        shopToast('🐟 小鱼干 × ' + amount + ' · 感谢支持！');
-      } else {
-        shopToast('🎁 礼包已放入背包 · 感谢支持！');
-      }
+      if(amount){ shopToast('🐟 小鱼干 × ' + amount + ' · 感谢支持！'); }
+      else{ shopToast('🎁 礼包已放入背包 · 感谢支持！'); }
     });
   })(items[i]);
 }
-
 window.addEventListener('keydown', function(e){
   if(e.key !== 'Escape') return;
   if(!shopPanel.classList.contains('show')) return;
-  e.stopImmediatePropagation();
-  e.preventDefault();
-  closeShop();
+  e.stopImmediatePropagation(); e.preventDefault(); closeShop();
 }, true);
-
 window.addEventListener('popstate', function(e){
   if(!shopPanel.classList.contains('show')) return;
-  e.stopImmediatePropagation();
-  closeShop();
+  e.stopImmediatePropagation(); closeShop();
 }, true);
-
 })();
 
 /* ============================================================
@@ -1126,74 +256,43 @@ window.addEventListener('popstate', function(e){
    ============================================================ */
 (function(){
 'use strict';
-
-var btn = document.getElementById('btnMap');
-if(!btn) return;
-
+var btn = document.getElementById('btnMap'); if(!btn) return;
 var dpr = Math.min(window.devicePixelRatio || 1, 2);
-var cv = document.createElement('canvas');
-cv.width = 32 * dpr;
-cv.height = 32 * dpr;
-btn.appendChild(cv);
-var g = cv.getContext('2d');
-g.setTransform(dpr, 0, 0, dpr, 0, 0);
-g.strokeStyle = '#9fb6cc';
-g.lineWidth = 1.8;
-g.lineCap = 'round';
-g.lineJoin = 'round';
-
-g.beginPath(); g.moveTo(6, 9); g.lineTo(26, 9); g.stroke();
-g.beginPath(); g.ellipse(6, 9, 1.8, 2.2, 0, 0, Math.PI*2); g.stroke();
-g.beginPath(); g.ellipse(26, 9, 1.8, 2.2, 0, 0, Math.PI*2); g.stroke();
-
-g.beginPath(); g.moveTo(6, 23); g.lineTo(26, 23); g.stroke();
-g.beginPath(); g.ellipse(6, 23, 1.8, 2.2, 0, 0, Math.PI*2); g.stroke();
-g.beginPath(); g.ellipse(26, 23, 1.8, 2.2, 0, 0, Math.PI*2); g.stroke();
-
-g.beginPath();
-g.moveTo(6, 9); g.lineTo(6, 23);
-g.moveTo(26, 9); g.lineTo(26, 23);
-g.stroke();
-
+var cv = document.createElement('canvas'); cv.width = 32*dpr; cv.height = 32*dpr; btn.appendChild(cv);
+var g = cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0);
+g.strokeStyle = '#9fb6cc'; g.lineWidth = 1.8; g.lineCap = 'round'; g.lineJoin = 'round';
+g.beginPath(); g.moveTo(6,9); g.lineTo(26,9); g.stroke();
+g.beginPath(); g.ellipse(6,9,1.8,2.2,0,0,Math.PI*2); g.stroke();
+g.beginPath(); g.ellipse(26,9,1.8,2.2,0,0,Math.PI*2); g.stroke();
+g.beginPath(); g.moveTo(6,23); g.lineTo(26,23); g.stroke();
+g.beginPath(); g.ellipse(6,23,1.8,2.2,0,0,Math.PI*2); g.stroke();
+g.beginPath(); g.ellipse(26,23,1.8,2.2,0,0,Math.PI*2); g.stroke();
+g.beginPath(); g.moveTo(6,9); g.lineTo(6,23); g.moveTo(26,9); g.lineTo(26,23); g.stroke();
 g.fillStyle = 'rgba(159,182,204,0.75)';
-g.beginPath(); g.arc(12, 15, 1.2, 0, Math.PI*2); g.fill();
-g.beginPath(); g.arc(16, 17.5, 1.4, 0, Math.PI*2); g.fill();
-g.beginPath(); g.arc(20, 14, 1.1, 0, Math.PI*2); g.fill();
-
+g.beginPath(); g.arc(12,15,1.2,0,Math.PI*2); g.fill();
+g.beginPath(); g.arc(16,17.5,1.4,0,Math.PI*2); g.fill();
+g.beginPath(); g.arc(20,14,1.1,0,Math.PI*2); g.fill();
 btn.addEventListener('click', function(e){
   e.stopPropagation();
-  if(typeof RaccoonMap === 'undefined'){
-    console.warn('[map] RaccoonMap 未加载');
-    return;
-  }
-  if(RaccoonMap.isOpen()){
-    RaccoonMap.close();
-  } else {
-    RaccoonMap.open();
-  }
+  if(typeof RaccoonMap === 'undefined'){ console.warn('[map] RaccoonMap 未加载'); return; }
+  if(RaccoonMap.isOpen()) RaccoonMap.close(); else RaccoonMap.open();
 });
-
 var btnClose = document.getElementById('btnCloseMap');
 if(btnClose){
   btnClose.addEventListener('click', function(e){
     e.stopPropagation();
-    if(typeof RaccoonMap !== 'undefined' && RaccoonMap.isOpen()){
-      RaccoonMap.close();
-    }
+    if(typeof RaccoonMap !== 'undefined' && RaccoonMap.isOpen()) RaccoonMap.close();
   });
 }
-
 })();
 
 /* ============================================================
    ★ 新手引导聚光灯（普通 / 主播 分支）
    - 新游戏进入：每次都显示
    - 继续存档：仅首次显示
-   - 教程不可关闭：无 ✕、无跳过，只能逐步完成
-   - 高亮目标坐标：
-     · 场景物件 → RaccoonGame.getHotspotRect(spotId)
-     · 地图节点 → RaccoonMap.getNodeScreenRect(key)
-     · HUD/设置 → 直接查 DOM
+   - 教程不可关闭
+   - ★ 立刻启动，不等待开场对话
+   - ★ 第 1 步：剧情对话（洞允许点击穿透，对话结束自动下一步）
    ============================================================ */
 (function(){
 'use strict';
@@ -1203,12 +302,8 @@ var TUTORIAL_DONE_KEY = 'raccoon_tutorial_done_v1';
 
 var launchMode = 'new';
 try { launchMode = localStorage.getItem(LAUNCH_KEY) || 'new'; } catch(e){}
-
-/* 新游戏：每次都显示；继续存档：仅首次 */
 if(launchMode !== 'new'){
-  try {
-    if(localStorage.getItem(TUTORIAL_DONE_KEY) === '1') return;
-  } catch(e){}
+  try { if(localStorage.getItem(TUTORIAL_DONE_KEY) === '1') return; } catch(e){}
 }
 
 function $(id){ return document.getElementById(id); }
@@ -1229,17 +324,12 @@ var blockRight = $('tutBlockRight');
 
 if(!layer || !hole || !card) return;
 
-/* 洞内点击：吸收但不传递 */
-function absorb(e){
-  e.stopPropagation();
-  e.preventDefault();
-}
+function absorb(e){ e.stopPropagation(); e.preventDefault(); }
 hole.addEventListener('click', absorb, true);
 hole.addEventListener('pointerdown', absorb, true);
 hole.addEventListener('mousedown', absorb, true);
 hole.addEventListener('touchstart', absorb, true);
 
-/* ---------- 工具 ---------- */
 function isVisible(el){
   if(!el || !el.isConnected) return false;
   var st = window.getComputedStyle(el);
@@ -1248,52 +338,33 @@ function isVisible(el){
   if(el.offsetWidth === 0 && el.offsetHeight === 0) return false;
   return true;
 }
-
 function isSettingsOpen(){ return isVisible($('settings')); }
-
 function isMapOpen(){
   if(typeof RaccoonMap === 'undefined' || !RaccoonMap) return false;
   try { return RaccoonMap.isOpen(); } catch(e){ return false; }
 }
-
 function openMapIfNeeded(cb){
   if(typeof RaccoonMap === 'undefined' || !RaccoonMap){ cb(); return; }
   if(isMapOpen()){ cb(); return; }
   try { RaccoonMap.open(); } catch(e){}
-  /* 地图扩散动画约 1.2s，等动画到位再测量 */
   setTimeout(cb, 800);
 }
-
 function closeMapIfNeeded(){
   if(typeof RaccoonMap === 'undefined' || !RaccoonMap) return;
   try { if(RaccoonMap.isOpen()) RaccoonMap.close(); } catch(e){}
 }
-
 function openSettingsIfNeeded(cb){
   if(isSettingsOpen()){ cb(); return; }
   var btn = $('btnSet');
-  if(btn){
-    btn.click();
-    state.settingsOpenedByTutorial = true;
-  }
+  if(btn){ btn.click(); state.settingsOpenedByTutorial = true; }
   setTimeout(cb, 360);
 }
-
 function closeSettingsIfNeeded(){
   if(!isSettingsOpen()) return;
-  var btn = $('btnCloseSet');
-  if(btn) btn.click();
+  var btn = $('btnCloseSet'); if(btn) btn.click();
 }
-
-/* 临时显示「临时点亮」按钮 */
-function forceShowTempLight(){
-  var btn = $('btnTempLight');
-  if(btn) btn.classList.add('tut-force-show');
-}
-function hideTempLight(){
-  var btn = $('btnTempLight');
-  if(btn) btn.classList.remove('tut-force-show');
-}
+function forceShowTempLight(){ var btn = $('btnTempLight'); if(btn) btn.classList.add('tut-force-show'); }
+function hideTempLight(){ var btn = $('btnTempLight'); if(btn) btn.classList.remove('tut-force-show'); }
 
 function getHudButtonsRect(){
   var sel = ['#btnShop', '#btnMap', '#btnSet'];
@@ -1305,17 +376,13 @@ function getHudButtonsRect(){
   if(!rects.length) return null;
   var left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
   for(var j = 0; j < rects.length; j++){
-    left = Math.min(left, rects[j].left);
-    top = Math.min(top, rects[j].top);
-    right = Math.max(right, rects[j].right);
-    bottom = Math.max(bottom, rects[j].bottom);
+    left = Math.min(left, rects[j].left); top = Math.min(top, rects[j].top);
+    right = Math.max(right, rects[j].right); bottom = Math.max(bottom, rects[j].bottom);
   }
   return { left: left, top: top, width: right - left, height: bottom - top };
 }
 
-/* ---------- 虚拟目标：场景 / 地图 / 对话 ---------- */
 var VIRTUAL_TARGETS = {
-  /* 场景可交互物件：精确取 alley 场景的垃圾桶 */
   'scene-object': function(){
     if(window.RaccoonGame && RaccoonGame.getHotspotRect){
       try{
@@ -1323,23 +390,11 @@ var VIRTUAL_TARGETS = {
         if(r && r.width > 4 && r.height > 4) return r;
       }catch(e){}
     }
-    /* fallback：stage rect + 960 坐标系的垃圾桶位置 (610,294,144,212) */
     var stage = document.getElementById('stage');
-    var sr = stage ? stage.getBoundingClientRect() : {
-      left: 0, top: 0,
-      width: window.innerWidth, height: window.innerHeight
-    };
-    var sx = sr.width  / 960;
-    var sy = sr.height / 540;
-    return {
-      left:   sr.left + 610 * sx,
-      top:    sr.top  + 294 * sy,
-      width:  144 * sx,
-      height: 212 * sy
-    };
+    var sr = stage ? stage.getBoundingClientRect() : { left:0, top:0, width:window.innerWidth, height:window.innerHeight };
+    var sx = sr.width / 960, sy = sr.height / 540;
+    return { left: sr.left + 610*sx, top: sr.top + 294*sy, width: 144*sx, height: 212*sy };
   },
-
-  /* 地图上可传送的节点 */
   'map-node': function(){
     if(window.RaccoonMap && RaccoonMap.getNodeScreenRect){
       try{
@@ -1355,17 +410,9 @@ var VIRTUAL_TARGETS = {
         }
       }catch(e){}
     }
-    /* fallback：地图偏左上一块 */
     var vw = window.innerWidth, vh = window.innerHeight;
-    return {
-      left:   Math.round(vw * 0.26),
-      top:    Math.round(vh * 0.62),
-      width:  Math.round(vw * 0.14),
-      height: Math.round(vh * 0.20)
-    };
+    return { left: Math.round(vw*0.26), top: Math.round(vh*0.62), width: Math.round(vw*0.14), height: Math.round(vh*0.20) };
   },
-
-  /* 底部对话框 */
   'dlg-box': function(){
     var dlg = document.getElementById('dlg');
     if(dlg){
@@ -1373,160 +420,48 @@ var VIRTUAL_TARGETS = {
       if(r.width > 40 && r.height > 30) return r;
     }
     var vw = window.innerWidth, vh = window.innerHeight;
-    return {
-      left:   Math.round(vw * 0.10),
-      top:    Math.round(vh * 0.62),
-      width:  Math.round(vw * 0.80),
-      height: Math.round(vh * 0.28)
-    };
+    return { left: Math.round(vw*0.10), top: Math.round(vh*0.62), width: Math.round(vw*0.80), height: Math.round(vh*0.28) };
   }
 };
 
-/* ---------- 步骤定义 ---------- */
+/* ---------- 步骤定义：第 1 步都是剧情对话 ---------- */
+var DLG_STEP = {
+  target: 'dlg-box',
+  title: '剧情对话',
+  desc: '游戏通过<b>对话框</b>讲述故事。<br>点击下方对话区域，逐句推进。<br><span style="color:#a8bccc;font-size:11px;">点完这一句，会自动进入下一步。</span>',
+  placement: 'top',
+  padding: 12,
+  radius: 14,
+  allowClickThrough: true,
+  waitDlgClose: true,
+  nextLabel: '跳 过 对 话'
+};
+
 var STEPS_NORMAL = [
-  {
-    target: 'hud-buttons',
-    title: '常用功能',
-    desc: '右上角是<b>商店</b>、<b>地图</b>和<b>设置</b>。<br>商店可以用小鱼干兑换补给，地图可以查看当前位置。',
-    placement: 'bottom', padding: 12, radius: 16
-  },
-  {
-    target: '#btnMap',
-    title: '打开地图',
-    desc: '点击这个按钮可以打开<b>地图</b>，查看你走过的街道。',
-    placement: 'bottom', padding: 8, radius: 14
-  },
-  {
-    target: 'map-node',
-    title: '地图传送',
-    desc: '地图上<b>发亮的节点</b>可以点击传送——<br>去过的地方和相邻的地方都能快速到达。',
-    placement: 'bottom', padding: 10, radius: 14,
-    autoOpenMap: true
-  },
-  {
-    target: '#btnCloseMap',
-    title: '关闭地图',
-    desc: '看完之后，点击右上角的 <b>✕</b> 关闭地图，回到场景。',
-    placement: 'left', padding: 8, radius: 14,
-    autoCloseMapOnLeave: true
-  },
-  {
-    target: 'scene-object',
-    title: '探索交互',
-    desc: '场景里有可以互动的物件，比如这个<b>垃圾桶</b>。<br>点击它们进行探索，可能会找到线索或物品。',
-    placement: 'bottom', padding: 14, radius: 14
-  },
-  {
-    target: 'dlg-box',
-    title: '剧情对话',
-    desc: '剧情对话会出现在屏幕下方。<br>点击对话框<b>继续</b>；遇到选择时，点击<b>选项</b>决定故事走向。',
-    placement: 'top', padding: 12, radius: 14
-  },
-  {
-    target: '#btnTempLight',
-    title: '临时点亮全局',
-    desc: '看不清时，点击这里可以<b>短暂点亮</b>整个场景，方便找到可交互的物件。<br><span style="color:#a8bccc;font-size:11px;">（部分模式不可用）</span>',
-    placement: 'bottom', padding: 8, radius: 14,
-    forceShowTempLight: true
-  },
-  {
-    target: 'highlightBtn',
-    title: '找不到东西？',
-    desc: '打开<b>设置</b>，点击 <b>🔍 高亮可交互</b>，所有能点的东西都会亮起来（持续 5 秒）。',
-    placement: 'left', padding: 8, radius: 14,
-    autoOpenSettings: true
-  },
-  {
-    target: 'textOptions',
-    title: '调整文字',
-    desc: '在设置里可以调整<b>文字速度</b>和<b>文字大小</b>，找到最舒服的阅读节奏。',
-    placement: 'left', padding: 12, radius: 14,
-    autoOpenSettings: true,
-    closeSettingsOnLeave: true
-  },
-  {
-    target: 'hud-buttons',
-    title: '探索雨夜',
-    desc: '一切就绪。<br>祝你在雨夜里，找到想找的东西。',
-    placement: 'bottom', padding: 12, radius: 16
-  }
+  DLG_STEP,
+  { target: 'hud-buttons', title: '常用功能', desc: '右上角是<b>商店</b>、<b>地图</b>和<b>设置</b>。<br>商店可以用小鱼干兑换补给，地图可以查看当前位置。', placement: 'bottom', padding: 12, radius: 16 },
+  { target: '#btnMap', title: '打开地图', desc: '点击这个按钮可以打开<b>地图</b>，查看你走过的街道。', placement: 'bottom', padding: 8, radius: 14 },
+  { target: 'map-node', title: '地图传送', desc: '地图上<b>发亮的节点</b>可以点击传送——<br>去过的地方和相邻的地方都能快速到达。', placement: 'bottom', padding: 10, radius: 14, autoOpenMap: true },
+  { target: '#btnCloseMap', title: '关闭地图', desc: '看完之后，点击右上角的 <b>✕</b> 关闭地图，回到场景。', placement: 'left', padding: 8, radius: 14, autoCloseMapOnLeave: true },
+  { target: 'scene-object', title: '探索交互', desc: '场景里有可以互动的物件，比如这个<b>垃圾桶</b>。<br>点击它们进行探索，可能会找到线索或物品。', placement: 'bottom', padding: 14, radius: 14 },
+  { target: '#btnTempLight', title: '临时点亮全局', desc: '看不清时，点击这里可以<b>短暂点亮</b>整个场景，方便找到可交互的物件。<br><span style="color:#a8bccc;font-size:11px;">（部分模式不可用）</span>', placement: 'bottom', padding: 8, radius: 14, forceShowTempLight: true },
+  { target: 'highlightBtn', title: '找不到东西？', desc: '打开<b>设置</b>，点击 <b>🔍 高亮可交互</b>，所有能点的东西都会亮起来（持续 5 秒）。', placement: 'left', padding: 8, radius: 14, autoOpenSettings: true },
+  { target: 'textOptions', title: '调整文字', desc: '在设置里可以调整<b>文字速度</b>和<b>文字大小</b>，找到最舒服的阅读节奏。', placement: 'left', padding: 12, radius: 14, autoOpenSettings: true, closeSettingsOnLeave: true },
+  { target: 'hud-buttons', title: '探索雨夜', desc: '一切就绪。<br>祝你在雨夜里，找到想找的东西。', placement: 'bottom', padding: 12, radius: 16 }
 ];
 
 var STEPS_STREAMER = [
-  {
-    target: 'hud-buttons',
-    title: '常用功能',
-    desc: '右上角是<b>商店</b>、<b>地图</b>和<b>设置</b>。<br>商店可以用小鱼干兑换补给，地图可以查看当前位置。',
-    placement: 'bottom', padding: 12, radius: 16
-  },
-  {
-    target: '#btnMap',
-    title: '打开地图',
-    desc: '点击这个按钮可以打开<b>地图</b>，查看你走过的街道。',
-    placement: 'bottom', padding: 8, radius: 14
-  },
-  {
-    target: 'map-node',
-    title: '地图传送',
-    desc: '地图上<b>发亮的节点</b>可以点击传送——<br>去过的地方和相邻的地方都能快速到达。',
-    placement: 'bottom', padding: 10, radius: 14,
-    autoOpenMap: true
-  },
-  {
-    target: '#btnCloseMap',
-    title: '关闭地图',
-    desc: '看完之后，点击右上角的 <b>✕</b> 关闭地图，回到场景。',
-    placement: 'left', padding: 8, radius: 14,
-    autoCloseMapOnLeave: true
-  },
-  {
-    target: 'scene-object',
-    title: '探索交互',
-    desc: '场景里有可以互动的物件，比如这个<b>垃圾桶</b>。<br>点击它们进行探索，可能会找到线索或物品。',
-    placement: 'bottom', padding: 14, radius: 14
-  },
-  {
-    target: 'dlg-box',
-    title: '剧情对话',
-    desc: '剧情对话会出现在屏幕下方。<br>点击对话框<b>继续</b>；遇到选择时，点击<b>选项</b>决定故事走向。',
-    placement: 'top', padding: 12, radius: 14
-  },
-  {
-    target: 'streamerToggle',
-    title: '开启主播模式（可选）',
-    desc: '在设置中找到<b>主播模式</b>，开启后会显示物品名称常驻、粉丝团提示等权益。<br><span style="color:#a8bccc;font-size:11px;">开启后，右上角还会出现 <b>✨ 临时点亮全局</b> 按钮。不强制开启，可随时切换。</span>',
-    placement: 'left', padding: 12, radius: 14,
-    autoOpenSettings: true
-  },
-  {
-    target: '#btnTempLight',
-    title: '临时点亮全局',
-    desc: '开启主播模式后，这里会出现 <b>✨ 临时点亮全局</b>。<br>点击它，可以短暂点亮整个场景。<br><span style="color:#a8bccc;font-size:11px;">（暗夜模式下不可用）</span>',
-    placement: 'bottom', padding: 8, radius: 14,
-    forceShowTempLight: true,
-    closeSettingsOnEnter: true
-  },
-  {
-    target: 'highlightBtn',
-    title: '找不到东西？',
-    desc: '在设置中点击<b>🔍 高亮可交互</b>，所有能点的东西都会亮起来（持续 5 秒）。',
-    placement: 'left', padding: 8, radius: 14,
-    autoOpenSettings: true
-  },
-  {
-    target: 'textOptions',
-    title: '调整文字',
-    desc: '在设置里可以调整<b>文字速度</b>和<b>文字大小</b>，找到最舒服的阅读节奏。',
-    placement: 'left', padding: 12, radius: 14,
-    autoOpenSettings: true,
-    closeSettingsOnLeave: true
-  },
-  {
-    target: 'hud-buttons',
-    title: '探索雨夜',
-    desc: '一切就绪。<br>祝你在雨夜里，找到想找的东西。',
-    placement: 'bottom', padding: 12, radius: 16
-  }
+  DLG_STEP,
+  { target: 'hud-buttons', title: '常用功能', desc: '右上角是<b>商店</b>、<b>地图</b>和<b>设置</b>。<br>商店可以用小鱼干兑换补给，地图可以查看当前位置。', placement: 'bottom', padding: 12, radius: 16 },
+  { target: '#btnMap', title: '打开地图', desc: '点击这个按钮可以打开<b>地图</b>，查看你走过的街道。', placement: 'bottom', padding: 8, radius: 14 },
+  { target: 'map-node', title: '地图传送', desc: '地图上<b>发亮的节点</b>可以点击传送——<br>去过的地方和相邻的地方都能快速到达。', placement: 'bottom', padding: 10, radius: 14, autoOpenMap: true },
+  { target: '#btnCloseMap', title: '关闭地图', desc: '看完之后，点击右上角的 <b>✕</b> 关闭地图，回到场景。', placement: 'left', padding: 8, radius: 14, autoCloseMapOnLeave: true },
+  { target: 'scene-object', title: '探索交互', desc: '场景里有可以互动的物件，比如这个<b>垃圾桶</b>。<br>点击它们进行探索，可能会找到线索或物品。', placement: 'bottom', padding: 14, radius: 14 },
+  { target: 'streamerToggle', title: '开启主播模式（可选）', desc: '在设置中找到<b>主播模式</b>，开启后会显示物品名称常驻、粉丝团提示等权益。<br><span style="color:#a8bccc;font-size:11px;">开启后，右上角还会出现 <b>✨ 临时点亮全局</b> 按钮。不强制开启，可随时切换。</span>', placement: 'left', padding: 12, radius: 14, autoOpenSettings: true },
+  { target: '#btnTempLight', title: '临时点亮全局', desc: '开启主播模式后，这里会出现 <b>✨ 临时点亮全局</b>。<br>点击它，可以短暂点亮整个场景。<br><span style="color:#a8bccc;font-size:11px;">（暗夜模式下不可用）</span>', placement: 'bottom', padding: 8, radius: 14, forceShowTempLight: true, closeSettingsOnEnter: true },
+  { target: 'highlightBtn', title: '找不到东西？', desc: '在设置中点击<b>🔍 高亮可交互</b>，所有能点的东西都会亮起来（持续 5 秒）。', placement: 'left', padding: 8, radius: 14, autoOpenSettings: true },
+  { target: 'textOptions', title: '调整文字', desc: '在设置里可以调整<b>文字速度</b>和<b>文字大小</b>，找到最舒服的阅读节奏。', placement: 'left', padding: 12, radius: 14, autoOpenSettings: true, closeSettingsOnLeave: true },
+  { target: 'hud-buttons', title: '探索雨夜', desc: '一切就绪。<br>祝你在雨夜里，找到想找的东西。', placement: 'bottom', padding: 12, radius: 16 }
 ];
 
 var state = {
@@ -1535,10 +470,10 @@ var state = {
   role: null,
   stepIndex: -1,
   steps: [],
-  settingsOpenedByTutorial: false
+  settingsOpenedByTutorial: false,
+  dlgObserver: null
 };
 
-/* ---------- 遮罩布局 ---------- */
 function setBlock(el, left, top, w, h){
   if(!el) return;
   el.style.left = left + 'px';
@@ -1549,46 +484,34 @@ function setBlock(el, left, top, w, h){
 
 function updateMasks(left, top, w, h, radius, animate){
   if(!animate){
-    blockTop.style.transition = 'none';
-    blockBottom.style.transition = 'none';
-    blockLeft.style.transition = 'none';
-    blockRight.style.transition = 'none';
+    blockTop.style.transition = 'none'; blockBottom.style.transition = 'none';
+    blockLeft.style.transition = 'none'; blockRight.style.transition = 'none';
     hole.style.transition = 'none';
   }
-
-  var vw = window.innerWidth;
-  var vh = window.innerHeight;
-  var hRight = left + w;
-  var hBottom = top + h;
-
+  var vw = window.innerWidth, vh = window.innerHeight;
+  var hRight = left + w, hBottom = top + h;
   hole.style.display = '';
   setBlock(blockTop, 0, 0, vw, top);
   setBlock(blockBottom, 0, hBottom, vw, vh - hBottom);
   setBlock(blockLeft, 0, top, left, h);
   setBlock(blockRight, hRight, top, vw - hRight, h);
-
   hole.style.left = left + 'px';
   hole.style.top = top + 'px';
   hole.style.width = w + 'px';
   hole.style.height = h + 'px';
   hole.style.borderRadius = radius + 'px';
-
   if(!animate){
     void hole.offsetWidth;
-    blockTop.style.transition = '';
-    blockBottom.style.transition = '';
-    blockLeft.style.transition = '';
-    blockRight.style.transition = '';
+    blockTop.style.transition = ''; blockBottom.style.transition = '';
+    blockLeft.style.transition = ''; blockRight.style.transition = '';
     hole.style.transition = '';
   }
 }
 
 function updateMasksFull(animate){
   if(!animate){
-    blockTop.style.transition = 'none';
-    blockBottom.style.transition = 'none';
-    blockLeft.style.transition = 'none';
-    blockRight.style.transition = 'none';
+    blockTop.style.transition = 'none'; blockBottom.style.transition = 'none';
+    blockLeft.style.transition = 'none'; blockRight.style.transition = 'none';
   }
   var vw = window.innerWidth, vh = window.innerHeight;
   setBlock(blockTop, 0, 0, vw, vh);
@@ -1598,92 +521,53 @@ function updateMasksFull(animate){
   hole.style.display = 'none';
   if(!animate){
     void blockTop.offsetWidth;
-    blockTop.style.transition = '';
-    blockBottom.style.transition = '';
-    blockLeft.style.transition = '';
-    blockRight.style.transition = '';
+    blockTop.style.transition = ''; blockBottom.style.transition = '';
+    blockLeft.style.transition = ''; blockRight.style.transition = '';
   }
 }
 
-/* ---------- 卡片尺寸自适应 ---------- */
 function applyCardSize(){
   var vw = window.innerWidth, vh = window.innerHeight;
   var mode = '';
-  if(vw < 380 || vh < 420){
-    mode = 'tiny';
-  } else if(vw < 520 || vh < 560){
-    mode = 'compact';
-  }
+  if(vw < 380 || vh < 420) mode = 'tiny';
+  else if(vw < 520 || vh < 560) mode = 'compact';
   card.classList.remove('compact', 'tiny');
   if(mode) card.classList.add(mode);
 }
 
-/* ---------- 卡片定位：自动避让 ---------- */
 function positionCard(rect, placement){
   var vw = window.innerWidth, vh = window.innerHeight;
   applyCardSize();
-
   card.style.visibility = 'hidden';
-  var tw = card.offsetWidth;
-  var th = card.offsetHeight;
-  var gap = 16;
-
+  var tw = card.offsetWidth, th = card.offsetHeight, gap = 16;
   var spaceTop = rect.top - gap;
   var spaceBottom = vh - (rect.top + rect.height) - gap;
   var spaceLeft = rect.left - gap;
   var spaceRight = vw - (rect.left + rect.width) - gap;
-
-  var can = {
-    top: spaceTop >= th,
-    bottom: spaceBottom >= th,
-    left: spaceLeft >= tw,
-    right: spaceRight >= tw
-  };
-
+  var can = { top: spaceTop >= th, bottom: spaceBottom >= th, left: spaceLeft >= tw, right: spaceRight >= tw };
   var all = ['bottom', 'top', 'right', 'left'];
   var order = [];
   if(all.indexOf(placement) >= 0) order.push(placement);
-  for(var i = 0; i < all.length; i++){
-    if(all[i] !== placement) order.push(all[i]);
-  }
-
+  for(var i = 0; i < all.length; i++){ if(all[i] !== placement) order.push(all[i]); }
   var chosen = null;
-  for(var k = 0; k < order.length; k++){
-    if(can[order[k]]){ chosen = order[k]; break; }
-  }
+  for(var k = 0; k < order.length; k++){ if(can[order[k]]){ chosen = order[k]; break; } }
   if(!chosen){
     var maxS = -Infinity;
     for(var d = 0; d < all.length; d++){
-      var s = (all[d] === 'top') ? spaceTop :
-              (all[d] === 'bottom') ? spaceBottom :
-              (all[d] === 'left') ? spaceLeft : spaceRight;
+      var s = (all[d] === 'top') ? spaceTop : (all[d] === 'bottom') ? spaceBottom : (all[d] === 'left') ? spaceLeft : spaceRight;
       if(s > maxS){ maxS = s; chosen = all[d]; }
     }
   }
-
-  var cx = rect.left + rect.width / 2;
-  var cy = rect.top + rect.height / 2;
+  var cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
   var top, left;
-
-  if(chosen === 'bottom'){
-    top = rect.top + rect.height + gap;
-    left = cx - tw / 2;
-  } else if(chosen === 'top'){
-    top = rect.top - th - gap;
-    left = cx - tw / 2;
-  } else if(chosen === 'right'){
-    left = rect.left + rect.width + gap;
-    top = cy - th / 2;
-  } else {
-    left = rect.left - tw - gap;
-    top = cy - th / 2;
-  }
-
+  if(chosen === 'bottom'){ top = rect.top + rect.height + gap; left = cx - tw/2; }
+  else if(chosen === 'top'){ top = rect.top - th - gap; left = cx - tw/2; }
+  else if(chosen === 'right'){ left = rect.left + rect.width + gap; top = cy - th/2; }
+  else { left = rect.left - tw - gap; top = cy - th/2; }
   if(left + tw > vw - 14) left = vw - tw - 14;
   if(left < 14) left = 14;
   if(top + th > vh - 14) top = vh - th - 14;
   if(top < 14) top = 14;
-
   card.style.left = left + 'px';
   card.style.top = top + 'px';
   card.style.visibility = 'visible';
@@ -1692,42 +576,29 @@ function positionCard(rect, placement){
 function placeEdgeCard(placement, edge){
   var vw = window.innerWidth, vh = window.innerHeight;
   applyCardSize();
-  var tw = card.offsetWidth;
-  var th = card.offsetHeight;
+  var tw = card.offsetWidth, th = card.offsetHeight;
   var pad = edge != null ? edge : 40;
-
   var top, left;
-  if(placement === 'top'){
-    top = pad; left = vw / 2 - tw / 2;
-  } else if(placement === 'bottom'){
-    top = vh - th - pad; left = vw / 2 - tw / 2;
-  } else if(placement === 'left'){
-    left = pad; top = vh / 2 - th / 2;
-  } else if(placement === 'right'){
-    left = vw - tw - pad; top = vh / 2 - th / 2;
-  } else {
-    top = vh / 2 - th / 2; left = vw / 2 - tw / 2;
-  }
-
+  if(placement === 'top'){ top = pad; left = vw/2 - tw/2; }
+  else if(placement === 'bottom'){ top = vh - th - pad; left = vw/2 - tw/2; }
+  else if(placement === 'left'){ left = pad; top = vh/2 - th/2; }
+  else if(placement === 'right'){ left = vw - tw - pad; top = vh/2 - th/2; }
+  else { top = vh/2 - th/2; left = vw/2 - tw/2; }
   if(left + tw > vw - 14) left = vw - tw - 14;
   if(left < 14) left = 14;
   if(top + th > vh - 14) top = vh - th - 14;
   if(top < 14) top = 14;
-
   card.style.left = left + 'px';
   card.style.top = top + 'px';
   card.style.visibility = 'visible';
 }
 
-/* ---------- 目标解析 ---------- */
 function scrollIntoViewIfNeeded(el){
   if(!el) return;
   try{
     var vh = window.innerHeight;
     var r = el.getBoundingClientRect();
-    if(r.top < 70 || r.bottom > vh - 70){
-      el.scrollIntoView({ block: 'center', behavior: 'instant' });
-    }
+    if(r.top < 70 || r.bottom > vh - 70) el.scrollIntoView({ block: 'center', behavior: 'instant' });
   }catch(e){}
 }
 
@@ -1744,27 +615,17 @@ function getRectWithFallback(primary, fallbacks){
 }
 
 function resolveTargetRect(step){
-  if(step.target === 'hud-buttons'){
-    return getHudButtonsRect();
-  }
-  if(VIRTUAL_TARGETS[step.target]){
-    return VIRTUAL_TARGETS[step.target]();
-  }
+  if(step.target === 'hud-buttons') return getHudButtonsRect();
+  if(VIRTUAL_TARGETS[step.target]) return VIRTUAL_TARGETS[step.target]();
   if(step.target === 'streamerToggle' || step.target === 'streamerMode'){
     var optEl = document.querySelector('#settings [data-key="streamerMode"]');
     var rowEl = optEl ? (optEl.closest('.row') || optEl.parentElement) : null;
-    if(rowEl){
-      scrollIntoViewIfNeeded(rowEl);
-      return rowEl.getBoundingClientRect();
-    }
+    if(rowEl){ scrollIntoViewIfNeeded(rowEl); return rowEl.getBoundingClientRect(); }
     return null;
   }
   if(step.target === 'highlightBtn'){
     var btn = document.querySelector('#btnHighlight');
-    if(btn && isVisible(btn)){
-      scrollIntoViewIfNeeded(btn);
-      return btn.getBoundingClientRect();
-    }
+    if(btn && isVisible(btn)){ scrollIntoViewIfNeeded(btn); return btn.getBoundingClientRect(); }
     return null;
   }
   if(step.target === 'textOptions'){
@@ -1775,77 +636,99 @@ function resolveTargetRect(step){
     var row2 = size.closest('.row') || size.parentElement;
     if(!row1 || !row2) return null;
     scrollIntoViewIfNeeded(row2);
-    var b1 = row1.getBoundingClientRect();
-    var b2 = row2.getBoundingClientRect();
+    var b1 = row1.getBoundingClientRect(), b2 = row2.getBoundingClientRect();
     return {
-      left: Math.min(b1.left, b2.left),
-      top: Math.min(b1.top, b2.top),
+      left: Math.min(b1.left, b2.left), top: Math.min(b1.top, b2.top),
       width: Math.max(b1.right, b2.right) - Math.min(b1.left, b2.left),
       height: Math.max(b1.bottom, b2.bottom) - Math.min(b1.top, b2.top)
     };
   }
-  if(step.target === '#btnTempLight'){
-    return getRectWithFallback('#btnTempLight', ['#btnSet', '#btnMap', '#btnShop']);
-  }
+  if(step.target === '#btnTempLight') return getRectWithFallback('#btnTempLight', ['#btnSet', '#btnMap', '#btnShop']);
   var el = document.querySelector(step.target);
   if(el && isVisible(el)) return el.getBoundingClientRect();
   return null;
 }
 
-/* ---------- 布局 ---------- */
 function updateLayoutForStep(step){
   if(!state.active || state.phase !== 'steps') return;
-
   if(!step.target){
     updateMasksFull(true);
     requestAnimationFrame(function(){
-      if(state.active && state.phase === 'steps'){
-        placeEdgeCard(step.placement, step.edge);
-      }
+      if(state.active && state.phase === 'steps') placeEdgeCard(step.placement, step.edge);
     });
     return;
   }
-
   var rect = resolveTargetRect(step);
-
   if(!rect || rect.width < 2 || rect.height < 2){
     updateMasksFull(true);
     requestAnimationFrame(function(){
-      if(state.active && state.phase === 'steps'){
-        placeEdgeCard('center', 20);
-      }
+      if(state.active && state.phase === 'steps') placeEdgeCard('center', 20);
     });
     return;
   }
-
   var pad = step.padding != null ? step.padding : 14;
   var radius = step.radius != null ? step.radius : 14;
-  var holeRect = {
-    left: rect.left - pad,
-    top: rect.top - pad,
-    width: rect.width + pad * 2,
-    height: rect.height + pad * 2
-  };
-
+  var holeRect = { left: rect.left - pad, top: rect.top - pad, width: rect.width + pad*2, height: rect.height + pad*2 };
   updateMasks(holeRect.left, holeRect.top, holeRect.width, holeRect.height, radius, true);
   requestAnimationFrame(function(){
     if(state.active && state.phase === 'steps') positionCard(holeRect, step.placement);
   });
 }
 
-/* ---------- 步骤副作用清理 ---------- */
 function clearStepSideEffects(step){
+  if(state.dlgObserver){
+    try{ state.dlgObserver.disconnect(); }catch(e){}
+    state.dlgObserver = null;
+  }
   if(!step) return;
   if(step.autoCloseMapOnLeave) closeMapIfNeeded();
   if(step.forceShowTempLight) hideTempLight();
   if(step.closeSettingsOnLeave) closeSettingsIfNeeded();
+  hole.style.pointerEvents = '';
 }
 
-/* ---------- 卡片内容 ---------- */
 function setStepBadge(i, total){
   if(i < 0){ stepEl.style.display = 'none'; return; }
   stepEl.style.display = '';
   stepEl.textContent = (i + 1) + ' / ' + total;
+}
+
+/* 监听对话框关闭 */
+function watchDlgClose(targetIndex){
+  var dlg = document.getElementById('dlg');
+  if(!dlg) return;
+  if(state.dlgObserver){
+    try{ state.dlgObserver.disconnect(); }catch(e){}
+    state.dlgObserver = null;
+  }
+  var advanceIfStillHere = function(){
+    setTimeout(function(){
+      if(state.active && state.phase === 'steps' && state.stepIndex === targetIndex) nextStep();
+    }, 400);
+  };
+  if(!dlg.classList.contains('show')){
+    advanceIfStillHere();
+    return;
+  }
+  var obs = new MutationObserver(function(){
+    if(!dlg.classList.contains('show')){
+      obs.disconnect();
+      state.dlgObserver = null;
+      advanceIfStillHere();
+    }
+  });
+  obs.observe(dlg, { attributes: true, attributeFilter: ['class'] });
+  state.dlgObserver = obs;
+}
+
+/* 清空当前对话（循环触发 dlg.click() 推进队列直到 dlg.show 消失） */
+function skipCurrentDialog(){
+  var dlg = document.getElementById('dlg');
+  if(!dlg) return;
+  var safety = 80;
+  while(safety-- > 0 && dlg.classList.contains('show')){
+    try{ dlg.click(); }catch(e){ break; }
+  }
 }
 
 function renderRolePhase(){
@@ -1853,23 +736,18 @@ function renderRolePhase(){
   applyCardSize();
   setStepBadge(-1, 0);
   titleEl.textContent = '欢迎来到雨夜归途';
-  descEl.innerHTML = '先选择你的身份，我们会展示对应的引导。<br><span style="color:#a8bccc;font-size:11px;">教程会带你熟悉地图、交互、对话与设置。</span>';
+  descEl.innerHTML = '先选择你的身份，我们会展示对应的引导。<br><span style="color:#a8bccc;font-size:11px;">教程会带你熟悉对话、地图、交互与设置。</span>';
   rolesEl.style.display = '';
   actionsEl.style.display = 'none';
-
+  hole.style.pointerEvents = '';
   updateMasksFull(false);
   requestAnimationFrame(function(){
-    if(state.active && state.phase === 'role'){
-      placeEdgeCard('center', 0);
-    }
+    if(state.active && state.phase === 'role') placeEdgeCard('center', 0);
   });
 }
 
 function renderStep(i){
-  if(state.phase === 'steps'){
-    clearStepSideEffects(state.steps[state.stepIndex]);
-  }
-
+  if(state.phase === 'steps') clearStepSideEffects(state.steps[state.stepIndex]);
   state.phase = 'steps';
   state.stepIndex = i;
   var step = state.steps[i];
@@ -1879,7 +757,10 @@ function renderStep(i){
   descEl.innerHTML = step.desc;
   rolesEl.style.display = 'none';
   actionsEl.style.display = '';
-  nextBtn.textContent = (i === state.steps.length - 1) ? '完 成' : '下 一 步';
+  nextBtn.textContent = step.nextLabel || ((i === state.steps.length - 1) ? '完 成' : '下 一 步');
+
+  /* 洞可点击穿透 */
+  hole.style.pointerEvents = step.allowClickThrough ? 'none' : '';
 
   function layout(){
     if(!state.active || state.phase !== 'steps') return;
@@ -1889,44 +770,22 @@ function renderStep(i){
   }
 
   var needChain = false;
+  if(step.closeSettingsOnEnter) closeSettingsIfNeeded();
+  if(step.forceShowTempLight){ forceShowTempLight(); needChain = true; }
+  if(step.autoOpenMap){ openMapIfNeeded(function(){ if(!state.active) return; setTimeout(layout, 120); }); }
+  else if(step.autoOpenSettings){ openSettingsIfNeeded(function(){ if(!state.active) return; setTimeout(layout, 90); }); }
+  else if(needChain) setTimeout(layout, 80);
+  else layout();
 
-  if(step.closeSettingsOnEnter){
-    closeSettingsIfNeeded();
-  }
-  if(step.forceShowTempLight){
-    forceShowTempLight();
-    needChain = true;
-  }
-  if(step.autoOpenMap){
-    openMapIfNeeded(function(){
-      if(!state.active) return;
-      setTimeout(layout, 120);
-    });
-    return;
-  }
-  if(step.autoOpenSettings){
-    openSettingsIfNeeded(function(){
-      if(!state.active) return;
-      setTimeout(layout, 90);
-    });
-    return;
-  }
-
-  if(needChain){
-    setTimeout(layout, 80);
-  } else {
-    layout();
-  }
+  if(step.waitDlgClose) watchDlgClose(i);
 }
 
-/* ---------- 流程控制 ---------- */
 function start(){
   state.active = true;
   state.role = null;
   state.steps = [];
   state.stepIndex = -1;
   state.settingsOpenedByTutorial = false;
-
   layer.classList.add('active');
   layer.setAttribute('aria-hidden', 'false');
   renderRolePhase();
@@ -1940,89 +799,60 @@ function chooseRole(role){
 
 function nextStep(){
   if(state.phase !== 'steps') return;
-  if(state.stepIndex < state.steps.length - 1){
-    renderStep(state.stepIndex + 1);
-  } else {
-    finish();
-  }
+  if(state.stepIndex < state.steps.length - 1) renderStep(state.stepIndex + 1);
+  else finish();
 }
 
 function finish(){
   if(!state.active) return;
-
-  if(state.phase === 'steps'){
-    clearStepSideEffects(state.steps[state.stepIndex]);
-  }
-
+  if(state.phase === 'steps') clearStepSideEffects(state.steps[state.stepIndex]);
   state.active = false;
   layer.classList.remove('active');
   layer.setAttribute('aria-hidden', 'true');
-
-  if(state.settingsOpenedByTutorial){
-    closeSettingsIfNeeded();
-    state.settingsOpenedByTutorial = false;
-  }
+  if(state.settingsOpenedByTutorial){ closeSettingsIfNeeded(); state.settingsOpenedByTutorial = false; }
   closeMapIfNeeded();
   hideTempLight();
-
-  card.style.visibility = '';
-  card.style.left = '';
-  card.style.top = '';
-  hole.style.display = '';
-  hole.style.left = '';
-  hole.style.top = '';
-  hole.style.width = '';
-  hole.style.height = '';
-
+  hole.style.pointerEvents = '';
+  card.style.visibility = ''; card.style.left = ''; card.style.top = '';
+  hole.style.display = ''; hole.style.left = ''; hole.style.top = ''; hole.style.width = ''; hole.style.height = '';
   try { localStorage.setItem(TUTORIAL_DONE_KEY, '1'); } catch(e){}
 }
 
-/* ---------- 事件 ---------- */
 rolesEl.addEventListener('click', function(e){
   var btn = e.target.closest('.tut-role');
   if(!btn) return;
   chooseRole(btn.getAttribute('data-role'));
 });
 
-nextBtn.addEventListener('click', nextStep);
+nextBtn.addEventListener('click', function(){
+  if(state.phase === 'steps'){
+    var step = state.steps[state.stepIndex];
+    if(step && step.waitDlgClose) skipCurrentDialog();
+  }
+  nextStep();
+});
 
-/* 教程期间拦截 Escape，防止误关其他面板 */
 window.addEventListener('keydown', function(e){
   if(!state.active) return;
   if(e.key !== 'Escape') return;
-  e.stopImmediatePropagation();
-  e.preventDefault();
+  e.stopImmediatePropagation(); e.preventDefault();
 }, true);
 
-/* ---------- 视口变化 ---------- */
 function relayout(){
   if(!state.active) return;
   if(state.phase === 'role'){
     updateMasksFull(false);
-    requestAnimationFrame(function(){
-      if(state.active && state.phase === 'role'){
-        placeEdgeCard('center', 0);
-      }
-    });
+    requestAnimationFrame(function(){ if(state.active && state.phase === 'role') placeEdgeCard('center', 0); });
   } else if(state.phase === 'steps'){
     updateLayoutForStep(state.steps[state.stepIndex]);
   }
 }
-
 window.addEventListener('resize', relayout);
-window.addEventListener('orientationchange', function(){
-  setTimeout(relayout, 220);
-});
-document.addEventListener('fullscreenchange', function(){
-  setTimeout(relayout, 120);
-  setTimeout(relayout, 460);
-});
-document.addEventListener('webkitfullscreenchange', function(){
-  setTimeout(relayout, 120);
-  setTimeout(relayout, 460);
-});
+window.addEventListener('orientationchange', function(){ setTimeout(relayout, 220); });
+document.addEventListener('fullscreenchange', function(){ setTimeout(relayout, 120); setTimeout(relayout, 460); });
+document.addEventListener('webkitfullscreenchange', function(){ setTimeout(relayout, 120); setTimeout(relayout, 460); });
 
-/* ---------- 等待游戏就绪 ---------- */
+/* ★ 教程立刻启动：loading 结束 200ms 后启动，不再等待开场对话 */
 var waitStart = Date.now();
 function waitForGameReady(){
   var loading = $('loadingScreen');
@@ -2031,20 +861,10 @@ function waitForGameReady(){
     setTimeout(waitForGameReady, 250);
     return;
   }
-  /* 等开场对话结束（或超时 15 秒）再启动教程 */
-  var dlg = $('dlg');
-  if(dlg && dlg.classList.contains('show') && elapsed < 15000){
-    setTimeout(waitForGameReady, 400);
-    return;
-  }
-  setTimeout(start, 400);
+  setTimeout(start, 200);
 }
-
-if(document.readyState === 'complete'){
-  waitForGameReady();
-} else {
-  window.addEventListener('load', waitForGameReady);
-}
+if(document.readyState === 'complete') waitForGameReady();
+else window.addEventListener('load', waitForGameReady);
 
 })();
 </script>
