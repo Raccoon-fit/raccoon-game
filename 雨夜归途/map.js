@@ -859,9 +859,44 @@ function setTravelCallback(cb){
 
 function refreshUnlocks(){}
 
+/* =========================================================
+   ★ 暴露给新手引导：节点 / 当前场景 / 相邻可传送节点
+   ========================================================= */
+function getNodeScreenRect(key){
+  if(!NODES[key]) return null;
+  const n = NODES[key];
+  const stage = document.getElementById('stage');
+  const sr = stage ? stage.getBoundingClientRect() : {
+    left: 0, top: 0,
+    width: window.innerWidth, height: window.innerHeight
+  };
+  const sx = sr.width  / W;
+  const sy = sr.height / H;
+  const cx = sr.left + n.x * W * sx;
+  const cy = sr.top  + n.y * H * sy;
+  const size = Math.max(48 * Math.min(sx, sy), 44);
+  return {
+    left:   cx - size / 2,
+    top:    cy - size / 2,
+    width:  size,
+    height: size
+  };
+}
+
+function getCurrentNodeKey(){ return curScene; }
+
+function getAdjacentTargets(){
+  return (NEIGHBORS[curScene] || []).filter(function(k){
+    return UNLOCK[k]();
+  });
+}
+
 global.RaccoonMap = {
   init, open, close, isOpen,
-  setCurrentScene, setTravelCallback, refreshUnlocks
+  setCurrentScene, setTravelCallback, refreshUnlocks,
+  getNodeScreenRect,
+  getCurrentNodeKey,
+  getAdjacentTargets
 };
 
 })(window);
