@@ -39,6 +39,11 @@
   visibility:visible !important;
   opacity:1 !important;
   pointer-events:none !important;
+  position:absolute !important;
+  right:188px !important;
+  top:18px !important;
+  width:46px !important;
+  height:46px !important;
   animation:tempLightPulse 1.4s ease-in-out infinite;
 }
 @keyframes tempLightPulse{
@@ -531,6 +536,7 @@
     height .5s cubic-bezier(.4,0,.2,1);
 }
 
+/* 洞本身拦截点击，避免穿透误触下层按钮 */
 #tutorialHole{
   position:fixed;
   z-index:2;
@@ -1184,6 +1190,10 @@ if(btnClose){
    - 新游戏进入：每次都显示
    - 继续存档：仅首次显示
    - 教程不可关闭：无 ✕、无跳过，只能逐步完成
+   - 高亮目标坐标：
+     · 场景物件 → RaccoonGame.getHotspotRect(spotId)
+     · 地图节点 → RaccoonMap.getNodeScreenRect(key)
+     · HUD/设置 → 直接查 DOM
    ============================================================ */
 (function(){
 'use strict';
@@ -1194,6 +1204,7 @@ var TUTORIAL_DONE_KEY = 'raccoon_tutorial_done_v1';
 var launchMode = 'new';
 try { launchMode = localStorage.getItem(LAUNCH_KEY) || 'new'; } catch(e){}
 
+/* 新游戏：每次都显示；继续存档：仅首次 */
 if(launchMode !== 'new'){
   try {
     if(localStorage.getItem(TUTORIAL_DONE_KEY) === '1') return;
@@ -1249,7 +1260,8 @@ function openMapIfNeeded(cb){
   if(typeof RaccoonMap === 'undefined' || !RaccoonMap){ cb(); return; }
   if(isMapOpen()){ cb(); return; }
   try { RaccoonMap.open(); } catch(e){}
-  setTimeout(cb, 400);
+  /* 地图扩散动画约 1.2s，等动画到位再测量 */
+  setTimeout(cb, 800);
 }
 
 function closeMapIfNeeded(){
@@ -1301,36 +1313,58 @@ function getHudButtonsRect(){
   return { left: left, top: top, width: right - left, height: bottom - top };
 }
 
-/* ---------- 虚拟目标 ---------- */
+/* ---------- 虚拟目标：场景 / 地图 / 对话 ---------- */
 var VIRTUAL_TARGETS = {
-  /* 场景中的可交互物件（垃圾桶等） */
+  /* 场景可交互物件：精确取 alley 场景的垃圾桶 */
   'scene-object': function(){
-    /* 若 game.js 暴露了可交互物件的屏幕坐标，优先使用 */
-    if(window.RaccoonGame && typeof window.RaccoonGame.getHotspotRect === 'function'){
+    if(window.RaccoonGame && RaccoonGame.getHotspotRect){
       try{
-        var r = window.RaccoonGame.getHotspotRect('trashcan');
+        var r = RaccoonGame.getHotspotRect('trash');
         if(r && r.width > 4 && r.height > 4) return r;
       }catch(e){}
     }
-    var vw = window.innerWidth, vh = window.innerHeight;
-    /* 默认：画面偏左下，垃圾桶大致位置（可按实际游戏微调） */
+    /* fallback：stage rect + 960 坐标系的垃圾桶位置 (610,294,144,212) */
+    var stage = document.getElementById('stage');
+    var sr = stage ? stage.getBoundingClientRect() : {
+      left: 0, top: 0,
+      width: window.innerWidth, height: window.innerHeight
+    };
+    var sx = sr.width  / 960;
+    var sy = sr.height / 540;
     return {
-      left: Math.round(vw * 0.26),
-      top: Math.round(vh * 0.52),
-      width: Math.round(vw * 0.20),
-      height: Math.round(vh * 0.30)
+      left:   sr.left + 610 * sx,
+      top:    sr.top  + 294 * sy,
+      width:  144 * sx,
+      height: 212 * sy
     };
   },
-  /* 地图上的传送区域 */
-  'map-transfer': function(){
+
+  /* 地图上可传送的节点 */
+  'map-node': function(){
+    if(window.RaccoonMap && RaccoonMap.getNodeScreenRect){
+      try{
+        var targets = RaccoonMap.getAdjacentTargets();
+        if(targets && targets.length){
+          var r1 = RaccoonMap.getNodeScreenRect(targets[0]);
+          if(r1) return r1;
+        }
+        var cur = RaccoonMap.getCurrentNodeKey();
+        if(cur){
+          var r2 = RaccoonMap.getNodeScreenRect(cur);
+          if(r2) return r2;
+        }
+      }catch(e){}
+    }
+    /* fallback：地图偏左上一块 */
     var vw = window.innerWidth, vh = window.innerHeight;
     return {
-      left: Math.round(vw * 0.32),
-      top: Math.round(vh * 0.28),
-      width: Math.round(vw * 0.36),
-      height: Math.round(vh * 0.44)
+      left:   Math.round(vw * 0.26),
+      top:    Math.round(vh * 0.62),
+      width:  Math.round(vw * 0.14),
+      height: Math.round(vh * 0.20)
     };
   },
+
   /* 底部对话框 */
   'dlg-box': function(){
     var dlg = document.getElementById('dlg');
@@ -1340,9 +1374,9 @@ var VIRTUAL_TARGETS = {
     }
     var vw = window.innerWidth, vh = window.innerHeight;
     return {
-      left: Math.round(vw * 0.10),
-      top: Math.round(vh * 0.62),
-      width: Math.round(vw * 0.80),
+      left:   Math.round(vw * 0.10),
+      top:    Math.round(vh * 0.62),
+      width:  Math.round(vw * 0.80),
       height: Math.round(vh * 0.28)
     };
   }
@@ -1363,10 +1397,10 @@ var STEPS_NORMAL = [
     placement: 'bottom', padding: 8, radius: 14
   },
   {
-    target: 'map-transfer',
+    target: 'map-node',
     title: '地图传送',
-    desc: '地图上标记的位置可以点击进行<b>传送</b>，<br>走过的地方都能快速回去。',
-    placement: 'bottom', padding: 14, radius: 14,
+    desc: '地图上<b>发亮的节点</b>可以点击传送——<br>去过的地方和相邻的地方都能快速到达。',
+    placement: 'bottom', padding: 10, radius: 14,
     autoOpenMap: true
   },
   {
@@ -1432,10 +1466,10 @@ var STEPS_STREAMER = [
     placement: 'bottom', padding: 8, radius: 14
   },
   {
-    target: 'map-transfer',
+    target: 'map-node',
     title: '地图传送',
-    desc: '地图上标记的位置可以点击进行<b>传送</b>，<br>走过的地方都能快速回去。',
-    placement: 'bottom', padding: 14, radius: 14,
+    desc: '地图上<b>发亮的节点</b>可以点击传送——<br>去过的地方和相邻的地方都能快速到达。',
+    placement: 'bottom', padding: 10, radius: 14,
     autoOpenMap: true
   },
   {
@@ -1467,7 +1501,7 @@ var STEPS_STREAMER = [
   {
     target: '#btnTempLight',
     title: '临时点亮全局',
-    desc: '开启主播模式后，这里会出现 <b>✨ 临时点亮全局</b>。<br>点击它，可以短暂点亮整个场景，方便找到可交互的物件。<br><span style="color:#a8bccc;font-size:11px;">（暗夜模式下不可用）</span>',
+    desc: '开启主播模式后，这里会出现 <b>✨ 临时点亮全局</b>。<br>点击它，可以短暂点亮整个场景。<br><span style="color:#a8bccc;font-size:11px;">（暗夜模式下不可用）</span>',
     placement: 'bottom', padding: 8, radius: 14,
     forceShowTempLight: true,
     closeSettingsOnEnter: true
@@ -1854,7 +1888,6 @@ function renderStep(i){
     });
   }
 
-  /* 进入时的副作用 */
   var needChain = false;
 
   if(step.closeSettingsOnEnter){
@@ -1880,7 +1913,6 @@ function renderStep(i){
   }
 
   if(needChain){
-    /* 强制显示按钮后，等一帧再测量 */
     setTimeout(layout, 80);
   } else {
     layout();
@@ -1997,6 +2029,12 @@ function waitForGameReady(){
   var elapsed = Date.now() - waitStart;
   if(loading && isVisible(loading) && elapsed < 12000){
     setTimeout(waitForGameReady, 250);
+    return;
+  }
+  /* 等开场对话结束（或超时 15 秒）再启动教程 */
+  var dlg = $('dlg');
+  if(dlg && dlg.classList.contains('show') && elapsed < 15000){
+    setTimeout(waitForGameReady, 400);
     return;
   }
   setTimeout(start, 400);
