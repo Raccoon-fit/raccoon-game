@@ -33,6 +33,19 @@
 
 #btnTempLight{right:188px !important;}
 
+/* 教程期间强制显示「临时点亮」按钮 */
+#btnTempLight.tut-force-show{
+  display:flex !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  pointer-events:none !important;
+  animation:tempLightPulse 1.4s ease-in-out infinite;
+}
+@keyframes tempLightPulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(255,214,140,.0),0 4px 14px rgba(0,0,0,.6);}
+  50%{box-shadow:0 0 22px 4px rgba(255,214,140,.55),0 4px 14px rgba(0,0,0,.6);}
+}
+
 /* ============================================
    ★ 地图按钮
    ============================================ */
@@ -518,7 +531,6 @@
     height .5s cubic-bezier(.4,0,.2,1);
 }
 
-/* 洞本身拦截点击，避免穿透误触下层按钮 */
 #tutorialHole{
   position:fixed;
   z-index:2;
@@ -561,14 +573,12 @@
 #tutorialCard::-webkit-scrollbar-thumb{
   background:rgba(255,214,140,0.4);border-radius:3px;}
 
-/* 小屏：紧凑 */
 #tutorialCard.compact{
   width:252px;
   padding:14px 16px 12px;
 }
 #tutorialCard.compact .tut-head{margin-bottom:8px;}
 #tutorialCard.compact .tut-step{font-size:10px;padding:2px 8px;letter-spacing:1.5px;}
-#tutorialCard.compact .tut-close{width:22px;height:22px;font-size:12px;}
 #tutorialCard.compact .tut-title{
   font-size:14px;letter-spacing:1.5px;margin-bottom:6px;
 }
@@ -579,7 +589,6 @@
   padding:7px 14px;font-size:12px;letter-spacing:1.5px;
 }
 
-/* 极窄：更紧凑 + 可滚动 */
 #tutorialCard.tiny{
   width:220px;
   padding:12px 13px 10px;
@@ -604,13 +613,6 @@
   background:rgba(255,196,110,0.12);
   border:1px solid rgba(255,196,110,0.35);
 }
-.tut-close{
-  width:24px;height:24px;border:none;border-radius:50%;
-  background:rgba(255,255,255,0.06);color:#9fb2c4;
-  font-size:14px;line-height:1;cursor:pointer;font-family:inherit;
-  transition:background .2s,color .2s;
-}
-.tut-close:hover{background:rgba(255,120,90,0.2);color:#ff9070;}
 .tut-title{
   font-size:17px;font-weight:700;letter-spacing:2px;color:#ffe6b0;
   margin-bottom:8px;
@@ -627,10 +629,6 @@
   border-radius:10px;cursor:pointer;font-family:inherit;
   transition:all .18s ease;
 }
-.tut-skip{
-  background:transparent;border:1px solid rgba(160,180,200,0.3);color:#8397a8;
-}
-.tut-skip:hover{border-color:rgba(160,180,200,0.6);color:#b8c8d8;}
 .tut-next{
   background:linear-gradient(180deg,#d9a44a,#a87428);
   border:1px solid #ffcf87;color:#2a1a08;font-weight:700;
@@ -1004,7 +1002,7 @@
 </div>
 
 <!-- ============================================================
-     ★ 新手引导聚光灯 DOM
+     ★ 新手引导聚光灯 DOM（不可关闭：无 ✕ / 无跳过）
      ============================================================ -->
 <div id="tutorialLayer" aria-hidden="true">
   <div class="tut-block" id="tutBlockTop"></div>
@@ -1014,8 +1012,7 @@
   <div id="tutorialHole"></div>
   <div id="tutorialCard">
     <div class="tut-head">
-      <span class="tut-step" id="tutStep">1 / 6</span>
-      <button class="tut-close" id="tutClose" aria-label="关闭引导">✕</button>
+      <span class="tut-step" id="tutStep">1 / 10</span>
     </div>
     <div class="tut-title" id="tutTitle"></div>
     <div class="tut-desc" id="tutDesc"></div>
@@ -1036,7 +1033,6 @@
       </button>
     </div>
     <div class="tut-actions" id="tutActions">
-      <button class="tut-skip" id="tutSkip">跳 过</button>
       <button class="tut-next" id="tutNext">下 一 步</button>
     </div>
   </div>
@@ -1187,6 +1183,7 @@ if(btnClose){
    ★ 新手引导聚光灯（普通 / 主播 分支）
    - 新游戏进入：每次都显示
    - 继续存档：仅首次显示
+   - 教程不可关闭：无 ✕、无跳过，只能逐步完成
    ============================================================ */
 (function(){
 'use strict';
@@ -1214,8 +1211,6 @@ var descEl = $('tutDesc');
 var rolesEl = $('tutRoles');
 var actionsEl = $('tutActions');
 var nextBtn = $('tutNext');
-var skipBtn = $('tutSkip');
-var closeBtn = $('tutClose');
 var blockTop = $('tutBlockTop');
 var blockBottom = $('tutBlockBottom');
 var blockLeft = $('tutBlockLeft');
@@ -1223,7 +1218,7 @@ var blockRight = $('tutBlockRight');
 
 if(!layer || !hole || !card) return;
 
-/* 洞内点击：吸收但不传递，避免误触下层按钮 */
+/* 洞内点击：吸收但不传递 */
 function absorb(e){
   e.stopPropagation();
   e.preventDefault();
@@ -1243,8 +1238,49 @@ function isVisible(el){
   return true;
 }
 
-function isSettingsOpen(){
-  return isVisible($('settings'));
+function isSettingsOpen(){ return isVisible($('settings')); }
+
+function isMapOpen(){
+  if(typeof RaccoonMap === 'undefined' || !RaccoonMap) return false;
+  try { return RaccoonMap.isOpen(); } catch(e){ return false; }
+}
+
+function openMapIfNeeded(cb){
+  if(typeof RaccoonMap === 'undefined' || !RaccoonMap){ cb(); return; }
+  if(isMapOpen()){ cb(); return; }
+  try { RaccoonMap.open(); } catch(e){}
+  setTimeout(cb, 400);
+}
+
+function closeMapIfNeeded(){
+  if(typeof RaccoonMap === 'undefined' || !RaccoonMap) return;
+  try { if(RaccoonMap.isOpen()) RaccoonMap.close(); } catch(e){}
+}
+
+function openSettingsIfNeeded(cb){
+  if(isSettingsOpen()){ cb(); return; }
+  var btn = $('btnSet');
+  if(btn){
+    btn.click();
+    state.settingsOpenedByTutorial = true;
+  }
+  setTimeout(cb, 360);
+}
+
+function closeSettingsIfNeeded(){
+  if(!isSettingsOpen()) return;
+  var btn = $('btnCloseSet');
+  if(btn) btn.click();
+}
+
+/* 临时显示「临时点亮」按钮 */
+function forceShowTempLight(){
+  var btn = $('btnTempLight');
+  if(btn) btn.classList.add('tut-force-show');
+}
+function hideTempLight(){
+  var btn = $('btnTempLight');
+  if(btn) btn.classList.remove('tut-force-show');
 }
 
 function getHudButtonsRect(){
@@ -1265,58 +1301,120 @@ function getHudButtonsRect(){
   return { left: left, top: top, width: right - left, height: bottom - top };
 }
 
+/* ---------- 虚拟目标 ---------- */
+var VIRTUAL_TARGETS = {
+  /* 场景中的可交互物件（垃圾桶等） */
+  'scene-object': function(){
+    /* 若 game.js 暴露了可交互物件的屏幕坐标，优先使用 */
+    if(window.RaccoonGame && typeof window.RaccoonGame.getHotspotRect === 'function'){
+      try{
+        var r = window.RaccoonGame.getHotspotRect('trashcan');
+        if(r && r.width > 4 && r.height > 4) return r;
+      }catch(e){}
+    }
+    var vw = window.innerWidth, vh = window.innerHeight;
+    /* 默认：画面偏左下，垃圾桶大致位置（可按实际游戏微调） */
+    return {
+      left: Math.round(vw * 0.26),
+      top: Math.round(vh * 0.52),
+      width: Math.round(vw * 0.20),
+      height: Math.round(vh * 0.30)
+    };
+  },
+  /* 地图上的传送区域 */
+  'map-transfer': function(){
+    var vw = window.innerWidth, vh = window.innerHeight;
+    return {
+      left: Math.round(vw * 0.32),
+      top: Math.round(vh * 0.28),
+      width: Math.round(vw * 0.36),
+      height: Math.round(vh * 0.44)
+    };
+  },
+  /* 底部对话框 */
+  'dlg-box': function(){
+    var dlg = document.getElementById('dlg');
+    if(dlg){
+      var r = dlg.getBoundingClientRect();
+      if(r.width > 40 && r.height > 30) return r;
+    }
+    var vw = window.innerWidth, vh = window.innerHeight;
+    return {
+      left: Math.round(vw * 0.10),
+      top: Math.round(vh * 0.62),
+      width: Math.round(vw * 0.80),
+      height: Math.round(vh * 0.28)
+    };
+  }
+};
+
 /* ---------- 步骤定义 ---------- */
 var STEPS_NORMAL = [
   {
     target: 'hud-buttons',
     title: '常用功能',
     desc: '右上角是<b>商店</b>、<b>地图</b>和<b>设置</b>。<br>商店可以用小鱼干兑换补给，地图可以查看当前位置。',
-    placement: 'bottom',
-    padding: 12,
-    radius: 16
+    placement: 'bottom', padding: 12, radius: 16
   },
   {
     target: '#btnMap',
-    title: '查看地图',
-    desc: '点击地图按钮，可以查看你走过的街道。<br>有些地方只有看过地图才知道怎么去。',
-    placement: 'bottom',
-    padding: 8,
-    radius: 14
+    title: '打开地图',
+    desc: '点击这个按钮可以打开<b>地图</b>，查看你走过的街道。',
+    placement: 'bottom', padding: 8, radius: 14
   },
   {
-    target: null,
+    target: 'map-transfer',
+    title: '地图传送',
+    desc: '地图上标记的位置可以点击进行<b>传送</b>，<br>走过的地方都能快速回去。',
+    placement: 'bottom', padding: 14, radius: 14,
+    autoOpenMap: true
+  },
+  {
+    target: '#btnCloseMap',
+    title: '关闭地图',
+    desc: '看完之后，点击右上角的 <b>✕</b> 关闭地图，回到场景。',
+    placement: 'left', padding: 8, radius: 14,
+    autoCloseMapOnLeave: true
+  },
+  {
+    target: 'scene-object',
     title: '探索交互',
-    desc: '点击场景里<b>有反应的物件</b>进行探索。<br>有些线索藏在不起眼的角落，多试试看。',
-    placement: 'bottom',
-    padding: 0,
-    radius: 0,
-    edge: 40
+    desc: '场景里有可以互动的物件，比如这个<b>垃圾桶</b>。<br>点击它们进行探索，可能会找到线索或物品。',
+    placement: 'bottom', padding: 14, radius: 14
+  },
+  {
+    target: 'dlg-box',
+    title: '剧情对话',
+    desc: '剧情对话会出现在屏幕下方。<br>点击对话框<b>继续</b>；遇到选择时，点击<b>选项</b>决定故事走向。',
+    placement: 'top', padding: 12, radius: 14
   },
   {
     target: '#btnTempLight',
     title: '临时点亮全局',
-    desc: '看不清时，点击这里可以<b>短暂点亮</b>整个场景，方便找到可交互的物件。',
-    placement: 'bottom',
-    padding: 8,
-    radius: 14
+    desc: '看不清时，点击这里可以<b>短暂点亮</b>整个场景，方便找到可交互的物件。<br><span style="color:#a8bccc;font-size:11px;">（部分模式不可用）</span>',
+    placement: 'bottom', padding: 8, radius: 14,
+    forceShowTempLight: true
   },
   {
     target: 'highlightBtn',
     title: '找不到东西？',
     desc: '打开<b>设置</b>，点击 <b>🔍 高亮可交互</b>，所有能点的东西都会亮起来（持续 5 秒）。',
-    placement: 'left',
-    padding: 8,
-    radius: 14,
+    placement: 'left', padding: 8, radius: 14,
     autoOpenSettings: true
   },
   {
     target: 'textOptions',
     title: '调整文字',
     desc: '在设置里可以调整<b>文字速度</b>和<b>文字大小</b>，找到最舒服的阅读节奏。',
-    placement: 'left',
-    padding: 12,
-    radius: 14,
-    autoOpenSettings: true
+    placement: 'left', padding: 12, radius: 14,
+    autoOpenSettings: true,
+    closeSettingsOnLeave: true
+  },
+  {
+    target: 'hud-buttons',
+    title: '探索雨夜',
+    desc: '一切就绪。<br>祝你在雨夜里，找到想找的东西。',
+    placement: 'bottom', padding: 12, radius: 16
   }
 ];
 
@@ -1325,61 +1423,75 @@ var STEPS_STREAMER = [
     target: 'hud-buttons',
     title: '常用功能',
     desc: '右上角是<b>商店</b>、<b>地图</b>和<b>设置</b>。<br>商店可以用小鱼干兑换补给，地图可以查看当前位置。',
-    placement: 'bottom',
-    padding: 12,
-    radius: 16
+    placement: 'bottom', padding: 12, radius: 16
   },
   {
     target: '#btnMap',
-    title: '查看地图',
-    desc: '点击地图按钮，可以查看你走过的街道。<br>有些地方只有看过地图才知道怎么去。',
-    placement: 'bottom',
-    padding: 8,
-    radius: 14
+    title: '打开地图',
+    desc: '点击这个按钮可以打开<b>地图</b>，查看你走过的街道。',
+    placement: 'bottom', padding: 8, radius: 14
   },
   {
-    target: null,
+    target: 'map-transfer',
+    title: '地图传送',
+    desc: '地图上标记的位置可以点击进行<b>传送</b>，<br>走过的地方都能快速回去。',
+    placement: 'bottom', padding: 14, radius: 14,
+    autoOpenMap: true
+  },
+  {
+    target: '#btnCloseMap',
+    title: '关闭地图',
+    desc: '看完之后，点击右上角的 <b>✕</b> 关闭地图，回到场景。',
+    placement: 'left', padding: 8, radius: 14,
+    autoCloseMapOnLeave: true
+  },
+  {
+    target: 'scene-object',
     title: '探索交互',
-    desc: '点击场景里<b>有反应的物件</b>进行探索。<br>有些线索藏在不起眼的角落，多试试看。',
-    placement: 'bottom',
-    padding: 0,
-    radius: 0,
-    edge: 40
+    desc: '场景里有可以互动的物件，比如这个<b>垃圾桶</b>。<br>点击它们进行探索，可能会找到线索或物品。',
+    placement: 'bottom', padding: 14, radius: 14
+  },
+  {
+    target: 'dlg-box',
+    title: '剧情对话',
+    desc: '剧情对话会出现在屏幕下方。<br>点击对话框<b>继续</b>；遇到选择时，点击<b>选项</b>决定故事走向。',
+    placement: 'top', padding: 12, radius: 14
+  },
+  {
+    target: 'streamerToggle',
+    title: '开启主播模式（可选）',
+    desc: '在设置中找到<b>主播模式</b>，开启后会显示物品名称常驻、粉丝团提示等权益。<br><span style="color:#a8bccc;font-size:11px;">开启后，右上角还会出现 <b>✨ 临时点亮全局</b> 按钮。不强制开启，可随时切换。</span>',
+    placement: 'left', padding: 12, radius: 14,
+    autoOpenSettings: true
   },
   {
     target: '#btnTempLight',
     title: '临时点亮全局',
-    desc: '看不清时点击这里，可以短暂点亮整个场景。<br><span style="color:#a8bccc;font-size:11px;">（暗夜模式下不可用）</span>',
-    placement: 'bottom',
-    padding: 8,
-    radius: 14
-  },
-  {
-    target: 'streamerMode',
-    title: '开启主播模式（可选）',
-    desc: '在设置中找到<b>主播模式</b>，开启后会显示物品名称常驻、粉丝团提示等权益。<br><span style="color:#a8bccc;font-size:11px;">不强制开启，可随时切换。</span>',
-    placement: 'left',
-    padding: 12,
-    radius: 14,
-    autoOpenSettings: true
+    desc: '开启主播模式后，这里会出现 <b>✨ 临时点亮全局</b>。<br>点击它，可以短暂点亮整个场景，方便找到可交互的物件。<br><span style="color:#a8bccc;font-size:11px;">（暗夜模式下不可用）</span>',
+    placement: 'bottom', padding: 8, radius: 14,
+    forceShowTempLight: true,
+    closeSettingsOnEnter: true
   },
   {
     target: 'highlightBtn',
     title: '找不到东西？',
     desc: '在设置中点击<b>🔍 高亮可交互</b>，所有能点的东西都会亮起来（持续 5 秒）。',
-    placement: 'left',
-    padding: 8,
-    radius: 14,
+    placement: 'left', padding: 8, radius: 14,
     autoOpenSettings: true
   },
   {
     target: 'textOptions',
     title: '调整文字',
     desc: '在设置里可以调整<b>文字速度</b>和<b>文字大小</b>，找到最舒服的阅读节奏。',
-    placement: 'left',
-    padding: 12,
-    radius: 14,
-    autoOpenSettings: true
+    placement: 'left', padding: 12, radius: 14,
+    autoOpenSettings: true,
+    closeSettingsOnLeave: true
+  },
+  {
+    target: 'hud-buttons',
+    title: '探索雨夜',
+    desc: '一切就绪。<br>祝你在雨夜里，找到想找的东西。',
+    placement: 'bottom', padding: 12, radius: 16
   }
 ];
 
@@ -1415,6 +1527,7 @@ function updateMasks(left, top, w, h, radius, animate){
   var hRight = left + w;
   var hBottom = top + h;
 
+  hole.style.display = '';
   setBlock(blockTop, 0, 0, vw, top);
   setBlock(blockBottom, 0, hBottom, vw, vh - hBottom);
   setBlock(blockLeft, 0, top, left, h);
@@ -1433,6 +1546,28 @@ function updateMasks(left, top, w, h, radius, animate){
     blockLeft.style.transition = '';
     blockRight.style.transition = '';
     hole.style.transition = '';
+  }
+}
+
+function updateMasksFull(animate){
+  if(!animate){
+    blockTop.style.transition = 'none';
+    blockBottom.style.transition = 'none';
+    blockLeft.style.transition = 'none';
+    blockRight.style.transition = 'none';
+  }
+  var vw = window.innerWidth, vh = window.innerHeight;
+  setBlock(blockTop, 0, 0, vw, vh);
+  setBlock(blockBottom, 0, vh, vw, 0);
+  setBlock(blockLeft, 0, 0, 0, 0);
+  setBlock(blockRight, vw, 0, 0, 0);
+  hole.style.display = 'none';
+  if(!animate){
+    void blockTop.offsetWidth;
+    blockTop.style.transition = '';
+    blockBottom.style.transition = '';
+    blockLeft.style.transition = '';
+    blockRight.style.transition = '';
   }
 }
 
@@ -1520,7 +1655,6 @@ function positionCard(rect, placement){
   card.style.visibility = 'visible';
 }
 
-/* ---------- 无目标：贴边显示 ---------- */
 function placeEdgeCard(placement, edge){
   var vw = window.innerWidth, vh = window.innerHeight;
   applyCardSize();
@@ -1530,20 +1664,15 @@ function placeEdgeCard(placement, edge){
 
   var top, left;
   if(placement === 'top'){
-    top = pad;
-    left = vw / 2 - tw / 2;
+    top = pad; left = vw / 2 - tw / 2;
   } else if(placement === 'bottom'){
-    top = vh - th - pad;
-    left = vw / 2 - tw / 2;
+    top = vh - th - pad; left = vw / 2 - tw / 2;
   } else if(placement === 'left'){
-    left = pad;
-    top = vh / 2 - th / 2;
+    left = pad; top = vh / 2 - th / 2;
   } else if(placement === 'right'){
-    left = vw - tw - pad;
-    top = vh / 2 - th / 2;
+    left = vw - tw - pad; top = vh / 2 - th / 2;
   } else {
-    top = vh / 2 - th / 2;
-    left = vw / 2 - tw / 2;
+    top = vh / 2 - th / 2; left = vw / 2 - tw / 2;
   }
 
   if(left + tw > vw - 14) left = vw - tw - 14;
@@ -1568,11 +1697,26 @@ function scrollIntoViewIfNeeded(el){
   }catch(e){}
 }
 
+function getRectWithFallback(primary, fallbacks){
+  var el = primary ? document.querySelector(primary) : null;
+  if(el && isVisible(el)) return el.getBoundingClientRect();
+  if(fallbacks){
+    for(var i = 0; i < fallbacks.length; i++){
+      var fb = document.querySelector(fallbacks[i]);
+      if(fb && isVisible(fb)) return fb.getBoundingClientRect();
+    }
+  }
+  return null;
+}
+
 function resolveTargetRect(step){
   if(step.target === 'hud-buttons'){
     return getHudButtonsRect();
   }
-  if(step.target === 'streamerMode'){
+  if(VIRTUAL_TARGETS[step.target]){
+    return VIRTUAL_TARGETS[step.target]();
+  }
+  if(step.target === 'streamerToggle' || step.target === 'streamerMode'){
     var optEl = document.querySelector('#settings [data-key="streamerMode"]');
     var rowEl = optEl ? (optEl.closest('.row') || optEl.parentElement) : null;
     if(rowEl){
@@ -1606,6 +1750,9 @@ function resolveTargetRect(step){
       height: Math.max(b1.bottom, b2.bottom) - Math.min(b1.top, b2.top)
     };
   }
+  if(step.target === '#btnTempLight'){
+    return getRectWithFallback('#btnTempLight', ['#btnSet', '#btnMap', '#btnShop']);
+  }
   var el = document.querySelector(step.target);
   if(el && isVisible(el)) return el.getBoundingClientRect();
   return null;
@@ -1616,8 +1763,7 @@ function updateLayoutForStep(step){
   if(!state.active || state.phase !== 'steps') return;
 
   if(!step.target){
-    var vw = window.innerWidth, vh = window.innerHeight;
-    updateMasks(vw / 2 - 1, vh / 2 - 1, 2, 2, 14, true);
+    updateMasksFull(true);
     requestAnimationFrame(function(){
       if(state.active && state.phase === 'steps'){
         placeEdgeCard(step.placement, step.edge);
@@ -1627,10 +1773,9 @@ function updateLayoutForStep(step){
   }
 
   var rect = resolveTargetRect(step);
-  var vw2 = window.innerWidth, vh2 = window.innerHeight;
 
   if(!rect || rect.width < 2 || rect.height < 2){
-    updateMasks(vw2 / 2 - 1, vh2 / 2 - 1, 2, 2, 14, true);
+    updateMasksFull(true);
     requestAnimationFrame(function(){
       if(state.active && state.phase === 'steps'){
         placeEdgeCard('center', 20);
@@ -1654,24 +1799,12 @@ function updateLayoutForStep(step){
   });
 }
 
-/* ---------- 设置面板控制 ---------- */
-function openSettingsIfNeeded(cb){
-  if(isSettingsOpen()){
-    cb();
-    return;
-  }
-  var btn = $('btnSet');
-  if(btn){
-    btn.click();
-    state.settingsOpenedByTutorial = true;
-  }
-  setTimeout(cb, 360);
-}
-
-function closeSettingsIfNeeded(){
-  if(!isSettingsOpen()) return;
-  var btn = $('btnCloseSet');
-  if(btn) btn.click();
+/* ---------- 步骤副作用清理 ---------- */
+function clearStepSideEffects(step){
+  if(!step) return;
+  if(step.autoCloseMapOnLeave) closeMapIfNeeded();
+  if(step.forceShowTempLight) hideTempLight();
+  if(step.closeSettingsOnLeave) closeSettingsIfNeeded();
 }
 
 /* ---------- 卡片内容 ---------- */
@@ -1686,19 +1819,23 @@ function renderRolePhase(){
   applyCardSize();
   setStepBadge(-1, 0);
   titleEl.textContent = '欢迎来到雨夜归途';
-  descEl.innerHTML = '先选择你的身份，我们会展示对应的引导。<br><span style="color:#a8bccc;font-size:11px;">随时可以跳过，之后也能在设置里调整。</span>';
+  descEl.innerHTML = '先选择你的身份，我们会展示对应的引导。<br><span style="color:#a8bccc;font-size:11px;">教程会带你熟悉地图、交互、对话与设置。</span>';
   rolesEl.style.display = '';
-  nextBtn.style.display = 'none';
-  skipBtn.textContent = '跳 过 引 导';
+  actionsEl.style.display = 'none';
 
-  var vw = window.innerWidth, vh = window.innerHeight;
-  updateMasks(vw / 2, vh / 2, 0, 0, 0, false);
+  updateMasksFull(false);
   requestAnimationFrame(function(){
-    placeEdgeCard('center', 0);
+    if(state.active && state.phase === 'role'){
+      placeEdgeCard('center', 0);
+    }
   });
 }
 
 function renderStep(i){
+  if(state.phase === 'steps'){
+    clearStepSideEffects(state.steps[state.stepIndex]);
+  }
+
   state.phase = 'steps';
   state.stepIndex = i;
   var step = state.steps[i];
@@ -1707,9 +1844,8 @@ function renderStep(i){
   titleEl.textContent = step.title;
   descEl.innerHTML = step.desc;
   rolesEl.style.display = 'none';
-  nextBtn.style.display = '';
+  actionsEl.style.display = '';
   nextBtn.textContent = (i === state.steps.length - 1) ? '完 成' : '下 一 步';
-  skipBtn.textContent = '跳 过';
 
   function layout(){
     if(!state.active || state.phase !== 'steps') return;
@@ -1718,11 +1854,34 @@ function renderStep(i){
     });
   }
 
+  /* 进入时的副作用 */
+  var needChain = false;
+
+  if(step.closeSettingsOnEnter){
+    closeSettingsIfNeeded();
+  }
+  if(step.forceShowTempLight){
+    forceShowTempLight();
+    needChain = true;
+  }
+  if(step.autoOpenMap){
+    openMapIfNeeded(function(){
+      if(!state.active) return;
+      setTimeout(layout, 120);
+    });
+    return;
+  }
   if(step.autoOpenSettings){
     openSettingsIfNeeded(function(){
       if(!state.active) return;
       setTimeout(layout, 90);
     });
+    return;
+  }
+
+  if(needChain){
+    /* 强制显示按钮后，等一帧再测量 */
+    setTimeout(layout, 80);
   } else {
     layout();
   }
@@ -1758,8 +1917,12 @@ function nextStep(){
 
 function finish(){
   if(!state.active) return;
-  state.active = false;
 
+  if(state.phase === 'steps'){
+    clearStepSideEffects(state.steps[state.stepIndex]);
+  }
+
+  state.active = false;
   layer.classList.remove('active');
   layer.setAttribute('aria-hidden', 'true');
 
@@ -1767,10 +1930,13 @@ function finish(){
     closeSettingsIfNeeded();
     state.settingsOpenedByTutorial = false;
   }
+  closeMapIfNeeded();
+  hideTempLight();
 
   card.style.visibility = '';
   card.style.left = '';
   card.style.top = '';
+  hole.style.display = '';
   hole.style.left = '';
   hole.style.top = '';
   hole.style.width = '';
@@ -1787,9 +1953,8 @@ rolesEl.addEventListener('click', function(e){
 });
 
 nextBtn.addEventListener('click', nextStep);
-skipBtn.addEventListener('click', finish);
-closeBtn.addEventListener('click', finish);
 
+/* 教程期间拦截 Escape，防止误关其他面板 */
 window.addEventListener('keydown', function(e){
   if(!state.active) return;
   if(e.key !== 'Escape') return;
@@ -1801,8 +1966,7 @@ window.addEventListener('keydown', function(e){
 function relayout(){
   if(!state.active) return;
   if(state.phase === 'role'){
-    var vw = window.innerWidth, vh = window.innerHeight;
-    updateMasks(vw / 2, vh / 2, 0, 0, 0, false);
+    updateMasksFull(false);
     requestAnimationFrame(function(){
       if(state.active && state.phase === 'role'){
         placeEdgeCard('center', 0);
