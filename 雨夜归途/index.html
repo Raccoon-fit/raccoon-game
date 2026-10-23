@@ -328,6 +328,117 @@
     white-space:nowrap;}
 
   /* ============================================================
+     退出全屏按钮（文字版）
+     ============================================================ */
+  #btnExitFs{
+    position:fixed;top:14px;right:14px;z-index:60;
+    height:42px;padding:0 20px;
+    border-radius:13px;
+    display:none;align-items:center;justify-content:center;
+    cursor:pointer;
+    font-family:inherit;
+    font-size:14px;
+    letter-spacing:3px;
+    font-weight:600;
+    white-space:nowrap;
+    color:#d8c8a8;
+    background:linear-gradient(180deg,
+      rgba(58,78,104,.94) 0%,
+      rgba(38,55,76,.96) 40%,
+      rgba(14,22,34,.98) 100%);
+    border:1px solid rgba(200,170,110,.45);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.14),
+      inset 0 -1px 0 rgba(0,0,0,.5),
+      0 2px 0 #0f1a26,
+      0 4px 0 #0a131c,
+      0 8px 18px rgba(0,0,0,0.7),
+      0 0 18px rgba(255,190,110,.10);
+    transition:transform .14s ease, box-shadow .14s ease,
+               background .22s ease, border-color .22s ease, color .22s ease;
+    -webkit-user-select:none;user-select:none;
+  }
+  #btnExitFs.visible{display:flex;}
+  #btnExitFs:hover{
+    color:#ffd27a;
+    border-color:rgba(255,214,140,.95);
+    background:linear-gradient(180deg,
+      rgba(96,130,168,.98) 0%,
+      rgba(66,96,132,.98) 40%,
+      rgba(28,42,60,.99) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.18),
+      inset 0 -1px 0 rgba(0,0,0,.5),
+      0 2px 0 #16263a,
+      0 4px 0 #0e1826,
+      0 10px 22px rgba(0,0,0,0.8),
+      0 0 26px rgba(255,190,110,.28);
+  }
+  #btnExitFs:active{
+    transform:translateY(3px);
+    box-shadow:
+      inset 0 2px 4px rgba(0,0,0,.5),
+      0 1px 0 #0f1a26,
+      0 2px 0 #0a131c,
+      0 4px 8px rgba(0,0,0,0.6);
+  }
+
+  /* 点击后的抖动反馈 */
+  @keyframes fsShake{
+    0%,100%{transform:translateX(0);}
+    18%{transform:translateX(-5px) rotate(-3deg);}
+    38%{transform:translateX(5px) rotate(3deg);}
+    58%{transform:translateX(-3px) rotate(-2deg);}
+    78%{transform:translateX(3px) rotate(2deg);}
+  }
+  #btnExitFs.shake{animation:fsShake .42s cubic-bezier(.36,.07,.19,.97) both;}
+
+  /* ============================================================
+     SnackBar
+     ============================================================ */
+  #snackbar{
+    position:fixed;left:50%;bottom:46px;z-index:150;
+    display:flex;align-items:center;gap:10px;
+    padding:13px 26px 13px 22px;
+    border-radius:13px;
+    background:linear-gradient(180deg,
+      rgba(74,32,26,.97) 0%,
+      rgba(38,14,10,.98) 60%,
+      rgba(22,8,6,.99) 100%);
+    border:1px solid rgba(255,120,90,.62);
+    color:#ffc0ae;
+    font-size:14px;letter-spacing:2.5px;font-weight:600;
+    white-space:nowrap;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.10),
+      inset 0 -1px 0 rgba(0,0,0,.6),
+      0 2px 0 #2a0e08,
+      0 5px 0 #1a0704,
+      0 10px 26px rgba(0,0,0,0.85),
+      0 0 30px rgba(255,90,70,.28);
+    pointer-events:none;
+    opacity:0;
+    transform:translate(-50%, 26px) scale(.94);
+    transition:opacity .28s ease, transform .34s cubic-bezier(.2,.9,.3,1.2);
+  }
+  #snackbar.show{
+    opacity:1;
+    transform:translate(-50%, 0) scale(1);
+  }
+  #snackbar .sb-icon{
+    width:20px;height:20px;border-radius:50%;flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:900;letter-spacing:0;
+    color:#2a0806;
+    background:radial-gradient(circle at 35% 30%,#ffd9a8,#ff7a55 62%,#c83818 100%);
+    box-shadow:
+      0 0 10px rgba(255,120,80,.9),
+      0 0 20px rgba(255,90,60,.5),
+      inset 0 -2px 3px rgba(0,0,0,.3);
+    text-shadow:0 1px 0 rgba(255,255,255,.35);
+  }
+
+  /* ============================================================
      聚光灯新手教程
      ============================================================ */
   #spotlightLayer{
@@ -535,6 +646,15 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- 退出全屏按钮（点击不真正退出，仅提示异常） -->
+<button id="btnExitFs" aria-label="退出全屏" title="退出全屏">退出全屏</button>
+
+<!-- SnackBar -->
+<div id="snackbar" role="status" aria-live="polite">
+  <span class="sb-icon">!</span>
+  <span class="sb-text">操作异常</span>
 </div>
 
 <!-- 游戏 iframe 全屏嵌入层 -->
@@ -1448,6 +1568,102 @@ function requestFullscreenCompat(){
 }
 
 /* ============================================================
+   退出全屏按钮（仅提示，不真正退出）
+   ============================================================ */
+const btnExitFs  = document.getElementById('btnExitFs');
+const snackbarEl = document.getElementById('snackbar');
+const snackbarTx = snackbarEl.querySelector('.sb-text');
+let snackbarTimer = null;
+
+function isFullscreen(){
+  return !!(document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.mozFullScreenElement ||
+            document.msFullscreenElement);
+}
+
+function syncExitFsButton(){
+  const shouldShow = isFullscreen() && !gameOpened;
+  btnExitFs.classList.toggle('visible', shouldShow);
+}
+
+function showSnackbar(message, duration){
+  snackbarTx.textContent = message || '操作异常';
+  snackbarEl.classList.remove('show');
+  void snackbarEl.offsetWidth;
+  snackbarEl.classList.add('show');
+  if(snackbarTimer) clearTimeout(snackbarTimer);
+  snackbarTimer = setTimeout(function(){
+    snackbarEl.classList.remove('show');
+    snackbarTimer = null;
+  }, duration || 2000);
+}
+
+btnExitFs.addEventListener('click', function(e){
+  e.preventDefault();
+  e.stopPropagation();
+  // 关键：不调用 exitFullscreen，仅做视觉反馈
+  btnExitFs.classList.remove('shake');
+  void btnExitFs.offsetWidth;
+  btnExitFs.classList.add('shake');
+  setTimeout(function(){ btnExitFs.classList.remove('shake'); }, 460);
+  showSnackbar('操作异常', 2000);
+});
+
+/* ============================================================
+   全屏守卫 —— 尽可能拦截用户主动退出全屏
+   - 用户按 ESC / 浏览器退出全屏按钮 → 立刻重新进入全屏
+   - 若浏览器拒绝（非用户手势），静默失败，仅提示
+   - 代码自身的主动退出（intentionalExit）不拦截
+   - 注：F11 是浏览器原生全屏，不触发 Fullscreen API，无法拦截
+   ============================================================ */
+let intentionalExit = false;
+let fsReenterLock   = false;
+let fsGuardTimer    = null;
+
+function exitFullscreenIntentional(){
+  // 供后续代码主动退出全屏时调用（不会触发拦截）
+  intentionalExit = true;
+  const d  = document;
+  const fn = d.exitFullscreen || d.webkitExitFullscreen ||
+             d.mozCancelFullScreen || d.msExitFullscreen;
+  if(fn){ try{ fn.call(d); }catch(e){ intentionalExit = false; } }
+}
+
+function handleFullscreenChange(){
+  syncExitFsButton();
+
+  // 已进入全屏：正常
+  if(isFullscreen()) return;
+
+  // 代码主动退出：放行
+  if(intentionalExit){
+    intentionalExit = false;
+    return;
+  }
+
+  // 用户主动退出 → 拦截
+  if(fsReenterLock) return;
+  fsReenterLock = true;
+
+  // 同步调用，最大概率复用 ESC 的用户激活
+  requestFullscreenCompat();
+  showSnackbar('操作异常', 1800);
+
+  // 释放锁，允许下一次拦截
+  if(fsGuardTimer) clearTimeout(fsGuardTimer);
+  fsGuardTimer = setTimeout(function(){
+    fsReenterLock = false;
+    fsGuardTimer  = null;
+  }, 600);
+}
+
+document.addEventListener('fullscreenchange',       handleFullscreenChange);
+document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+document.addEventListener('mozfullscreenchange',    handleFullscreenChange);
+document.addEventListener('MSFullscreenChange',     handleFullscreenChange);
+
+/* ============================================================
    新手教程（聚光灯）
    ============================================================ */
 const TUTORIAL_STEPS = [
@@ -1644,6 +1860,10 @@ function openGameInFullscreen(mode){
   gameOpened = true;
   gameActive = true;
 
+  // 隐藏退出全屏按钮（游戏接管界面）
+  btnExitFs.classList.remove('visible');
+  snackbarEl.classList.remove('show');
+
   try{
     if(mode === 'new') localStorage.removeItem(SAVE_KEY);
     localStorage.setItem(LAUNCH_KEY, mode);
@@ -1726,6 +1946,7 @@ function start(){
   if(!ok){
     cv3d.style.background = 'radial-gradient(ellipse at center, #0c1624 0%, #04070b 100%)';
   }
+  syncExitFsButton();
   lastFrame = performance.now();
   requestAnimationFrame(loop);
 }
