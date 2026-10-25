@@ -120,6 +120,39 @@
 .retutorial-btn{padding:8px 16px;background:linear-gradient(180deg,rgba(60,80,110,.95),rgba(30,42,60,.95));border:1px solid rgba(180,200,220,.4);border-radius:10px;color:#d0dce8;font-family:inherit;font-size:13px;letter-spacing:1.5px;cursor:pointer;transition:all .18s ease;}
 .retutorial-btn:hover{border-color:rgba(255,214,140,.85);color:#ffe6b0;background:linear-gradient(180deg,rgba(90,120,150,.95),rgba(40,55,80,.95));box-shadow:0 0 18px rgba(255,196,110,.3);}
 .retutorial-btn:active{transform:scale(.96);}
+
+/* ===== 对话框 · 3D 浣熊头像 ===== */
+#dlg::before{ display: none !important; }
+#dlgAvatar{
+  position: absolute;
+  left: 42px;
+  bottom: 70px;
+  width: 80px;
+  height: 80px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .28s ease;
+  z-index: 10;
+  filter: drop-shadow(0 6px 14px rgba(0,0,0,.85));
+}
+#dlg.show ~ #dlgAvatar{ opacity: 1; }
+#dlgAvatar .fallback{
+  position: absolute;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  line-height: 1;
+}
+#dlgAvatar canvas{
+  position: absolute;
+  left: 0; top: 0;
+  width: 80px;
+  height: 80px;
+  display: block;
+}
 </style>
 </head>
 <body>
@@ -138,6 +171,10 @@
     <div id="sceneTitle"></div>
     <div id="dlgMask"></div>
     <div id="dlg"></div>
+    <div id="dlgAvatar" aria-hidden="true">
+      <span class="fallback">🦝</span>
+      <canvas id="dlgRaccoon"></canvas>
+    </div>
     <div id="choiceBox"></div>
     <div id="settings">
       <button class="close-x" id="btnCloseSet">✕</button>
@@ -292,12 +329,6 @@ if(btnClose){
 
 /* ============================================================
    ★ 新手引导聚光灯（普通 / 主播 分支）
-   - 新游戏进入：每次都显示
-   - 继续存档：仅首次显示
-   - 教程不可关闭
-   - 立刻启动，不等待开场对话
-   - 第 1 步：剧情对话（只有对话真的在显示时才允许点击穿透）
-   - 设置里可重看（RaccoonTutorial.forceStart）
    ============================================================ */
 (function(){
 'use strict';
@@ -763,7 +794,6 @@ function renderStep(i){
   rolesEl.style.display = 'none';
   actionsEl.style.display = '';
 
-  /* 判断对话是否真的在显示 */
   var hasLiveDlg = false;
   if(step.waitDlgClose){
     var _d = document.getElementById('dlg');
@@ -774,7 +804,6 @@ function renderStep(i){
   else if(i === state.steps.length - 1) nextBtn.textContent = '完 成';
   else nextBtn.textContent = '下 一 步';
 
-  /* ★ 关键修复：只有对话真的在显示时才允许点击穿透 */
   hole.style.pointerEvents = (step.allowClickThrough && hasLiveDlg) ? 'none' : '';
 
   function layout(){
@@ -929,6 +958,148 @@ if(shouldAutoStart){
     } else {
       console.warn('[tutorial] 新手教程模块未加载');
     }
+  });
+})();
+</script>
+
+<!-- three.js（放在 body 末尾，不阻塞首屏） -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
+
+<script>
+/* =========================================================
+   对话框 · 3D 浣熊头像
+   - 加载 assets3d/models/raccoon.obj
+   - 渲染到 #dlgRaccoon canvas
+   - 极慢旋转（0.35 rad/s ≈ 20°/s）
+   - 对话关闭时暂停渲染
+   - 加载失败自动回退到 emoji
+   ========================================================= */
+(function(){
+  if(typeof THREE === 'undefined'){
+    console.warn('[dlgRaccoon] three.js 未加载，保留 emoji');
+    return;
+  }
+  var canvas = document.getElementById('dlgRaccoon');
+  var avatarEl = document.getElementById('dlgAvatar');
+  var dlgEl = document.getElementById('dlg');
+  if(!canvas || !avatarEl || !dlgEl) return;
+
+  var fallbackEl = avatarEl.querySelector('.fallback');
+  var BASE = 'assets3d/models/';
+  var SIZE = 80;
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  var renderer;
+  try{
+    renderer = new THREE.WebGLRenderer({
+      canvas: canvas,
+      alpha: true,
+      antialias: true
+    });
+  }catch(e){
+    console.warn('[dlgRaccoon] WebGL 初始化失败，保留 emoji', e);
+    return;
+  }
+  renderer.setPixelRatio(dpr);
+  renderer.setSize(SIZE, SIZE, false);
+  renderer.setClearColor(0x000000, 0);
+
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+  camera.position.set(0, 1.15, 5.0);
+  camera.lookAt(0, 1.0, 0);
+
+  scene.add(new THREE.AmbientLight(0x8899bb, 0.60));
+
+  var keyLight = new THREE.DirectionalLight(0xffd8b0, 1.6);
+  keyLight.position.set(3, 5, 4);
+  scene.add(keyLight);
+
+  var rimLight = new THREE.DirectionalLight(0x90b0ff, 0.7);
+  rimLight.position.set(-4, 2, -3);
+  scene.add(rimLight);
+
+  var fillLight = new THREE.PointLight(0xffc090, 0.8, 20);
+  fillLight.position.set(-2, 3, 3);
+  scene.add(fillLight);
+
+  var pivot = new THREE.Group();
+  scene.add(pivot);
+
+  var dlgVisible = dlgEl.classList.contains('show');
+  try{
+    var obs = new MutationObserver(function(){
+      dlgVisible = dlgEl.classList.contains('show');
+      if(dlgVisible) renderer.render(scene, camera);
+    });
+    obs.observe(dlgEl, { attributes: true, attributeFilter: ['class'] });
+  }catch(e){}
+
+  var loopStarted = false;
+  function startLoop(){
+    if(loopStarted) return;
+    loopStarted = true;
+    if(fallbackEl) fallbackEl.style.display = 'none';
+
+    var last = performance.now();
+    function tick(now){
+      var dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      if(dlgVisible){
+        pivot.rotation.y += dt * 0.35;
+        renderer.render(scene, camera);
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function placeModel(model, scaleTo){
+    var box = new THREE.Box3().setFromObject(model);
+    var sizeV = box.getSize(new THREE.Vector3());
+    var center = box.getCenter(new THREE.Vector3());
+    var s = scaleTo / Math.max(sizeV.y, 0.001);
+    model.scale.setScalar(s);
+    model.position.x = -center.x * s;
+    model.position.y = 1.0 - center.y * s;
+    model.position.z = -center.z * s;
+    pivot.add(model);
+  }
+
+  function loadNoTexture(){
+    var objLoader = new THREE.OBJLoader();
+    objLoader.setPath(BASE);
+    objLoader.load('raccoon.obj', function(model){
+      model.traverse(function(o){
+        if(o.isMesh) o.material = new THREE.MeshLambertMaterial({ color: 0x9a8a78 });
+      });
+      placeModel(model, 2.0);
+      startLoop();
+    }, undefined, function(err){
+      console.warn('[dlgRaccoon] OBJ 加载失败，保留 emoji', err);
+    });
+  }
+
+  var mtlLoader = new THREE.MTLLoader();
+  mtlLoader.setPath(BASE);
+  mtlLoader.setResourcePath(BASE);
+  mtlLoader.load('raccoon.mtl', function(materials){
+    materials.preload();
+    var objLoader = new THREE.OBJLoader();
+    objLoader.setMaterials(materials);
+    objLoader.setPath(BASE);
+    objLoader.load('raccoon.obj', function(model){
+      placeModel(model, 2.0);
+      startLoop();
+    }, undefined, function(err){
+      console.warn('[dlgRaccoon] OBJ 加载失败，尝试无贴图', err);
+      loadNoTexture();
+    });
+  }, undefined, function(err){
+    console.warn('[dlgRaccoon] MTL 加载失败，尝试无贴图', err);
+    loadNoTexture();
   });
 })();
 </script>
