@@ -439,100 +439,6 @@
   }
 
   /* ============================================================
-     聚光灯新手教程
-     ============================================================ */
-  #spotlightLayer{
-    position:fixed;inset:0;z-index:50;
-    visibility:hidden;opacity:0;pointer-events:none;
-    background:transparent;
-    transition:opacity .3s ease, visibility .3s;
-  }
-  #spotlightLayer.active{
-    visibility:visible;opacity:1;pointer-events:auto;
-  }
-
-  #spotlightHole{
-    position:fixed;z-index:1;
-    border-radius:14px;pointer-events:none;
-    box-shadow:
-      0 0 0 2px rgba(255,214,140,0.55),
-      0 0 36px 6px rgba(255,206,130,0.45),
-      inset 0 0 24px rgba(255,214,140,0.18),
-      0 0 0 9999px rgba(2,4,8,0.86);
-    transition:
-      left .5s cubic-bezier(.4,0,.2,1),
-      top .5s cubic-bezier(.4,0,.2,1),
-      width .5s cubic-bezier(.4,0,.2,1),
-      height .5s cubic-bezier(.4,0,.2,1),
-      border-radius .5s ease;
-  }
-
-  #spotlightTip{
-    position:fixed;z-index:2;
-    width:300px;max-width:calc(100vw - 28px);
-    padding:18px 20px 16px;
-    border-radius:16px;
-    background:linear-gradient(160deg, rgba(28,38,54,0.98), rgba(12,18,28,0.99));
-    border:1px solid rgba(255,214,140,0.55);
-    box-shadow:
-      0 0 0 1px rgba(0,0,0,0.5),
-      0 0 30px rgba(255,196,110,0.22),
-      0 18px 42px rgba(0,0,0,0.85);
-    color:#e9dcc0;pointer-events:auto;
-    transition:left .4s cubic-bezier(.4,0,.2,1), top .4s cubic-bezier(.4,0,.2,1);
-  }
-  @keyframes tipPop{
-    from{opacity:0;transform:scale(.94) translateY(6px);}
-    to  {opacity:1;transform:scale(1) translateY(0);}
-  }
-
-  .stp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-  .stp-step{
-    font-size:11px;letter-spacing:2px;color:#ffcf87;font-weight:700;
-    padding:3px 9px;border-radius:20px;
-    background:rgba(255,196,110,0.12);
-    border:1px solid rgba(255,196,110,0.35);
-  }
-  .stp-close{
-    width:24px;height:24px;border:none;border-radius:50%;
-    background:rgba(255,255,255,0.06);color:#9fb2c4;
-    font-size:14px;line-height:1;cursor:pointer;font-family:inherit;
-    transition:background .2s,color .2s;
-  }
-  .stp-close:hover{background:rgba(255,120,90,0.2);color:#ff9070;}
-  .stp-title{
-    font-size:17px;font-weight:700;letter-spacing:2px;color:#ffe6b0;
-    margin-bottom:8px;
-    text-shadow:0 1px 0 #6a4a1a,0 2px 8px rgba(0,0,0,0.7);
-  }
-  .stp-desc{
-    font-size:13px;line-height:1.75;letter-spacing:1px;
-    color:#a8bccc;margin-bottom:16px;
-  }
-  .stp-desc b{color:#ffcf87;font-weight:600;}
-  .stp-actions{display:flex;gap:10px;justify-content:flex-end;}
-  .stp-actions button{
-    padding:9px 18px;font-size:13px;letter-spacing:2px;
-    border-radius:10px;cursor:pointer;font-family:inherit;
-    transition:all .18s ease;
-  }
-  .stp-skip{
-    background:transparent;border:1px solid rgba(160,180,200,0.3);color:#8397a8;
-  }
-  .stp-skip:hover{border-color:rgba(160,180,200,0.6);color:#b8c8d8;}
-  .stp-next{
-    background:linear-gradient(180deg,#d9a44a,#a87428);
-    border:1px solid #ffcf87;color:#2a1a08;font-weight:700;
-    box-shadow:0 2px 0 #5a3a10,0 6px 16px rgba(0,0,0,0.5),0 0 18px rgba(255,196,110,0.35);
-  }
-  .stp-next:hover{
-    background:linear-gradient(180deg,#f0be60,#c08a32);
-    transform:translateY(-1px);
-    box-shadow:0 3px 0 #5a3a10,0 10px 22px rgba(0,0,0,0.6),0 0 26px rgba(255,196,110,0.55);
-  }
-  .stp-next:active{transform:translateY(1px);}
-
-  /* ============================================================
      游戏 iframe 全屏嵌入层
      ============================================================ */
   #gameFrame{
@@ -629,23 +535,6 @@
       <p>合理安排时间，享受健康生活。</p>
     </div>
   </div>
-
-  <!-- 聚光灯新手教程层（不参与 #titleContent 的缩放） -->
-  <div id="spotlightLayer" aria-hidden="true">
-    <div id="spotlightHole"></div>
-    <div id="spotlightTip">
-      <div class="stp-head">
-        <span class="stp-step" id="stpStep">1 / 5</span>
-        <button class="stp-close" id="stpClose" aria-label="跳过教程">✕</button>
-      </div>
-      <div class="stp-title" id="stpTitle"></div>
-      <div class="stp-desc" id="stpDesc"></div>
-      <div class="stp-actions">
-        <button class="stp-skip" id="stpSkip">跳 过</button>
-        <button class="stp-next" id="stpNext">下 一 步</button>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- 退出全屏按钮（点击不真正退出，仅提示异常） -->
@@ -681,6 +570,7 @@ const fxCtx   = cvFx.getContext('2d');
 const SAVE_KEY = 'raccoon_rainy_night_v5';
 const LAUNCH_KEY = 'raccoon_launch_mode';
 const GAME_URL = 'raccoon.html';
+const GAME_BODY_URL = 'index1.html';
 
 function shadeHex(hex, amt){
   const r = Math.min(255, Math.max(0, parseInt(hex.slice(1,3),16) + amt));
@@ -1664,193 +1554,23 @@ document.addEventListener('mozfullscreenchange',    handleFullscreenChange);
 document.addEventListener('MSFullscreenChange',     handleFullscreenChange);
 
 /* ============================================================
-   新手教程（聚光灯）
+   ★ 序章 → 本体：接收 raccoon.html 的 postMessage
    ============================================================ */
-const TUTORIAL_STEPS = [
-  {
-    target: '#titleContent .btns',
-    title: '开始你的旅程',
-    desc: '点击 <b>新游戏</b> 从雨夜的第一刻开始；有存档时也可以点击 <b>继续存档</b> 接着上次的进度。',
-    placement: 'bottom', padding: 20, radius: 20
-  },
-  {
-    target: '#titleContent .age-badge',
-    title: '适龄提示',
-    desc: '本游戏包含轻微惊悚与悬疑元素，建议 <b>16 岁及以上</b> 玩家体验。',
-    placement: 'top', padding: 14, radius: 16
-  },
-  {
-    target: '#titleContent .thanks',
-    title: '致谢',
-    desc: '感谢各位主播的陪伴与支持——是你们让这段雨夜不再孤单。',
-    placement: 'left', padding: 14, radius: 18
-  },
-  {
-    target: '#titleContent .health-tip',
-    title: '健康忠告',
-    desc: '适度游戏益脑，沉迷游戏伤身。记得合理安排时间，享受健康生活。',
-    placement: 'top', padding: 12, radius: 12
-  },
-  {
-    target: '#btnNew',
-    title: '准备出发',
-    desc: '一切就绪。点击下方 <b>开始冒险</b>，踏入雨夜归途。',
-    placement: 'bottom', padding: 14, radius: 16
+window.addEventListener('message', function(e){
+  var d = e.data;
+  if(!d || !d.type) return;
+  if(d.type === 'next'){
+    if(!gameFrame || !gameOpened) return;
+    /* 只接受来自当前 iframe 的消息 */
+    try{
+      if(e.source !== gameFrame.contentWindow) return;
+    }catch(err){}
+    /* 先显示 loading，再切 src */
+    gameLoading.classList.remove('hidden');
+    gameLoading.classList.add('active');
+    gameFrame.src = GAME_BODY_URL;
   }
-];
-
-let tutorialActive = false;
-let tutorialStep = 0;
-let tutorialMode = 'new';
-
-const spotLayer   = document.getElementById('spotlightLayer');
-const spotHole    = document.getElementById('spotlightHole');
-const spotTip     = document.getElementById('spotlightTip');
-const stpStepEl   = document.getElementById('stpStep');
-const stpTitleEl  = document.getElementById('stpTitle');
-const stpDescEl   = document.getElementById('stpDesc');
-const stpNextBtn  = document.getElementById('stpNext');
-const stpSkipBtn  = document.getElementById('stpSkip');
-const stpCloseBtn = document.getElementById('stpClose');
-
-function startTutorial(mode){
-  tutorialMode = mode || 'new';
-  tutorialActive = true;
-  tutorialStep = 0;
-  spotLayer.classList.add('active');
-  showTutorialStep(0);
-}
-
-function showTutorialStep(index){
-  if(index < 0 || index >= TUTORIAL_STEPS.length) return;
-  tutorialStep = index;
-  const step = TUTORIAL_STEPS[index];
-
-  stpStepEl.textContent  = (index + 1) + ' / ' + TUTORIAL_STEPS.length;
-  stpTitleEl.textContent = step.title;
-  stpDescEl.innerHTML    = step.desc;
-
-  stpNextBtn.textContent = (index === TUTORIAL_STEPS.length - 1)
-    ? '开 始 冒 险' : '下 一 步';
-
-  if(index === 0){
-    spotTip.style.animation = 'none';
-    void spotTip.offsetWidth;
-    spotTip.style.animation = 'tipPop .35s cubic-bezier(.2,.9,.3,1) both';
-  }
-
-  requestAnimationFrame(function(){
-    if(tutorialActive) updateSpotlightLayout(step);
-  });
-}
-
-function updateSpotlightLayout(step){
-  if(!tutorialActive) return;
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-
-  let rect = null;
-  if(step.target){
-    const el = document.querySelector(step.target);
-    if(el) rect = el.getBoundingClientRect();
-  }
-
-  const pad    = step.padding || 14;
-  const radius = step.radius  || 14;
-
-  let hole;
-  if(rect && rect.width > 0 && rect.height > 0){
-    hole = {
-      left:   rect.left - pad,
-      top:    rect.top  - pad,
-      width:  rect.width  + pad * 2,
-      height: rect.height + pad * 2
-    };
-  } else {
-    const s = 2;
-    hole = { left: vw/2 - s/2, top: vh/2 - s/2, width: s, height: s };
-  }
-
-  spotHole.style.left         = hole.left   + 'px';
-  spotHole.style.top          = hole.top    + 'px';
-  spotHole.style.width        = hole.width  + 'px';
-  spotHole.style.height       = hole.height + 'px';
-  spotHole.style.borderRadius = radius      + 'px';
-
-  positionTip(hole, step.placement, vw, vh);
-}
-
-function positionTip(hole, placement, vw, vh){
-  spotTip.style.visibility = 'hidden';
-  spotTip.style.left = '0px';
-  spotTip.style.top  = '0px';
-
-  const tw  = spotTip.offsetWidth;
-  const th  = spotTip.offsetHeight;
-  const gap = 22;
-
-  const cx = hole.left + hole.width  / 2;
-  const cy = hole.top  + hole.height / 2;
-
-  let top, left;
-
-  if(placement === 'bottom'){
-    top  = hole.top + hole.height + gap;
-    left = cx - tw / 2;
-  } else if(placement === 'top'){
-    top  = hole.top - th - gap;
-    left = cx - tw / 2;
-  } else if(placement === 'right'){
-    left = hole.left + hole.width + gap;
-    top  = cy - th / 2;
-  } else if(placement === 'left'){
-    left = hole.left - tw - gap;
-    top  = cy - th / 2;
-  } else {
-    left = vw / 2 - tw / 2;
-    top  = vh / 2 - th / 2;
-  }
-
-  if(placement === 'bottom' && top + th > vh - 14){
-    const alt = hole.top - th - gap;
-    if(alt > 14) top = alt;
-  } else if(placement === 'top' && top < 14){
-    const alt = hole.top + hole.height + gap;
-    if(alt + th < vh - 14) top = alt;
-  } else if(placement === 'right' && left + tw > vw - 14){
-    const alt = hole.left - tw - gap;
-    if(alt > 14) left = alt;
-  } else if(placement === 'left' && left < 14){
-    const alt = hole.left + hole.width + gap;
-    if(alt + tw < vw - 14) left = alt;
-  }
-
-  if(top + th > vh - 14) top = vh - th - 14;
-  if(top < 14) top = 14;
-  if(left + tw > vw - 14) left = vw - tw - 14;
-  if(left < 14) left = 14;
-
-  spotTip.style.left = left + 'px';
-  spotTip.style.top  = top  + 'px';
-  spotTip.style.visibility = 'visible';
-}
-
-function nextTutorialStep(){
-  if(tutorialStep < TUTORIAL_STEPS.length - 1){
-    showTutorialStep(tutorialStep + 1);
-  } else {
-    finishTutorial();
-  }
-}
-
-function skipTutorial(){ finishTutorial(); }
-
-function finishTutorial(){
-  if(!tutorialActive) return;
-  tutorialActive = false;
-  spotLayer.classList.remove('active');
-  setTimeout(function(){ proceedToGame(tutorialMode); }, 340);
-}
+});
 
 /* ============================================================
    以全屏 iframe 方式打开游戏（不跳转文档，保持全屏）
@@ -1874,7 +1594,8 @@ function openGameInFullscreen(mode){
 
   gameLoading.classList.add('active');
   gameFrame.classList.add('active');
-  gameFrame.src = GAME_URL;
+  /* ★ 「继续存档」直接加载本体，不经过序章 */
+  gameFrame.src = (mode === 'continue') ? GAME_BODY_URL : GAME_URL;
 }
 
 gameFrame.addEventListener('load', function(){
@@ -1891,31 +1612,6 @@ function goGame(mode){
   openGameInFullscreen(mode);
 }
 
-function proceedToGame(mode){
-  goGame(mode);
-}
-
-stpNextBtn.addEventListener('click',  nextTutorialStep);
-stpSkipBtn.addEventListener('click',  skipTutorial);
-stpCloseBtn.addEventListener('click', skipTutorial);
-
-function onViewportChange(){
-  if(!tutorialActive) return;
-  requestAnimationFrame(function(){
-    if(tutorialActive) updateSpotlightLayout(TUTORIAL_STEPS[tutorialStep]);
-  });
-}
-
-window.addEventListener('resize', onViewportChange);
-document.addEventListener('fullscreenchange', function(){
-  setTimeout(onViewportChange, 100);
-  setTimeout(onViewportChange, 420);
-});
-document.addEventListener('webkitfullscreenchange', function(){
-  setTimeout(onViewportChange, 100);
-  setTimeout(onViewportChange, 420);
-});
-
 /* ============================================================
    存档检测
    ============================================================ */
@@ -1926,13 +1622,13 @@ document.addEventListener('webkitfullscreenchange', function(){
   }catch(e){ btnCont.disabled = true; btnCont.textContent = '无 存 档'; }
 })();
 
-/* 新游戏：请求全屏 + 进入聚光灯教程 */
+/* 新游戏：请求全屏 + 直接进入游戏（新手引导在 index1.html 内） */
 btnNew.addEventListener('click', function(){
   requestFullscreenCompat();
-  startTutorial('new');
+  goGame('new');
 });
 
-/* 继续存档：请求全屏 + 直接以 iframe 打开游戏 */
+/* 继续存档：请求全屏 + 直接以 iframe 打开游戏本体 */
 btnCont.addEventListener('click', function(){
   if(btnCont.disabled) return;
   requestFullscreenCompat();
