@@ -14,272 +14,352 @@
   body{display:flex;align-items:center;justify-content:center;}
 
   /* ============================================================
-     模拟电脑桌面
+     模拟 Windows 10 桌面
      ============================================================ */
   #desktop {
     position: fixed;
     inset: 0;
     z-index: 10000;
-    background: #1a202c; /* 深色壁纸底色 */
-    background-image: radial-gradient(circle at 50% 50%, #2d3748 0%, #1a202c 100%);
+    background-color: #002b5e;
+    background-image: 
+      radial-gradient(circle at 15% 15%, #00529e 0%, transparent 40%),
+      radial-gradient(circle at 85% 15%, #00529e 0%, transparent 40%),
+      linear-gradient(135deg, #002b5e 0%, #00132b 100%);
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    flex-direction: column;
+    transition: opacity 0.8s ease, transform 0.8s ease;
+    pointer-events: auto;
+    overflow: hidden;
+  }
+  #desktop.hide {
+    opacity: 0;
+    transform: scale(1.05);
+    pointer-events: none;
+  }
+
+  /* 桌面图标区域 */
+  .desktop-area {
+    flex: 1;
+    padding: 16px;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     justify-content: flex-start;
-    padding: 40px;
-    transition: opacity 0.8s ease, transform 0.8s ease;
-    pointer-events: auto;
+    gap: 6px;
+    position: relative;
+    z-index: 1;
   }
-  #desktop.hide {
-    opacity: 0;
-    transform: scale(1.1);
-    pointer-events: none;
-  }
+
   /* 桌面图标容器 */
   .desktop-icon {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
-    width: 100px;
+    justify-content: center;
+    width: 96px;
+    padding: 10px 4px 8px;
+    border: 1px solid transparent;
+    border-radius: 4px;
     cursor: pointer;
-    padding: 8px;
-    border-radius: 8px;
-    transition: background 0.2s, transform 0.1s;
     user-select: none;
+    transition: background 0.1s, border-color 0.1s;
   }
-  .desktop-icon:hover {
-    background: rgba(255, 255, 255, 0.1);
+  .desktop-icon.selected {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
   }
   .desktop-icon:active {
-    transform: scale(0.92);
+    background: rgba(255, 255, 255, 0.1);
   }
-  /* 图标图片 */
   .desktop-icon img {
-    width: 64px;
-    height: 64px;
+    width: 48px;
+    height: 48px;
     object-fit: contain;
-    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+    margin-bottom: 6px;
     pointer-events: none;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
   }
-  /* 图标文字 */
   .desktop-icon span {
-    font-size: 13px;
+    font-size: 12px;
     color: #ffffff;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
     text-align: center;
-    letter-spacing: 1px;
+    line-height: 1.4;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.6);
+    letter-spacing: 0.5px;
     pointer-events: none;
+    word-break: break-all;
+    padding: 0 4px;
   }
 
   /* ============================================================
-     游戏容器（原来页面的内容）
+     Windows 10 任务栏
      ============================================================ */
-  #titleStage{position:relative;overflow:hidden;background:#04070b;
-    box-shadow:0 0 120px rgba(0,0,0,1);}
+  #taskbar {
+    height: 40px;
+    width: 100%;
+    background: rgba(20, 20, 20, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px;
+    z-index: 2;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .tb-left, .tb-center, .tb-right {
+    display: flex;
+    align-items: center;
+    height: 100%;
+  }
+
+  .tb-start {
+    width: 48px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .tb-start:hover { background: rgba(255, 255, 255, 0.1); }
+  .win-logo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    width: 16px;
+    height: 16px;
+  }
+  .win-logo div { background: #00adef; }
+
+  .tb-search {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    height: 28px;
+    padding: 0 10px;
+    margin-left: 4px;
+    color: #ffffff;
+    font-size: 12px;
+    cursor: pointer;
+    width: 200px;
+    transition: background 0.15s;
+  }
+  .tb-search:hover { background: rgba(255, 255, 255, 0.25); }
+  .tb-search svg { width: 14px; height: 14px; fill: currentColor; margin-right: 8px; }
+  .tb-search span { opacity: 0.8; letter-spacing: 0.5px; }
+
+  .tb-taskview {
+    width: 48px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-left: 2px;
+    transition: background 0.15s;
+  }
+  .tb-taskview:hover { background: rgba(255, 255, 255, 0.1); }
+  .taskview-icon {
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid #ffffff;
+    border-radius: 2px;
+    position: relative;
+  }
+  .taskview-icon::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 100%;
+    height: 100%;
+    border: 1.5px solid #ffffff;
+    border-radius: 2px;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 30% 100%, 0 70%);
+    background: rgba(20,20,20,0.85);
+  }
+
+  .tb-tray {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 8px;
+    gap: 12px;
+    color: #ffffff;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .tb-tray:hover { background: rgba(255, 255, 255, 0.1); }
+  .tb-tray svg { width: 14px; height: 14px; fill: currentColor; opacity: 0.9; }
+  .tb-time {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    font-size: 11.5px;
+    line-height: 1.3;
+    letter-spacing: 0.5px;
+    margin-left: 4px;
+  }
+  .tb-time .date { font-size: 11px; opacity: 0.9; }
+
+  /* ============================================================
+     Windows 10 桌面右键菜单
+     ============================================================ */
+  #contextMenu {
+    position: fixed;
+    z-index: 10005;
+    width: 180px;
+    background: #202020;
+    border: 1px solid #3a3a3a;
+    border-radius: 6px;
+    padding: 4px;
+    display: none;
+    flex-direction: column;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    font-size: 12.5px;
+    color: #ffffff;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+  #contextMenu.show { display: flex; opacity: 1; }
+  .cm-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #e0e0e0;
+    transition: background 0.1s;
+  }
+  .cm-item:hover { background: #3a3a3a; }
+  .cm-item svg { width: 14px; height: 14px; fill: currentColor; opacity: 0.7; }
+  .cm-divider { height: 1px; background: #3a3a3a; margin: 4px 0; }
+
+  /* ============================================================
+     启动提示弹窗
+     ============================================================ */
+  #launchPrompt {
+    position: fixed;
+    inset: 0;
+    z-index: 10010;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  #launchPrompt.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .prompt-box {
+    width: 360px;
+    background: #202020;
+    border: 1px solid #3a3a3a;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+    transform: scale(0.95);
+    transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+    color: #ffffff;
+  }
+  #launchPrompt.show .prompt-box {
+    transform: scale(1);
+  }
+  .prompt-header {
+    padding: 16px 20px 8px;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .prompt-body {
+    padding: 8px 20px 20px;
+    font-size: 13px;
+    color: #b0b0b0;
+    line-height: 1.6;
+  }
+  .prompt-footer {
+    background: #2a2a2a;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+  .prompt-btn {
+    padding: 8px 24px;
+    font-size: 13px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+  .prompt-btn.primary {
+    background: #0078d4;
+    color: #ffffff;
+    border: 1px solid #0078d4;
+  }
+  .prompt-btn.primary:hover {
+    background: #1084d8;
+  }
+  .prompt-btn.secondary {
+    background: #2a2a2a;
+    color: #ffffff;
+    border: 1px solid #3a3a3a;
+  }
+  .prompt-btn.secondary:hover {
+    background: #3a3a3a;
+  }
+
+  /* ============================================================
+     游戏容器及后续（保持原有结构）
+     ============================================================ */
+  #titleStage{position:relative;overflow:hidden;background:#04070b;box-shadow:0 0 120px rgba(0,0,0,1);}
   #cv3d{position:absolute;left:0;top:0;width:100%;height:100%;display:block;background:#04070b;}
-  #cvFx{position:absolute;left:0;top:0;width:100%;height:100%;display:block;
-    pointer-events:none;z-index:2;}
+  #cvFx{position:absolute;left:0;top:0;width:100%;height:100%;display:block;pointer-events:none;z-index:2;}
 
-  /* ============================================================
-     UI 容器
-     ============================================================ */
-  #titleContent{
-    position:absolute;left:0;top:0;width:960px;height:540px;
-    transform-origin:0 0;
-    display:flex;flex-direction:column;
-    align-items:center;justify-content:center;
-    pointer-events:none;z-index:3;
-    perspective:1800px;
-    perspective-origin:50% 55%;
-  }
-  #titleContent::before{
-    content:'';position:absolute;inset:0;
-    background:radial-gradient(ellipse at center,
-      rgba(4,7,11,0.22) 0%,
-      rgba(4,7,11,0.52) 55%,
-      rgba(4,7,11,0.84) 100%);
-    pointer-events:none;z-index:-1;
-    animation:veilIn 2s ease-out both;}
+  #titleContent{position:absolute;left:0;top:0;width:960px;height:540px;transform-origin:0 0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;z-index:3;perspective:1800px;perspective-origin:50% 55%;}
+  #titleContent::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(4,7,11,0.22) 0%,rgba(4,7,11,0.52) 55%,rgba(4,7,11,0.84) 100%);pointer-events:none;z-index:-1;animation:veilIn 2s ease-out both;}
   @keyframes veilIn{from{opacity:0;}to{opacity:1;}}
   #titleContent > *{pointer-events:auto;}
 
-  /* 万圣节专属元素（默认隐藏，JS控制显示） */
   .halloween-el{ display:none; }
   body.halloween-mode .halloween-el{ display:block; }
-
-  .title-bat{
-    position:absolute;top:22%;
-    font-size:28px;
-    color:rgba(40, 10, 15, 0.9);
-    text-shadow:0 0 10px rgba(255, 50, 50, 0.4);
-    cursor:pointer;
-    pointer-events:auto;
-    transition:transform .2s;
-    z-index:10;
-    transform-origin:center;
-    animation: batHang 3s ease-in-out infinite alternate;
-  }
-  @keyframes batHang {
-    from{transform:rotate(-10deg);}
-    to{transform:rotate(5deg);}
-  }
+  .title-bat{position:absolute;top:22%;font-size:28px;color:rgba(40, 10, 15, 0.9);text-shadow:0 0 10px rgba(255, 50, 50, 0.4);cursor:pointer;pointer-events:auto;transition:transform .2s;z-index:10;transform-origin:center;animation: batHang 3s ease-in-out infinite alternate;}
+  @keyframes batHang { from{transform:rotate(-10deg);} to{transform:rotate(5deg);} }
   .title-bat.left{left:12%;}
   .title-bat.right{right:12%;transform:scaleX(-1);animation: batHangRight 3s ease-in-out infinite alternate;}
-  @keyframes batHangRight {
-    from{transform:scaleX(-1) rotate(10deg);}
-    to{transform:scaleX(-1) rotate(-5deg);}
-  }
+  @keyframes batHangRight { from{transform:scaleX(-1) rotate(10deg);} to{transform:scaleX(-1) rotate(-5deg);} }
   .title-bat:hover{transform:scale(1.2) rotate(0) !important;animation:none !important;}
 
-  /* ============================================================
-     主标题
-     ============================================================ */
-  #titleContent h1{
-    margin:0;
-    font-size:68px;letter-spacing:26px;
-    color:#f2e6cb;font-weight:600;
-    padding-left:26px;
-    text-shadow:
-      0 1px 0 #8a6a3a,
-      0 2px 0 #7a5a2a,
-      0 3px 0 #6a4a1a,
-      0 4px 0 #5a3a10,
-      0 5px 0 #4a2a08,
-      0 6px 0 #3a1a04,
-      0 7px 0 #2a0e00,
-      0 8px 0 #1a0600,
-      0 10px 20px rgba(0,0,0,0.9),
-      0 14px 32px rgba(0,0,0,0.6);
-    transform:perspective(900px) rotateX(-4deg);
-    transform-origin:center bottom;
-    filter:drop-shadow(0 0 28px rgba(255,196,110,.5));
-    animation:titleGlow 4.5s ease-in-out infinite;
-  }
-  @keyframes titleGlow{
-    0%,100%{filter:drop-shadow(0 0 22px rgba(255,196,110,.38));}
-    50%{filter:drop-shadow(0 0 52px rgba(255,206,130,.78));}
-  }
-  body.halloween-mode #titleContent h1{
-    animation: titleGlowHalloween 4.5s ease-in-out infinite;
-  }
-  @keyframes titleGlowHalloween{
-    0%,100%{filter:drop-shadow(0 0 22px rgba(255,196,110,.38)) drop-shadow(0 0 40px rgba(255, 60, 0, .2));}
-    50%{filter:drop-shadow(0 0 52px rgba(255,206,130,.78)) drop-shadow(0 0 80px rgba(255, 80, 0, .5));}
-  }
+  #titleContent h1{margin:0;font-size:68px;letter-spacing:26px;color:#f2e6cb;font-weight:600;padding-left:26px;text-shadow:0 1px 0 #8a6a3a,0 2px 0 #7a5a2a,0 3px 0 #6a4a1a,0 4px 0 #5a3a10,0 5px 0 #4a2a08,0 6px 0 #3a1a04,0 7px 0 #2a0e00,0 8px 0 #1a0600,0 10px 20px rgba(0,0,0,0.9),0 14px 32px rgba(0,0,0,0.6);transform:perspective(900px) rotateX(-4deg);transform-origin:center bottom;filter:drop-shadow(0 0 28px rgba(255,196,110,.5));animation:titleGlow 4.5s ease-in-out infinite;}
+  @keyframes titleGlow{ 0%,100%{filter:drop-shadow(0 0 22px rgba(255,196,110,.38));} 50%{filter:drop-shadow(0 0 52px rgba(255,206,130,.78));} }
+  body.halloween-mode #titleContent h1{animation: titleGlowHalloween 4.5s ease-in-out infinite;}
+  @keyframes titleGlowHalloween{ 0%,100%{filter:drop-shadow(0 0 22px rgba(255,196,110,.38)) drop-shadow(0 0 40px rgba(255, 60, 0, .2));} 50%{filter:drop-shadow(0 0 52px rgba(255,206,130,.78)) drop-shadow(0 0 80px rgba(255, 80, 0, .5));} }
 
-  #titleContent .sub{
-    margin:14px 0 10px;
-    font-size:15px;letter-spacing:10px;
-    color:#a0b6cc;
-    padding-left:10px;
-    text-shadow:
-      0 1px 0 #2a3a4a,
-      0 2px 0 #1a2a3a,
-      0 3px 8px rgba(0,0,0,0.85),
-      0 0 20px rgba(140,180,220,.3);
-    transform:perspective(900px) rotateX(-3deg) translateZ(6px);
-    transform-origin:center top;
-  }
-
-  .halloween-tag{
-    font-size:12px; letter-spacing:4px; color:#ff9a5a;
-    margin-bottom:30px;
-    text-shadow: 0 0 12px rgba(255, 80, 0, 0.8);
-    opacity: 0; animation: fadeIn 1s ease-out 1s both;
-  }
+  #titleContent .sub{margin:14px 0 10px;font-size:15px;letter-spacing:10px;color:#a0b6cc;padding-left:10px;text-shadow:0 1px 0 #2a3a4a,0 2px 0 #1a2a3a,0 3px 8px rgba(0,0,0,0.85),0 0 20px rgba(140,180,220,.3);transform:perspective(900px) rotateX(-3deg) translateZ(6px);transform-origin:center top;}
+  .halloween-tag{font-size:12px; letter-spacing:4px; color:#ff9a5a;margin-bottom:30px;text-shadow: 0 0 12px rgba(255, 80, 0, 0.8);opacity: 0; animation: fadeIn 1s ease-out 1s both;}
   @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+  body:not(.halloween-mode) #titleContent .sub{margin-bottom:48px;}
 
-  body:not(.halloween-mode) #titleContent .sub{
-    margin-bottom:48px;
-  }
+  #titleContent .btns{display:flex;gap:30px;margin-bottom:42px;transform-style:preserve-3d;transform:perspective(1200px) rotateX(-2deg);}
+  #titleContent button{position:relative;padding:16px 48px;font-size:17px;letter-spacing:6px;cursor:pointer;color:#e9dcc0;background:linear-gradient(180deg,rgba(58,78,104,.98) 0%,rgba(38,55,76,.98) 40%,rgba(14,22,34,.99) 100%);border:1px solid rgba(200,170,110,.45);border-radius:14px;font-family:inherit;transform:perspective(600px) rotateX(6deg);transform-origin:center top;box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 0 rgba(0,0,0,.5),0 3px 0 #0f1a26,0 6px 0 #0a131c,0 9px 0 #060c12,0 12px 0 #03060a,0 16px 26px rgba(0,0,0,0.75),0 0 20px rgba(255,190,110,.08);transition:transform .14s ease, box-shadow .14s ease, background .25s ease, border-color .25s ease;will-change:transform;}
+  #titleContent button::before{content:'';position:absolute;left:6px;right:6px;top:2px;height:45%;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0));pointer-events:none;}
+  #titleContent button:hover:not(:disabled){background:linear-gradient(180deg,rgba(96,130,168,.98) 0%,rgba(66,96,132,.98) 40%,rgba(28,42,60,.99) 100%);border-color:rgba(255,214,140,.95);color:#ffe6b0;transform:perspective(600px) rotateX(6deg) translateY(-4px);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 -1px 0 rgba(0,0,0,.5),0 3px 0 #16263a,0 6px 0 #0e1826,0 9px 0 #08101a,0 12px 0 #04080e,0 20px 34px rgba(0,0,0,0.8),0 0 34px rgba(255,190,110,.24);}
+  #titleContent button:active:not(:disabled){transform:perspective(600px) rotateX(6deg) translateY(6px);box-shadow:inset 0 2px 4px rgba(0,0,0,.5),inset 0 -1px 0 rgba(0,0,0,.3),0 1px 0 #0f1a26,0 2px 0 #0a131c,0 3px 0 #060c12,0 5px 8px rgba(0,0,0,0.6);}
+  #titleContent button:disabled{opacity:.3;cursor:not-allowed;transform:perspective(600px) rotateX(6deg);}
 
-  /* ============================================================
-     按钮
-     ============================================================ */
-  #titleContent .btns{
-    display:flex;gap:30px;
-    margin-bottom:42px;
-    transform-style:preserve-3d;
-    transform:perspective(1200px) rotateX(-2deg);
-  }
-  #titleContent button{
-    position:relative;
-    padding:16px 48px;
-    font-size:17px;letter-spacing:6px;
-    cursor:pointer;color:#e9dcc0;
-    background:
-      linear-gradient(180deg,
-        rgba(58,78,104,.98) 0%,
-        rgba(38,55,76,.98) 40%,
-        rgba(14,22,34,.99) 100%);
-    border:1px solid rgba(200,170,110,.45);
-    border-radius:14px;
-    font-family:inherit;
-    transform:perspective(600px) rotateX(6deg);
-    transform-origin:center top;
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,.14),
-      inset 0 -1px 0 rgba(0,0,0,.5),
-      0 3px 0 #0f1a26,
-      0 6px 0 #0a131c,
-      0 9px 0 #060c12,
-      0 12px 0 #03060a,
-      0 16px 26px rgba(0,0,0,0.75),
-      0 0 20px rgba(255,190,110,.08);
-    transition:transform .14s ease, box-shadow .14s ease, background .25s ease, border-color .25s ease;
-    will-change:transform;
-  }
-  #titleContent button::before{
-    content:'';position:absolute;left:6px;right:6px;top:2px;height:45%;
-    border-radius:10px;
-    background:linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0));
-    pointer-events:none;
-  }
-  #titleContent button:hover:not(:disabled){
-    background:
-      linear-gradient(180deg,
-        rgba(96,130,168,.98) 0%,
-        rgba(66,96,132,.98) 40%,
-        rgba(28,42,60,.99) 100%);
-    border-color:rgba(255,214,140,.95);
-    color:#ffe6b0;
-    transform:perspective(600px) rotateX(6deg) translateY(-4px);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,.18),
-      inset 0 -1px 0 rgba(0,0,0,.5),
-      0 3px 0 #16263a,
-      0 6px 0 #0e1826,
-      0 9px 0 #08101a,
-      0 12px 0 #04080e,
-      0 20px 34px rgba(0,0,0,0.8),
-      0 0 34px rgba(255,190,110,.24);
-  }
-  #titleContent button:active:not(:disabled){
-    transform:perspective(600px) rotateX(6deg) translateY(6px);
-    box-shadow:
-      inset 0 2px 4px rgba(0,0,0,.5),
-      inset 0 -1px 0 rgba(0,0,0,.3),
-      0 1px 0 #0f1a26,
-      0 2px 0 #0a131c,
-      0 3px 0 #060c12,
-      0 5px 8px rgba(0,0,0,0.6);
-  }
-  #titleContent button:disabled{
-    opacity:.3;cursor:not-allowed;
-    transform:perspective(600px) rotateX(6deg);
-  }
+  #titleContent .tip{font-size:13px;letter-spacing:2.5px;color:#66798c;text-shadow:0 1px 0 #1a2028,0 2px 6px rgba(0,0,0,0.9);transform:perspective(900px) rotateX(-3deg) translateZ(4px);}
 
-  #titleContent .tip{
-    font-size:13px;letter-spacing:2.5px;
-    color:#66798c;
-    text-shadow:
-      0 1px 0 #1a2028,
-      0 2px 6px rgba(0,0,0,0.9);
-    transform:perspective(900px) rotateX(-3deg) translateZ(4px);
-  }
-
-  /* 其他 UI */
   #titleContent .age-badge{position:absolute;left:34px;bottom:30px;display:flex;align-items:center;gap:13px;pointer-events:none;z-index:10;transform:perspective(800px) rotateX(-2deg) rotateY(6deg);transform-origin:left bottom;animation:ageIn 1.1s cubic-bezier(.2,.9,.3,1) .55s both;}
   @keyframes ageIn{from{opacity:0;}to{opacity:1;}}
   #titleContent .age-circle{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;letter-spacing:.5px;color:#ffffff;background:radial-gradient(circle at 36% 28%,#b0f0c2 0%,#5fc97c 45%,#3ea65f 78%,#1a5a2a 100%);box-shadow:0 0 0 2px rgba(255,255,255,.95),0 0 0 3px rgba(95,201,124,.6),0 2px 0 #0e2a18,0 4px 0 #081a10,0 6px 0 #040e08,0 10px 20px rgba(0,0,0,0.7),0 0 30px rgba(95,201,124,.35),inset 0 -4px 8px rgba(0,0,0,.28),inset 0 4px 6px rgba(255,255,255,.4);text-shadow:0 1px 0 rgba(0,0,0,0.5),0 -1px 1px rgba(255,255,255,0.4);}
@@ -325,267 +405,112 @@
   /* ============================================================
      启动动画
      ============================================================ */
-  #splash{
-    position:fixed;inset:0;z-index:9999;
-    background:#000;
-    display:flex;align-items:center;justify-content:center;
-    overflow:hidden;
-    cursor:pointer;
-    transition:opacity .9s ease;
-    opacity:0;
-    pointer-events:none;
-  }
-  #splash.show{
-    opacity:1;
-    pointer-events:auto;
-  }
-  #splash.hide{
-    opacity:0;
-    pointer-events:none;
-  }
-
-  #splashInner {
-    transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.8s ease;
-  }
-  #splashInner.transitioning {
-    transform: scale(1.1) translateY(-20px);
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .splash-inner{
-    position:relative;
-    display:flex;flex-direction:column;
-    align-items:center;justify-content:center;
-    width:100%;height:100%;
-  }
-
-  .splash-beam{
-    position:absolute;
-    left:50%;top:0;
-    width:2px;height:0;
-    transform:translateX(-50%);
-    background:linear-gradient(180deg,
-      rgba(255,230,180,0) 0%,
-      rgba(255,230,180,0.25) 40%,
-      rgba(255,240,200,0.9) 92%,
-      rgba(255,255,255,1) 100%);
-    box-shadow:
-      0 0 12px rgba(255,220,150,0.9),
-      0 0 28px rgba(255,200,120,0.6),
-      0 0 60px rgba(255,180,80,0.3);
-    opacity:0;
-    transition:
-      height .85s cubic-bezier(.4,0,.2,1),
-      opacity .35s ease;
-    pointer-events:none;
-  }
-  #splash.phase-1 .splash-beam{
-    opacity:1;
-    height:50%;
-  }
-  #splash.phase-2 .splash-beam{
-    opacity:0;
-  }
-
-  .splash-glow{
-    position:absolute;
-    left:50%;top:50%;
-    width:16px;height:16px;
-    border-radius:50%;
-    transform:translate(-50%,-50%) scale(0);
-    background:radial-gradient(circle,
-      rgba(255,255,255,1) 0%,
-      rgba(255,240,210,0.9) 20%,
-      rgba(255,220,160,0.5) 45%,
-      rgba(255,190,100,0) 75%);
-    box-shadow:
-      0 0 30px rgba(255,240,200,1),
-      0 0 60px rgba(255,220,160,0.8),
-      0 0 120px rgba(255,200,120,0.5),
-      0 0 200px rgba(255,180,80,0.3);
-    opacity:0;
-    transition:
-      transform .7s cubic-bezier(.2,.8,.2,1),
-      opacity .4s ease;
-    pointer-events:none;
-  }
-  #splash.phase-2 .splash-glow{
-    opacity:1;
-    transform:translate(-50%,-50%) scale(1);
-  }
-  #splash.phase-3 .splash-glow{
-    opacity:.55;
-    transform:translate(-50%,-50%) scale(2.2);
-  }
-  #splash.phase-4 .splash-glow{
-    opacity:.25;
-  }
-
-  .splash-title{
-    position:relative;z-index:2;
-    margin:0;
-    font-size:76px;
-    font-weight:600;
-    color:#f2e6cb;
-    letter-spacing:60px;
-    padding-left:60px;
-    transition:
-      letter-spacing 1.3s cubic-bezier(.2,.8,.2,1),
-      padding-left 1.3s cubic-bezier(.2,.8,.2,1);
-    text-shadow:
-      0 2px 0 #8a6a3a,
-      0 4px 0 #5a3a10,
-      0 6px 0 #3a1a04,
-      0 8px 0 #1a0600,
-      0 12px 24px rgba(0,0,0,.9),
-      0 0 30px rgba(255,210,140,.55),
-      0 0 60px rgba(255,180,100,.3);
-    filter:drop-shadow(0 0 0 rgba(255,200,120,0));
-  }
-  #splash.phase-3 .splash-title{
-    letter-spacing:26px;
-    padding-left:26px;
-    animation:splashTitleGlow 3s ease-in-out infinite 1.3s;
-  }
-  @keyframes splashTitleGlow{
-    0%,100%{filter:drop-shadow(0 0 20px rgba(255,200,120,.35));}
-    50%{filter:drop-shadow(0 0 48px rgba(255,220,150,.75));}
-  }
-  .splash-title span{
-    display:inline-block;
-    opacity:0;
-    transform:translateY(28px) scale(1.35);
-    filter:blur(18px);
-    transition:
-      opacity .85s cubic-bezier(.2,.8,.2,1),
-      transform .85s cubic-bezier(.2,.8,.2,1),
-      filter .85s cubic-bezier(.2,.8,.2,1);
-  }
-  #splash.phase-3 .splash-title span{
-    opacity:1;
-    transform:translateY(0) scale(1);
-    filter:blur(0);
-  }
+  #splash{position:fixed;inset:0;z-index:9999;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;transition:opacity .9s ease;opacity:0;pointer-events:none;}
+  #splash.show{opacity:1;pointer-events:auto;}
+  #splash.hide{opacity:0;pointer-events:none;}
+  #splashInner {transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.8s ease;}
+  #splashInner.transitioning {transform: scale(1.1) translateY(-20px);opacity: 0;pointer-events: none;}
+  .splash-inner{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;}
+  .splash-beam{position:absolute;left:50%;top:0;width:2px;height:0;transform:translateX(-50%);background:linear-gradient(180deg,rgba(255,230,180,0) 0%,rgba(255,230,180,0.25) 40%,rgba(255,240,200,0.9) 92%,rgba(255,255,255,1) 100%);box-shadow:0 0 12px rgba(255,220,150,0.9),0 0 28px rgba(255,200,120,0.6),0 0 60px rgba(255,180,80,0.3);opacity:0;transition:height .85s cubic-bezier(.4,0,.2,1),opacity .35s ease;pointer-events:none;}
+  #splash.phase-1 .splash-beam{opacity:1;height:50%;}
+  #splash.phase-2 .splash-beam{opacity:0;}
+  .splash-glow{position:absolute;left:50%;top:50%;width:16px;height:16px;border-radius:50%;transform:translate(-50%,-50%) scale(0);background:radial-gradient(circle,rgba(255,255,255,1) 0%,rgba(255,240,210,0.9) 20%,rgba(255,220,160,0.5) 45%,rgba(255,190,100,0) 75%);box-shadow:0 0 30px rgba(255,240,200,1),0 0 60px rgba(255,220,160,0.8),0 0 120px rgba(255,200,120,0.5),0 0 200px rgba(255,180,80,0.3);opacity:0;transition:transform .7s cubic-bezier(.2,.8,.2,1),opacity .4s ease;pointer-events:none;}
+  #splash.phase-2 .splash-glow{opacity:1;transform:translate(-50%,-50%) scale(1);}
+  #splash.phase-3 .splash-glow{opacity:.55;transform:translate(-50%,-50%) scale(2.2);}
+  #splash.phase-4 .splash-glow{opacity:.25;}
+  .splash-title{position:relative;z-index:2;margin:0;font-size:76px;font-weight:600;color:#f2e6cb;letter-spacing:60px;padding-left:60px;transition:letter-spacing 1.3s cubic-bezier(.2,.8,.2,1),padding-left 1.3s cubic-bezier(.2,.8,.2,1);text-shadow:0 2px 0 #8a6a3a,0 4px 0 #5a3a10,0 6px 0 #3a1a04,0 8px 0 #1a0600,0 12px 24px rgba(0,0,0,.9),0 0 30px rgba(255,210,140,.55),0 0 60px rgba(255,180,100,.3);filter:drop-shadow(0 0 0 rgba(255,200,120,0));}
+  #splash.phase-3 .splash-title{letter-spacing:26px;padding-left:26px;animation:splashTitleGlow 3s ease-in-out infinite 1.3s;}
+  @keyframes splashTitleGlow{0%,100%{filter:drop-shadow(0 0 20px rgba(255,200,120,.35));}50%{filter:drop-shadow(0 0 48px rgba(255,220,150,.75));}}
+  .splash-title span{display:inline-block;opacity:0;transform:translateY(28px) scale(1.35);filter:blur(18px);transition:opacity .85s cubic-bezier(.2,.8,.2,1),transform .85s cubic-bezier(.2,.8,.2,1),filter .85s cubic-bezier(.2,.8,.2,1);}
+  #splash.phase-3 .splash-title span{opacity:1;transform:translateY(0) scale(1);filter:blur(0);}
   #splash.phase-3 .splash-title span:nth-child(1){ transition-delay:0s; }
   #splash.phase-3 .splash-title span:nth-child(2){ transition-delay:.13s; }
   #splash.phase-3 .splash-title span:nth-child(3){ transition-delay:.26s; }
   #splash.phase-3 .splash-title span:nth-child(4){ transition-delay:.39s; }
-
-  .splash-sub{
-    position:relative;z-index:2;
-    margin:24px 0 0;
-    font-size:16px;
-    letter-spacing:14px;
-    padding-left:14px;
-    color:#a0b6cc;
-    opacity:0;
-    transform:translateY(10px);
-    clip-path:inset(0 50% 0 50%);
-    transition:
-      opacity .6s ease,
-      transform .6s ease,
-      clip-path .8s cubic-bezier(.2,.8,.2,1);
-    text-shadow:
-      0 1px 0 #2a3a4a,
-      0 2px 0 #1a2a3a,
-      0 3px 12px rgba(0,0,0,.9),
-      0 0 20px rgba(140,180,220,.3);
-  }
-  #splash.phase-4 .splash-sub{
-    opacity:.85;
-    transform:translateY(0);
-    clip-path:inset(0 0 0 0);
-  }
-
-  .splash-studio{
-    position:relative;z-index:2;
-    margin:18px 0 0;
-    font-size:13px;
-    letter-spacing:8px;
-    padding-left:8px;
-    color:rgba(255,214,140,.72);
-    opacity:0;
-    transform:translateY(8px);
-    transition:
-      opacity .8s ease,
-      transform .8s ease;
-    text-shadow:
-      0 1px 0 #4a2a10,
-      0 2px 0 #2a1808,
-      0 2px 8px rgba(0,0,0,.9),
-      0 0 16px rgba(255,200,110,.35);
-  }
-  #splash.phase-4b .splash-studio{
-    opacity:1;
-    transform:translateY(0);
-  }
-
-  .splash-footer{
-    position:absolute;
-    bottom:64px;left:50%;
-    transform:translateX(-50%);
-    font-size:11px;
-    letter-spacing:5px;
-    padding-left:5px;
-    color:rgba(160,180,200,.45);
-    opacity:0;
-    transition:opacity .5s ease;
-    text-shadow:0 1px 0 rgba(0,0,0,.9),0 2px 8px rgba(0,0,0,.9);
-    pointer-events:none;
-  }
-  #splash.phase-5 .splash-footer{
-    opacity:1;
-  }
-
-  .splash-skip{
-    position:absolute;
-    right:32px;bottom:28px;
-    font-size:12px;
-    letter-spacing:3px;
-    color:rgba(160,180,200,.6);
-    opacity:0;
-    transition:opacity .5s ease;
-    pointer-events:none;
-    z-index:20;
-  }
-  #splash.phase-3 .splash-skip{
-    opacity:1;
-  }
-  @keyframes pulseText {
-    0%, 100% { opacity: 0.4; }
-    50% { opacity: 1; }
-  }
-
-  .splash-particle{
-    position:absolute;
-    width:2px;height:2px;
-    border-radius:50%;
-    background:#ffe6b0;
-    box-shadow:
-      0 0 8px rgba(255,230,180,.9),
-      0 0 16px rgba(255,200,120,.6);
-    pointer-events:none;
-    animation:particleRise 3.4s ease-out forwards;
-  }
-  @keyframes particleRise{
-    0%{opacity:0;transform:translateY(0) scale(.3);}
-    15%{opacity:1;transform:translateY(-15px) scale(1);}
-    60%{opacity:.9;transform:translateY(-80px) scale(.8);}
-    100%{opacity:0;transform:translateY(-160px) scale(.2);}
-  }
+  .splash-sub{position:relative;z-index:2;margin:24px 0 0;font-size:16px;letter-spacing:14px;padding-left:14px;color:#a0b6cc;opacity:0;transform:translateY(10px);clip-path:inset(0 50% 0 50%);transition:opacity .6s ease,transform .6s ease,clip-path .8s cubic-bezier(.2,.8,.2,1);text-shadow:0 1px 0 #2a3a4a,0 2px 0 #1a2a3a,0 3px 12px rgba(0,0,0,.9),0 0 20px rgba(140,180,220,.3);}
+  #splash.phase-4 .splash-sub{opacity:.85;transform:translateY(0);clip-path:inset(0 0 0 0);}
+  .splash-studio{position:relative;z-index:2;margin:18px 0 0;font-size:13px;letter-spacing:8px;padding-left:8px;color:rgba(255,214,140,.72);opacity:0;transform:translateY(8px);transition:opacity .8s ease,transform .8s ease;text-shadow:0 1px 0 #4a2a10,0 2px 0 #2a1808,0 2px 8px rgba(0,0,0,.9),0 0 16px rgba(255,200,110,.35);}
+  #splash.phase-4b .splash-studio{opacity:1;transform:translateY(0);}
+  .splash-footer{position:absolute;bottom:64px;left:50%;transform:translateX(-50%);font-size:11px;letter-spacing:5px;padding-left:5px;color:rgba(160,180,200,.45);opacity:0;transition:opacity .5s ease;text-shadow:0 1px 0 rgba(0,0,0,.9),0 2px 8px rgba(0,0,0,.9);pointer-events:none;}
+  #splash.phase-5 .splash-footer{opacity:1;}
+  .splash-skip{position:absolute;right:32px;bottom:28px;font-size:12px;letter-spacing:3px;color:rgba(160,180,200,.6);opacity:0;transition:opacity .5s ease;pointer-events:none;z-index:20;}
+  #splash.phase-3 .splash-skip{opacity:1;}
+  @keyframes pulseText {0%, 100% { opacity: 0.4; }50% { opacity: 1; }}
+  .splash-particle{position:absolute;width:2px;height:2px;border-radius:50%;background:#ffe6b0;box-shadow:0 0 8px rgba(255,230,180,.9),0 0 16px rgba(255,200,120,.6);pointer-events:none;animation:particleRise 3.4s ease-out forwards;}
+  @keyframes particleRise{0%{opacity:0;transform:translateY(0) scale(.3);}15%{opacity:1;transform:translateY(-15px) scale(1);}60%{opacity:.9;transform:translateY(-80px) scale(.8);}100%{opacity:0;transform:translateY(-160px) scale(.2);}}
 </style>
 </head>
 <body>
 
 <!-- =========================================================
-     模拟电脑桌面
+     模拟 Windows 10 桌面
      ========================================================= -->
 <div id="desktop">
-  <div class="desktop-icon" id="gameIcon">
-    <!-- 请在主目录放入 icon.png -->
-    <img src="icon.png" alt="雨夜归途" onerror="this.style.display='none'">
-    <span>雨夜归途</span>
+  <!-- 桌面图标区域 -->
+  <div class="desktop-area">
+    <div class="desktop-icon" id="gameIcon">
+      <img src="icon.webp" alt="雨夜归途" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'48\' height=\'48\' viewBox=\'0 0 48 48\'><rect width=\'48\' height=\'48\' rx=\'8\' fill=\'%23007acc\'/><text x=\'24\' y=\'30\' font-size=\'20\' fill=\'white\' text-anchor=\'middle\' font-family=\'sans-serif\'>R</text></svg>'">
+      <span>雨夜归途</span>
+    </div>
+  </div>
+
+  <!-- 底部任务栏 -->
+  <div id="taskbar">
+    <div class="tb-left">
+      <div class="tb-start" title="开始">
+        <div class="win-logo">
+          <div></div><div></div><div></div><div></div>
+        </div>
+      </div>
+      <div class="tb-search">
+        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        <span>在此处输入以搜索</span>
+      </div>
+      <div class="tb-taskview" title="任务视图">
+        <div class="taskview-icon"></div>
+      </div>
+    </div>
+
+    <div class="tb-right">
+      <div class="tb-tray" id="trayBtn">
+        <svg viewBox="0 0 24 24"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+        <span style="font-size:12px;font-weight:600;padding:0 4px;">中</span>
+      </div>
+      <div class="tb-time" id="tbTime">
+        <span class="time" id="timeText">00:00</span>
+        <span class="date" id="dateText">2026/10/25</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 右键菜单 -->
+<div id="contextMenu">
+  <div class="cm-item" id="cmRefresh">
+    <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+    刷新
+  </div>
+  <div class="cm-divider"></div>
+  <div class="cm-item" id="cmSettings">
+    <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+    显示设置
+  </div>
+  <div class="cm-item" id="cmPersonalize">
+    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-2-5.5l5.5-5.5-5.5-5.5-5.5 5.5z"/></svg>
+    个性化
+  </div>
+</div>
+
+<!-- 启动提示弹窗 -->
+<div id="launchPrompt">
+  <div class="prompt-box">
+    <div class="prompt-header">启动提示</div>
+    <div class="prompt-body">您正在尝试启动【雨夜归途】。点击“继续”后将强制进入全屏模式。</div>
+    <div class="prompt-footer">
+      <button class="prompt-btn primary" id="btnContinue">继续</button>
+    </div>
   </div>
 </div>
 
@@ -612,28 +537,17 @@
   <canvas id="cvFx"></canvas>
   
   <div id="titleContent">
-    <!-- 万圣节装饰：倒挂蝙蝠（默认隐藏，JS控制显示） -->
     <div class="title-bat left halloween-el" id="batLeft">🦇</div>
     <div class="title-bat right halloween-el" id="batRight">🦇</div>
-
     <h1>雨夜归途</h1>
     <p class="sub">一只浣熊的寻找</p>
     <p class="halloween-tag halloween-el">🎃 TRICK OR TREAT · 万圣夜 🎃</p>
-    
     <div class="btns">
       <button id="btnNew">新 游 戏</button>
       <button id="btnCont">继续存档</button>
     </div>
     <p class="tip">点击场景中的物件进行探索 · 进度自动保存</p>
-
-    <div class="age-badge">
-      <div class="age-circle">16+</div>
-      <div class="age-label">
-        <span class="cn">适龄提示</span>
-        <span class="en">AGE RATING</span>
-      </div>
-    </div>
-
+    <div class="age-badge"><div class="age-circle">16+</div><div class="age-label"><span class="cn">适龄提示</span><span class="en">AGE RATING</span></div></div>
     <div class="thanks">
       <div class="label">感谢名单</div>
       <div class="row"><span class="dot"></span><span class="role"><span class="live">主播</span></span><span class="name">刘忠英</span></div>
@@ -644,18 +558,14 @@
       <div class="row"><span class="dot"></span><span class="role"><span class="live">主播</span></span><span class="name">水水_SSS</span></div>
       <div class="msg">第一个不打主线直接挑战血腥线的勇者</div>
     </div>
-
     <div class="health-tip">
-      <p>抵制不良游戏，拒绝盗版游戏。</p>
-      <p>注意自我保护，谨防受骗上当。</p>
-      <p>适度游戏益脑，沉迷游戏伤身。</p>
-      <p>合理安排时间，享受健康生活。</p>
+      <p>抵制不良游戏，拒绝盗版游戏。</p><p>注意自我保护，谨防受骗上当。</p><p>适度游戏益脑，沉迷游戏伤身。</p><p>合理安排时间，享受健康生活。</p>
     </div>
   </div>
 </div>
 
 <button id="btnExitFs" aria-label="退出全屏" title="退出全屏">退出全屏</button>
-<div id="snackbar" role="status" aria-live="polite"><span class="sb-icon">!</span><span class="sb-text">操作异常</span></div>
+<div id="snackbar" role="status" aria-live="polite"><span class="sb-icon">!</span><span class="sb-text">操作失败</span></div>
 <iframe id="gameFrame" src="about:blank" allow="autoplay" frameborder="0"></iframe>
 <div id="gameLoading"><div class="gl-spinner"></div><div class="gl-text">正在进入雨夜…</div></div>
 
@@ -667,8 +577,162 @@
   var splash = document.getElementById('splash');
   var desktop = document.getElementById('desktop');
   var gameIcon = document.getElementById('gameIcon');
-  if(!splash || !desktop || !gameIcon) return;
+  var launchPrompt = document.getElementById('launchPrompt');
+  var btnContinue = document.getElementById('btnContinue');
+  var contextMenu = document.getElementById('contextMenu');
+  
+  if(!splash || !desktop || !gameIcon || !launchPrompt) return;
 
+  // 图标选中状态逻辑
+  gameIcon.addEventListener('mousedown', function(e){
+    e.stopPropagation();
+    gameIcon.classList.add('selected');
+    contextMenu.classList.remove('show');
+  });
+  document.addEventListener('mousedown', function(e){
+    if(!gameIcon.contains(e.target)) {
+      gameIcon.classList.remove('selected');
+    }
+    contextMenu.classList.remove('show');
+  });
+
+  // 实时更新任务栏时钟
+  function updateClock() {
+    var now = new Date();
+    var h = String(now.getHours()).padStart(2, '0');
+    var m = String(now.getMinutes()).padStart(2, '0');
+    var Y = now.getFullYear();
+    var M = String(now.getMonth() + 1).padStart(2, '0');
+    var D = String(now.getDate()).padStart(2, '0');
+    var timeEl = document.getElementById('timeText');
+    var dateEl = document.getElementById('dateText');
+    if(timeEl) timeEl.textContent = h + ':' + m;
+    if(dateEl) dateEl.textContent = Y + '/' + M + '/' + D;
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // =========================================================
+  // 启动提示弹窗逻辑
+  // =========================================================
+  gameIcon.addEventListener('click', function(e){
+    e.stopPropagation();
+    gameIcon.classList.remove('selected');
+    contextMenu.classList.remove('show');
+    
+    // 显示弹窗
+    launchPrompt.classList.add('show');
+  });
+
+  // 点击“继续”按钮
+  btnContinue.addEventListener('click', function(e){
+    e.stopPropagation();
+    launchPrompt.classList.remove('show');
+    
+    // 强制请求全屏
+    var el = document.documentElement;
+    if(!document.fullscreenElement && !document.webkitFullscreenElement){
+      var fn = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+      if(fn){ try{ fn.call(el); }catch(err){} }
+    }
+    
+    // 桌面淡出，启动动画淡入
+    desktop.classList.add('hide');
+    setTimeout(function(){
+      startSplash();
+    }, 600);
+  });
+
+  // 点击弹窗背景不关闭，必须点继续
+
+  // =========================================================
+  // 右键菜单逻辑 (桌面及长按)
+  // =========================================================
+  function showContextMenu(x, y) {
+    // 如果游戏已经启动，不显示右键菜单
+    if(desktop.classList.contains('hide')) return;
+    
+    var cw = contextMenu.offsetWidth || 180;
+    var ch = contextMenu.offsetHeight || 120;
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    
+    // 防止出界
+    var left = Math.min(x, vw - cw - 10);
+    var top = Math.min(y, vh - ch - 10);
+    
+    contextMenu.style.left = left + 'px';
+    contextMenu.style.top = top + 'px';
+    contextMenu.classList.add('show');
+  }
+
+  // 阻止默认右键菜单
+  document.addEventListener('contextmenu', function(e){
+    e.preventDefault();
+    // 只在桌面区域显示右键菜单，不覆盖任务栏和弹窗
+    if(e.target.closest('#taskbar') || e.target.closest('.prompt-box')) return;
+    showContextMenu(e.clientX, e.clientY);
+  });
+
+  // 移动端长按逻辑
+  var touchTimer = null;
+  var touchStartX = 0;
+  var touchStartY = 0;
+  var longPressTriggered = false;
+
+  document.addEventListener('touchstart', function(e){
+    if(desktop.classList.contains('hide')) return;
+    if(e.target.closest('#taskbar') || e.target.closest('.prompt-box')) return;
+    
+    var touch = e.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    longPressTriggered = false;
+    
+    if(touchTimer) clearTimeout(touchTimer);
+    touchTimer = setTimeout(function(){
+      longPressTriggered = true;
+      // 震动反馈
+      if(navigator.vibrate) navigator.vibrate(50);
+      // 阻止后续的 touchend 触发点击
+      showContextMenu(touchStartX, touchStartY);
+    }, 600); // 600ms 长按
+  }, {passive: true});
+
+  document.addEventListener('touchmove', function(e){
+    if(touchTimer) clearTimeout(touchTimer);
+    if(!e.touches.length) return;
+    var dx = Math.abs(e.touches[0].clientX - touchStartX);
+    var dy = Math.abs(e.touches[0].clientY - touchStartY);
+    if(dx > 10 || dy > 10) {
+      longPressTriggered = true; // 移动了，取消长按
+    }
+  }, {passive: true});
+
+  document.addEventListener('touchend', function(e){
+    if(touchTimer) clearTimeout(touchTimer);
+    if(longPressTriggered) {
+      e.preventDefault(); // 阻止点击事件
+    }
+  }, {passive: false});
+
+  // 菜单项点击逻辑
+  document.getElementById('cmRefresh').addEventListener('click', function() {
+    contextMenu.classList.remove('show');
+    window.__SHOW_SNACKBAR__('桌面已刷新', 1500);
+  });
+  document.getElementById('cmSettings').addEventListener('click', function() {
+    contextMenu.classList.remove('show');
+    window.__SHOW_SNACKBAR__('显示设置不可用', 1500);
+  });
+  document.getElementById('cmPersonalize').addEventListener('click', function() {
+    contextMenu.classList.remove('show');
+    window.__SHOW_SNACKBAR__('个性化设置不可用', 1500);
+  });
+
+  // =========================================================
+  // 启动动画与过渡逻辑
+  // =========================================================
   var isStarting = false;
   var splashStarted = false;
 
@@ -739,22 +803,6 @@
     }, 2500);
   }
 
-  // 点击桌面图标
-  gameIcon.addEventListener('click', function(e){
-    e.stopPropagation();
-    // 请求全屏
-    var el = document.documentElement;
-    if(!document.fullscreenElement && !document.webkitFullscreenElement){
-      var fn = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
-      if(fn){ try{ fn.call(el); }catch(err){} }
-    }
-    // 桌面淡出，启动动画淡入
-    desktop.classList.add('hide');
-    setTimeout(function(){
-      startSplash();
-    }, 600); // 等桌面稍微淡出一点再开始播放
-  });
-
   // 点击跳过启动动画
   splash.addEventListener('click', function(e){
     e.stopPropagation();
@@ -785,7 +833,6 @@
     resizeSplashCanvas();
     window.addEventListener('resize', resizeSplashCanvas);
     
-    // 生成蝙蝠
     for(var i = 0; i < 40; i++){
       var fromLeft = i % 2 === 0;
       clickBats.push({
@@ -800,7 +847,6 @@
       });
     }
     
-    // 生成南瓜
     var pCount = 7;
     for(var j = 0; j < pCount; j++){
       var px = scv.width / 2 + (j - Math.floor(pCount / 2)) * (scv.width * 0.1);
@@ -839,7 +885,6 @@
 
     sctx.clearRect(0, 0, scv.width, scv.height);
 
-    // 蝙蝠
     for(var i = clickBats.length - 1; i >= 0; i--){
       var b = clickBats[i];
       b.phase += b.flapSpeed * 60 * dt;
@@ -881,7 +926,6 @@
       drawSplashBat(sctx, b);
     }
 
-    // 南瓜
     for(var j = 0; j < clickPumpkins.length; j++){
       var p = clickPumpkins[j];
       if(p.y > p.targetY){
@@ -988,7 +1032,7 @@
     ctx.restore();
   }
 
-  // 全局全屏拦截逻辑提前，确保桌面阶段生效
+  // 全局全屏拦截逻辑
   window.__SHOW_SNACKBAR__ = function(msg, duration) {
     var snackbarEl = document.getElementById('snackbar');
     var snackbarTx = snackbarEl.querySelector('.sb-text');
@@ -1022,11 +1066,12 @@
   function handleFullscreenChange(){
     var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
     if(isFs) return;
+    // 如果还没点继续，或者已经点了继续，只要退出就拦截
     if(intentionalExit){ intentionalExit = false; return; }
     if(fsReenterLock) return;
     fsReenterLock = true;
     window.__REQUEST_FS__();
-    window.__SHOW_SNACKBAR__('操作失败', 1800);
+    window.__SHOW_SNACKBAR__('操作失败：无法退出全屏', 1800);
     if(fsGuardTimer) clearTimeout(fsGuardTimer);
     fsGuardTimer = setTimeout(function(){ fsReenterLock = false; fsGuardTimer = null; }, 600);
   }
