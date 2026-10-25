@@ -29,9 +29,16 @@
     background-position: center;
     display: flex;
     flex-direction: column;
-    transition: opacity 0.8s ease, transform 0.8s ease;
-    pointer-events: auto;
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    pointer-events: none;
     overflow: hidden;
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  #desktop.show {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
   }
   #desktop.hide {
     opacity: 0;
@@ -244,27 +251,26 @@
   .cm-divider { height: 1px; background: #3a3a3a; margin: 4px 0; }
 
   /* ============================================================
-     启动提示弹窗
+     进入桌面前的启动确认弹窗
      ============================================================ */
   #launchPrompt {
     position: fixed;
     inset: 0;
     z-index: 10010;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
+    background: #04070b;
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s;
-  }
-  #launchPrompt.show {
     opacity: 1;
     pointer-events: auto;
+    transition: opacity 0.4s ease;
+  }
+  #launchPrompt.hide {
+    opacity: 0;
+    pointer-events: none;
   }
   .prompt-box {
-    width: 360px;
+    width: 380px;
     background: #202020;
     border: 1px solid #3a3a3a;
     border-radius: 8px;
@@ -443,10 +449,9 @@
 <body>
 
 <!-- =========================================================
-     模拟 Windows 10 桌面
-     ========================================================= -->
+     模拟 Windows 10 桌面 (默认隐藏，确认弹窗后显示)
+     ============================================================ -->
 <div id="desktop">
-  <!-- 桌面图标区域 -->
   <div class="desktop-area">
     <div class="desktop-icon" id="gameIcon">
       <img src="icon.webp" alt="雨夜归途" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'48\' height=\'48\' viewBox=\'0 0 48 48\'><rect width=\'48\' height=\'48\' rx=\'8\' fill=\'%23007acc\'/><text x=\'24\' y=\'30\' font-size=\'20\' fill=\'white\' text-anchor=\'middle\' font-family=\'sans-serif\'>R</text></svg>'">
@@ -454,23 +459,17 @@
     </div>
   </div>
 
-  <!-- 底部任务栏 -->
   <div id="taskbar">
     <div class="tb-left">
       <div class="tb-start" title="开始">
-        <div class="win-logo">
-          <div></div><div></div><div></div><div></div>
-        </div>
+        <div class="win-logo"><div></div><div></div><div></div><div></div></div>
       </div>
       <div class="tb-search">
         <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
         <span>在此处输入以搜索</span>
       </div>
-      <div class="tb-taskview" title="任务视图">
-        <div class="taskview-icon"></div>
-      </div>
+      <div class="tb-taskview" title="任务视图"><div class="taskview-icon"></div></div>
     </div>
-
     <div class="tb-right">
       <div class="tb-tray" id="trayBtn">
         <svg viewBox="0 0 24 24"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
@@ -503,11 +502,13 @@
   </div>
 </div>
 
-<!-- 启动提示弹窗 -->
+<!-- =========================================================
+     进入桌面前的启动确认弹窗
+     ============================================================ -->
 <div id="launchPrompt">
   <div class="prompt-box">
     <div class="prompt-header">启动提示</div>
-    <div class="prompt-body">您正在尝试启动【雨夜归途】。点击“继续”后将强制进入全屏模式。</div>
+    <div class="prompt-body">您正在尝试启动《雨夜归途》。</div>
     <div class="prompt-footer">
       <button class="prompt-btn primary" id="btnContinue">继续</button>
     </div>
@@ -571,7 +572,7 @@
 
 <script src="assets3d/r3d.js"></script>
 
-<!-- 启动动画控制 & 桌面入口 -->
+<!-- 启动控制 & 桌面入口 -->
 <script>
 (function(){
   var splash = document.getElementById('splash');
@@ -582,6 +583,26 @@
   var contextMenu = document.getElementById('contextMenu');
   
   if(!splash || !desktop || !gameIcon || !launchPrompt) return;
+
+  // 1. 初始状态：显示弹窗（launchPrompt 默认 css 就是 opacity:1），桌面默认隐藏
+  
+  // 2. 点击“继续”按钮
+  btnContinue.addEventListener('click', function(e){
+    e.stopPropagation();
+    
+    // 静默请求全屏
+    var el = document.documentElement;
+    if(!document.fullscreenElement && !document.webkitFullscreenElement){
+      var fn = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+      if(fn){ try{ fn.call(el); }catch(err){} }
+    }
+    
+    // 隐藏弹窗，显示桌面
+    launchPrompt.classList.add('hide');
+    setTimeout(function(){
+      desktop.classList.add('show');
+    }, 100);
+  });
 
   // 图标选中状态逻辑
   gameIcon.addEventListener('mousedown', function(e){
@@ -613,28 +634,12 @@
   setInterval(updateClock, 1000);
 
   // =========================================================
-  // 启动提示弹窗逻辑
+  // 点击桌面图标直接启动游戏
   // =========================================================
   gameIcon.addEventListener('click', function(e){
     e.stopPropagation();
     gameIcon.classList.remove('selected');
     contextMenu.classList.remove('show');
-    
-    // 显示弹窗
-    launchPrompt.classList.add('show');
-  });
-
-  // 点击“继续”按钮
-  btnContinue.addEventListener('click', function(e){
-    e.stopPropagation();
-    launchPrompt.classList.remove('show');
-    
-    // 强制请求全屏
-    var el = document.documentElement;
-    if(!document.fullscreenElement && !document.webkitFullscreenElement){
-      var fn = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
-      if(fn){ try{ fn.call(el); }catch(err){} }
-    }
     
     // 桌面淡出，启动动画淡入
     desktop.classList.add('hide');
@@ -643,21 +648,17 @@
     }, 600);
   });
 
-  // 点击弹窗背景不关闭，必须点继续
-
   // =========================================================
   // 右键菜单逻辑 (桌面及长按)
   // =========================================================
   function showContextMenu(x, y) {
-    // 如果游戏已经启动，不显示右键菜单
-    if(desktop.classList.contains('hide')) return;
+    if(desktop.classList.contains('hide') || !desktop.classList.contains('show')) return;
     
     var cw = contextMenu.offsetWidth || 180;
     var ch = contextMenu.offsetHeight || 120;
     var vw = window.innerWidth;
     var vh = window.innerHeight;
     
-    // 防止出界
     var left = Math.min(x, vw - cw - 10);
     var top = Math.min(y, vh - ch - 10);
     
@@ -666,22 +667,19 @@
     contextMenu.classList.add('show');
   }
 
-  // 阻止默认右键菜单
   document.addEventListener('contextmenu', function(e){
     e.preventDefault();
-    // 只在桌面区域显示右键菜单，不覆盖任务栏和弹窗
     if(e.target.closest('#taskbar') || e.target.closest('.prompt-box')) return;
     showContextMenu(e.clientX, e.clientY);
   });
 
-  // 移动端长按逻辑
   var touchTimer = null;
   var touchStartX = 0;
   var touchStartY = 0;
   var longPressTriggered = false;
 
   document.addEventListener('touchstart', function(e){
-    if(desktop.classList.contains('hide')) return;
+    if(desktop.classList.contains('hide') || !desktop.classList.contains('show')) return;
     if(e.target.closest('#taskbar') || e.target.closest('.prompt-box')) return;
     
     var touch = e.touches[0];
@@ -692,11 +690,9 @@
     if(touchTimer) clearTimeout(touchTimer);
     touchTimer = setTimeout(function(){
       longPressTriggered = true;
-      // 震动反馈
       if(navigator.vibrate) navigator.vibrate(50);
-      // 阻止后续的 touchend 触发点击
       showContextMenu(touchStartX, touchStartY);
-    }, 600); // 600ms 长按
+    }, 600);
   }, {passive: true});
 
   document.addEventListener('touchmove', function(e){
@@ -705,18 +701,17 @@
     var dx = Math.abs(e.touches[0].clientX - touchStartX);
     var dy = Math.abs(e.touches[0].clientY - touchStartY);
     if(dx > 10 || dy > 10) {
-      longPressTriggered = true; // 移动了，取消长按
+      longPressTriggered = true;
     }
   }, {passive: true});
 
   document.addEventListener('touchend', function(e){
     if(touchTimer) clearTimeout(touchTimer);
     if(longPressTriggered) {
-      e.preventDefault(); // 阻止点击事件
+      e.preventDefault();
     }
   }, {passive: false});
 
-  // 菜单项点击逻辑
   document.getElementById('cmRefresh').addEventListener('click', function() {
     contextMenu.classList.remove('show');
     window.__SHOW_SNACKBAR__('桌面已刷新', 1500);
@@ -780,7 +775,6 @@
     splashStarted = true;
     splash.classList.add('show');
     
-    // 启动文字动画时序
     setTimeout(function(){ if(!isStarting) splash.classList.add('phase-1'); }, 300);
     setTimeout(function(){ if(!isStarting) splash.classList.add('phase-2'); }, 900);
     setTimeout(function(){
@@ -793,7 +787,6 @@
     setTimeout(function(){ if(!isStarting) splash.classList.add('phase-4b'); }, 2300);
     setTimeout(function(){ if(!isStarting) splash.classList.add('phase-5'); }, 2700);
     
-    // 2.5s 时提示改为“点击开始”
     setTimeout(function(){
       if(!isStarting){
         var skipEl = document.getElementById('splashSkip');
@@ -803,7 +796,6 @@
     }, 2500);
   }
 
-  // 点击跳过启动动画
   splash.addEventListener('click', function(e){
     e.stopPropagation();
     if(isStarting) return;
@@ -811,7 +803,6 @@
     startTransition();
   });
 
-  // 过渡动画部分
   var scv = document.getElementById('splashCanvas');
   var sctx = scv.getContext('2d');
   var clickBats = [];
@@ -1066,7 +1057,6 @@
   function handleFullscreenChange(){
     var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
     if(isFs) return;
-    // 如果还没点继续，或者已经点了继续，只要退出就拦截
     if(intentionalExit){ intentionalExit = false; return; }
     if(fsReenterLock) return;
     fsReenterLock = true;
