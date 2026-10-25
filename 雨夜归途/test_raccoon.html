@@ -2,163 +2,263 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>导出高清浣熊 sprite</title>
+<title>导出浣熊 Sprite · 8×8 高清版</title>
 <style>
-  body{background:#0a0e14;color:#dbe8f5;font-family:system-ui,sans-serif;padding:40px;text-align:center;}
-  h1{color:#ffd98f;margin-bottom:16px;}
-  p{color:#9fb6cc;font-size:14px;line-height:1.8;margin-bottom:20px;}
-  button{padding:12px 28px;font-size:15px;cursor:pointer;background:#d9a44a;border:none;
-    border-radius:10px;font-weight:700;color:#1a0e04;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#0a0e14;color:#dbe8f5;font-family:system-ui,sans-serif;
+    padding:40px;min-height:100vh;text-align:center;}
+  h1{font-size:22px;margin-bottom:16px;color:#ffd98f;}
+  p{line-height:1.8;color:#9fb6cc;font-size:14px;margin-bottom:8px;}
+  .row{display:flex;gap:12px;margin:20px auto;flex-wrap:wrap;justify-content:center;}
+  button{padding:12px 28px;font-size:15px;font-family:inherit;cursor:pointer;
+    background:linear-gradient(180deg,#d9a44a,#a87428);color:#1a0e04;
+    border:1px solid #ffcf87;border-radius:10px;font-weight:700;
+    letter-spacing:2px;transition:transform .12s;}
+  button:hover:not(:disabled){transform:translateY(-1px);}
   button:disabled{opacity:.4;cursor:not-allowed;}
-  #status{margin:20px 0;color:#ffcf87;font-size:14px;min-height:20px;white-space:pre-wrap;}
-  #preview{background:#000;display:inline-block;padding:10px;border:2px solid rgba(255,214,140,.4);border-radius:10px;}
+  #status{margin:20px auto;font-size:14px;color:#ffcf87;
+    padding:14px 20px;background:rgba(20,30,44,.8);
+    border-left:3px solid #ffd98f;border-radius:6px;min-height:50px;
+    white-space:pre-wrap;max-width:600px;text-align:left;}
+  #preview{margin:20px auto;background:#000;
+    border:2px solid rgba(255,214,140,.4);border-radius:10px;
+    display:inline-block;padding:10px;}
+  #preview canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
+  .tip{font-size:12px;color:#6a7a8a;margin-top:16px;line-height:1.7;max-width:600px;margin-left:auto;margin-right:auto;}
+  .tip code{background:rgba(255,255,255,.08);padding:2px 6px;border-radius:4px;
+    color:#9ad7ff;font-family:monospace;}
 </style>
 </head>
 <body>
 
-<h1>浣熊 Sprite 高清导出</h1>
-<p>每帧 240×240，生成 4×4 网格的 960×960 图，透明背景。</p>
-<button id="btnExport" disabled>开 始 导 出</button>
-<div id="status">等待加载模型……</div>
-<div id="preview"><canvas id="previewCanvas" width="320" height="320"></canvas></div>
+<h1>浣熊 Sprite · 8×8 高清导出</h1>
+<p>从 64 个角度渲染浣熊模型（每帧 5.625°），拼成 8×8 网格的 1920×1920 sprite sheet。</p>
+<p>每帧 240×240，透明背景。导出后直接下载 PNG（约 1-2 MB）。</p>
+
+<div class="row">
+  <button id="btnExport" disabled>开 始 导 出</button>
+</div>
+
+<div id="status">等待加载 three.js 和模型……</div>
+
+<div id="preview">
+  <canvas id="previewCanvas" width="400" height="400"></canvas>
+</div>
+
+<p class="tip">
+  提示：如果 three.js 加载卡住，可以在浏览器 F12 的 Network 里看到进度。<br>
+  导出后，把下载的 <code>raccoon_sprite.png</code> 放进 <code>assets3d/</code> 目录，覆盖旧文件。
+</p>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
 <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
+
 <script>
 (function(){
-  const statusEl = document.getElementById('status');
-  const btn = document.getElementById('btnExport');
-  const previewCtx = document.getElementById('previewCanvas').getContext('2d');
+'use strict';
 
-  if(typeof THREE === 'undefined'){ statusEl.textContent = '❌ three.js 加载失败'; return; }
+var statusEl = document.getElementById('status');
+var previewCanvas = document.getElementById('previewCanvas');
+var previewCtx = previewCanvas.getContext('2d');
+var exportBtn = document.getElementById('btnExport');
 
-  const FRAME_SIZE = 240;     // 高清：每帧 240x240
-  const GRID = 4;             // 4x4 网格
-  const TOTAL = GRID * GRID;  // 16 帧
-  const BASE = 'assets3d/models/';
+function setStatus(text, color){
+  statusEl.textContent = text;
+  statusEl.style.color = color || '#ffcf87';
+}
 
-  // 离屏画布
-  const offCanvas = document.createElement('canvas');
-  offCanvas.width = FRAME_SIZE;
-  offCanvas.height = FRAME_SIZE;
+if(typeof THREE === 'undefined'){
+  setStatus('❌ three.js 未加载成功，检查网络或刷新', '#ff8a8a');
+  return;
+}
 
-  const renderer = new THREE.WebGLRenderer({
+/* ================================
+   配置：8×8 网格，共 64 帧
+   ================================ */
+var FRAME_SIZE = 240;    // 每帧 240×240
+var GRID = 8;            // 8×8 网格
+var TOTAL_FRAMES = GRID * GRID;   // 64 帧
+var BASE = 'assets3d/models/';
+
+/* ---- 离屏渲染器（每帧独立渲染 240×240） ---- */
+var offCanvas = document.createElement('canvas');
+offCanvas.width = FRAME_SIZE;
+offCanvas.height = FRAME_SIZE;
+
+var renderer;
+try{
+  renderer = new THREE.WebGLRenderer({
     canvas: offCanvas,
     alpha: true,
     antialias: true,
     preserveDrawingBuffer: true
   });
-  renderer.setPixelRatio(1);
-  renderer.setSize(FRAME_SIZE, FRAME_SIZE, false);
-  renderer.setClearColor(0x000000, 0);
+}catch(e){
+  setStatus('❌ WebGL 初始化失败：' + e.message, '#ff8a8a');
+  return;
+}
+renderer.setPixelRatio(1);
+renderer.setSize(FRAME_SIZE, FRAME_SIZE, false);
+renderer.setClearColor(0x000000, 0);
 
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
-  camera.position.set(0, 1.15, 3.5); // 和之前一样的稍微近一点的距离
-  camera.lookAt(0, 1.0, 0);
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+camera.position.set(0, 1.15, 3.5);   // 相机拉近，让模型填满画面
+camera.lookAt(0, 1.0, 0);
 
-  scene.add(new THREE.AmbientLight(0x8899bb, 0.60));
-  const key = new THREE.DirectionalLight(0xffd8b0, 1.6); key.position.set(3, 5, 4); scene.add(key);
-  const rim = new THREE.DirectionalLight(0x90b0ff, 0.7); rim.position.set(-4, 2, -3); scene.add(rim);
-  const fill = new THREE.PointLight(0xffc090, 0.8, 20); fill.position.set(-2, 3, 3); scene.add(fill);
+scene.add(new THREE.AmbientLight(0x8899bb, 0.60));
 
-  const pivot = new THREE.Group();
-  scene.add(pivot);
+var keyLight = new THREE.DirectionalLight(0xffd8b0, 1.6);
+keyLight.position.set(3, 5, 4);
+scene.add(keyLight);
 
-  // 加载模型
-  const mtlLoader = new THREE.MTLLoader();
-  mtlLoader.setPath(BASE);
-  mtlLoader.setResourcePath(BASE);
-  mtlLoader.load('raccoon.mtl', function(mat){
-    mat.preload();
-    new THREE.OBJLoader().setMaterials(mat).setPath(BASE).load('raccoon.obj', function(model){
-      // 自动缩放居中
-      const box = new THREE.Box3().setFromObject(model);
-      const size = box.getSize(new THREE.Vector3());
-      const center = box.getCenter(new THREE.Vector3());
-      const scale = 2.0 / Math.max(size.y, 0.001);
-      model.scale.setScalar(scale);
-      model.position.x = -center.x * scale;
-      model.position.y = 1.0 - center.y * scale;
-      model.position.z = -center.z * scale;
-      pivot.add(model);
-      
-      statusEl.textContent = '✅ 模型就绪，可以导出';
-      btn.disabled = false;
-      btn.addEventListener('click', doExport);
-    }, undefined, function(err){
-      statusEl.textContent = '❌ OBJ 加载失败: ' + err;
-    });
-  }, undefined, function(){
-    // 如果 MTL 失败，用纯色材质兜底
-    new THREE.OBJLoader().setPath(BASE).load('raccoon.obj', function(model){
-      model.traverse(o => { if(o.isMesh) o.material = new THREE.MeshLambertMaterial({ color: 0x9a8a78 }); });
-      const box = new THREE.Box3().setFromObject(model);
-      const size = box.getSize(new THREE.Vector3());
-      const center = box.getCenter(new THREE.Vector3());
-      const scale = 2.0 / Math.max(size.y, 0.001);
-      model.scale.setScalar(scale);
-      model.position.x = -center.x * scale;
-      model.position.y = 1.0 - center.y * scale;
-      model.position.z = -center.z * scale;
-      pivot.add(model);
-      
-      statusEl.textContent = '✅ 模型就绪（无贴图），可以导出';
-      btn.disabled = false;
-      btn.addEventListener('click', doExport);
-    });
-  });
+var rimLight = new THREE.DirectionalLight(0x90b0ff, 0.7);
+rimLight.position.set(-4, 2, -3);
+scene.add(rimLight);
 
-  function doExport(){
-    btn.disabled = true;
-    statusEl.textContent = '正在渲染……';
-    
-    const sheet = document.createElement('canvas');
-    sheet.width = FRAME_SIZE * GRID;
-    sheet.height = FRAME_SIZE * GRID;
-    const sctx = sheet.getContext('2d');
-    
-    let frame = 0;
-    function next(){
-      if(frame >= TOTAL){ finish(sheet); return; }
-      
-      pivot.rotation.y = (frame / TOTAL) * Math.PI * 2;
-      renderer.render(scene, camera);
-      
-      const gx = (frame % GRID) * FRAME_SIZE;
-      const gy = Math.floor(frame / GRID) * FRAME_SIZE;
-      sctx.drawImage(offCanvas, gx, gy, FRAME_SIZE, FRAME_SIZE);
-      
-      // 同步预览（缩放到 320x320 显示）
-      previewCtx.clearRect(0,0,320,320);
-      previewCtx.drawImage(sheet, 0, 0, 320, 320);
-      
-      frame++;
-      statusEl.textContent = `正在渲染…… ${frame} / ${TOTAL}`;
-      setTimeout(next, 20);
+var fillLight = new THREE.PointLight(0xffc090, 0.8, 20);
+fillLight.position.set(-2, 3, 3);
+scene.add(fillLight);
+
+var pivot = new THREE.Group();
+scene.add(pivot);
+
+/* ---- 加载模型 ---- */
+setStatus('正在加载模型……');
+
+var mtlLoader = new THREE.MTLLoader();
+mtlLoader.setPath(BASE);
+mtlLoader.setResourcePath(BASE);
+
+mtlLoader.load('raccoon.mtl', function(materials){
+  materials.preload();
+  var objLoader = new THREE.OBJLoader();
+  objLoader.setMaterials(materials);
+  objLoader.setPath(BASE);
+  objLoader.load('raccoon.obj', function(model){
+    placeModel(model);
+    setStatus('✅ 模型加载完成，可以导出', '#7ff0b0');
+    exportBtn.disabled = false;
+    exportBtn.addEventListener('click', doExport);
+  }, function(progress){
+    if(progress.total){
+      var pct = Math.round(progress.loaded / progress.total * 100);
+      setStatus('正在加载模型…… ' + pct + '%');
     }
-    setTimeout(next, 50);
+  }, function(err){
+    setStatus('❌ OBJ 加载失败：' + (err.message || err), '#ff8a8a');
+  });
+}, function(progress){
+  if(progress.total){
+    var pct = Math.round(progress.loaded / progress.total * 100);
+    setStatus('正在加载材质…… ' + pct + '%');
+  }
+}, function(err){
+  setStatus('⚠ MTL 加载失败，尝试无贴图模式……', '#ff9070');
+  var objLoader = new THREE.OBJLoader();
+  objLoader.setPath(BASE);
+  objLoader.load('raccoon.obj', function(model){
+    model.traverse(function(o){
+      if(o.isMesh) o.material = new THREE.MeshLambertMaterial({ color: 0x9a8a78 });
+    });
+    placeModel(model);
+    setStatus('✅ 模型加载完成（无贴图），可以导出', '#7ff0b0');
+    exportBtn.disabled = false;
+    exportBtn.addEventListener('click', doExport);
+  }, undefined, function(err2){
+    setStatus('❌ OBJ 也加载失败：' + (err2.message || err2), '#ff8a8a');
+  });
+});
+
+function placeModel(model){
+  var box = new THREE.Box3().setFromObject(model);
+  var sizeV = box.getSize(new THREE.Vector3());
+  var center = box.getCenter(new THREE.Vector3());
+  var s = 2.0 / Math.max(sizeV.y, 0.001);
+  model.scale.setScalar(s);
+  model.position.x = -center.x * s;
+  model.position.y = 1.0 - center.y * s;
+  model.position.z = -center.z * s;
+  pivot.add(model);
+}
+
+/* ================================
+   导出：64 帧，8×8 网格
+   ================================ */
+function doExport(){
+  exportBtn.disabled = true;
+  setStatus('正在渲染 64 个角度……');
+
+  var sheetW = FRAME_SIZE * GRID;   // 240 × 8 = 1920
+  var sheetH = FRAME_SIZE * GRID;   // 240 × 8 = 1920
+  var sheet = document.createElement('canvas');
+  sheet.width = sheetW;
+  sheet.height = sheetH;
+  var sctx = sheet.getContext('2d');
+  sctx.clearRect(0, 0, sheetW, sheetH);
+
+  var frame = 0;
+
+  function renderNextFrame(){
+    if(frame >= TOTAL_FRAMES){
+      finishExport(sheet);
+      return;
+    }
+
+    /* 每帧旋转 360° / 64 = 5.625° */
+    pivot.rotation.y = (frame / TOTAL_FRAMES) * Math.PI * 2;
+
+    renderer.render(scene, camera);
+
+    /* 贴到 sprite sheet 上 */
+    var gx = (frame % GRID) * FRAME_SIZE;
+    var gy = Math.floor(frame / GRID) * FRAME_SIZE;
+    sctx.drawImage(offCanvas, gx, gy, FRAME_SIZE, FRAME_SIZE);
+
+    /* 同步预览（缩放到 400×400 显示） */
+    previewCtx.clearRect(0, 0, 400, 400);
+    previewCtx.drawImage(sheet, 0, 0, 400, 400);
+
+    frame++;
+    setStatus('正在渲染…… ' + frame + ' / ' + TOTAL_FRAMES);
+
+    /* 下一帧（用 setTimeout 让浏览器有机会更新 UI） */
+    setTimeout(renderNextFrame, 15);
   }
 
-  function finish(sheet){
-    statusEl.textContent = '✅ 正在下载……';
-    sheet.toBlob(blob => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'raccoon_sprite.png';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 3000);
-      
-      statusEl.textContent = `✅ 已下载（${Math.round(blob.size/1024)} KB）\n放回 assets3d/ 即可，代码不需要改。`;
-      btn.disabled = false;
-      btn.textContent = '重新导出';
-    }, 'image/png');
-  }
+  setTimeout(renderNextFrame, 50);
+}
+
+function finishExport(sheet){
+  setStatus('✅ 渲染完成，正在压缩 PNG……', '#7ff0b0');
+
+  sheet.toBlob(function(blob){
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'raccoon_sprite.png';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 3000);
+
+    var kb = Math.round(blob.size / 1024);
+    setStatus(
+      '✅ 已下载 raccoon_sprite.png（' + kb + ' KB）\n' +
+      '把它放进 assets3d/ 目录，覆盖旧文件。\n' +
+      '然后替换 index1.html 底部脚本为 8×8 版本。',
+      '#7ff0b0'
+    );
+
+    exportBtn.disabled = false;
+    exportBtn.textContent = '重新导出';
+    exportBtn.addEventListener('click', function(){ location.reload(); }, { once: true });
+  }, 'image/png');
+}
+
 })();
 </script>
+
 </body>
 </html>
