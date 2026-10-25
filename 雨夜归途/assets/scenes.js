@@ -2,6 +2,7 @@
    scenes.js — 2D 场景绘制 + 定义
    依赖 window.S
    + 白天场景：alley_day / backstreet_day / shop_day / street_day / doorstep_day / house_day
+   + 雨巷拆成三层：far / mid / near（供视差使用）
    ========================================================= */
 (function(){
 'use strict';
@@ -71,19 +72,21 @@ function woodGrain(x, y, w, h, baseColor, lineColor, vertical){
 }
 
 /* =========================================================
-   雨巷
+   雨巷 · 三层（far / mid / near）
    ========================================================= */
-function drawAlleyStatic(){
+function drawAlleyFar(){
   const cut = isPowerCut();
   const blood = isBloodMode();
 
-  ctx.fillStyle = grad(0,0,0,440, blood ? [
+  /* 天空 —— 多填一点，避免 mid 层偏移露黑 */
+  ctx.fillStyle = grad(0,0,0,460, blood ? [
     [0,'#0a0308'],[0.35,'#160810'],[0.7,'#1c0a14'],[1,'#1c0e18']
   ] : [
     [0,'#040710'],[0.35,'#0a1420'],[0.7,'#101c2c'],[1,'#1a2534']
   ]);
-  ctx.fillRect(0,0,W,440);
+  ctx.fillRect(0,0,W,460);
 
+  /* 云 */
   for(let i=0;i<5;i++){
     const cx = 100 + i*180, cy = 26 + Math.sin(i*1.3)*18;
     ctx.fillStyle = blood
@@ -94,6 +97,7 @@ function drawAlleyStatic(){
     ctx.fill();
   }
 
+  /* 建筑群 */
   const skyline = [
     { x:0,   y:200, w:120, h:250 },
     { x:140, y:230, w:130, h:210 },
@@ -113,6 +117,7 @@ function drawAlleyStatic(){
     }
   });
 
+  /* 窗户 */
   const wins = [];
   skyline.forEach(b => {
     const cols = Math.floor(b.w / 34);
@@ -142,6 +147,7 @@ function drawAlleyStatic(){
     }
   });
 
+  /* 红屋顶房子 */
   const hx = 780, hy = 210;
   ctx.fillStyle = blood ? '#180808' : '#2c1414';
   ctx.beginPath();
@@ -180,6 +186,7 @@ function drawAlleyStatic(){
     ctx.fillRect(hx-60, hy-60, 210, 210);
   }
 
+  /* 霓虹 */
   if(!cut && !blood){
     ctx.fillStyle = 'rgba(70,220,255,0.55)';
     ctx.fillRect(380, 130, 44, 5);
@@ -201,15 +208,27 @@ function drawAlleyStatic(){
     ctx.fillRect(452, 148, 36, 5);
     ctx.fillRect(452, 160, 24, 5);
   }
+}
 
-  brickWall(0, 16, 160, 524, 60, 22,
+function drawAlleyMid(){
+  const cut = isPowerCut();
+  const blood = isBloodMode();
+
+  /* 先铺一层天空底部色，防止砖墙偏移露黑 */
+  ctx.fillStyle = blood ? '#1c0e18' : '#1a2534';
+  ctx.fillRect(-10, 0, W + 20, H + 20);
+
+  /* 左砖墙 */
+  brickWall(-6, 16, 172, 524, 60, 22,
     blood ? '#1a0a14' : '#131a23',
     blood ? 'rgba(60,10,20,0.35)' : 'rgba(0,0,0,0.35)');
+
   ctx.fillStyle = grad(0, 380, 0, 540, [
     [0,'rgba(0,0,0,0)'],[1, blood ? 'rgba(40,5,10,0.7)' : 'rgba(0,0,0,0.6)']
   ]);
-  ctx.fillRect(0, 380, 160, 160);
+  ctx.fillRect(-6, 380, 172, 160);
 
+  /* 墙上霉斑 */
   for(let i=0;i<20;i++){
     const mx = 6 + (i*43)%148;
     const my = 60 + (i*67)%430;
@@ -221,6 +240,7 @@ function drawAlleyStatic(){
     ctx.fill();
   }
 
+  /* 墙上海报 / 血手印 */
   if(blood){
     ctx.save();
     ctx.translate(38, 220); ctx.rotate(-0.05);
@@ -257,12 +277,15 @@ function drawAlleyStatic(){
     ctx.restore();
   }
 
+  /* 路灯柱 + 灯罩 */
   ctx.fillStyle = blood ? '#1a0c0c' : '#141b25'; ctx.fillRect(164, 116, 9, 336);
   ctx.fillStyle = blood ? '#241414' : '#1c2531';
   ctx.beginPath();
   ctx.moveTo(146, 120); ctx.lineTo(190, 120);
   ctx.lineTo(182, 96); ctx.lineTo(154, 96);
   ctx.closePath(); ctx.fill();
+
+  /* 灯罩灯泡 / 光晕 */
   if(cut || blood){
     ctx.fillStyle = blood ? '#180808' : '#2a2a2a';
     ctx.beginPath(); ctx.ellipse(168, 124, 8, 4.5, 0, 0, Math.PI*2); ctx.fill();
@@ -277,34 +300,11 @@ function drawAlleyStatic(){
     ctx.fillRect(-180,-220,700,700);
   }
 
-  const bx = 618, by = 314, bw = 126, bh = 180;
-  ctx.fillStyle = 'rgba(0,0,0,0.5)';
-  ctx.beginPath();
-  ctx.ellipse(bx+bw/2, by+bh+2, bw*0.6, 15, 0, 0, Math.PI*2);
-  ctx.fill();
-  ctx.fillStyle = blood ? '#1a0a0e' : '#1e2631';
-  ctx.beginPath();
-  ctx.moveTo(bx+7, by+16); ctx.lineTo(bx+bw-7, by+16);
-  ctx.lineTo(bx+bw-16, by+bh); ctx.lineTo(bx+16, by+bh);
-  ctx.closePath(); ctx.fill();
-  for(let i=1;i<4;i++){
-    ctx.strokeStyle = blood ? 'rgba(80,15,25,0.5)' : 'rgba(0,0,0,0.35)'; ctx.lineWidth = 2;
-    const x = bx + 12 + i*27;
-    ctx.beginPath();
-    ctx.moveTo(x, by+24); ctx.lineTo(x-4, by+bh-8);
-    ctx.stroke();
-  }
-  ctx.fillStyle = 'rgba(180,210,240,0.08)';
-  ctx.fillRect(bx+18, by+30, 12, 128);
-  ctx.fillStyle = blood ? '#2a1218' : '#252e3a';
-  ctx.beginPath(); ctx.ellipse(bx+bw/2, by+14, bw/2, 15, 0, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = blood ? '#3a1a22' : '#364352';
-  ctx.beginPath(); ctx.ellipse(bx+bw/2, by+10, bw/2-10, 9, 0, 0, Math.PI*2); ctx.fill();
-
-  ctx.fillStyle = grad(0, 440, 0, H, blood
+  /* 地面 */
+  ctx.fillStyle = grad(0, 430, 0, 570, blood
     ? [[0,'#1a0810'],[1,'#0a040a']]
     : [[0,'#121a24'],[1,'#04070b']]);
-  ctx.fillRect(0, 440, W, 100);
+  ctx.fillRect(-10, 430, W + 20, 140);
   ctx.strokeStyle = 'rgba(255,255,255,0.025)'; ctx.lineWidth = 1;
   for(let x = -60; x < W+80; x += 120){
     ctx.beginPath();
@@ -312,6 +312,7 @@ function drawAlleyStatic(){
     ctx.stroke();
   }
 
+  /* 水洼（静态底色） */
   ctx.save();
   ctx.beginPath();
   ctx.ellipse(330, 492, 100, 22, 0, 0, Math.PI*2);
@@ -343,13 +344,73 @@ function drawAlleyStatic(){
     ctx.fill();
   }
 
-  const eg = ctx.createLinearGradient(856, 0, W, 0);
+  /* 垃圾桶 */
+  const bx = 618, by = 314, bw = 126, bh = 180;
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.beginPath();
+  ctx.ellipse(bx+bw/2, by+bh+2, bw*0.6, 15, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle = blood ? '#1a0a0e' : '#1e2631';
+  ctx.beginPath();
+  ctx.moveTo(bx+7, by+16); ctx.lineTo(bx+bw-7, by+16);
+  ctx.lineTo(bx+bw-16, by+bh); ctx.lineTo(bx+16, by+bh);
+  ctx.closePath(); ctx.fill();
+  for(let i=1;i<4;i++){
+    ctx.strokeStyle = blood ? 'rgba(80,15,25,0.5)' : 'rgba(0,0,0,0.35)'; ctx.lineWidth = 2;
+    const x = bx + 12 + i*27;
+    ctx.beginPath();
+    ctx.moveTo(x, by+24); ctx.lineTo(x-4, by+bh-8);
+    ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(180,210,240,0.08)';
+  ctx.fillRect(bx+18, by+30, 12, 128);
+  ctx.fillStyle = blood ? '#2a1218' : '#252e3a';
+  ctx.beginPath(); ctx.ellipse(bx+bw/2, by+14, bw/2, 15, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = blood ? '#3a1a22' : '#364352';
+  ctx.beginPath(); ctx.ellipse(bx+bw/2, by+10, bw/2-10, 9, 0, 0, Math.PI*2); ctx.fill();
+
+  /* 右侧边缘暗角 */
+  const eg = ctx.createLinearGradient(846, 0, W+20, 0);
   eg.addColorStop(0,'rgba(3,6,10,0)');
   eg.addColorStop(1, blood ? 'rgba(20,2,6,0.96)' : 'rgba(3,6,10,0.96)');
   ctx.fillStyle = eg;
-  ctx.fillRect(856, 0, 104, H);
+  ctx.fillRect(846, 0, W - 846 + 20, H);
 }
 
+function drawAlleyNear(){
+  /* 前景装饰：底部边缘的小水花 + 飘落物 —— 视差最大，营造"镜头在动"的感觉 */
+  const blood = isBloodMode();
+  const t = performance.now() / 1000;
+
+  /* 底部石板缝 */
+  ctx.strokeStyle = blood ? 'rgba(60,10,18,0.5)' : 'rgba(0,0,0,0.5)';
+  ctx.lineWidth = 1.2;
+  for(let x = 40; x < W + 100; x += 140){
+    ctx.beginPath();
+    ctx.moveTo(x, H - 10);
+    ctx.lineTo(x + 30, H);
+    ctx.stroke();
+  }
+
+  /* 前景雨滴（静止的、画在 near 层，视差带动） */
+  for(let i = 0; i < 12; i++){
+    const x = (i * 87) % W;
+    const y = 380 + ((i * 47) % 160);
+    const len = 18 + (i % 4) * 6;
+    ctx.strokeStyle = blood
+      ? `rgba(200,120,120,${0.20 + (i%3)*0.05})`
+      : `rgba(150,190,230,${0.20 + (i%3)*0.05})`;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x - len * 0.16, y - len);
+    ctx.stroke();
+  }
+}
+
+/* =========================================================
+   雨巷 · 动态层（原样保留）
+   ========================================================= */
 function drawAlleyDynamic(t, dt){
   const cut = isPowerCut();
   const blood = isBloodMode();
@@ -398,7 +459,7 @@ function drawAlleyDynamic(t, dt){
 }
 
 /* =========================================================
-   雨巷 · 白天（第二天早上）
+   雨巷 · 白天（第二天早上）—— 原样保留
    ========================================================= */
 function drawAlleyDayStatic(){
   ctx.fillStyle = grad(0, 0, 0, 440, [
@@ -712,8 +773,10 @@ function drawAlleyDayDynamic(t, dt){
 }
 
 /* =========================================================
-   后巷 · 早
+   以下所有场景 —— 原样保留
    ========================================================= */
+
+/* ------ 后巷 · 早 ------ */
 function drawBackstreetDayStatic(){
   ctx.fillStyle = grad(0, 0, 0, 470, [
     [0,   '#8a97a4'],
@@ -740,7 +803,6 @@ function drawBackstreetDayStatic(){
     ctx.fill();
   }
 
-  // 消防梯
   ctx.save();
   ctx.translate(260, 190); ctx.rotate(-0.06);
   ctx.strokeStyle = 'rgba(60,60,55,0.55)';
@@ -750,7 +812,6 @@ function drawBackstreetDayStatic(){
   ctx.stroke();
   ctx.restore();
 
-  // 上层消防梯
   ctx.fillStyle = '#5a6068';
   ctx.fillRect(428, 36, 18, 300);
   ctx.fillStyle = '#6a7078';
@@ -760,7 +821,6 @@ function drawBackstreetDayStatic(){
     ctx.fillRect(428, y, 18, 3);
   }
 
-  // 后门（白天是关闭的木色门）
   const dx = 580, dy = 130, dw = 184, dh = 334;
   ctx.fillStyle = 'rgba(0,0,0,0.28)';
   ctx.fillRect(dx - 10, dy - 10, dw + 20, dh + 14);
@@ -778,7 +838,6 @@ function drawBackstreetDayStatic(){
   ctx.textBaseline = 'middle';
   ctx.fillText('后 门', dx + dw/2, dy - 31);
 
-  // 门（白天是关的，深棕色，可以看到门把）
   ctx.fillStyle = '#3a2518';
   ctx.fillRect(dx + 4, dy + 6, dw - 8, dh - 12);
   ctx.fillStyle = '#4a3520';
@@ -787,13 +846,11 @@ function drawBackstreetDayStatic(){
   ctx.beginPath();
   ctx.arc(dx + dw - 22, dy + dh/2, 6, 0, Math.PI*2);
   ctx.fill();
-  // 门上小玻璃
   ctx.fillStyle = 'rgba(200,215,225,0.6)';
   ctx.fillRect(dx + 20, dy + 20, dw - 40, dh * 0.28);
   ctx.strokeStyle = '#3a2818'; ctx.lineWidth = 2;
   ctx.strokeRect(dx + 20, dy + 20, dw - 40, dh * 0.28);
 
-  // 配电房（灰色小门）
   const ox = 400, oy = 300, ow = 160, oh = 150;
   ctx.fillStyle = 'rgba(0,0,0,0.28)';
   ctx.fillRect(ox, oy, ow, oh);
@@ -811,7 +868,6 @@ function drawBackstreetDayStatic(){
     ctx.lineTo(ox + ow - 12, yy);
     ctx.stroke();
   }
-  // 红色配电标牌
   const sx = ox + 42, sy = oy + 30;
   ctx.fillStyle = 'rgba(190,60,50,0.92)';
   ctx.fillRect(sx, sy, 78, 26);
@@ -824,7 +880,6 @@ function drawBackstreetDayStatic(){
   ctx.textBaseline = 'middle';
   ctx.fillText('配 电', sx + 39, sy + 14);
 
-  // 地面
   ctx.fillStyle = grad(0, 470, 0, H, [
     [0, '#8a8a86'],
     [1, '#5a5a56']
@@ -832,7 +887,6 @@ function drawBackstreetDayStatic(){
   ctx.fillRect(0, 470, W, 70);
   ctx.fillStyle = '#6a6a66'; ctx.fillRect(0, 480, W, 8);
 
-  // 纸箱（右侧堆）
   const c1x = 166, c1y = 370, c1w = 160, c1h = 106;
   ctx.fillStyle = 'rgba(0,0,0,0.28)';
   ctx.beginPath();
@@ -859,7 +913,6 @@ function drawBackstreetDayStatic(){
 }
 
 function drawBackstreetDayDynamic(t, dt){
-  // 阳光中的微尘
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   for(let i=0;i<20;i++){
@@ -872,27 +925,17 @@ function drawBackstreetDayDynamic(t, dt){
   }
   ctx.restore();
 
-  // 大橘猫
   if(!flags().catGone) drawCat(246, 354, t);
 }
 
-/* =========================================================
-   便利店 · 早
-   ========================================================= */
+/* ------ 便利店 · 早 ------ */
 function drawShopDayStatic(){
-  // 白天室内 —— 亮灰白
   ctx.fillStyle = '#c8c8c0';
   ctx.fillRect(0, 0, W, H);
-
-  // 顶部灯带（关着）
   ctx.fillStyle = '#9a9a92';
   ctx.fillRect(0, 0, W, 44);
-
-  // 墙
   ctx.fillStyle = '#b8b8b0';
   ctx.fillRect(0, 44, W, 386);
-
-  // 墙缝
   ctx.strokeStyle = 'rgba(0,0,0,0.06)';
   ctx.lineWidth = 1;
   for(let x = 0; x < W; x += 60){
@@ -900,8 +943,6 @@ function drawShopDayStatic(){
     ctx.moveTo(x, 44); ctx.lineTo(x, 430);
     ctx.stroke();
   }
-
-  // 地板
   ctx.fillStyle = grad(0, 430, 0, H, [
     [0, '#909088'],
     [1, '#5a5a56']
@@ -914,7 +955,6 @@ function drawShopDayStatic(){
     ctx.stroke();
   }
 
-  // 货架
   const shelfYs = [168, 256, 344];
   shelfYs.forEach((y) => {
     ctx.fillStyle = 'rgba(0,0,0,0.20)';
@@ -923,7 +963,6 @@ function drawShopDayStatic(){
     ctx.fillRect(110, y, 320, 13);
     ctx.fillRect(110, y, 11, 90);
     ctx.fillRect(419, y, 11, 90);
-    // 商品（白天可见颜色）
     const colors = ['#7a8a5a','#8a6a4a','#6a7a8a','#8a5a6a','#7a7a5a','#6a5a4a','#5a7a6a'];
     for(let j = 0; j < 7; j++){
       const w0 = 22 + ((j*13) % 10);
@@ -939,7 +978,6 @@ function drawShopDayStatic(){
   ctx.fillRect(150, 400, 44, 32);
   ctx.fillRect(300, 405, 38, 27);
 
-  // 收银台
   ctx.fillStyle = 'rgba(0,0,0,0.20)';
   ctx.fillRect(616, 334, 304, 8);
   ctx.fillStyle = '#7a7468';
@@ -950,7 +988,6 @@ function drawShopDayStatic(){
   ctx.fillRect(680, 256, 96, 66);
   ctx.fillStyle = '#c8c8c0';
   ctx.fillRect(692, 266, 72, 34);
-  // 收银机
   ctx.fillStyle = '#4a4a48';
   ctx.fillRect(700, 274, 56, 18);
   ctx.fillStyle = '#3a3a38';
@@ -958,12 +995,10 @@ function drawShopDayStatic(){
   ctx.fillRect(724, 278, 8, 8);
   ctx.fillRect(738, 278, 8, 8);
 
-  // 后窗（左墙）
   ctx.fillStyle = 'rgba(0,0,0,0.20)';
   ctx.fillRect(46, 184, 142, 162);
   ctx.fillStyle = '#a8b8c0';
   ctx.fillRect(52, 190, 130, 150);
-  // 窗外天空
   const sky = ctx.createLinearGradient(52, 190, 52, 340);
   sky.addColorStop(0, '#c8d8e0');
   sky.addColorStop(1, '#e8d8b8');
@@ -976,7 +1011,6 @@ function drawShopDayStatic(){
   ctx.moveTo(52, 265); ctx.lineTo(182, 265);
   ctx.stroke();
 
-  // 海报（右侧墙）
   ctx.fillStyle = 'rgba(0,0,0,0.15)';
   ctx.fillRect(492, 102, 86, 106);
   ctx.fillStyle = '#e8d8b0';
@@ -990,7 +1024,6 @@ function drawShopDayStatic(){
   ctx.fillStyle = '#8a8478';
   ctx.font = 'bold 11px "PingFang SC",sans-serif';
   ctx.fillText('三个月前', 533, 190);
-  // 小浣熊涂鸦
   ctx.fillStyle = '#6a5a4a';
   ctx.beginPath();
   ctx.arc(533, 168, 10, 0, Math.PI*2);
@@ -1002,7 +1035,6 @@ function drawShopDayStatic(){
   ctx.moveTo(536, 158); ctx.lineTo(540, 150); ctx.lineTo(542, 158); ctx.closePath();
   ctx.fill();
 
-  // 地板上的爪印
   ctx.fillStyle = 'rgba(80,60,40,0.28)';
   for(let i=0;i<7;i++){
     const px = 380 + i*28;
@@ -1018,7 +1050,6 @@ function drawShopDayStatic(){
     ctx.fill();
   }
 
-  // 右侧出口（后门通向街道）
   ctx.fillStyle = 'rgba(0,0,0,0.18)';
   ctx.fillRect(884, 184, 60, 162);
   ctx.fillStyle = '#8a8478';
@@ -1029,14 +1060,12 @@ function drawShopDayStatic(){
   ctx.lineWidth = 4;
   ctx.strokeStyle = '#5a4a30';
   ctx.strokeRect(890, 190, 50, 150);
-  // 出口箭头
   ctx.fillStyle = 'rgba(255,240,200,0.9)';
   ctx.font = 'bold 12px "PingFang SC",sans-serif';
   ctx.fillText('街', 915, 262);
 }
 
 function drawShopDayDynamic(t, dt){
-  // 阳光光斑
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   const g = ctx.createRadialGradient(120, 260, 0, 120, 260, 340);
@@ -1047,9 +1076,7 @@ function drawShopDayDynamic(t, dt){
   ctx.restore();
 }
 
-/* =========================================================
-   街道 · 早
-   ========================================================= */
+/* ------ 街道 · 早 ------ */
 function drawStreetDayStatic(){
   ctx.fillStyle = grad(0, 0, 0, 470, [
     [0,   '#8a97a4'],
@@ -1059,7 +1086,6 @@ function drawStreetDayStatic(){
   ]);
   ctx.fillRect(0, 0, W, 470);
 
-  // 天空云
   for(let i=0;i<4;i++){
     const cx = 100 + i*220, cy = 60 + (i%2)*30;
     ctx.fillStyle = 'rgba(255,245,230,' + (0.35 + 0.08*(i%2)) + ')';
@@ -1068,7 +1094,6 @@ function drawStreetDayStatic(){
     ctx.fill();
   }
 
-  // 建筑
   ctx.fillStyle = '#7a8a94';
   ctx.fillRect(0, 178, 244, 292);
   ctx.fillRect(876, 136, 84, 334);
@@ -1099,14 +1124,12 @@ function drawStreetDayStatic(){
     }
   });
 
-  // 地面
   ctx.fillStyle = grad(0, 470, 0, H, [
     [0, '#8a8a86'],
     [1, '#5a5a56']
   ]);
   ctx.fillRect(0, 470, W, 70);
 
-  // 远处红屋顶
   ctx.fillStyle = '#7a2818';
   ctx.beginPath();
   ctx.moveTo(630, 258); ctx.lineTo(720, 186); ctx.lineTo(810, 258);
@@ -1123,7 +1146,6 @@ function drawStreetDayStatic(){
   ctx.lineWidth = 2;
   ctx.strokeRect(700, 292, 40, 46);
 
-  // 铁门（白天开着）
   const gx = 520, gy = 168, gw = 360, gh = 362;
   ctx.fillStyle = 'rgba(0,0,0,0.30)';
   ctx.fillRect(gx + 4, gy + 4, gw, gh);
@@ -1143,11 +1165,9 @@ function drawStreetDayStatic(){
     ctx.fill();
   }
   ctx.fillRect(gx, gy + 150, gw, 10);
-  // 中间的门柱开口（暗示已经开了）
   ctx.fillStyle = 'rgba(255,240,200,0.15)';
   ctx.fillRect(gx + 160, gy + 22, 40, gh - 40);
 
-  // 左侧配电房
   brickWall(0, 298, 202, 242, 60, 22, '#a89878', 'rgba(70,50,30,0.3)');
   ctx.fillStyle = '#c9b58a';
   ctx.fillRect(118, 318, 38, 24);
@@ -1157,14 +1177,12 @@ function drawStreetDayStatic(){
   ctx.textBaseline = 'middle';
   ctx.fillText('17', 137, 330);
 
-  // 电线
   ctx.strokeStyle = 'rgba(60,60,60,0.45)';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(0, 110);
   ctx.quadraticCurveTo(300, 152, 520, 102);
   ctx.stroke();
-  // 晾衣绳
   if(!flags().ropeTaken){
     ctx.fillStyle = 'rgba(180,170,150,0.55)';
     ctx.beginPath();
@@ -1173,13 +1191,11 @@ function drawStreetDayStatic(){
     ctx.closePath(); ctx.fill();
   }
 
-  // 路灯
   ctx.fillStyle = '#3a4048';
   ctx.fillRect(156, 240, 8, 240);
   ctx.fillStyle = '#5a6068';
   ctx.beginPath(); ctx.ellipse(160, 300, 6, 4, 0, 0, Math.PI*2); ctx.fill();
 
-  // 信箱
   ctx.fillStyle = '#5a6068';
   ctx.fillRect(826, 336, 30, 42);
   ctx.fillStyle = '#e8d8b0';
@@ -1187,7 +1203,6 @@ function drawStreetDayStatic(){
   ctx.arc(841, 360, 3, 0, Math.PI*2);
   ctx.fill();
 
-  // 消防栓
   ctx.fillStyle = '#8a2424';
   ctx.fillRect(770, 456, 16, 36);
   ctx.fillStyle = '#a83232';
@@ -1195,7 +1210,6 @@ function drawStreetDayStatic(){
   ctx.arc(778, 454, 10, Math.PI, 0);
   ctx.fill();
 
-  // 梧桐树
   ctx.fillStyle = '#5a4a30';
   ctx.fillRect(908, 220, 6, 90);
   ctx.fillStyle = 'rgba(140,160,100,0.75)';
@@ -1203,12 +1217,10 @@ function drawStreetDayStatic(){
   ctx.beginPath(); ctx.ellipse(878, 170, 44, 60, 0, 0, Math.PI*2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(944, 176, 38, 52, 0, 0, Math.PI*2); ctx.fill();
 
-  // 湿地
   ctx.fillStyle = 'rgba(120,160,200,0.18)';
   ctx.beginPath(); ctx.ellipse(300, 510, 60, 10, 0, 0, Math.PI*2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(700, 500, 80, 12, 0, 0, Math.PI*2); ctx.fill();
 
-  // 配电房（立式）
   const px = 224, py = 250, pw = 76, ph = 180;
   ctx.fillStyle = 'rgba(0,0,0,0.30)';
   ctx.fillRect(px+4, py+4, pw, ph);
@@ -1229,7 +1241,6 @@ function drawStreetDayStatic(){
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('配电', px + 38, py + 36);
 
-  // 地下通道入口
   const ux = 130, uy = 358, uw = 84, uh = 62;
   ctx.fillStyle = 'rgba(0,0,0,0.55)';
   ctx.fillRect(ux, uy, uw, uh);
@@ -1247,7 +1258,6 @@ function drawStreetDayStatic(){
   ctx.textAlign = 'center';
   ctx.fillText('地下通道 ↓', ux + 42, uy - 1);
 
-  // 河堤入口
   const rx = 4, ry = 380, rw = 60, rh = 60;
   ctx.fillStyle = 'rgba(180,210,230,0.55)';
   ctx.fillRect(rx, ry, rw, rh);
@@ -1258,7 +1268,6 @@ function drawStreetDayStatic(){
   ctx.textAlign = 'center';
   ctx.fillText('河堤', rx + rw/2, ry + rh/2 + 3);
 
-  // 右侧阳光光晕
   const eg = ctx.createLinearGradient(W-100, 0, W, 0);
   eg.addColorStop(0, 'rgba(255,240,200,0)');
   eg.addColorStop(1, 'rgba(255,240,200,0.55)');
@@ -1267,7 +1276,6 @@ function drawStreetDayStatic(){
 }
 
 function drawStreetDayDynamic(t, dt){
-  // 车辆光影扫过
   const sweep = (t * 0.10) % 2.0;
   if(sweep < 1){
     const sx = -300 + sweep * 1600;
@@ -1278,7 +1286,6 @@ function drawStreetDayDynamic(t, dt){
     ctx.fillRect(sx - 340, 140, 680, 400);
   }
 
-  // 红灯熄灭（白天）
   ctx.fillStyle = '#3a4048';
   ctx.fillRect(876, 336, 6, 30);
   ctx.fillStyle = '#8a8478';
@@ -1287,9 +1294,7 @@ function drawStreetDayDynamic(t, dt){
   ctx.beginPath(); ctx.arc(879, 374, 5, 0, Math.PI*2); ctx.fill();
 }
 
-/* =========================================================
-   门前 · 早
-   ========================================================= */
+/* ------ 门前 · 早 ------ */
 function drawDoorstepDayStatic(){
   ctx.fillStyle = grad(0, 0, 0, 400, [
     [0,   '#8a97a4'],
@@ -1299,7 +1304,6 @@ function drawDoorstepDayStatic(){
   ]);
   ctx.fillRect(0, 0, W, 400);
 
-  // 云
   for(let i=0;i<4;i++){
     const cx = 120 + i*240, cy = 40 + (i%2)*30;
     ctx.fillStyle = `rgba(255,245,230, ${0.35 + 0.08*(i%2)})`;
@@ -1308,7 +1312,6 @@ function drawDoorstepDayStatic(){
     ctx.fill();
   }
 
-  // 远处建筑
   const far = [
     { x: 0,   y: 240, w: 100, h: 160 },
     { x: 100, y: 260, w: 90,  h: 140 },
@@ -1321,7 +1324,6 @@ function drawDoorstepDayStatic(){
     ctx.fillRect(b.x, b.y, b.w, b.h);
   });
 
-  // 铁栏杆
   const gx = 40, gy = 180, gw = 140, gh = 220;
   ctx.fillStyle = '#5a6068';
   ctx.fillRect(gx, gy, 18, gh);
@@ -1332,7 +1334,6 @@ function drawDoorstepDayStatic(){
     ctx.fillRect(x, gy + 18, 5, gh - 18);
   }
 
-  // 地面
   ctx.fillStyle = grad(0, 400, 0, H, [
     [0, '#8a8a86'],
     [0.5, '#6a6a66'],
@@ -1362,13 +1363,11 @@ function drawDoorstepDayStatic(){
   ctx.ellipse(hx + hw/2, hy + hh + 10, hw * 0.55, 20, 0, 0, Math.PI*2);
   ctx.fill();
 
-  // 房子主体 —— 米黄
   ctx.fillStyle = '#d8c8a8';
   ctx.fillRect(hx, hy + 60, hw, hh - 60);
   ctx.fillStyle = '#e0d0b0';
   ctx.fillRect(hx, hy + 60, hw, 20);
 
-  // 墙缝
   ctx.strokeStyle = 'rgba(0,0,0,0.10)';
   ctx.lineWidth = 1;
   for(let y = hy + 80; y < hy + hh; y += 16){
@@ -1378,7 +1377,6 @@ function drawDoorstepDayStatic(){
     ctx.stroke();
   }
 
-  // 红屋顶
   ctx.fillStyle = '#8a2820';
   ctx.beginPath();
   ctx.moveTo(hx - 40, hy + 80);
@@ -1407,13 +1405,11 @@ function drawDoorstepDayStatic(){
     ctx.stroke();
   }
 
-  // 烟囱
   ctx.fillStyle = '#5a4a40';
   ctx.fillRect(hx + 340, hy - 20, 40, 70);
   ctx.fillStyle = '#6a5a50';
   ctx.fillRect(hx + 340, hy - 20, 40, 10);
 
-  // 左窗
   const wx = hx + 40, wy = hy + 120, ww = 100, wh = 120;
   ctx.fillStyle = '#e8e0d0';
   ctx.fillRect(wx, wy, ww, wh);
@@ -1426,11 +1422,9 @@ function drawDoorstepDayStatic(){
   ctx.moveTo(wx, wy + wh/2);
   ctx.lineTo(wx + ww, wy + wh/2);
   ctx.stroke();
-  // 窗内暖光
   ctx.fillStyle = 'rgba(255,240,200,0.75)';
   ctx.fillRect(wx + 4, wy + 4, ww - 8, wh - 8);
 
-  // 右窗
   const wx2 = hx + hw - 140;
   ctx.fillStyle = '#e8e0d0';
   ctx.fillRect(wx2, wy, ww, wh);
@@ -1446,7 +1440,6 @@ function drawDoorstepDayStatic(){
   ctx.fillStyle = 'rgba(255,240,200,0.75)';
   ctx.fillRect(wx2 + 4, wy + 4, ww - 8, wh - 8);
 
-  // 门 —— 开着一条缝
   const dx = hx + hw/2 - 55, dy = hy + 200, dw = 110, dh = 140;
   ctx.fillStyle = '#5a4030';
   ctx.fillRect(dx - 12, dy - 12, dw + 24, dh + 12);
@@ -1458,7 +1451,6 @@ function drawDoorstepDayStatic(){
   ctx.moveTo(dx + dw/2, dy);
   ctx.lineTo(dx + dw/2, dy + dh);
   ctx.stroke();
-  // 门上玻璃
   ctx.fillStyle = 'rgba(255,240,200,0.55)';
   ctx.fillRect(dx + 12, dy + 12, dw - 24, 44);
   ctx.strokeStyle = '#3a2818';
@@ -1469,7 +1461,6 @@ function drawDoorstepDayStatic(){
   ctx.arc(dx + dw - 22, dy + dh / 2 + 6, 5, 0, Math.PI * 2);
   ctx.fill();
 
-  // 门灯（白天灭着）
   const lx = hx + hw/2, ly = dy - 28;
   ctx.fillStyle = '#4a4a48';
   ctx.beginPath();
@@ -1484,7 +1475,6 @@ function drawDoorstepDayStatic(){
   ctx.ellipse(lx, ly + 12, 10, 6, 0, 0, Math.PI*2);
   ctx.fill();
 
-  // 台阶
   const sx = hx + hw/2 - 80, sy = dy + dh;
   ctx.fillStyle = '#6a6058';
   ctx.fillRect(sx, sy, 160, 12);
@@ -1498,7 +1488,6 @@ function drawDoorstepDayStatic(){
   ctx.fillRect(sx + 8, sy + 12, 144, 2);
   ctx.fillRect(sx + 16, sy + 24, 128, 2);
 
-  // 台阶上青苔
   ctx.fillStyle = 'rgba(120,150,90,0.45)';
   ctx.beginPath();
   ctx.ellipse(sx + 30, sy + 26, 16, 4, 0, 0, Math.PI*2);
@@ -1507,7 +1496,6 @@ function drawDoorstepDayStatic(){
   ctx.ellipse(sx + 110, sy + 14, 14, 3, 0, 0, Math.PI*2);
   ctx.fill();
 
-  // 地面反光
   ctx.fillStyle = 'rgba(255,240,200,0.28)';
   ctx.beginPath();
   ctx.ellipse(hx + hw/2, 500, 120, 14, 0, 0, Math.PI * 2);
@@ -1527,7 +1515,6 @@ function drawDoorstepDayStatic(){
 }
 
 function drawDoorstepDayDynamic(t, dt){
-  // 阳光微尘
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   for(let i=0;i<24;i++){
@@ -1541,11 +1528,8 @@ function drawDoorstepDayDynamic(t, dt){
   ctx.restore();
 }
 
-/* =========================================================
-   红屋顶 · 早
-   ========================================================= */
+/* ------ 红屋顶 · 早 ------ */
 function drawHouseDayStatic(){
-  // 室内暖黄
   ctx.fillStyle = grad(0, 0, 0, H, [
     [0,'#c8b898'],
     [0.5,'#b8a888'],
@@ -1553,7 +1537,6 @@ function drawHouseDayStatic(){
   ]);
   ctx.fillRect(0, 0, W, H);
 
-  // 墙缝
   ctx.strokeStyle = 'rgba(0,0,0,0.08)';
   ctx.lineWidth = 1;
   for(let x = 0; x < W; x += 48){
@@ -1562,19 +1545,16 @@ function drawHouseDayStatic(){
     ctx.stroke();
   }
 
-  // 地板
   woodGrain(0, 420, W, 120, '#7a5a38', 'rgba(0,0,0,0.22)', true);
   ctx.fillStyle = 'rgba(255,240,200,0.08)';
   ctx.fillRect(0, 420, W, 120);
   ctx.fillStyle = '#6a4a30';
   ctx.fillRect(0, 414, W, 6);
 
-  // 窗户（左上，透出蓝天）
   ctx.fillStyle = '#8a6a4a';
   ctx.fillRect(72, 80, 228, 228);
   ctx.fillStyle = '#c8d8e0';
   ctx.fillRect(80, 88, 212, 212);
-  // 窗外天空 + 云
   const sky = ctx.createLinearGradient(80, 88, 80, 300);
   sky.addColorStop(0, '#a8c8dc');
   sky.addColorStop(0.6, '#d8d8c8');
@@ -1588,7 +1568,6 @@ function drawHouseDayStatic(){
   ctx.beginPath();
   ctx.ellipse(240, 160, 50, 14, 0, 0, Math.PI*2);
   ctx.fill();
-  // 远处红屋顶
   ctx.fillStyle = '#b84030';
   ctx.beginPath();
   ctx.moveTo(180, 240);
@@ -1596,7 +1575,6 @@ function drawHouseDayStatic(){
   ctx.lineTo(300, 240);
   ctx.closePath();
   ctx.fill();
-  // 窗框
   ctx.strokeStyle = '#8a6a4a';
   ctx.lineWidth = 9;
   ctx.strokeRect(80, 88, 212, 212);
@@ -1605,7 +1583,6 @@ function drawHouseDayStatic(){
   ctx.moveTo(80, 194); ctx.lineTo(292, 194);
   ctx.stroke();
 
-  // 台灯（右侧）
   ctx.fillStyle = '#5a4030';
   ctx.fillRect(846, 306, 12, 130);
   ctx.fillStyle = '#8a6a3a';
@@ -1614,13 +1591,11 @@ function drawHouseDayStatic(){
   ctx.lineTo(878, 260); ctx.lineTo(826, 260);
   ctx.closePath();
   ctx.fill();
-  // 台灯关着
   ctx.fillStyle = '#c8a05a';
   ctx.beginPath();
   ctx.arc(852, 300, 4, 0, Math.PI*2);
   ctx.fill();
 
-  // 书架
   ctx.fillStyle = '#6a4a30';
   ctx.fillRect(60, 300, 60, 140);
   ctx.fillStyle = '#5a3a20';
@@ -1639,7 +1614,6 @@ function drawHouseDayStatic(){
     }
   }
 
-  // 桌子
   ctx.fillStyle = 'rgba(0,0,0,0.30)';
   ctx.beginPath(); ctx.ellipse(510, 516, 175, 13, 0, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle = '#7a5a3a';
@@ -1648,7 +1622,6 @@ function drawHouseDayStatic(){
   ctx.fillRect(378, 406, 16, 122);
   ctx.fillRect(626, 406, 16, 122);
 
-  // 相框（桌上）
   ctx.save();
   ctx.translate(470, 292); ctx.rotate(-0.045);
   ctx.fillStyle = '#a87a4a';
@@ -1659,7 +1632,6 @@ function drawHouseDayStatic(){
   ctx.fillRect(-53, -45, 106, 90);
   ctx.restore();
 
-  // 挂钟
   ctx.fillStyle = '#7a5a3a';
   ctx.beginPath(); ctx.arc(540, 120, 32, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle = '#f0e6d0';
@@ -1672,7 +1644,6 @@ function drawHouseDayStatic(){
     ctx.lineTo(540 + Math.cos(a)*25, 120 + Math.sin(a)*25);
     ctx.stroke();
   }
-  // 指针（摆着）
   ctx.strokeStyle = '#5a3a20';
   ctx.lineWidth = 3;
   ctx.lineCap = 'round';
@@ -1688,7 +1659,6 @@ function drawHouseDayStatic(){
   ctx.fillStyle = '#8a6a3a';
   ctx.beginPath(); ctx.arc(540, 120, 3, 0, Math.PI*2); ctx.fill();
 
-  // 阳光光束
   const lg = ctx.createLinearGradient(300, 100, 900, 600);
   lg.addColorStop(0, 'rgba(255,240,200,0.0)');
   lg.addColorStop(0.5, 'rgba(255,235,180,0.28)');
@@ -1698,7 +1668,6 @@ function drawHouseDayStatic(){
 }
 
 function drawHouseDayDynamic(t, dt){
-  // 台灯灭着，不闪烁；挂钟秒针慢摆
   ctx.save();
   ctx.translate(540, 120);
   const secAngle = (t * 0.4) % (Math.PI * 2);
@@ -1710,7 +1679,6 @@ function drawHouseDayDynamic(t, dt){
   ctx.stroke();
   ctx.restore();
 
-  // 阳光微尘
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   for(let i=0;i<30;i++){
@@ -2583,7 +2551,6 @@ function drawDoorstepStatic(){
 
   ctx.fillStyle = '#2a2018';
   ctx.fillRect(dx - 12, dy - 12, dw + 24, dh + 12);
-
   ctx.fillStyle = '#3a2c20';
   ctx.fillRect(dx, dy, dw, dh);
 
@@ -3984,7 +3951,7 @@ function drawNeighborDynamic(t, dt){
    场景 SPOTS 定义
    ========================================================= */
 const SCENES = {
-  /* 白天雨巷 —— 放在最前 */
+  /* 白天雨巷 */
   alley_day: {
     draw: drawAlleyDayStatic, dynamic: drawAlleyDayDynamic, rain: false,
     spots: [
@@ -4019,7 +3986,7 @@ const SCENES = {
       { id:'counter', x:618, y:248, w:300, h:220, label:'收银台' },
       { id:'shelf',   x:100, y:148, w:340, h:266, label:'货架' },
       { id:'floor',   x:360, y:440, w:220, h:80,  label:'地板' },
-      { id:'window',  x:16,  y:244, w:52,  h:52,  label:'后窗' },
+      { id:'window',  x:50,  y:186, w:140, h:160, label:'后窗' },
       { id:'back',    x:16,  y:456, w:88,  h:72,  label:'回到后巷' },
       { id:'exit',    x:884, y:196, w:60,  h:142, label:'推开门，到街上' }
     ]
@@ -4069,8 +4036,10 @@ const SCENES = {
     ]
   },
 
+  /* ================== 雨巷（三层） ================== */
   alley: {
-    draw: drawAlleyStatic, dynamic: drawAlleyDynamic, rain: true,
+    layers: { far: drawAlleyFar, mid: drawAlleyMid, near: drawAlleyNear },
+    dynamic: drawAlleyDynamic, rain: true,
     spots: [
       { id:'lamp',     x:136, y:88,  w:66,  h:56,  label:'路灯' },
       { id:'wires',    x:200, y:14,  w:400, h:36,  label:'电线' },
@@ -4084,6 +4053,7 @@ const SCENES = {
       { id:'exit',     x:892, y:244, w:52,  h:52,  label:'巷子深处' }
     ]
   },
+
   backstreet: {
     draw: drawBackstreetStatic, dynamic: drawBackstreetDynamic, rain: true,
     spots: [
@@ -4168,19 +4138,16 @@ const SCENES = {
     ]
   },
   underpass: {
-  draw: drawUnderpassStatic, dynamic: drawUnderpassDynamic, rain: false,
-  spots: [
-    { id:'stairs',     x:60,  y:240, w:120, h:160, label:'上方的楼梯' },
-    { id:'graffiti',   x:220, y:290, w:80,  h:120, label:'墙上的涂鸦' },
-    { id:'emergency',  x:180, y:160, w:80,  h:40,  label:'应急灯' },
-    { id:'oldPaper',   x:620, y:180, w:80,  h:80,  label:'发黄的纸' },
-    { id:'trash',      x:540, y:410, w:100, h:90,  label:'垃圾桶' },
-    { id:'tinBox',     x:720, y:410, w:80,  h:70,  label:'铁皮盒' },
-    { id:'floorWords', x:380, y:440, w:140, h:60,  label:'地上的字' },
-    { id:'room',       x:820, y:240, w:100, h:160, label:'配电房的门' },
-    { id:'back',       x:16,  y:244, w:52,  h:52,  label:'回到街道' }
-  ]
-},
+    draw: drawUnderpassStatic, dynamic: drawUnderpassDynamic, rain: false,
+    spots: [
+      { id:'stairs',     x:60,  y:240, w:120, h:160, label:'上方的楼梯' },
+      { id:'graffiti',   x:220, y:290, w:80,  h:120, label:'墙上的涂鸦' },
+      { id:'emergency',  x:180, y:160, w:80,  h:40,  label:'应急灯' },
+      { id:'trash',      x:540, y:410, w:100, h:90,  label:'垃圾桶' },
+      { id:'room',       x:820, y:240, w:100, h:160, label:'配电房的门' },
+      { id:'back',       x:16,  y:244, w:52,  h:52,  label:'回到街道' }
+    ]
+  },
   riverside: {
     draw: drawRiversideStatic, dynamic: drawRiversideDynamic, rain: true,
     spots: [
