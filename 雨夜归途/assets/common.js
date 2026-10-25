@@ -1,8 +1,11 @@
 /* =========================================================
-   common.js — 引擎核心
-   + 修复：手电筒开关状态在主线/支线里都正确识别
-   + 修复：支线里手电筒光圈减半、雨色偏红、余烬粒子、心跳脉动
-   + 支持 spot.label 为函数（可随状态改变显示文案）
+   common.js — 引擎核心 v2
+   + 分层视差（far / mid / near）
+   + 手持晃动
+   + 三层雨（远 / 中 / 近）
+   + 镜头水珠
+   + 呼吸暗角
+   + 保留原有：手电筒、暗夜、高亮、光标、涟漪、光尘
    ========================================================= */
 (function(){
 'use strict';
@@ -28,13 +31,36 @@ let rainSpawnT = 0;
 
 let rain = [], ripples = [], motes = [], embers = [];
 const MAX_RIPPLES = 18;
-const PERF = { rain:160, mainRain:95, motes:22, embers:55 };
+const PERF = { rain:220, mainRain:110, farRain:60, nearRain:40, motes:22, embers:55 };
 
 let tempLightTimer = 0;
 const TEMP_FADE = 0.6;
 const TEMP_HOLD = 3.0;
 const TEMP_TOTAL = TEMP_FADE + TEMP_HOLD + TEMP_FADE;
 
+/* ==================== 视差 ==================== */
+const parallax = {
+  tx: 0, ty: 0,
+  cx: 0, cy: 0,
+  maxShift: 6,
+  farK: 0.15,
+  midK: 0.45,
+  nearK: 0.85
+};
+
+/* ==================== 手持晃动 ==================== */
+let handShakeTime = 0;
+let handShakeLastX = 0, handShakeLastY = 0;
+
+/* ==================== 镜头水珠 ==================== */
+let lensDrops = [];
+let lensMaxDrops = 7;
+let lensSpawnCooldown = 0;
+
+/* ==================== 呼吸暗角 ==================== */
+let breathingPhase = 0;
+
+/* ==================== 虚拟光标 ==================== */
 const VC = {
   tracking: false,
   x: W / 2, y: H / 2,
@@ -51,7 +77,6 @@ let inputMode = 'mouse';
 let lastTouchTime = 0;
 let vcHintTimer = 0;
 
-/* ★ 新增：解析 label（支持字符串 / 函数） */
 function resolveLabel(sp){
   if(!sp || !sp.label) return null;
   return typeof sp.label === 'function' ? sp.label() : sp.label;
@@ -89,7 +114,6 @@ function setSceneCtx(c){
 function isPowerCut(){ return !!(window.S.flags && window.S.flags.powerCut); }
 function isBloodMode(){ return !!(window.S.flags && window.S.flags.bloodMode); }
 
-/* ★ 修复：手电筒开关状态 —— 主线读 flags.torchOn，支线读 flags.b_torchOn */
 function isTorchOn(){
   if(!window.S || !window.S.flags) return false;
   return isBloodMode()
@@ -108,46 +132,111 @@ function rrectOn(c,x,y,w,h,r){
 }
 function rrOn(c,x,y,w,h,r,col){ rrectOn(c,x,y,w,h,r); c.fillStyle=col; c.fill(); }
 
-/* ================== 雨 ================== */
+/* ==================== 雨 ==================== */
 function rebuildRain(){
   rain = [];
-  for(let i=0;i<PERF.rain;i++){
-    const isExtra = i >= PERF.mainRain;
+  const total = PERF.rain;
+  const farEnd = PERF.farRain;
+  const nearStart = total - PERF.nearRain;
+  for(let i = 0; i < total; i++){
+    let layer, lenMul, spMul, aMul, lineW;
+    if(i < farEnd){
+      layer = 'far'; lenMul = 0.55; spMul = 0.5; aMul = 0.55; lineW = 0.7;
+    } else if(i >= nearStart){
+      layer = 'near'; lenMul = 1.5; spMul = 1.35; aMul = 1.5; lineW = 1.7;
+    } else {
+      layer = 'mid'; lenMul = 1.0; spMul = 1.0; aMul = 1.0; lineW = 1.0;
+    }
     rain.push({
       x: Math.random()*W*1.4-140,
       y: Math.random()*H,
-      len: (isExtra ? 14 : 10) + Math.random()*20,
-      sp: (isExtra ? 760 : 640) + Math.random()*540,
-      a: (isExtra ? 0.13 : 0.10) + Math.random()*0.12
+      len: (10 + Math.random()*20) * lenMul,
+      sp: (640 + Math.random()*540) * spMul,
+      a: (0.10 + Math.random()*0.12) * aMul,
+      layer: layer,
+      lineW: lineW
     });
   }
 }
-function drawRain(dt){
+
+function drawRain3Layer(dt){
   if(!rain.length) return;
   const blood = isBloodMode();
-  const visible = blood ? rain.length : PERF.mainRain;
+
   mainCtx.save();
+  mainCtx.lineCap = 'round';
+
+  // 远雨
   mainCtx.strokeStyle = blood
-    ? 'rgba(220,140,140,0.92)'
-    : 'rgba(168,205,240,0.9)';
-  mainCtx.lineWidth = blood ? 1.35 : 1;
-  for(let i=0;i<rain.length;i++){
+    ? 'rgba(220,140,140,0.55)'
+    : 'rgba(160,200,235,0.5)';
+  mainCtx.lineWidth = 0.7;
+  mainCtx.beginPath();
+  for(let i = 0; i < rain.length; i++){
     const d = rain[i];
+    if(d.layer !== 'far') continue;
     d.y += d.sp * dt;
     d.x -= d.sp * dt * 0.16;
     if(d.y > H+24){ d.y = -30 - Math.random()*140; d.x = Math.random()*W*1.4 - 140; }
     if(d.x < -70) d.x = W + 50;
-    if(i >= visible) continue;
     mainCtx.globalAlpha = d.a;
-    mainCtx.beginPath();
     mainCtx.moveTo(d.x, d.y);
     mainCtx.lineTo(d.x - d.len*0.16, d.y - d.len);
+  }
+  mainCtx.stroke();
+
+  // 中雨
+  mainCtx.strokeStyle = blood
+    ? 'rgba(220,140,140,0.92)'
+    : 'rgba(168,205,240,0.9)';
+  mainCtx.lineWidth = 1;
+  mainCtx.beginPath();
+  for(let i = 0; i < rain.length; i++){
+    const d = rain[i];
+    if(d.layer !== 'mid') continue;
+    d.y += d.sp * dt;
+    d.x -= d.sp * dt * 0.16;
+    if(d.y > H+24){ d.y = -30 - Math.random()*140; d.x = Math.random()*W*1.4 - 140; }
+    if(d.x < -70) d.x = W + 50;
+    mainCtx.globalAlpha = d.a;
+    mainCtx.moveTo(d.x, d.y);
+    mainCtx.lineTo(d.x - d.len*0.16, d.y - d.len);
+  }
+  mainCtx.stroke();
+
+  // 近雨（带拖尾 + 高亮头）
+  mainCtx.lineWidth = 1.7;
+  for(let i = 0; i < rain.length; i++){
+    const d = rain[i];
+    if(d.layer !== 'near') continue;
+    d.y += d.sp * dt;
+    d.x -= d.sp * dt * 0.16;
+    if(d.y > H+24){ d.y = -30 - Math.random()*140; d.x = Math.random()*W*1.4 - 140; }
+    if(d.x < -70) d.x = W + 50;
+    const x1 = d.x, y1 = d.y;
+    const x2 = d.x - d.len*0.16, y2 = d.y - d.len;
+    const g = mainCtx.createLinearGradient(x1, y1, x2, y2);
+    if(blood){
+      g.addColorStop(0, `rgba(230,150,150,${d.a*1.5})`);
+      g.addColorStop(0.6, `rgba(200,110,110,${d.a*0.7})`);
+      g.addColorStop(1, 'rgba(180,80,80,0)');
+    } else {
+      g.addColorStop(0, `rgba(200,225,250,${d.a*1.5})`);
+      g.addColorStop(0.6, `rgba(160,200,240,${d.a*0.7})`);
+      g.addColorStop(1, 'rgba(120,170,220,0)');
+    }
+    mainCtx.globalAlpha = 1;
+    mainCtx.strokeStyle = g;
+    mainCtx.beginPath();
+    mainCtx.moveTo(x1, y1);
+    mainCtx.lineTo(x2, y2);
     mainCtx.stroke();
   }
+
   mainCtx.restore();
 }
 
-/* ================== 余烬粒子（仅支线） ================== */
+/* ==================== 余烬 ==================== */
 function rebuildEmbers(){
   embers = [];
   for(let i=0;i<PERF.embers;i++){
@@ -183,7 +272,7 @@ function drawEmbers(dt){
   mainCtx.restore();
 }
 
-/* ================== 涟漪 ================== */
+/* ==================== 涟漪 ==================== */
 function spawnRipple(x,y){
   if(ripples.length >= MAX_RIPPLES) return;
   ripples.push({ x, y, r:1, max:12 + Math.random()*22, life:0, dur:.65 + Math.random()*.5 });
@@ -214,7 +303,7 @@ function drawRipples(){
   mainCtx.restore();
 }
 
-/* ================== 光尘（主线用） ================== */
+/* ==================== 光尘 ==================== */
 function rebuildMotes(){
   motes = [];
   for(let i=0;i<PERF.motes;i++){
@@ -226,7 +315,7 @@ function rebuildMotes(){
   }
 }
 
-/* ================== 离屏缓存 ================== */
+/* ==================== 离屏缓存 ==================== */
 const bgCache = {};
 function cacheKey(){
   const f = window.S.flags || {};
@@ -247,6 +336,26 @@ function cacheKey(){
   }
   return '';
 }
+
+function getBgLayer(sceneKey, layerName){
+  const key = cacheKey() + '|' + layerName;
+  const entry = bgCache[sceneKey + ':' + layerName];
+  if(entry && entry.key === key) return entry.canvas;
+
+  const c = entry ? entry.canvas : document.createElement('canvas');
+  c.width = W; c.height = H;
+  const offCtx = c.getContext('2d');
+  offCtx.clearRect(0, 0, W, H);
+  setSceneCtx(offCtx);
+  const scene = getScene(sceneKey);
+  if(scene && scene.layers && scene.layers[layerName]){
+    scene.layers[layerName](0);
+  }
+  setSceneCtx(mainCtx);
+  bgCache[sceneKey + ':' + layerName] = { canvas:c, key };
+  return c;
+}
+
 function getBg(){
   const key = cacheKey();
   const entry = bgCache[currentSceneKey];
@@ -256,12 +365,16 @@ function getBg(){
   c.width = W; c.height = H;
   const offCtx = c.getContext('2d');
   offCtx.clearRect(0, 0, W, H);
-
   setSceneCtx(offCtx);
   const scene = getScene(currentSceneKey);
-  if(scene && scene.draw) scene.draw(0);
+  if(scene && scene.layers){
+    if(scene.layers.far)  scene.layers.far(0);
+    if(scene.layers.mid)  scene.layers.mid(0);
+    if(scene.layers.near) scene.layers.near(0);
+  } else if(scene && scene.draw){
+    scene.draw(0);
+  }
   setSceneCtx(mainCtx);
-
   bgCache[currentSceneKey] = { canvas:c, key };
   return c;
 }
@@ -308,12 +421,162 @@ function getDynamicCanvas(){
   return dynamicCanvas;
 }
 
-/* ★ 手电筒半径：支线减半 */
 function torchRadius(darkScene){
   const base = darkScene ? 290 : 230;
   return isBloodMode() ? Math.round(base * 0.5) : base;
 }
 
+/* ==================== 视差更新 ==================== */
+function updateParallax(dt){
+  let tx = 0, ty = 0;
+  if(inputMode === 'mouse' && hasPointer && mouse.x >= 0 && mouse.y >= 0){
+    tx = -(mouse.x / W - 0.5) * 2;
+    ty = -(mouse.y / H - 0.5) * 2;
+    if(tx < -1) tx = -1; if(tx > 1) tx = 1;
+    if(ty < -1) ty = -1; if(ty > 1) ty = 1;
+  }
+  parallax.tx = tx;
+  parallax.ty = ty;
+  const k = Math.min(1, dt * 5);
+  parallax.cx += (parallax.tx - parallax.cx) * k;
+  parallax.cy += (parallax.ty - parallax.cy) * k;
+}
+
+/* ==================== 手持晃动 ==================== */
+function updateHandShake(dt){
+  handShakeTime += dt;
+  const x = Math.sin(handShakeTime * 1.7) * 0.55 + Math.sin(handShakeTime * 4.3 + 1.2) * 0.28;
+  const y = Math.cos(handShakeTime * 2.1) * 0.55 + Math.cos(handShakeTime * 5.7 + 0.7) * 0.28;
+  handShakeLastX = x;
+  handShakeLastY = y;
+  if(cv){
+    cv.style.transform = 'translate(' + x.toFixed(2) + 'px, ' + y.toFixed(2) + 'px)';
+  }
+}
+
+/* ==================== 分层背景绘制 ==================== */
+function drawBgWithParallax(){
+  const scene = getScene(currentSceneKey);
+  if(!scene) return;
+
+  if(!scene.layers){
+    mainCtx.drawImage(getBg(), 0, 0);
+    return;
+  }
+
+  const px = parallax.cx * parallax.maxShift;
+  const py = parallax.cy * parallax.maxShift;
+
+  mainCtx.fillStyle = '#000';
+  mainCtx.fillRect(0, 0, W, H);
+
+  mainCtx.drawImage(getBgLayer(currentSceneKey, 'far'),  px * parallax.farK,  py * parallax.farK);
+  mainCtx.drawImage(getBgLayer(currentSceneKey, 'mid'),  px * parallax.midK,  py * parallax.midK);
+  mainCtx.drawImage(getBgLayer(currentSceneKey, 'near'), px * parallax.nearK, py * parallax.nearK);
+}
+
+/* ==================== 呼吸暗角 ==================== */
+function drawBreathingVignette(dt){
+  breathingPhase += dt * 1.5;
+  const breath = 0.5 + 0.5 * Math.sin(breathingPhase);
+  const blood = isBloodMode();
+  const intensity = blood ? 0.55 + 0.15 * breath : 0.40 + 0.10 * breath;
+
+  const g = mainCtx.createRadialGradient(
+    W/2, H/2, Math.min(W,H) * (0.36 + breath * 0.05),
+    W/2, H/2, Math.max(W,H) * 0.82
+  );
+  if(blood){
+    g.addColorStop(0, 'rgba(30,0,6,0)');
+    g.addColorStop(0.55, 'rgba(30,0,6,' + (intensity * 0.55).toFixed(3) + ')');
+    g.addColorStop(1, 'rgba(14,0,3,' + intensity.toFixed(3) + ')');
+  } else {
+    g.addColorStop(0, 'rgba(0,2,6,0)');
+    g.addColorStop(0.55, 'rgba(0,2,6,' + (intensity * 0.55).toFixed(3) + ')');
+    g.addColorStop(1, 'rgba(0,1,4,' + intensity.toFixed(3) + ')');
+  }
+  mainCtx.fillStyle = g;
+  mainCtx.fillRect(0, 0, W, H);
+}
+
+/* ==================== 镜头水珠 ==================== */
+function spawnLensDrop(){
+  const r = 4 + Math.random() * 8;
+  lensDrops.push({
+    x: Math.random() * W,
+    y: -r - Math.random() * 40,
+    vy: 12 + Math.random() * 26,
+    vx: (Math.random() - 0.5) * 6,
+    r: r,
+    alpha: 0.45 + Math.random() * 0.35,
+    trail: 0
+  });
+}
+
+function updateLensDrops(dt){
+  lensSpawnCooldown -= dt;
+  if(lensSpawnCooldown <= 0){
+    if(lensDrops.length < lensMaxDrops){
+      spawnLensDrop();
+    }
+    lensSpawnCooldown = 1.5 + Math.random() * 3.5;
+  }
+
+  for(let i = lensDrops.length - 1; i >= 0; i--){
+    const d = lensDrops[i];
+    d.y += d.vy * dt;
+    d.x += d.vx * dt;
+    d.trail += dt;
+    if(d.y > H + d.r + 20){
+      lensDrops.splice(i, 1);
+    }
+  }
+}
+
+function drawLensDrops(){
+  if(!lensDrops.length) return;
+  mainCtx.save();
+  for(let i = 0; i < lensDrops.length; i++){
+    const d = lensDrops[i];
+
+    // 拖尾
+    if(d.trail > 0.3){
+      const trailLen = Math.min(30, d.trail * 8);
+      const tg = mainCtx.createLinearGradient(d.x, d.y - trailLen, d.x, d.y);
+      tg.addColorStop(0, 'rgba(180,210,240,0)');
+      tg.addColorStop(1, 'rgba(180,210,240,' + (d.alpha * 0.35).toFixed(3) + ')');
+      mainCtx.strokeStyle = tg;
+      mainCtx.lineWidth = d.r * 0.7;
+      mainCtx.lineCap = 'round';
+      mainCtx.beginPath();
+      mainCtx.moveTo(d.x, d.y - trailLen);
+      mainCtx.lineTo(d.x, d.y - d.r * 0.5);
+      mainCtx.stroke();
+    }
+
+    // 水珠主体
+    const g = mainCtx.createRadialGradient(
+      d.x - d.r * 0.35, d.y - d.r * 0.4, 0,
+      d.x, d.y, d.r * 1.05
+    );
+    g.addColorStop(0, 'rgba(255,255,255,' + (d.alpha * 0.85).toFixed(3) + ')');
+    g.addColorStop(0.5, 'rgba(180,210,240,' + (d.alpha * 0.5).toFixed(3) + ')');
+    g.addColorStop(1, 'rgba(80,120,170,' + (d.alpha * 0.2).toFixed(3) + ')');
+    mainCtx.fillStyle = g;
+    mainCtx.beginPath();
+    mainCtx.ellipse(d.x, d.y, d.r, d.r * 1.15, 0, 0, Math.PI * 2);
+    mainCtx.fill();
+
+    // 高光
+    mainCtx.fillStyle = 'rgba(255,255,255,' + (d.alpha * 0.9).toFixed(3) + ')';
+    mainCtx.beginPath();
+    mainCtx.arc(d.x - d.r * 0.4, d.y - d.r * 0.5, d.r * 0.22, 0, Math.PI * 2);
+    mainCtx.fill();
+  }
+  mainCtx.restore();
+}
+
+/* ==================== 原有：箭头、光、指针 ==================== */
 function drawArrow(dir, x, y, t){
   const pulse = 0.55 + 0.45 * Math.sin(t * 2.2);
   const bob = Math.sin(t * 2.2) * 3;
@@ -403,7 +666,6 @@ function drawHighlight(t){
     mainCtx.stroke();
     mainCtx.restore();
 
-    /* ★ 修复：label 支持函数 */
     const labelText = resolveLabel(sp);
     if(labelText){
       mainCtx.save();
@@ -441,7 +703,6 @@ function drawHover(t){
   mainCtx.stroke();
   mainCtx.setLineDash([]);
 
-  /* ★ 修复：label 支持函数 */
   const labelText = resolveLabel(hoverSpot);
   if(labelText){
     mainCtx.save();
@@ -531,10 +792,23 @@ function renderDynamicLayer(scene, t, dt){
   if(!scene.dynamic) return;
   const torchOn = isTorchOn();
   const dark = isDarkScene();
+  const useOffset = !!scene.layers;
+  const px = useOffset ? parallax.cx * parallax.maxShift * parallax.midK : 0;
+  const py = useOffset ? parallax.cy * parallax.maxShift * parallax.midK : 0;
+
   if(!dark || !torchOn){
-    scene.dynamic(t, dt);
+    if(useOffset){
+      mainCtx.save();
+      mainCtx.translate(px, py);
+      scene.dynamic(t, dt);
+      mainCtx.restore();
+    } else {
+      scene.dynamic(t, dt);
+    }
     return;
   }
+
+  // torch 分支：忽略视差（保持原样）
   const dcv = getDynamicCanvas();
   const dctx = dcv.getContext('2d');
   dctx.globalCompositeOperation = 'source-over';
@@ -599,6 +873,22 @@ function drawTempLight(dt){
   else if(elapsed < TEMP_TOTAL){ alpha = Math.max(0, (TEMP_TOTAL - elapsed) / TEMP_FADE); }
   else return;
   if(alpha <= 0.001) return;
+
+  const scene = getScene(currentSceneKey);
+  if(scene && scene.layers){
+    mainCtx.save();
+    mainCtx.globalAlpha = alpha * 0.55;
+    mainCtx.fillStyle = 'rgba(240, 224, 200, 1)';
+    mainCtx.fillRect(0, 0, W, H);
+    mainCtx.restore();
+    mainCtx.save();
+    mainCtx.globalCompositeOperation = 'lighter';
+    mainCtx.fillStyle = `rgba(255,240,205,${(alpha * 0.25).toFixed(3)})`;
+    mainCtx.fillRect(0, 0, W, H);
+    mainCtx.restore();
+    return;
+  }
+
   const lit = getLitBg();
   mainCtx.save();
   mainCtx.globalAlpha = alpha * 0.92;
@@ -611,6 +901,7 @@ function drawTempLight(dt){
   mainCtx.restore();
 }
 
+/* ==================== 主渲染 ==================== */
 function render(dt, t){
   mainCtx.clearRect(0, 0, W, H);
   setSceneCtx(mainCtx);
@@ -618,7 +909,11 @@ function render(dt, t){
   const scene = getScene(currentSceneKey);
   if(!scene) return;
 
-  mainCtx.drawImage(getBg(), 0, 0);
+  updateParallax(dt);
+  updateHandShake(dt);
+  updateLensDrops(dt);
+
+  drawBgWithParallax();
 
   if(isPowerCut()){
     mainCtx.save();
@@ -632,7 +927,7 @@ function render(dt, t){
   drawTorchBackground(t);
 
   if(scene.rain){
-    drawRain(dt);
+    drawRain3Layer(dt);
     rainSpawnT += dt;
     const interval = 0.09;
     while(rainSpawnT > interval){
@@ -678,6 +973,14 @@ function render(dt, t){
 
   drawHighlight(t);
   drawHover(t);
+
+  // 呼吸暗角（视觉包裹）
+  drawBreathingVignette(dt);
+
+  // 镜头水珠（最上面，像贴在摄影机上）
+  drawLensDrops();
+
+  // 光标最后画，保证在暗角之上
   drawPointer(dt);
 
   if(inputMode === 'touch' && VC.tracking){
@@ -755,6 +1058,8 @@ function resizeCanvas(){
   cv.style.height = cssH + 'px';
   cv.style.left = Math.round((vw - cssW) / 2) + 'px';
   cv.style.top  = Math.round((vh - cssH) / 2) + 'px';
+  cv.style.transformOrigin = 'center center';
+
   const dprLimit = isBloodMode() ? 1.35 : 1.0;
   const dpr = Math.min(window.devicePixelRatio || 1, dprLimit);
   cv.width  = Math.round(cssW * dpr);
@@ -889,65 +1194,6 @@ function bindMessage(){
   window.parent.postMessage({ type:'ready' }, '*');
 }
 
-function boot(sceneKey){
-  currentSceneKey = sceneKey;
-  if(!getScene(sceneKey)){
-    console.warn('[common] 未知场景:', sceneKey);
-    return;
-  }
-  cv = document.getElementById('cv');
-  if(!cv){
-    console.error('[common] 缺少 #cv 画布');
-    return;
-  }
-  mainCtx = cv.getContext('2d', { alpha:false });
-  setSceneCtx(mainCtx);
-
-  rebuildRain();
-  rebuildMotes();
-  rebuildEmbers();
-  ripples.length = 0;
-
-  lastBlood = isBloodMode();
-
-  touchMode = isTouchDevice();
-  inputMode = touchMode ? 'touch' : 'mouse';
-
-  if(touchMode){
-    VC.x = W * 0.5; VC.y = H * 0.55;
-    VC.sensitivity = 2.2;
-    mouse.x = VC.x; mouse.y = VC.y;
-    hasPointer = true;
-    pointerAlpha = 1;
-    try{
-      if(!sessionStorage.getItem('vc_hint_shown')){
-        vcHintTimer = 6.5;
-        sessionStorage.setItem('vc_hint_shown', '1');
-      }
-    }catch(e){ vcHintTimer = 6.5; }
-  }
-
-  resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
-  window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 200));
-
-  bindInput();
-  bindMessage();
-
-  lastFrame = performance.now();
-  requestAnimationFrame(loop);
-}
-
-window.__engineStop = function(){
-  stopped = true;
-  try{
-    if(mainCtx) mainCtx.clearRect(0, 0, W, H);
-    if(cv) cv.style.visibility = 'hidden';
-  }catch(e){}
-};
-window.addEventListener('pagehide', () => { stopped = true; });
-window.addEventListener('beforeunload', () => { stopped = true; });
-
 function drawTorchBackground(t){
   const on = isTorchOn();
   if(!on) return;
@@ -1040,6 +1286,66 @@ function drawTorchDarknessOverlay(){
   mainCtx.fillStyle = 'rgba(0,0,0,0.55)';
   mainCtx.fillRect(0, 0, W, H);
 }
+
+function boot(sceneKey){
+  currentSceneKey = sceneKey;
+  if(!getScene(sceneKey)){
+    console.warn('[common] 未知场景:', sceneKey);
+    return;
+  }
+  cv = document.getElementById('cv');
+  if(!cv){
+    console.error('[common] 缺少 #cv 画布');
+    return;
+  }
+  mainCtx = cv.getContext('2d', { alpha:false });
+  setSceneCtx(mainCtx);
+
+  rebuildRain();
+  rebuildMotes();
+  rebuildEmbers();
+  ripples.length = 0;
+  lensDrops.length = 0;
+
+  lastBlood = isBloodMode();
+
+  touchMode = isTouchDevice();
+  inputMode = touchMode ? 'touch' : 'mouse';
+
+  if(touchMode){
+    VC.x = W * 0.5; VC.y = H * 0.55;
+    VC.sensitivity = 2.2;
+    mouse.x = VC.x; mouse.y = VC.y;
+    hasPointer = true;
+    pointerAlpha = 1;
+    try{
+      if(!sessionStorage.getItem('vc_hint_shown')){
+        vcHintTimer = 6.5;
+        sessionStorage.setItem('vc_hint_shown', '1');
+      }
+    }catch(e){ vcHintTimer = 6.5; }
+  }
+
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+  window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 200));
+
+  bindInput();
+  bindMessage();
+
+  lastFrame = performance.now();
+  requestAnimationFrame(loop);
+}
+
+window.__engineStop = function(){
+  stopped = true;
+  try{
+    if(mainCtx) mainCtx.clearRect(0, 0, W, H);
+    if(cv) cv.style.visibility = 'hidden';
+  }catch(e){}
+};
+window.addEventListener('pagehide', () => { stopped = true; });
+window.addEventListener('beforeunload', () => { stopped = true; });
 
 window.SceneCommon = { boot };
 })();
