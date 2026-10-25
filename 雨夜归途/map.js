@@ -1,6 +1,6 @@
 /* =========================================================
    map.js — 雨痕地图 v2
-   修复：动画卡住导致点击失效 / 节点状态区分"去过"和"可达"
+   修复：shop 在街道时意外解锁的 bug
    ========================================================= */
 (function(global){
 'use strict';
@@ -67,7 +67,10 @@ const UNLOCK = {
   backstreet:   () => hasSeenScene('backstreet')   || isAdjacentToCurrent('backstreet'),
   powerstation: () => hasSeenScene('powerstation') || isAdjacentToCurrent('powerstation'),
   rooftop:      () => hasSeenScene('rooftop')      || isAdjacentToCurrent('rooftop'),
-  shop:         () => getFlag('doorOpen')          || isAdjacentToCurrent('shop'),
+  
+  /* ★ 修复：便利店只能通过“后门被打开”解锁，不再因为和街道相邻而白给 */
+  shop:         () => getFlag('doorOpen'),
+  
   street:       () => hasSeenScene('street')       || isAdjacentToCurrent('street'),
   underpass:    () => hasSeenScene('underpass')    || hasSeenScene('street'),
   riverside:    () => hasSeenScene('riverside')    || hasSeenScene('street'),
@@ -732,7 +735,6 @@ function loop(now){
     return;
   }
 
-  /* ★ 从后台恢复时，lastTime 可能是几秒前 —— 强制当成 50ms */
   if(now - lastTime > 1000){
     lastTime = now - 50;
   }
@@ -757,7 +759,6 @@ function findNodeAt(mx, my){
 }
 
 function onClick(e){
-  /* ★ 放宽门槛：只要开了一半以上就能点（防动画卡住） */
   if(opened < 0.5) return;
   if(travelAnim) return;
   const r = canvas.getBoundingClientRect();
@@ -800,7 +801,6 @@ function init(){
   canvas.addEventListener('mousemove', onMove);
   canvas.addEventListener('mouseleave', () => { hoverNode = null; });
 
-  /* ★ 从后台恢复时，如果地图开着就跳到终点 */
   document.addEventListener('visibilitychange', function(){
     if(!document.hidden && visible){
       opened = 1;
@@ -823,7 +823,6 @@ function open(){
   lastTime = performance.now();
   if(!rafId) rafId = requestAnimationFrame(loop);
 
-  /* ★ 1.2 秒保底：动画无论如何推到终点 */
   clearTimeout(fallbackTimer);
   fallbackTimer = setTimeout(function(){
     if(visible){
@@ -859,9 +858,6 @@ function setTravelCallback(cb){
 
 function refreshUnlocks(){}
 
-/* =========================================================
-   ★ 暴露给新手引导：节点 / 当前场景 / 相邻可传送节点
-   ========================================================= */
 function getNodeScreenRect(key){
   if(!NODES[key]) return null;
   const n = NODES[key];
