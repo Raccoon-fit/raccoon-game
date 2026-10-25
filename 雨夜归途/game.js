@@ -3118,36 +3118,31 @@ function checkCombos(){
   comboLock = true;
   var myInv = getInv();
 
+  /* ★ 手电筒 + 电池 → 修好 */
   if(myInv.indexOf('torch') !== -1 && myInv.indexOf('battery') !== -1){
-    if(!is('torchBrokenTold')){
-      set('torchBrokenTold', true);
-      save();
-      comboLock = false;
-      say('灰豆把电池塞进手电筒，用牙咬住尾部转了一圈。');
-      say('啪。');
-      say('——什么都没发生。');
-      say('');
-      say('它又试了一次。');
-      say('——灯，还是不亮。');
-      say('');
-      say('灰豆把电池取出来，翻过来，再塞进去。');
-      say('这次它咬得很紧。');
-      say('——还是黑的。');
-      say('');
-      say('它把手电筒贴在耳朵上，摇了摇。');
-      say('里面有什么东西，**松了**。');
-      say('——像是一个早就坏掉的东西。');
-      say('');
-      say('灰豆把坏掉的手电筒放在地上，用爪子按了按。');
-      say('（手电筒坏了。这一路，只能摸黑走。）');
-      return;
-    }
+    var n = myInv.filter(function(i){ return i !== 'torch' && i !== 'battery'; });
+    n.push('torchOn');
+    setInv(n);
+    set('torchOn', true);
+    save(); syncState();
+    renderInv('torchOn');
+    comboLock = false;
+    say('灰豆把电池塞进手电筒，用尾盖拧紧。');
+    say('啪。');
+    say('——没亮。');
+    say('');
+    say('它晃了晃。');
+    say('里面有什么东西——**咔嗒**。');
+    say('');
+    say('一道细细的光柱，落在墙上。');
+    say('（手电筒亮了。在暗的地方，点击物品栏里的手电筒可以开关。）');
+    return;
   }
 
   if(myInv.indexOf('hook') !== -1 && myInv.indexOf('rope') !== -1 && myInv.indexOf('grapnel') === -1){
-    var n = myInv.filter(function(i){ return i!=='hook' && i!=='rope'; });
-    n.push('grapnel');
-    setInv(n);
+    var n2 = myInv.filter(function(i){ return i!=='hook' && i!=='rope'; });
+    n2.push('grapnel');
+    setInv(n2);
     renderInv('grapnel'); save(); syncState();
     comboLock = false;
     say('灰豆把晾衣绳一圈一圈缠在挂钩上，打了个死结。');
@@ -3160,6 +3155,14 @@ function checkCombos(){
 /* =========================================================
    物品栏 / 提示
    ========================================================= */
+var PICKUP_FLAGS = {
+  rope: 'ropeTaken',
+  catfood: 'catfoodTaken',
+  torch: 'torchTaken',
+  battery: 'batteryTaken',
+  photo2: 'photo2Taken'
+};
+
 function renderInv(newId){
   invEl.innerHTML = '';
   if(!S) return;
@@ -3235,6 +3238,7 @@ function pickup(id){
   var arr = getInv();
   if(arr.indexOf(id) !== -1) return;
   arr.push(id);
+  if(PICKUP_FLAGS[id]) set(PICKUP_FLAGS[id], true);
   renderInv(id);
   toast('获得 · ' + ITEMS[id].name);
   save();
@@ -3243,27 +3247,6 @@ function pickup(id){
 /* =========================================================
    结局
    ========================================================= */
-function startEnding(){
-  if(endingLock) return;
-  endingLock = true;
-  if(!getAchievementCount() || !loadAchievements()['truth_daybreak']){
-    unlockAchievement('truth_daybreak');
-  }
-  say('门外传来脚步声。');
-  say('钥匙插进锁孔，转了一圈。');
-  say('门开了。');
-  say('一个女孩站在门口，伞还在滴水。');
-  say('她看着灰豆，很久，很久。');
-  say('“{{你回来了。}}”');
-  say('灰豆不认识她。');
-  say('但它认得这个味道——');
-  say('是被**留下**的味道。', function(){ showEnding(); });
-}
-function showEnding(){
-  endingShown = true; syncState();
-  endEl.classList.add('show');
-}
-
 function startBloodEnding(){
   if(endingLock) return;
   endingLock = true;
