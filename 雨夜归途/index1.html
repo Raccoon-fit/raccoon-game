@@ -900,7 +900,7 @@ var waitStart = Date.now();
 function waitForGameReady(){
   var loading = $('loadingScreen');
   var elapsed = Date.now() - waitStart;
-  if(loading && isVisible(loading) && elapsed < 12000){
+  if(loading && isVisible(loading) && elapsed < 20000){
     setTimeout(waitForGameReady, 250);
     return;
   }
@@ -962,92 +962,53 @@ if(shouldAutoStart){
 })();
 </script>
 
-<!-- three.js（放在 body 末尾，不阻塞首屏） -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
-
+<!-- =========================================================
+     对话框 · 3D 浣熊头像
+     - three.js 和 raccoon 模型由 game.js 的 preloadAvatar() 统一加载
+     - 使用 window.__RACCOON_MODEL__ / window.__PRELOAD_PROMISE__
+     - 模型未就绪时保留 emoji
+     ========================================================= -->
 <script>
-/* =========================================================
-   对话框 · 3D 浣熊头像
-   - 加载 assets3d/models/raccoon.obj
-   - 渲染到 #dlgRaccoon canvas
-   - 极慢旋转（0.35 rad/s ≈ 20°/s）
-   - 对话关闭时暂停渲染
-   - 加载失败自动回退到 emoji
-   ========================================================= */
 (function(){
-  if(typeof THREE === 'undefined'){
-    console.warn('[dlgRaccoon] three.js 未加载，保留 emoji');
-    return;
-  }
   var canvas = document.getElementById('dlgRaccoon');
   var avatarEl = document.getElementById('dlgAvatar');
   var dlgEl = document.getElementById('dlg');
   if(!canvas || !avatarEl || !dlgEl) return;
 
   var fallbackEl = avatarEl.querySelector('.fallback');
-  var BASE = 'assets3d/models/';
   var SIZE = 80;
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-  var renderer;
-  try{
-    renderer = new THREE.WebGLRenderer({
-      canvas: canvas,
-      alpha: true,
-      antialias: true
-    });
-  }catch(e){
-    console.warn('[dlgRaccoon] WebGL 初始化失败，保留 emoji', e);
-    return;
-  }
-  renderer.setPixelRatio(dpr);
-  renderer.setSize(SIZE, SIZE, false);
-  renderer.setClearColor(0x000000, 0);
-
-  var scene = new THREE.Scene();
-  var camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
-  camera.position.set(0, 1.15, 5.0);
-  camera.lookAt(0, 1.0, 0);
-
-  scene.add(new THREE.AmbientLight(0x8899bb, 0.60));
-
-  var keyLight = new THREE.DirectionalLight(0xffd8b0, 1.6);
-  keyLight.position.set(3, 5, 4);
-  scene.add(keyLight);
-
-  var rimLight = new THREE.DirectionalLight(0x90b0ff, 0.7);
-  rimLight.position.set(-4, 2, -3);
-  scene.add(rimLight);
-
-  var fillLight = new THREE.PointLight(0xffc090, 0.8, 20);
-  fillLight.position.set(-2, 3, 3);
-  scene.add(fillLight);
-
-  var pivot = new THREE.Group();
-  scene.add(pivot);
+  var renderer = null;
+  var scene = null;
+  var camera = null;
+  var pivot = null;
+  var ready = false;
+  var loopStarted = false;
 
   var dlgVisible = dlgEl.classList.contains('show');
   try{
     var obs = new MutationObserver(function(){
-      dlgVisible = dlgEl.classList.contains('show');
-      if(dlgVisible) renderer.render(scene, camera);
+      var now = dlgEl.classList.contains('show');
+      if(now !== dlgVisible){
+        dlgVisible = now;
+        if(dlgVisible && ready){
+          renderer.render(scene, camera);
+        }
+      }
     });
     obs.observe(dlgEl, { attributes: true, attributeFilter: ['class'] });
   }catch(e){}
 
-  var loopStarted = false;
   function startLoop(){
     if(loopStarted) return;
     loopStarted = true;
     if(fallbackEl) fallbackEl.style.display = 'none';
-
     var last = performance.now();
     function tick(now){
       var dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      if(dlgVisible){
+      if(dlgVisible && ready){
         pivot.rotation.y += dt * 0.35;
         renderer.render(scene, camera);
       }
@@ -1068,39 +1029,93 @@ if(shouldAutoStart){
     pivot.add(model);
   }
 
-  function loadNoTexture(){
-    var objLoader = new THREE.OBJLoader();
-    objLoader.setPath(BASE);
-    objLoader.load('raccoon.obj', function(model){
+  function initAvatar(){
+    if(typeof THREE === 'undefined'){
+      console.warn('[dlgRaccoon] three.js 未加载，保留 emoji');
+      return;
+    }
+
+    try{
+      renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+    }catch(e){
+      console.warn('[dlgRaccoon] WebGL 初始化失败，保留 emoji', e);
+      return;
+    }
+    renderer.setPixelRatio(dpr);
+    renderer.setSize(SIZE, SIZE, false);
+    renderer.setClearColor(0x000000, 0);
+
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+    camera.position.set(0, 1.15, 5.0);
+    camera.lookAt(0, 1.0, 0);
+
+    scene.add(new THREE.AmbientLight(0x8899bb, 0.60));
+    var keyLight = new THREE.DirectionalLight(0xffd8b0, 1.6);
+    keyLight.position.set(3, 5, 4); scene.add(keyLight);
+    var rimLight = new THREE.DirectionalLight(0x90b0ff, 0.7);
+    rimLight.position.set(-4, 2, -3); scene.add(rimLight);
+    var fillLight = new THREE.PointLight(0xffc090, 0.8, 20);
+    fillLight.position.set(-2, 3, 3); scene.add(fillLight);
+
+    pivot = new THREE.Group();
+    scene.add(pivot);
+
+    if(window.__RACCOON_MODEL__){
+      var model = window.__RACCOON_MODEL__.clone(true);
       model.traverse(function(o){
-        if(o.isMesh) o.material = new THREE.MeshLambertMaterial({ color: 0x9a8a78 });
+        if(o.isMesh && o.material){ o.material = o.material.clone(); }
       });
       placeModel(model, 2.0);
+      ready = true;
       startLoop();
-    }, undefined, function(err){
-      console.warn('[dlgRaccoon] OBJ 加载失败，保留 emoji', err);
+      return;
+    }
+
+    /* 兜底：自己加载一次（preload 阶段未跑或失败时） */
+    var BASE = 'assets3d/models/';
+    var mtlLoader = new THREE.MTLLoader();
+    mtlLoader.setPath(BASE);
+    mtlLoader.setResourcePath(BASE);
+    mtlLoader.load('raccoon.mtl', function(materials){
+      materials.preload();
+      var objLoader = new THREE.OBJLoader();
+      objLoader.setMaterials(materials);
+      objLoader.setPath(BASE);
+      objLoader.load('raccoon.obj', function(model){
+        placeModel(model, 2.0);
+        ready = true;
+        startLoop();
+      }, undefined, function(){
+        console.warn('[dlgRaccoon] 兜底 OBJ 加载失败');
+      });
+    }, undefined, function(){
+      var objLoader = new THREE.OBJLoader();
+      objLoader.setPath(BASE);
+      objLoader.load('raccoon.obj', function(model){
+        model.traverse(function(o){
+          if(o.isMesh) o.material = new THREE.MeshLambertMaterial({ color: 0x9a8a78 });
+        });
+        placeModel(model, 2.0);
+        ready = true;
+        startLoop();
+      }, undefined, function(){
+        console.warn('[dlgRaccoon] 兜底 OBJ 加载失败（无贴图）');
+      });
     });
   }
 
-  var mtlLoader = new THREE.MTLLoader();
-  mtlLoader.setPath(BASE);
-  mtlLoader.setResourcePath(BASE);
-  mtlLoader.load('raccoon.mtl', function(materials){
-    materials.preload();
-    var objLoader = new THREE.OBJLoader();
-    objLoader.setMaterials(materials);
-    objLoader.setPath(BASE);
-    objLoader.load('raccoon.obj', function(model){
-      placeModel(model, 2.0);
-      startLoop();
-    }, undefined, function(err){
-      console.warn('[dlgRaccoon] OBJ 加载失败，尝试无贴图', err);
-      loadNoTexture();
+  /* 等待 game.js 的 preload 阶段完成 */
+  if(window.__PRELOAD_PROMISE__){
+    window.__PRELOAD_PROMISE__.then(function(){
+      initAvatar();
+    }).catch(function(){
+      initAvatar();
     });
-  }, undefined, function(err){
-    console.warn('[dlgRaccoon] MTL 加载失败，尝试无贴图', err);
-    loadNoTexture();
-  });
+  } else {
+    /* preload 尚未初始化：稍等 */
+    setTimeout(initAvatar, 600);
+  }
 })();
 </script>
 </body>
