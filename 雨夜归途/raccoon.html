@@ -75,6 +75,31 @@
     pointer-events:none;z-index:7;opacity:0;transition:opacity 1s;}
   #hint.show{opacity:1;}
 
+  /* 跳过按钮 */
+  #skipBtn{
+    position:absolute;right:28px;bottom:24px;
+    padding:10px 22px;
+    font-size:13px;letter-spacing:3px;font-weight:500;
+    color:rgba(200,180,140,0.75);
+    background:rgba(10,14,20,0.55);
+    border:1px solid rgba(200,170,110,0.35);
+    border-radius:10px;
+    font-family:inherit;
+    cursor:pointer;
+    z-index:9;
+    transition:color .2s ease, border-color .2s ease, background .2s ease, transform .1s ease;
+    backdrop-filter:blur(4px);
+    opacity:0;
+    pointer-events:none;
+  }
+  #skipBtn.show{opacity:1;pointer-events:auto;}
+  #skipBtn:hover{
+    color:#ffe6a8;
+    border-color:rgba(255,214,140,0.85);
+    background:rgba(20,30,44,0.75);
+  }
+  #skipBtn:active{transform:scale(.96);}
+
   #endScreen{position:absolute;inset:0;background:#000;
     display:flex;align-items:center;justify-content:center;
     opacity:0;pointer-events:none;transition:opacity 1s;z-index:20;}
@@ -87,6 +112,7 @@
   <canvas id="cv"></canvas>
   <div id="storyLayer"></div>
   <div id="hint">按 W A S D 移动　·　↑ ↓ ← → 转动视角</div>
+  <button id="skipBtn">跳 过 ▸</button>
   <div id="loading">
     <div class="name">雨 夜 归 途</div>
     <div class="bar"><div class="fill" id="loadFill"></div></div>
@@ -111,6 +137,7 @@ const loadTip = document.getElementById('loadTip');
 const storyLayer = document.getElementById('storyLayer');
 const hintEl = document.getElementById('hint');
 const endScreen = document.getElementById('endScreen');
+const skipBtn = document.getElementById('skipBtn');
 
 const NEXT_URL = 'index1.html';
 
@@ -118,14 +145,30 @@ const NEXT_URL = 'index1.html';
 if(typeof THREE === 'undefined'){
   loadTip.textContent = '⚠ three.js 加载失败（检查网络）';
   loadTip.classList.add('error');
-  setTimeout(function(){ location.replace(NEXT_URL); }, 2500);
+  setTimeout(function(){ leaveToNext(); }, 2500);
   return;
 }
 
+/* =========================================================
+   ★ 统一离开方式：
+     - 在 iframe 里 → postMessage 通知父页面换 iframe.src
+     - 独立打开   → location.replace 降级
+   ========================================================= */
+function leaveToNext(){
+  try{
+    if(window.parent && window.parent !== window){
+      window.parent.postMessage({ type:'next' }, '*');
+      return;
+    }
+  }catch(e){}
+  location.replace(NEXT_URL);
+}
+
+/* 「继续存档」直接进本体，跳过序章 */
 let mode = 'new';
 try{ mode = localStorage.getItem('raccoon_launch_mode') || 'new'; }catch(e){}
 if(mode === 'continue'){
-  location.replace(NEXT_URL);
+  leaveToNext();
   return;
 }
 
@@ -281,7 +324,6 @@ function placeRaccoon(model){
   const s = targetHeight / Math.max(size.y, 0.001);
 
   model.scale.setScalar(s);
-  model.rotation.y = -Math.PI / 2;      /* ★ 让浣熊正面朝相机 */
   model.position.x = 6 - center.x * s;
   model.position.y = 0 - box.min.y * s;
   model.position.z = 4 - center.z * s;
@@ -338,7 +380,6 @@ function loadRaccoon(){
       loadFill.style.width = (10 + Math.round(progress.loaded / progress.total * 30)) + '%';
     }
   }, function(err){
-    /* MTL 失败 → 用普通材质加载 OBJ */
     console.warn('[raccoon] MTL 加载失败，改用无贴图模式', err);
     loadTip.textContent = '无贴图模式……';
     const objLoader = new THREE.OBJLoader();
@@ -387,16 +428,26 @@ function startStory(){
     delay += GAP + (item.pause || 0);
   });
   setTimeout(finishStory, delay + 1000);
+  /* 剧情开始后，跳过按钮出现 */
+  skipBtn.classList.add('show');
 }
+
 let storyDone = false;
 function finishStory(){
   if(storyDone) return;
   storyDone = true;
+  skipBtn.classList.remove('show');
   endScreen.classList.add('show');
-  setTimeout(function(){
-    location.replace(NEXT_URL);
-  }, 800);
+  setTimeout(leaveToNext, 800);
 }
+
+/* 跳过按钮 */
+skipBtn.addEventListener('click', function(e){
+  e.stopPropagation();
+  if(storyDone) return;
+  storyLayer.innerHTML = '';
+  finishStory();
+});
 
 /* =========================================================
    主循环
