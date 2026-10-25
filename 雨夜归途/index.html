@@ -12,7 +12,69 @@
     font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
     user-select:none;-webkit-user-select:none;touch-action:none;}
   body{display:flex;align-items:center;justify-content:center;}
-  
+
+  /* ============================================================
+     模拟电脑桌面
+     ============================================================ */
+  #desktop {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: #1a202c; /* 深色壁纸底色 */
+    background-image: radial-gradient(circle at 50% 50%, #2d3748 0%, #1a202c 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 40px;
+    transition: opacity 0.8s ease, transform 0.8s ease;
+    pointer-events: auto;
+  }
+  #desktop.hide {
+    opacity: 0;
+    transform: scale(1.1);
+    pointer-events: none;
+  }
+  /* 桌面图标容器 */
+  .desktop-icon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100px;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: background 0.2s, transform 0.1s;
+    user-select: none;
+  }
+  .desktop-icon:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  .desktop-icon:active {
+    transform: scale(0.92);
+  }
+  /* 图标图片 */
+  .desktop-icon img {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+    pointer-events: none;
+  }
+  /* 图标文字 */
+  .desktop-icon span {
+    font-size: 13px;
+    color: #ffffff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    text-align: center;
+    letter-spacing: 1px;
+    pointer-events: none;
+  }
+
+  /* ============================================================
+     游戏容器（原来页面的内容）
+     ============================================================ */
   #titleStage{position:relative;overflow:hidden;background:#04070b;
     box-shadow:0 0 120px rgba(0,0,0,1);}
   #cv3d{position:absolute;left:0;top:0;width:100%;height:100%;display:block;background:#04070b;}
@@ -98,7 +160,6 @@
     0%,100%{filter:drop-shadow(0 0 22px rgba(255,196,110,.38));}
     50%{filter:drop-shadow(0 0 52px rgba(255,206,130,.78));}
   }
-  /* 万圣节标题光晕 */
   body.halloween-mode #titleContent h1{
     animation: titleGlowHalloween 4.5s ease-in-out infinite;
   }
@@ -271,6 +332,12 @@
     overflow:hidden;
     cursor:pointer;
     transition:opacity .9s ease;
+    opacity:0;
+    pointer-events:none;
+  }
+  #splash.show{
+    opacity:1;
+    pointer-events:auto;
   }
   #splash.hide{
     opacity:0;
@@ -293,7 +360,6 @@
     width:100%;height:100%;
   }
 
-  /* ---- 光丝 ---- */
   .splash-beam{
     position:absolute;
     left:50%;top:0;
@@ -322,7 +388,6 @@
     opacity:0;
   }
 
-  /* ---- 中央光晕 ---- */
   .splash-glow{
     position:absolute;
     left:50%;top:50%;
@@ -357,7 +422,6 @@
     opacity:.25;
   }
 
-  /* ---- 标题 ---- */
   .splash-title{
     position:relative;z-index:2;
     margin:0;
@@ -408,7 +472,6 @@
   #splash.phase-3 .splash-title span:nth-child(3){ transition-delay:.26s; }
   #splash.phase-3 .splash-title span:nth-child(4){ transition-delay:.39s; }
 
-  /* ---- 副标题 ---- */
   .splash-sub{
     position:relative;z-index:2;
     margin:24px 0 0;
@@ -435,7 +498,6 @@
     clip-path:inset(0 0 0 0);
   }
 
-  /* ---- 工作室出品 ---- */
   .splash-studio{
     position:relative;z-index:2;
     margin:18px 0 0;
@@ -459,7 +521,6 @@
     transform:translateY(0);
   }
 
-  /* ---- 底部小字 ---- */
   .splash-footer{
     position:absolute;
     bottom:64px;left:50%;
@@ -477,7 +538,6 @@
     opacity:1;
   }
 
-  /* ---- 跳过提示 / 点击开始 ---- */
   .splash-skip{
     position:absolute;
     right:32px;bottom:28px;
@@ -497,7 +557,6 @@
     50% { opacity: 1; }
   }
 
-  /* ---- 上升光粒子 ---- */
   .splash-particle{
     position:absolute;
     width:2px;height:2px;
@@ -518,6 +577,17 @@
 </style>
 </head>
 <body>
+
+<!-- =========================================================
+     模拟电脑桌面
+     ========================================================= -->
+<div id="desktop">
+  <div class="desktop-icon" id="gameIcon">
+    <!-- 请在主目录放入 icon.png -->
+    <img src="icon.png" alt="雨夜归途" onerror="this.style.display='none'">
+    <span>雨夜归途</span>
+  </div>
+</div>
 
 <!-- 启动动画层 -->
 <div id="splash">
@@ -591,13 +661,16 @@
 
 <script src="assets3d/r3d.js"></script>
 
-<!-- 启动动画控制 -->
+<!-- 启动动画控制 & 桌面入口 -->
 <script>
 (function(){
   var splash = document.getElementById('splash');
-  if(!splash) return;
+  var desktop = document.getElementById('desktop');
+  var gameIcon = document.getElementById('gameIcon');
+  if(!splash || !desktop || !gameIcon) return;
 
   var isStarting = false;
+  var splashStarted = false;
 
   function isHalloween(){
     var now = new Date();
@@ -638,29 +711,51 @@
     }
   }
 
-  // 启动文字动画时序
-  setTimeout(function(){ if(!isStarting) splash.classList.add('phase-1'); }, 300);
-  setTimeout(function(){ if(!isStarting) splash.classList.add('phase-2'); }, 900);
-  setTimeout(function(){
-    if(!isStarting){
-      splash.classList.add('phase-3');
-      spawnParticles();
-    }
-  }, 1200);
-  setTimeout(function(){ if(!isStarting) splash.classList.add('phase-4'); }, 1900);
-  setTimeout(function(){ if(!isStarting) splash.classList.add('phase-4b'); }, 2300);
-  setTimeout(function(){ if(!isStarting) splash.classList.add('phase-5'); }, 2700);
-  
-  // 2.5s 时提示改为“点击开始”
-  setTimeout(function(){
-    if(!isStarting){
-      var skipEl = document.getElementById('splashSkip');
-      skipEl.textContent = '点击任意处开始';
-      skipEl.style.animation = 'pulseText 1.5s ease-in-out infinite';
-    }
-  }, 2500);
+  function startSplash(){
+    if(splashStarted) return;
+    splashStarted = true;
+    splash.classList.add('show');
+    
+    // 启动文字动画时序
+    setTimeout(function(){ if(!isStarting) splash.classList.add('phase-1'); }, 300);
+    setTimeout(function(){ if(!isStarting) splash.classList.add('phase-2'); }, 900);
+    setTimeout(function(){
+      if(!isStarting){
+        splash.classList.add('phase-3');
+        spawnParticles();
+      }
+    }, 1200);
+    setTimeout(function(){ if(!isStarting) splash.classList.add('phase-4'); }, 1900);
+    setTimeout(function(){ if(!isStarting) splash.classList.add('phase-4b'); }, 2300);
+    setTimeout(function(){ if(!isStarting) splash.classList.add('phase-5'); }, 2700);
+    
+    // 2.5s 时提示改为“点击开始”
+    setTimeout(function(){
+      if(!isStarting){
+        var skipEl = document.getElementById('splashSkip');
+        skipEl.textContent = '点击任意处开始';
+        skipEl.style.animation = 'pulseText 1.5s ease-in-out infinite';
+      }
+    }, 2500);
+  }
 
-  // 点击触发过渡动画
+  // 点击桌面图标
+  gameIcon.addEventListener('click', function(e){
+    e.stopPropagation();
+    // 请求全屏
+    var el = document.documentElement;
+    if(!document.fullscreenElement && !document.webkitFullscreenElement){
+      var fn = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+      if(fn){ try{ fn.call(el); }catch(err){} }
+    }
+    // 桌面淡出，启动动画淡入
+    desktop.classList.add('hide');
+    setTimeout(function(){
+      startSplash();
+    }, 600); // 等桌面稍微淡出一点再开始播放
+  });
+
+  // 点击跳过启动动画
   splash.addEventListener('click', function(e){
     e.stopPropagation();
     if(isStarting) return;
@@ -696,7 +791,7 @@
       clickBats.push({
         x: fromLeft ? -50 - Math.random() * 200 : scv.width + 50 + Math.random() * 200,
         y: Math.random() * scv.height,
-        state: 0, // 0: 汇聚, 1: 向上
+        state: 0,
         phase: Math.random() * Math.PI * 2,
         flapSpeed: 0.2 + Math.random() * 0.2,
         speed: 5 + Math.random() * 4,
@@ -730,7 +825,6 @@
     lastTime = now;
     var elapsed = (now - animStartTime) / 1000;
 
-    // 动画结束，淡出并移除
     if(elapsed > 2.8){
       var sp = document.getElementById('splash');
       if(sp && !sp.classList.contains('hide')){
@@ -893,6 +987,54 @@
     
     ctx.restore();
   }
+
+  // 全局全屏拦截逻辑提前，确保桌面阶段生效
+  window.__SHOW_SNACKBAR__ = function(msg, duration) {
+    var snackbarEl = document.getElementById('snackbar');
+    var snackbarTx = snackbarEl.querySelector('.sb-text');
+    if(!snackbarEl || !snackbarTx) return;
+    snackbarTx.textContent = msg || '操作失败';
+    snackbarEl.classList.remove('show'); 
+    void snackbarEl.offsetWidth;
+    snackbarEl.classList.add('show');
+    if(window.__SNACKBAR_TIMER__) clearTimeout(window.__SNACKBAR_TIMER__);
+    window.__SNACKBAR_TIMER__ = setTimeout(function(){ 
+      snackbarEl.classList.remove('show'); 
+      window.__SNACKBAR_TIMER__ = null; 
+    }, duration || 2000);
+  };
+
+  var intentionalExit = false;
+  var fsReenterLock = false;
+  var fsGuardTimer = null;
+
+  window.__REQUEST_FS__ = function() {
+    var el = document.documentElement;
+    if(document.fullscreenElement || document.webkitFullscreenElement) return;
+    var fn = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+    if(!fn) return;
+    try{ 
+      const p = fn.call(el); 
+      if(p && p.catch) p.catch(function(){}); 
+    }catch(e){}
+  };
+
+  function handleFullscreenChange(){
+    var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+    if(isFs) return;
+    if(intentionalExit){ intentionalExit = false; return; }
+    if(fsReenterLock) return;
+    fsReenterLock = true;
+    window.__REQUEST_FS__();
+    window.__SHOW_SNACKBAR__('操作失败', 1800);
+    if(fsGuardTimer) clearTimeout(fsGuardTimer);
+    fsGuardTimer = setTimeout(function(){ fsReenterLock = false; fsGuardTimer = null; }, 600);
+  }
+  document.addEventListener('fullscreenchange', handleFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+  document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+  document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
 })();
 </script>
 
@@ -1352,11 +1494,7 @@ const gameLoading = document.getElementById('gameLoading');
 let gameOpened = false;
 
 function requestFullscreenCompat(){
-  const el = document.documentElement;
-  if(document.fullscreenElement || document.webkitFullscreenElement) return;
-  const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
-  if(!fn) return;
-  try{ const p = fn.call(el); if(p && p.catch) p.catch(function(){}); }catch(e){}
+  window.__REQUEST_FS__();
 }
 
 const btnExitFs  = document.getElementById('btnExitFs');
@@ -1368,11 +1506,7 @@ function isFullscreen(){ return !!(document.fullscreenElement || document.webkit
 function syncExitFsButton(){ btnExitFs.classList.toggle('visible', isFullscreen() && !gameOpened); }
 
 function showSnackbar(message, duration){
-  snackbarTx.textContent = message || '操作异常';
-  snackbarEl.classList.remove('show'); void snackbarEl.offsetWidth;
-  snackbarEl.classList.add('show');
-  if(snackbarTimer) clearTimeout(snackbarTimer);
-  snackbarTimer = setTimeout(function(){ snackbarEl.classList.remove('show'); snackbarTimer = null; }, duration || 2000);
+  window.__SHOW_SNACKBAR__(message, duration);
 }
 
 btnExitFs.addEventListener('click', function(e){
@@ -1380,25 +1514,8 @@ btnExitFs.addEventListener('click', function(e){
   btnExitFs.classList.remove('shake'); void btnExitFs.offsetWidth;
   btnExitFs.classList.add('shake');
   setTimeout(function(){ btnExitFs.classList.remove('shake'); }, 460);
-  showSnackbar('操作异常', 2000);
+  showSnackbar('操作失败', 2000);
 });
-
-let intentionalExit = false, fsReenterLock = false, fsGuardTimer = null;
-function handleFullscreenChange(){
-  syncExitFsButton();
-  if(isFullscreen()) return;
-  if(intentionalExit){ intentionalExit = false; return; }
-  if(fsReenterLock) return;
-  fsReenterLock = true;
-  requestFullscreenCompat();
-  showSnackbar('操作异常', 1800);
-  if(fsGuardTimer) clearTimeout(fsGuardTimer);
-  fsGuardTimer = setTimeout(function(){ fsReenterLock = false; fsGuardTimer = null; }, 600);
-}
-document.addEventListener('fullscreenchange', handleFullscreenChange);
-document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-document.addEventListener('MSFullscreenChange', handleFullscreenChange);
 
 window.addEventListener('message', function(e){
   var d = e.data; if(!d || !d.type) return;
