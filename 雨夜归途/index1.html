@@ -121,7 +121,7 @@
 .retutorial-btn:hover{border-color:rgba(255,214,140,.85);color:#ffe6b0;background:linear-gradient(180deg,rgba(90,120,150,.95),rgba(40,55,80,.95));box-shadow:0 0 18px rgba(255,196,110,.3);}
 .retutorial-btn:active{transform:scale(.96);}
 
-/* ===== 对话框 · 3D 浣熊头像 ===== */
+/* ===== 对话框 · Sprite 浣熊头像 ===== */
 #dlg::before{ display: none !important; }
 #dlgAvatar{
   position: absolute;
@@ -151,7 +151,7 @@
   left: 0; top: 0;
   width: 80px;
   height: 80px;
-  display: block;
+  display: none; /* 隐藏旧 canvas */
 }
 </style>
 </head>
@@ -247,6 +247,7 @@
 
 <script src="map.js"></script>
 <script src="game.js"></script>
+
 <script>
 /* ============================================================
    ★ 商店逻辑
@@ -900,11 +901,14 @@ var waitStart = Date.now();
 function waitForGameReady(){
   var loading = $('loadingScreen');
   var elapsed = Date.now() - waitStart;
-  if(loading && isVisible(loading) && elapsed < 20000){
+  var ready = window.__GAME_READY__ === true;
+  var loadingVisible = loading && isVisible(loading);
+  
+  if((!ready || loadingVisible) && elapsed < 30000){
     setTimeout(waitForGameReady, 250);
     return;
   }
-  setTimeout(start, 200);
+  setTimeout(start, 400);
 }
 
 function forceStart(){
@@ -963,158 +967,106 @@ if(shouldAutoStart){
 </script>
 
 <!-- =========================================================
-     对话框 · 3D 浣熊头像
-     - three.js 和 raccoon 模型由 game.js 的 preloadAvatar() 统一加载
-     - 使用 window.__RACCOON_MODEL__ / window.__PRELOAD_PROMISE__
-     - 模型未就绪时保留 emoji
+     对话框 · 浣熊高清 Sprite 头像 (8x8 64帧顺滑版)
+     - 纯本地图片加载，0 网络依赖，秒开
      ========================================================= -->
 <script>
 (function(){
-  var canvas = document.getElementById('dlgRaccoon');
   var avatarEl = document.getElementById('dlgAvatar');
   var dlgEl = document.getElementById('dlg');
-  if(!canvas || !avatarEl || !dlgEl) return;
+  if(!avatarEl || !dlgEl) return;
 
   var fallbackEl = avatarEl.querySelector('.fallback');
-  var SIZE = 80;
-  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var canvas = document.getElementById('dlgRaccoon');
+  if(canvas) canvas.style.display = 'none';
 
-  var renderer = null;
-  var scene = null;
-  var camera = null;
-  var pivot = null;
-  var ready = false;
+  /* 8x8 网格，64 帧 */
+  var GRID = 8;
+  var TOTAL_FRAMES = 64;
+  var FRAME_SIZE = 80;  /* 每帧在屏幕上显示 80px */
+  var SHEET_SIZE = GRID * FRAME_SIZE; /* 640px */
+
+  /* 创建 sprite 容器 */
+  var sprite = document.createElement('div');
+  sprite.style.cssText =
+    'position:absolute;left:0;top:0;' +
+    'width:' + FRAME_SIZE + 'px;' +
+    'height:' + FRAME_SIZE + 'px;' +
+    'background-repeat:no-repeat;' +
+    'background-size:' + SHEET_SIZE + 'px ' + SHEET_SIZE + 'px;' +
+    'background-position:0 0;' +
+    'display:none;' +
+    'animation: dlgAvatarBreath 3.5s ease-in-out infinite;' +
+    'transform-origin: center bottom;';
+  avatarEl.appendChild(sprite);
+
+  /* 动态注入呼吸动画的 CSS */
+  var style = document.createElement('style');
+  style.textContent = `
+    @keyframes dlgAvatarBreath {
+      0%, 100% { transform: scale(1) translateY(0); }
+      50% { transform: scale(1.04) translateY(-2px); }
+    }
+  `;
+  document.head.appendChild(style);
+
+  var img = new Image();
+  var loaded = false;
   var loopStarted = false;
-
   var dlgVisible = dlgEl.classList.contains('show');
+
+  /* 监听对话显示/隐藏，用来暂停/恢复渲染 */
   try{
     var obs = new MutationObserver(function(){
-      var now = dlgEl.classList.contains('show');
-      if(now !== dlgVisible){
-        dlgVisible = now;
-        if(dlgVisible && ready){
-          renderer.render(scene, camera);
-        }
-      }
+      dlgVisible = dlgEl.classList.contains('show');
     });
     obs.observe(dlgEl, { attributes: true, attributeFilter: ['class'] });
   }catch(e){}
 
+  img.onload = function(){
+    loaded = true;
+    sprite.style.backgroundImage = 'url("assets3d/raccoon_sprite.png")';
+    sprite.style.display = 'block';
+    if(fallbackEl) fallbackEl.style.display = 'none';
+    startLoop();
+  };
+
+  img.onerror = function(){
+    console.warn('[sprite] 头像加载失败，保留 emoji');
+  };
+
+  img.src = 'assets3d/raccoon_sprite.png';
+
   function startLoop(){
     if(loopStarted) return;
     loopStarted = true;
-    if(fallbackEl) fallbackEl.style.display = 'none';
+
+    var frame = 0;
+    var acc = 0;
     var last = performance.now();
+    /* 64 帧，每秒 20 帧切换 = 约 3.2 秒转一圈 */
+    var FRAME_INTERVAL = 1 / 20;
+
     function tick(now){
       var dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      if(dlgVisible && ready){
-        pivot.rotation.y += dt * 0.35;
-        renderer.render(scene, camera);
+
+      if(dlgVisible && loaded){
+        acc += dt;
+        if(acc >= FRAME_INTERVAL){
+          acc -= FRAME_INTERVAL;
+          frame = (frame + 1) % TOTAL_FRAMES;
+
+          var col = frame % GRID;
+          var row = Math.floor(frame / GRID);
+          var gx = col * -FRAME_SIZE;
+          var gy = row * -FRAME_SIZE;
+          sprite.style.backgroundPosition = gx + 'px ' + gy + 'px';
+        }
       }
       requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
-  }
-
-  function placeModel(model, scaleTo){
-    var box = new THREE.Box3().setFromObject(model);
-    var sizeV = box.getSize(new THREE.Vector3());
-    var center = box.getCenter(new THREE.Vector3());
-    var s = scaleTo / Math.max(sizeV.y, 0.001);
-    model.scale.setScalar(s);
-    model.position.x = -center.x * s;
-    model.position.y = 1.0 - center.y * s;
-    model.position.z = -center.z * s;
-    pivot.add(model);
-  }
-
-  function initAvatar(){
-    if(typeof THREE === 'undefined'){
-      console.warn('[dlgRaccoon] three.js 未加载，保留 emoji');
-      return;
-    }
-
-    try{
-      renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
-    }catch(e){
-      console.warn('[dlgRaccoon] WebGL 初始化失败，保留 emoji', e);
-      return;
-    }
-    renderer.setPixelRatio(dpr);
-    renderer.setSize(SIZE, SIZE, false);
-    renderer.setClearColor(0x000000, 0);
-
-    scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
-    camera.position.set(0, 1.15, 5.0);
-    camera.lookAt(0, 1.0, 0);
-
-    scene.add(new THREE.AmbientLight(0x8899bb, 0.60));
-    var keyLight = new THREE.DirectionalLight(0xffd8b0, 1.6);
-    keyLight.position.set(3, 5, 4); scene.add(keyLight);
-    var rimLight = new THREE.DirectionalLight(0x90b0ff, 0.7);
-    rimLight.position.set(-4, 2, -3); scene.add(rimLight);
-    var fillLight = new THREE.PointLight(0xffc090, 0.8, 20);
-    fillLight.position.set(-2, 3, 3); scene.add(fillLight);
-
-    pivot = new THREE.Group();
-    scene.add(pivot);
-
-    if(window.__RACCOON_MODEL__){
-      var model = window.__RACCOON_MODEL__.clone(true);
-      model.traverse(function(o){
-        if(o.isMesh && o.material){ o.material = o.material.clone(); }
-      });
-      placeModel(model, 2.0);
-      ready = true;
-      startLoop();
-      return;
-    }
-
-    /* 兜底：自己加载一次（preload 阶段未跑或失败时） */
-    var BASE = 'assets3d/models/';
-    var mtlLoader = new THREE.MTLLoader();
-    mtlLoader.setPath(BASE);
-    mtlLoader.setResourcePath(BASE);
-    mtlLoader.load('raccoon.mtl', function(materials){
-      materials.preload();
-      var objLoader = new THREE.OBJLoader();
-      objLoader.setMaterials(materials);
-      objLoader.setPath(BASE);
-      objLoader.load('raccoon.obj', function(model){
-        placeModel(model, 2.0);
-        ready = true;
-        startLoop();
-      }, undefined, function(){
-        console.warn('[dlgRaccoon] 兜底 OBJ 加载失败');
-      });
-    }, undefined, function(){
-      var objLoader = new THREE.OBJLoader();
-      objLoader.setPath(BASE);
-      objLoader.load('raccoon.obj', function(model){
-        model.traverse(function(o){
-          if(o.isMesh) o.material = new THREE.MeshLambertMaterial({ color: 0x9a8a78 });
-        });
-        placeModel(model, 2.0);
-        ready = true;
-        startLoop();
-      }, undefined, function(){
-        console.warn('[dlgRaccoon] 兜底 OBJ 加载失败（无贴图）');
-      });
-    });
-  }
-
-  /* 等待 game.js 的 preload 阶段完成 */
-  if(window.__PRELOAD_PROMISE__){
-    window.__PRELOAD_PROMISE__.then(function(){
-      initAvatar();
-    }).catch(function(){
-      initAvatar();
-    });
-  } else {
-    /* preload 尚未初始化：稍等 */
-    setTimeout(initAvatar, 600);
   }
 })();
 </script>
