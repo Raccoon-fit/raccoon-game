@@ -153,25 +153,23 @@
   display: none;
 }
 
-/* ===== 开发者错误面板（左下角 · 纯红字 · 无背景 · 无滚动条） ===== */
+/* ===== 开发者错误面板（左下角 · 小红色字 · 无背景 · 无滚动条 · 无阴影 · 最高占满屏幕） ===== */
 #devErrorPanel{
   position: fixed;
   left: 10px;
   bottom: 10px;
   z-index: 99999;
   max-width: 46vw;
-  max-height: 46vh;
+  max-height: calc(100vh - 20px);
   display: none;
   flex-direction: column;
   gap: 1px;
   pointer-events: none;
   font-family: ui-monospace, Menlo, Consolas, "Courier New", monospace;
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: 9.5px;
+  line-height: 1.35;
   color: #ff3a3a;
-  text-shadow: 0 0 3px rgba(0,0,0,0.95), 0 1px 2px rgba(0,0,0,0.95);
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -188,7 +186,7 @@
   white-space: pre-wrap;
 }
 .dev-err-item .src{ color:#ff8080; margin-right: 4px; }
-.dev-err-item .time{ color:rgba(255,140,140,0.65); font-size: 10px; margin-left: 4px; }
+.dev-err-item .time{ color:rgba(255,140,140,0.65); font-size: 8.5px; margin-left: 4px; }
 </style>
 </head>
 <body>
@@ -286,10 +284,10 @@
 </div>
 
 <!-- ============================================================
-     ★ 开发者报错系统（在 map.js / game.js 之前加载）
-     面板：无背景、无滚动条、小红色字
+     ★ 开发者报错系统
+     面板：无背景、无滚动条、小红色字、无阴影、最高占满屏幕
      策略：不去重，允许同一条错误反复显示
-     保留最近 MAX_ITEMS 条
+          不滚动，超出可视高度时自动移除最旧条目
      ============================================================ -->
 <script>
 (function(){
@@ -312,6 +310,11 @@
     if(!el) return;
     el.classList.add('show');
 
+    /* 剥离括号补充说明，面板更简洁 */
+    var raw = String(msg);
+    var display = raw.replace(/[（(][^）)]*[）)]/g, '').replace(/\s{2,}/g, ' ').trim();
+    if(!display) display = raw;
+
     var item = document.createElement('div');
     item.className = 'dev-err-item';
     item.innerHTML = '<span class="src">[' + (level === 'warn' ? 'WARN' : 'ERR') +
@@ -319,17 +322,22 @@
                      '<span class="msg"></span>' +
                      '<span class="time">' + stamp() + '</span>';
     var msgEl = item.querySelector('.msg');
-    if(msgEl) msgEl.textContent = String(msg);
+    if(msgEl) msgEl.textContent = display;
     el.appendChild(item);
 
+    /* 兜底上限，防止极端情况下无限增长 */
     while(el.children.length > MAX_ITEMS){
       el.removeChild(el.firstChild);
     }
-    el.scrollTop = el.scrollHeight;
+    /* ★ 不滚动：移除最旧的，直到不再溢出屏幕 */
+    while(el.scrollHeight > el.clientHeight && el.children.length > 1){
+      el.removeChild(el.firstChild);
+    }
 
     try{
-      if(level === 'warn') console.warn('[DEV_WARN]', src, msg);
-      else console.error('[DEV_ERR]', src, msg);
+      /* console 里保留完整原文，方便调试深挖 */
+      if(level === 'warn') console.warn('[DEV_WARN]', src, raw);
+      else console.error('[DEV_ERR]', src, raw);
     }catch(e){}
   }
 
