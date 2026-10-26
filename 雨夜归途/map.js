@@ -1,10 +1,9 @@
 /* =========================================================
-   map.js — 雨痕地图 v4
-   v4: 全面自检与错误上报，去掉去重（全量上报）
-       - 任何空值/null/未定义/杂值都会通过 __DEV_ERROR__ / __DEV_WARN__ 上报
-       - NODES/EDGES/UNLOCK/NEIGHBORS 一致性会在 init 时校验
-       - 已知缺口（parlor、_day 节点未定义）会明确上报
-       - ★ 本轮不修复已知缺口，只上报
+   map.js — 雨痕地图 v5
+   v5: 自检时机优化
+       - 将 selfCheckMap 从 init 移至 open
+       - 只有在玩家打开地图时才会触发地图错误上报
+       - 保持无去重上报
    ========================================================= */
 (function(global){
 'use strict';
@@ -1058,7 +1057,8 @@ function init(){
     }
   });
 
-  selfCheckMap('init');
+  // ★ 将自检从 init 移除
+  // selfCheckMap('init');
 }
 
 function open(){
@@ -1096,6 +1096,9 @@ function open(){
       }
     }
   }, 1200);
+
+  // ★ 在这里加上自检，每次打开地图时触发
+  selfCheckMap('open');
 }
 
 function close(){
