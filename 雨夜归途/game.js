@@ -1,10 +1,10 @@
 /* =========================================================
-   game.js — 雨夜归途 · 全部游戏逻辑（v4）
-   v4 变更：
-     - street.acts.gate 改为断电即可翻过去，不再强制要求 grapnel
-     - 新增 checkIntegrity()：在 iframe ready 后检查
-       acts ↔ spots 对应关系、3D 铁门 grid 碰撞
-     - 其余与 v3 完全一致
+   game.js — 雨夜归途 · 全部游戏逻辑（v5）
+   v5 变更：
+     - checkIntegrity 改为只检查当前场景（S.scene）
+     - 移除了启动时的全量检查
+     - 配合 map.js：地图报错在打开地图时触发，场景报错在进入场景时触发
+     - street.acts.gate 已修改为断电即可翻越
    ========================================================= */
 (function(){
 'use strict';
@@ -85,82 +85,69 @@ function selfCheck(ctx){
 }
 
 /* =========================================================
-   ★ 完整性检查（只上报，不修复）
+   ★ 完整性检查（仅检查当前场景）
    ========================================================= */
-var _integrityDone = { full: false, s3d: false };
-
 function checkIntegrity(){
   try{
     if(!gameFrame || !gameFrame.contentWindow) return;
     var win = gameFrame.contentWindow;
+    var currentKey = S && S.scene;
+    if(!currentKey) return;
+
+    var isBlood = isBloodMode();
 
     /* ---- 1) 2D 场景 acts ↔ spots 对应 ---- */
-    var ss = win.__SCENES__;
-    if(ss){
-      var currentKey = S && S.scene;
-      var checkList;
-      if(_integrityDone.full){
-        checkList = currentKey ? [currentKey] : [];
-      } else {
-        checkList = Object.keys(SCENES);
-      }
-      checkList.forEach(function(sceneKey){
-        if(!sceneKey) return;
-        if(!SCENES[sceneKey]) return;
-        var gs = SCENES[sceneKey];
-        var s2 = ss[sceneKey];
+    if(!isBlood){
+      var ss = win.__SCENES__;
+      if(ss){
+        var gs = SCENES[currentKey];
+        var s2 = ss[currentKey];
         if(!s2){
-          devErr('完整性: 场景 "' + sceneKey + '" 在 game.js 有定义但 assets/scenes.js 缺失', 'integrity');
-          return;
-        }
-        if(gs.acts && Array.isArray(s2.spots)){
+          devErr('完整性: 场景 "' + currentKey + '" 在 game.js 有定义但 assets/scenes.js 缺失', 'integrity');
+        } else if(gs && gs.acts && Array.isArray(s2.spots)){
           var actIds = Object.keys(gs.acts);
           var spotIds = s2.spots.map(function(s){ return s && s.id; });
           actIds.forEach(function(actId){
             if(spotIds.indexOf(actId) < 0){
-              devWarn('完整性: 场景 "' + sceneKey + '" act "' + actId + '" 无对应 spot（玩家无法触发）', 'integrity');
+              devWarn('完整性: 场景 "' + currentKey + '" act "' + actId + '" 无对应 spot', 'integrity');
             }
           });
           spotIds.forEach(function(spotId){
             if(!spotId) return;
             if(actIds.indexOf(spotId) < 0){
-              devWarn('完整性: 场景 "' + sceneKey + '" spot "' + spotId + '" 无对应 act', 'integrity');
+              devWarn('完整性: 场景 "' + currentKey + '" spot "' + spotId + '" 无对应 act', 'integrity');
             }
           });
-        } else if(gs.acts && !Array.isArray(s2.spots)){
-          devErr('完整性: 场景 "' + sceneKey + '" 在 scenes.js 没有 spots 数组', 'integrity');
+        } else if(gs && gs.acts && !Array.isArray(s2.spots)){
+          devErr('完整性: 场景 "' + currentKey + '" 在 scenes.js 没有 spots 数组', 'integrity');
         }
-      });
-      _integrityDone.full = true;
+      }
     }
 
     /* ---- 2) 3D 场景铁门 grid 碰撞 ---- */
-    var s3d = win.__SCENES_3D__;
-    if(s3d && !_integrityDone.s3d){
-      Object.keys(s3d).forEach(function(k){
-        var sc = s3d[k];
-        if(!sc) return;
-        if(!Array.isArray(sc.things)){
-          devErr('完整性: 3D 场景 "' + k + '" things 缺失', 'integrity:3d');
-          return;
-        }
-        if(!Array.isArray(sc.grid)){
-          devErr('完整性: 3D 场景 "' + k + '" grid 缺失', 'integrity:3d');
-          return;
-        }
-        sc.things.forEach(function(t){
-          if(!t || t.id !== 'gate') return;
-          var gx = Math.floor(t.x);
-          var gy = Math.floor(t.y);
-          if(gx < 0 || gy < 0) return;
-          var row = sc.grid[gy];
-          if(!row) return;
-          if(row[gx] === '0'){
-            devWarn('完整性: 3D "' + k + '" 铁门可穿模（grid[' + gy + '][' + gx + '] = 0）', 'integrity:3d');
+    if(isBlood){
+      var s3d = win.__SCENES_3D__;
+      if(s3d){
+        var sc = s3d[currentKey];
+        if(sc){
+          if(!Array.isArray(sc.things)){
+            devErr('完整性: 3D 场景 "' + currentKey + '" things 缺失', 'integrity:3d');
+          } else if(!Array.isArray(sc.grid)){
+            devErr('完整性: 3D 场景 "' + currentKey + '" grid 缺失', 'integrity:3d');
+          } else {
+            sc.things.forEach(function(t){
+              if(!t || t.id !== 'gate') return;
+              var gx = Math.floor(t.x);
+              var gy = Math.floor(t.y);
+              if(gx < 0 || gy < 0) return;
+              var row = sc.grid[gy];
+              if(row && row[gx] === '0'){
+                devWarn('完整性: 3D "' + currentKey + '" 铁门可穿模', 'integrity:3d');
+              }
+            });
           }
-        });
-      });
-      _integrityDone.s3d = true;
+        }
+      }
     }
   }catch(e){
     devErr('完整性检查异常: ' + (e && e.message ? e.message : e), 'integrity');
@@ -1836,8 +1823,10 @@ window.addEventListener('message', function(e){
     finishLoading(function(){
       window.__GAME_READY__ = true;
       try{ gameFrame.contentWindow.postMessage({ type:'refocus' }, '*'); }catch(err){}
-      /* ★ 完整性检查 */
+      
+      /* ★ 每次进入场景 ready 后，只检查当前场景的完整性 */
       setTimeout(checkIntegrity, 200);
+
       if(pendingOpeningMonologue){
         pendingOpeningMonologue = false;
         setTimeout(function(){
