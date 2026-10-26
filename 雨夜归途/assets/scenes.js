@@ -1,7 +1,8 @@
 /* =========================================================
    scenes.js — 2D 场景绘制 + 定义
    依赖 window.S
-   v3: 完整夜间场景 + 6 个 _day 白天场景 + iframe 错误上报
+   v4: 完整夜间场景 + 6 个 _day 白天场景 + iframe 错误上报
+       + 修复 street 场景缺少 rope spot（铁门过不去）
    ========================================================= */
 (function(){
 'use strict';
@@ -138,7 +139,7 @@ function drawParlorMid(){
   const tx = 380, ty = 400, tw = 220, th = 120;
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.beginPath(); ctx.ellipse(tx+tw/2, ty+th+8, tw*0.55, 24, 0, 0, Math.PI*2); ctx.fill();
-  
+
   ctx.fillStyle = '#1a1008';
   ctx.fillRect(tx+30, ty+th, 20, 60);
   ctx.fillRect(tx+tw-50, ty+th, 20, 60);
@@ -192,14 +193,14 @@ function drawParlorMid(){
 
 function drawParlorNear(){
   const t = performance.now() / 1000;
-  
+
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.beginPath(); ctx.ellipse(220, 505, 55, 18, 0, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle = '#1a1410';
   ctx.beginPath(); ctx.ellipse(220, 500, 55, 15, 0, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle = '#3a2a1a';
   ctx.beginPath(); ctx.ellipse(220, 498, 40, 10, 0, 0, Math.PI*2); ctx.fill();
-  
+
   ctx.fillStyle = '#e8e0d0';
   ctx.fillRect(200, 492, 6, 18);
   ctx.fillRect(230, 495, 5, 15);
@@ -213,7 +214,7 @@ function drawParlorNear(){
   ctx.beginPath(); ctx.ellipse(720, 500, 30, 12, 0, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle = '#3a2a1a';
   ctx.beginPath(); ctx.ellipse(720, 498, 22, 8, 0, 0, Math.PI*2); ctx.fill();
-  
+
   const steamY = 500 - (t * 20 % 60);
   ctx.fillStyle = `rgba(255,255,255,${0.06 + 0.04*Math.sin(t*2)})`;
   ctx.beginPath();
@@ -309,7 +310,7 @@ function drawAlleyFar(){
   ctx.closePath(); ctx.fill();
   ctx.fillStyle = blood ? '#050202' : '#101820';
   ctx.fillRect(hx, hy, 84, 82);
-  
+
   if(!cut && !blood){
     ctx.fillStyle = 'rgba(255,200,120,0.75)';
     ctx.fillRect(hx+28, hy+28, 28, 34);
@@ -354,7 +355,7 @@ function drawAlleyMid(){
     ctx.fillRect(44, 228, 36, 26);
   }
 
-  ctx.fillStyle = blood ? '#1a0c0c' : '#141b25'; 
+  ctx.fillStyle = blood ? '#1a0c0c' : '#141b25';
   ctx.fillRect(164, 116, 9, 336);
   ctx.fillStyle = blood ? '#241414' : '#1c2531';
   ctx.beginPath();
@@ -380,7 +381,7 @@ function drawAlleyMid(){
     ? [[0,'#1a0810'],[1,'#0a040a']]
     : [[0,'#121a24'],[1,'#04070b']]);
   ctx.fillRect(-10, 430, W + 20, 140);
-  
+
   ctx.strokeStyle = 'rgba(255,255,255,0.025)'; ctx.lineWidth = 1;
   for(let x = -60; x < W+80; x += 120){
     ctx.beginPath();
@@ -404,7 +405,7 @@ function drawAlleyMid(){
 
 function drawAlleyNear(){
   const blood = isBloodMode();
-  
+
   ctx.save();
   ctx.beginPath();
   ctx.ellipse(330, 492, 120, 26, 0, 0, Math.PI*2);
@@ -441,7 +442,7 @@ function drawAlleyDynamic(t, dt){
   const cut = isPowerCut();
   const blood = isBloodMode();
   const f = flags();
-  
+
   const sway = Math.sin(t*0.9)*3;
   ctx.strokeStyle = blood ? 'rgba(60,15,20,0.7)' : 'rgba(0,0,0,0.6)';
   ctx.lineWidth = 1.5;
@@ -526,7 +527,7 @@ function drawBackstreetMid(){
   }
   ctx.strokeStyle = blood ? '#3a1418' : '#28333f'; ctx.lineWidth = 7;
   ctx.strokeRect(dx, dy, dw, dh);
-  
+
   if(cut || blood){
     ctx.fillStyle = blood ? '#3a0f12' : '#2a2a2a';
     ctx.beginPath(); ctx.ellipse(dx + dw/2, dy - 24, 8, 4, 0, 0, Math.PI*2); ctx.fill();
@@ -619,11 +620,11 @@ function drawShopFar(){
     ctx.fillRect(110, y, 320, 13);
     ctx.fillRect(110, y, 11, 90);
     ctx.fillRect(419, y, 11, 90);
-    
-    const colors = blood 
-      ? ['#3a1a22', '#2a121a'] 
+
+    const colors = blood
+      ? ['#3a1a22', '#2a121a']
       : (lit ? ['#8a5a3a', '#5a7a4a', '#4a6a8a', '#8a4a5a'] : ['#0d141c', '#121a24']);
-      
+
     for(let j = 0; j < 7; j++){
       const w0 = 22 + ((j*13) % 10);
       const h0 = 26 + ((j*7) % 16);
@@ -650,7 +651,7 @@ function drawShopMid(){
   ctx.fillRect(680, 256, 96, 66);
   ctx.fillStyle = blood ? '#1a0a10' : (lit ? '#1c2631' : '#091018');
   ctx.fillRect(692, 266, 72, 34);
-  
+
   if(lit){
     ctx.fillStyle = 'rgba(120,200,255,0.22)';
     ctx.fillRect(694, 268, 68, 30);
@@ -721,7 +722,7 @@ function drawShopDynamic(t, dt){
     g2.addColorStop(1, 'rgba(255,210,150,0)');
     ctx.fillStyle = g2;
     ctx.fillRect(0, 0, W, H);
-    
+
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for(let i=0; i<15; i++){
@@ -850,7 +851,7 @@ function drawStreetMid(){
   ctx.moveTo(0, 110);
   ctx.quadraticCurveTo(300, 152, 520, 102);
   ctx.stroke();
-  
+
   if(!f.ropeTaken){
     ctx.fillStyle = 'rgba(160,175,190,0.25)';
     ctx.beginPath();
@@ -1064,7 +1065,6 @@ function drawDoorstepMid(){
   ctx.closePath();
   ctx.fill();
 
-  // 左窗
   const wx = hx + 40, wy = hy + 120, ww = 100, wh = 120;
   ctx.fillStyle = '#1a222c';
   ctx.fillRect(wx, wy, ww, wh);
@@ -1090,7 +1090,6 @@ function drawDoorstepMid(){
     ctx.fillRect(wx + 4, wy + 4, ww - 8, wh - 8);
   }
 
-  // 门
   const dx = hx + hw/2 - 55, dy = hy + 200, dw = 110, dh = 140;
   ctx.fillStyle = '#2a2018';
   ctx.fillRect(dx - 12, dy - 12, dw + 24, dh + 12);
@@ -1107,7 +1106,6 @@ function drawDoorstepMid(){
   ctx.arc(dx + dw - 22, dy + dh / 2 + 6, 5, 0, Math.PI * 2);
   ctx.fill();
 
-  // 门灯
   const lx = hx + hw/2, ly = dy - 28;
   ctx.fillStyle = '#2a3038';
   ctx.beginPath();
@@ -1218,7 +1216,6 @@ function drawHouseMid(){
   ctx.fillStyle = '#2e2118';
   ctx.fillRect(0, 414, W, 6);
 
-  // 窗户
   ctx.fillStyle = '#584430';
   ctx.fillRect(72, 80, 228, 228);
   ctx.fillStyle = '#16202c';
@@ -1244,7 +1241,6 @@ function drawHouseMid(){
   ctx.moveTo(80, 194); ctx.lineTo(292, 194);
   ctx.stroke();
 
-  // 台灯
   ctx.fillStyle = '#4a3524';
   ctx.fillRect(846, 306, 12, 130);
   ctx.beginPath();
@@ -1254,7 +1250,6 @@ function drawHouseMid(){
   ctx.fillStyle = cut ? '#4a4030' : '#c9a35a';
   ctx.fill();
 
-  // 书架
   ctx.fillStyle = '#3a2c1e';
   ctx.fillRect(60, 300, 60, 140);
   ctx.fillStyle = '#2a2016';
@@ -1273,7 +1268,6 @@ function drawHouseMid(){
     }
   }
 
-  // 桌子
   ctx.fillStyle = 'rgba(0,0,0,0.45)';
   ctx.beginPath(); ctx.ellipse(510, 516, 175, 13, 0, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle = '#4a3524';
@@ -1282,7 +1276,6 @@ function drawHouseMid(){
   ctx.fillRect(378, 406, 16, 122);
   ctx.fillRect(626, 406, 16, 122);
 
-  // 相框
   ctx.save();
   ctx.translate(470, 292); ctx.rotate(-0.045);
   ctx.fillStyle = '#7a5a3a';
@@ -1293,7 +1286,6 @@ function drawHouseMid(){
   ctx.fillRect(-53, -45, 106, 90);
   ctx.restore();
 
-  // 挂钟
   ctx.fillStyle = '#4a3524';
   ctx.beginPath(); ctx.arc(540, 120, 32, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle = '#e8d8b8';
@@ -1311,7 +1303,7 @@ function drawHouseMid(){
 function drawHouseNear(){
   const cut = isPowerCut();
   const f = flags();
-  
+
   if(!cut){
     const lampB = 0.94 + 0.06 * Math.sin(performance.now() * 0.0017);
     const lg = ctx.createRadialGradient(852, 300, 0, 852, 300, 500);
@@ -1456,7 +1448,7 @@ function drawPowerStationFar(){
 function drawPowerStationMid(){
   const cut = isPowerCut();
   const cx = 380, cy = 120, cw = 200, ch = 300;
-  
+
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.fillRect(cx + 8, cy + 8, cw, ch);
   ctx.fillStyle = '#1c2430';
@@ -1477,7 +1469,7 @@ function drawPowerStationMid(){
   ctx.fillRect(fX + 4, fY + 4, fW - 8, fH - 8);
   ctx.strokeStyle = '#2a3644'; ctx.lineWidth = 2;
   ctx.strokeRect(fX, fY, fW, fH);
-  
+
   for(let i=0;i<4;i++){
     const fy = fY + 24 + i*38;
     ctx.fillStyle = '#050810';
@@ -1659,7 +1651,7 @@ function drawRooftopMid(){
   ctx.beginPath();
   ctx.moveTo(140, 200); ctx.lineTo(140, 440);
   ctx.stroke();
-  
+
   ctx.fillStyle = '#1a222c';
   ctx.fillRect(800, 320, 8, 120);
   ctx.fillRect(880, 320, 8, 120);
@@ -3224,7 +3216,7 @@ function drawHouseDayDynamic(t, dt){
 }
 
 /* =========================================================
-   ★ 场景 SPOTS 定义（原有夜间 + 新增白天）
+   ★ 场景 SPOTS 定义
    ========================================================= */
 const SCENES = {
   parlor: {
@@ -3288,6 +3280,8 @@ const SCENES = {
       { id:'power',   x:224, y:250, w:76,  h:180, label:'配电房' },
       { id:'under',   x:128, y:356, w:88,  h:66,  label:'地下通道' },
       { id:'river',   x:0,   y:376, w:68,  h:68,  label:'河堤' },
+      { id:'rope',    x:232, y:126, w:64,  h:76,  label:'晾衣绳',
+        cond: () => !flags().ropeTaken },
       { id:'gate',    x:520, y:148, w:360, h:382, label:'铁门' },
       { id:'back',    x:16,  y:244, w:52,  h:52,  label:'回后巷' }
     ]
@@ -3460,7 +3454,6 @@ window.__SCENES__ = Object.assign({ setCtx, getCtx }, SCENES);
 
 } catch (__scenesErr) {
   reportDevError((__scenesErr && __scenesErr.message ? __scenesErr.message : String(__scenesErr)), 'scenes.js');
-  /* 至少保证 __SCENES__ 对象存在，避免 common.js 直接 return（让画面能黑屏走完流程而不是卡 loading） */
   if(!window.__SCENES__){
     window.__SCENES__ = { setCtx: function(){}, getCtx: function(){} };
   }
