@@ -153,9 +153,55 @@
   height: 80px;
   display: none; /* 隐藏旧 canvas */
 }
+
+/* ===== 开发者错误面板（左下角飘窗，不阻挡操作） ===== */
+#devErrorPanel{
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  z-index: 9998;
+  max-width: 46%;
+  max-height: 42%;
+  overflow-y: auto;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  padding-right: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+#devErrorPanel.show{ display: flex; }
+#devErrorPanel::-webkit-scrollbar{ width: 6px; }
+#devErrorPanel::-webkit-scrollbar-thumb{ background: rgba(255,90,90,.4); border-radius: 3px; }
+.dev-err-item{
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(60,8,12,0.9);
+  border: 1px solid rgba(255,90,90,0.6);
+  color: #ffd0d0;
+  pointer-events: none;
+  word-break: break-word;
+  box-shadow: 0 2px 10px rgba(0,0,0,.65);
+}
+.dev-err-item.warn{
+  background: rgba(60,48,8,0.9);
+  border-color: rgba(255,210,90,0.6);
+  color: #ffe6b0;
+}
+.dev-err-item .src{ color:#ff9a8a; font-weight:700; margin-right:6px; }
+.dev-err-item.warn .src{ color:#ffd98f; }
+.dev-err-item .time{ color:rgba(255,180,180,0.55); font-size:10px; margin-left:6px; }
+.dev-err-item.warn .time{ color:rgba(255,230,180,0.55); }
 </style>
 </head>
 <body>
+
+<!-- 开发者错误面板（左下角飘窗） -->
+<div id="devErrorPanel"></div>
+
 <div id="stage">
   <div id="overlay">
     <div id="hud">
@@ -244,6 +290,120 @@
     <div class="tut-actions" id="tutActions"><button class="tut-next" id="tutNext">下 一 步</button></div>
   </div>
 </div>
+
+<!-- ============================================================
+     ★ 开发者报错系统（在 map.js / game.js 之前加载）
+     捕获：JS 异常 / 资源错误 / Promise 拒绝 / iframe 转发
+     暴露：window.__DEV_ERROR__(msg, src) / window.__DEV_WARN__(msg, src)
+     ============================================================ -->
+<script>
+(function(){
+  'use strict';
+  var MAX_ITEMS = 40;
+  var panel = null;
+  var seen = {};
+
+  function ensurePanel(){
+    if(!panel) panel = document.getElementById('devErrorPanel');
+    return panel;
+  }
+  function stamp(){
+    var d = new Date();
+    function p(n){ return String(n).padStart(2,'0'); }
+    return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  }
+  function push(level, src, msg){
+    var el = ensurePanel();
+    if(!el) return;
+    el.classList.add('show');
+
+    var key = level + '|' + src + '|' + msg;
+    var now = Date.now();
+    if(seen[key] && now - seen[key] < 1500) return;
+    seen[key] = now;
+
+    var item = document.createElement('div');
+    item.className = 'dev-err-item' + (level === 'warn' ? ' warn' : '');
+    item.innerHTML = '<span class="src">[' + (level === 'warn' ? 'WARN' : 'ERR') +
+                     ' ' + (src || '?') + ']</span>' +
+                     '<span class="msg"></span>' +
+                     '<span class="time">' + stamp() + '</span>';
+    var msgEl = item.querySelector('.msg');
+    if(msgEl) msgEl.textContent = String(msg);
+    el.appendChild(item);
+
+    while(el.children.length > MAX_ITEMS){
+      el.removeChild(el.firstChild);
+    }
+    el.scrollTop = el.scrollHeight;
+
+    try{
+      if(level === 'warn') console.warn('[DEV_WARN]', src, msg);
+      else console.error('[DEV_ERR]', src, msg);
+    }catch(e){}
+  }
+
+  window.__DEV_ERROR__ = function(msg, src){ push('error', src || '?', msg); };
+  window.__DEV_WARN__  = function(msg, src){ push('warn',  src || '?', msg); };
+
+  /* 捕获 JS 运行时错误 + 资源加载失败 */
+  window.addEventListener('error', function(ev){
+    if(ev && ev.message){
+      var where = (ev.filename ? String(ev.filename).split('/').pop() : '?') +
+                  ':' + (ev.lineno || 0);
+      window.__DEV_ERROR__(ev.message, 'JS ' + where);
+    } else if(ev && ev.target && ev.target.tagName){
+      var t = ev.target;
+      var u = t.src || t.href || t.tagName;
+      window.__DEV_ERROR__('资源加载失败: ' + u, 'RES');
+    }
+  }, true);
+
+  /* 捕获未处理的 Promise 拒绝 */
+  window.addEventListener('unhandledrejection', function(ev){
+    var r = ev && ev.reason;
+    var m = r ? (r.message || String(r)) : '未知 Promise 错误';
+    window.__DEV_ERROR__(m, 'PROMISE');
+  });
+
+  /* 支持 iframe 通过 postMessage 上报 */
+  window.addEventListener('message', function(e){
+    var d = e.data;
+    if(!d || !d.type) return;
+    if(d.type === 'devError')      window.__DEV_ERROR__(d.message || '?', d.source || 'IFRAME');
+    else if(d.type === 'devWarn')  window.__DEV_WARN__(d.message || '?', d.source || 'IFRAME');
+  });
+
+  /* 周期性自检：关键 DOM 元素是否仍在页面里 */
+  var REQUIRED_IDS = ['stage', 'overlay', 'dlg', 'choiceBox', 'inv', 'toast', 'loadingScreen'];
+  var missingReported = {};
+  function periodicSelfCheck(){
+    try{
+      for(var i = 0; i < REQUIRED_IDS.length; i++){
+        var id = REQUIRED_IDS[i];
+        if(!document.getElementById(id)){
+          if(!missingReported[id]){
+            missingReported[id] = true;
+            window.__DEV_ERROR__('关键元素缺失: #' + id, 'SELFCHK');
+          }
+        } else {
+          missingReported[id] = false;
+        }
+      }
+      var gFrame = document.getElementById('gameFrame');
+      if(gFrame && !gFrame.contentWindow){
+        if(!missingReported.__gframe){
+          missingReported.__gframe = true;
+          window.__DEV_WARN__('gameFrame 存在但 contentWindow 不可用', 'SELFCHK');
+        }
+      }
+    }catch(e){
+      window.__DEV_ERROR__('周期自检异常: ' + (e && e.message ? e.message : e), 'SELFCHK');
+    }
+  }
+  setInterval(periodicSelfCheck, 3000);
+})();
+</script>
 
 <script src="map.js"></script>
 <script src="game.js"></script>
