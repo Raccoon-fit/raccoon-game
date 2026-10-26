@@ -14,6 +14,23 @@
   body{display:flex;align-items:center;justify-content:center;}
 
   /* ============================================================
+     全局黑幕，用于黑屏渐显
+     ============================================================ */
+  #blackCurtain {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 999999; /* 最高的层级，覆盖一切 */
+    pointer-events: none; /* 不阻挡点击 */
+    opacity: 0;
+    transition: none; /* 默认无过渡，瞬间变黑 */
+  }
+  #blackCurtain.fade-out {
+    opacity: 0 !important;
+    transition: opacity 1.2s ease !important; /* 渐显时长 */
+  }
+
+  /* ============================================================
      模拟 Windows 10 桌面
      ============================================================ */
   #desktop {
@@ -114,8 +131,9 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 4px;
-    z-index: 2;
+    z-index: 10002;
     border-top: 1px solid rgba(255,255,255,0.08);
+    position: relative;
   }
 
   .tb-left, .tb-center, .tb-right {
@@ -192,6 +210,32 @@
     background: rgba(20,20,20,0.85);
   }
 
+  /* 任务栏运行中的应用 */
+  .tb-apps {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    margin-left: 10px;
+  }
+  .tb-app-btn {
+    width: 40px;
+    height: 100%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-bottom: 2px solid #00adef;
+    background: rgba(255,255,255,0.1);
+  }
+  .tb-app-btn.active {
+    display: flex;
+  }
+  .tb-app-btn img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+  }
+
   .tb-tray {
     display: flex;
     align-items: center;
@@ -215,6 +259,114 @@
     margin-left: 4px;
   }
   .tb-time .date { font-size: 11px; opacity: 0.9; }
+
+  /* ============================================================
+     Windows 10 窗口系统
+     ============================================================ */
+  #windowContainer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10001;
+    overflow: hidden;
+  }
+  
+  .win10-window {
+    position: absolute;
+    top: 100px;
+    left: 100px;
+    width: 800px;
+    height: 600px;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: column;
+    pointer-events: auto;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    overflow: hidden;
+    border: 1px solid #c0c0c0;
+  }
+  .win10-window.maximized {
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: calc(100% - 40px) !important;
+    border-radius: 0;
+  }
+  .win10-window.minimized {
+    opacity: 0;
+    transform: scale(0.9) translateY(50px);
+    pointer-events: none;
+  }
+  .win10-window.hidden {
+    display: none;
+  }
+  
+  .win10-title-bar {
+    height: 32px;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    cursor: grab;
+    user-select: none;
+    flex: 0 0 auto;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  .win10-title-bar:active {
+    cursor: grabbing;
+  }
+  .win10-title {
+    font-size: 12px;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+  }
+  .win10-title img {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .win10-controls {
+    display: flex;
+    height: 100%;
+    align-items: center;
+  }
+  .win10-controls button {
+    width: 46px;
+    height: 100%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Segoe UI", sans-serif;
+    transition: background 0.1s;
+  }
+  .win10-controls button:hover {
+    background: #e5e5e5;
+  }
+  .win10-controls .win10-close:hover {
+    background: #e81123;
+    color: white;
+  }
+  
+  .win10-content {
+    flex: 1 1 auto;
+    position: relative;
+    background: #fff;
+  }
+  .win10-content iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+  }
 
   /* ============================================================
      Windows 10 桌面右键菜单
@@ -316,14 +468,6 @@
   }
   .prompt-btn.primary:hover {
     background: #1084d8;
-  }
-  .prompt-btn.secondary {
-    background: #2a2a2a;
-    color: #ffffff;
-    border: 1px solid #3a3a3a;
-  }
-  .prompt-btn.secondary:hover {
-    background: #3a3a3a;
   }
 
   /* ============================================================
@@ -448,14 +592,24 @@
 </head>
 <body>
 
+<!-- 全局黑幕，用于黑屏渐显 -->
+<div id="blackCurtain"></div>
+
 <!-- =========================================================
      模拟 Windows 10 桌面 (默认隐藏，确认弹窗后显示)
      ============================================================ -->
 <div id="desktop">
   <div class="desktop-area">
+    <!-- 游戏图标 -->
     <div class="desktop-icon" id="gameIcon">
       <img src="icon.webp" alt="雨夜归途" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'48\' height=\'48\' viewBox=\'0 0 48 48\'><rect width=\'48\' height=\'48\' rx=\'8\' fill=\'%23007acc\'/><text x=\'24\' y=\'30\' font-size=\'20\' fill=\'white\' text-anchor=\'middle\' font-family=\'sans-serif\'>R</text></svg>'">
       <span>雨夜归途</span>
+    </div>
+
+    <!-- 扑克图标 -->
+    <div class="desktop-icon" id="pokerIcon">
+      <img src="poker_icon.webp" alt="软软扑克" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'48\' height=\'48\' viewBox=\'0 0 48 48\'><rect width=\'48\' height=\'48\' rx=\'8\' fill=\'%23ffffff\'/><text x=\'24\' y=\'32\' font-size=\'24\' fill=\'%23d32f2f\' text-anchor=\'middle\' font-family=\'sans-serif\'>♠</text></svg>'">
+      <span>软软扑克</span>
     </div>
   </div>
 
@@ -469,6 +623,12 @@
         <span>在此处输入以搜索</span>
       </div>
       <div class="tb-taskview" title="任务视图"><div class="taskview-icon"></div></div>
+      <!-- 任务栏应用区 -->
+      <div class="tb-apps">
+        <div class="tb-app-btn" id="tbPokerApp" title="软软扑克">
+          <img src="poker_icon.webp" alt="软软扑克" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'20\' height=\'20\' viewBox=\'0 0 48 48\'><rect width=\'48\' height=\'48\' rx=\'8\' fill=\'%23ffffff\'/><text x=\'24\' y=\'32\' font-size=\'24\' fill=\'%23d32f2f\' text-anchor=\'middle\' font-family=\'sans-serif\'>♠</text></svg>'">
+        </div>
+      </div>
     </div>
     <div class="tb-right">
       <div class="tb-tray" id="trayBtn">
@@ -485,20 +645,23 @@
   </div>
 </div>
 
+<!-- 窗口层 -->
+<div id="windowContainer"></div>
+
 <!-- 右键菜单 -->
 <div id="contextMenu">
   <div class="cm-item" id="cmRefresh">
     <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
     刷新
   </div>
+  <div class="cm-item" id="cmOpenPoker">
+    <svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM8 15c0-1.66 1.34-3 3-3 .35 0 .69.07 1 .18V6h5v2h-3v7.03c-.02 1.64-1.35 2.97-3 2.97-1.66 0-3-1.34-3-3z"/></svg>
+    打开软软扑克
+  </div>
   <div class="cm-divider"></div>
   <div class="cm-item" id="cmSettings">
     <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
     显示设置
-  </div>
-  <div class="cm-item" id="cmPersonalize">
-    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-2-5.5l5.5-5.5-5.5-5.5-5.5 5.5z"/></svg>
-    个性化
   </div>
 </div>
 
@@ -556,8 +719,6 @@
       <div class="row"><span class="dot"></span><span class="role"><span class="live">主播</span></span><span class="name">超级丫丫channel</span></div>
       <div class="row"><span class="dot"></span><span class="role"><span class="live">主播</span></span><span class="name">融雪o_o</span></div>
       <div class="row"><span class="dot"></span><span class="role"><span class="live">主播</span></span><span class="name">小椰家的傻芙芙</span></div>
-      <div class="row"><span class="dot"></span><span class="role"><span class="live">主播</span></span><span class="name">松言aki</span></div>
-      <br>
       <div class="row"><span class="dot"></span><span class="role"><span class="live">主播</span></span><span class="name">水水_SSS</span></div>
       <div class="msg">第一个不打主线直接挑战血腥线的勇者</div>
     </div>
@@ -580,15 +741,14 @@
   var splash = document.getElementById('splash');
   var desktop = document.getElementById('desktop');
   var gameIcon = document.getElementById('gameIcon');
+  var pokerIcon = document.getElementById('pokerIcon');
   var launchPrompt = document.getElementById('launchPrompt');
   var btnContinue = document.getElementById('btnContinue');
   var contextMenu = document.getElementById('contextMenu');
   
   if(!splash || !desktop || !gameIcon || !launchPrompt) return;
 
-  // 1. 初始状态：显示弹窗（launchPrompt 默认 css 就是 opacity:1），桌面默认隐藏
-  
-  // 2. 点击“继续”按钮
+  // 点击“继续”按钮
   btnContinue.addEventListener('click', function(e){
     e.stopPropagation();
     
@@ -599,23 +759,41 @@
       if(fn){ try{ fn.call(el); }catch(err){} }
     }
     
-    // 隐藏弹窗，显示桌面
-    launchPrompt.classList.add('hide');
+    // 1. 瞬间黑屏
+    var curtain = document.getElementById('blackCurtain');
+    if(curtain){
+      curtain.classList.remove('fade-out');
+      curtain.style.opacity = '1';
+    }
+    
+    // 2. 切换界面
     setTimeout(function(){
+      launchPrompt.classList.add('hide');
       desktop.classList.add('show');
+      
+      // 3. 渐显桌面
+      setTimeout(function(){
+        if(curtain) curtain.classList.add('fade-out');
+      }, 100);
     }, 100);
   });
 
   // 图标选中状态逻辑
-  gameIcon.addEventListener('mousedown', function(e){
-    e.stopPropagation();
-    gameIcon.classList.add('selected');
-    contextMenu.classList.remove('show');
+  var allIcons = [gameIcon, pokerIcon];
+  allIcons.forEach(function(icon){
+    if(!icon) return;
+    icon.addEventListener('mousedown', function(e){
+      e.stopPropagation();
+      allIcons.forEach(i => i && i.classList.remove('selected'));
+      icon.classList.add('selected');
+      contextMenu.classList.remove('show');
+    });
   });
+  
   document.addEventListener('mousedown', function(e){
-    if(!gameIcon.contains(e.target)) {
-      gameIcon.classList.remove('selected');
-    }
+    allIcons.forEach(i => {
+      if(i && !i.contains(e.target)) i.classList.remove('selected');
+    });
     contextMenu.classList.remove('show');
   });
 
@@ -635,19 +813,195 @@
   updateClock();
   setInterval(updateClock, 1000);
 
-  // =========================================================
-  // 点击桌面图标直接启动游戏
-  // =========================================================
+  // 点击雨夜归途图标
   gameIcon.addEventListener('click', function(e){
     e.stopPropagation();
-    gameIcon.classList.remove('selected');
+    allIcons.forEach(i => i && i.classList.remove('selected'));
     contextMenu.classList.remove('show');
     
-    // 桌面淡出，启动动画淡入
+    // 1. 瞬间黑屏
+    var curtain = document.getElementById('blackCurtain');
+    if(curtain){
+      curtain.classList.remove('fade-out');
+      curtain.style.opacity = '1';
+    }
+    
+    // 2. 隐藏桌面，进入启动动画
     desktop.classList.add('hide');
     setTimeout(function(){
       startSplash();
+      
+      // 3. 渐显启动动画
+      setTimeout(function(){
+        if(curtain) curtain.classList.add('fade-out');
+      }, 100);
     }, 600);
+  });
+
+  // =========================================================
+  // 窗口系统 & 扑克牌逻辑
+  // =========================================================
+  var windowContainer = document.getElementById('windowContainer');
+  var tbPokerApp = document.getElementById('tbPokerApp');
+  var pokerWindow = null;
+  var isPokerMaximized = false;
+  var isPokerMinimized = false;
+  var pokerZIndex = 10001;
+  
+  function updateZIndex(win) {
+    if(!win) return;
+    pokerZIndex++;
+    win.style.zIndex = pokerZIndex;
+  }
+
+  function createPokerWindow() {
+    if(pokerWindow) {
+      if(isPokerMinimized) {
+        isPokerMinimized = false;
+        pokerWindow.classList.remove('minimized');
+        tbPokerApp.classList.add('active');
+      }
+      updateZIndex(pokerWindow);
+      return;
+    }
+
+    var win = document.createElement('div');
+    win.className = 'win10-window';
+    win.innerHTML = `
+      <div class="win10-title-bar" id="pokerTitleBar">
+        <div class="win10-title">
+          <img src="poker_icon.webp" alt="icon" onerror="this.style.display='none'">
+          软软扑克
+        </div>
+        <div class="win10-controls">
+          <button class="win10-min" id="pokerMin">&#xE921;</button>
+          <button class="win10-max" id="pokerMax">&#xE922;</button>
+          <button class="win10-close" id="pokerClose">&#xE8BB;</button>
+        </div>
+      </div>
+      <div class="win10-content">
+        <iframe src="https://game.raccoon.fit/软软扑克/" allow="autoplay; fullscreen"></iframe>
+      </div>
+    `;
+    windowContainer.appendChild(win);
+    pokerWindow = win;
+    updateZIndex(win);
+    tbPokerApp.classList.add('active');
+
+    // 绑定窗口控制按钮
+    win.querySelector('#pokerClose').addEventListener('click', function(e){
+      e.stopPropagation();
+      win.classList.add('hidden');
+      pokerWindow = null;
+      tbPokerApp.classList.remove('active');
+      isPokerMaximized = false;
+      isPokerMinimized = false;
+      setTimeout(() => win.remove(), 200);
+    });
+
+    win.querySelector('#pokerMin').addEventListener('click', function(e){
+      e.stopPropagation();
+      isPokerMinimized = true;
+      win.classList.add('minimized');
+      tbPokerApp.classList.remove('active');
+    });
+
+    win.querySelector('#pokerMax').addEventListener('click', function(e){
+      e.stopPropagation();
+      isPokerMaximized = !isPokerMaximized;
+      if(isPokerMaximized) {
+        win.classList.add('maximized');
+      } else {
+        win.classList.remove('maximized');
+      }
+    });
+
+    // 点击窗口置顶
+    win.addEventListener('mousedown', function(e){
+      updateZIndex(win);
+    });
+
+    // 绑定拖拽逻辑
+    var titleBar = win.querySelector('#pokerTitleBar');
+    var isDragging = false;
+    var startX = 0, startY = 0;
+    var startLeft = 0, startTop = 0;
+
+    titleBar.addEventListener('mousedown', function(e){
+      if(isPokerMaximized) return;
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      var rect = win.getBoundingClientRect();
+      startLeft = rect.left;
+      startTop = rect.top;
+      win.style.cursor = 'grabbing';
+    });
+
+    document.addEventListener('mousemove', function(e){
+      if(!isDragging) return;
+      var dx = e.clientX - startX;
+      var dy = e.clientY - startY;
+      win.style.left = (startLeft + dx) + 'px';
+      win.style.top = (startTop + dy) + 'px';
+    });
+
+    document.addEventListener('mouseup', function(){
+      if(isDragging) {
+        isDragging = false;
+        win.style.cursor = '';
+      }
+    });
+
+    // 移动端拖拽支持
+    titleBar.addEventListener('touchstart', function(e){
+      if(isPokerMaximized) return;
+      if(!e.touches.length) return;
+      isDragging = true;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      var rect = win.getBoundingClientRect();
+      startLeft = rect.left;
+      startTop = rect.top;
+    }, {passive: true});
+
+    document.addEventListener('touchmove', function(e){
+      if(!isDragging) return;
+      if(!e.touches.length) return;
+      var dx = e.touches[0].clientX - startX;
+      var dy = e.touches[0].clientY - startY;
+      win.style.left = (startLeft + dx) + 'px';
+      win.style.top = (startTop + dy) + 'px';
+    }, {passive: true});
+
+    document.addEventListener('touchend', function(){
+      isDragging = false;
+    });
+  }
+
+  // 点击扑克图标
+  pokerIcon.addEventListener('click', function(e){
+    e.stopPropagation();
+    allIcons.forEach(i => i && i.classList.remove('selected'));
+    contextMenu.classList.remove('show');
+    createPokerWindow();
+  });
+
+  // 点击任务栏扑克图标
+  tbPokerApp.addEventListener('click', function(e){
+    e.stopPropagation();
+    if(pokerWindow) {
+      if(isPokerMinimized) {
+        isPokerMinimized = false;
+        pokerWindow.classList.remove('minimized');
+        tbPokerApp.classList.add('active');
+        updateZIndex(pokerWindow);
+      } else {
+        isPokerMinimized = true;
+        pokerWindow.classList.add('minimized');
+        tbPokerApp.classList.remove('active');
+      }
+    }
   });
 
   // =========================================================
@@ -671,7 +1025,7 @@
 
   document.addEventListener('contextmenu', function(e){
     e.preventDefault();
-    if(e.target.closest('#taskbar') || e.target.closest('.prompt-box')) return;
+    if(e.target.closest('#taskbar') || e.target.closest('.prompt-box') || e.target.closest('.win10-window')) return;
     showContextMenu(e.clientX, e.clientY);
   });
 
@@ -682,7 +1036,7 @@
 
   document.addEventListener('touchstart', function(e){
     if(desktop.classList.contains('hide') || !desktop.classList.contains('show')) return;
-    if(e.target.closest('#taskbar') || e.target.closest('.prompt-box')) return;
+    if(e.target.closest('#taskbar') || e.target.closest('.prompt-box') || e.target.closest('.win10-window')) return;
     
     var touch = e.touches[0];
     touchStartX = touch.clientX;
@@ -718,13 +1072,13 @@
     contextMenu.classList.remove('show');
     window.__SHOW_SNACKBAR__('桌面已刷新', 1500);
   });
+  document.getElementById('cmOpenPoker').addEventListener('click', function() {
+    contextMenu.classList.remove('show');
+    createPokerWindow();
+  });
   document.getElementById('cmSettings').addEventListener('click', function() {
     contextMenu.classList.remove('show');
     window.__SHOW_SNACKBAR__('显示设置不可用', 1500);
-  });
-  document.getElementById('cmPersonalize').addEventListener('click', function() {
-    contextMenu.classList.remove('show');
-    window.__SHOW_SNACKBAR__('个性化设置不可用', 1500);
   });
 
   // =========================================================
@@ -732,6 +1086,7 @@
   // =========================================================
   var isStarting = false;
   var splashStarted = false;
+  var allowSplashClick = false; // ★ 新增：控制启动动画是否可以点击跳过
 
   function isHalloween(){
     var now = new Date();
@@ -789,17 +1144,20 @@
     setTimeout(function(){ if(!isStarting) splash.classList.add('phase-4b'); }, 2300);
     setTimeout(function(){ if(!isStarting) splash.classList.add('phase-5'); }, 2700);
     
+    // ★ 2.5 秒后，提示语变化，同时允许点击
     setTimeout(function(){
       if(!isStarting){
         var skipEl = document.getElementById('splashSkip');
         skipEl.textContent = '点击任意处开始';
         skipEl.style.animation = 'pulseText 1.5s ease-in-out infinite';
+        allowSplashClick = true; 
       }
     }, 2500);
   }
 
   splash.addEventListener('click', function(e){
     e.stopPropagation();
+    if(!allowSplashClick) return; // ★ 动画未播放完前，拒绝点击
     if(isStarting) return;
     isStarting = true;
     startTransition();
@@ -1572,6 +1930,14 @@ function openGameInFullscreen(mode){
     if(mode === 'new') localStorage.removeItem(SAVE_KEY);
     localStorage.setItem(LAUNCH_KEY, mode);
   }catch(e){}
+  
+  // 1. 瞬间黑屏
+  var curtain = document.getElementById('blackCurtain');
+  if(curtain){
+    curtain.classList.remove('fade-out');
+    curtain.style.opacity = '1';
+  }
+  
   requestFullscreenCompat();
   gameLoading.classList.add('active');
   gameFrame.classList.add('active');
@@ -1582,6 +1948,11 @@ gameFrame.addEventListener('load', function(){
   setTimeout(function(){
     gameLoading.classList.add('hidden');
     setTimeout(function(){ gameLoading.classList.remove('active'); gameLoading.classList.remove('hidden'); }, 500);
+    
+    // 2. 加载完毕，让黑幕渐显，露出游戏画面
+    var curtain = document.getElementById('blackCurtain');
+    if(curtain) curtain.classList.add('fade-out');
+    
   }, 300);
 });
 
