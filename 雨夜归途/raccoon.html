@@ -75,7 +75,6 @@
     pointer-events:none;z-index:7;opacity:0;transition:opacity 1s;}
   #hint.show{opacity:1;}
 
-  /* 跳过按钮 */
   #skipBtn{
     position:absolute;right:28px;bottom:24px;
     padding:10px 22px;
@@ -111,7 +110,7 @@
 <div id="stage">
   <canvas id="cv"></canvas>
   <div id="storyLayer"></div>
-  <div id="hint">按 W A S D 移动　·　↑ ↓ ← → 转动视角</div>
+  <div id="hint">按 W A S D 移动　·　↑ ↓ ← → 转动身体</div>
   <button id="skipBtn">跳 过 ▸</button>
   <div id="loading">
     <div class="name">雨 夜 归 途</div>
@@ -121,9 +120,6 @@
   <div id="endScreen"><div class="w">—— 雨 夜 归 途 ——</div></div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
 <script>
 (function(){
 'use strict';
@@ -131,6 +127,7 @@
 const W = 960, H = 540;
 const stage = document.getElementById('stage');
 const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
 const loading = document.getElementById('loading');
 const loadFill = document.getElementById('loadFill');
 const loadTip = document.getElementById('loadTip');
@@ -140,19 +137,14 @@ const endScreen = document.getElementById('endScreen');
 const skipBtn = document.getElementById('skipBtn');
 
 const NEXT_URL = 'index1.html';
-
-/* three.js 可用性检查 */
-if(typeof THREE === 'undefined'){
-  loadTip.textContent = '⚠ three.js 加载失败（检查网络）';
-  loadTip.classList.add('error');
-  setTimeout(function(){ leaveToNext(); }, 2500);
-  return;
-}
+const SPRITE_URL = 'assets3d/raccoon_sprite.png';
+const GRID = 8;
+const TOTAL_FRAMES = GRID * GRID;
 
 /* =========================================================
-   ★ 统一离开方式：
-     - 在 iframe 里 → postMessage 通知父页面换 iframe.src
-     - 独立打开   → location.replace 降级
+   离开方式：
+   - 在 iframe 里 → postMessage 通知父页面切换 iframe.src
+   - 独立打开 → location.replace 降级
    ========================================================= */
 function leaveToNext(){
   try{
@@ -173,7 +165,7 @@ if(mode === 'continue'){
 }
 
 /* =========================================================
-   ★ 剧情文本
+   剧情文本（原样保留）
    ========================================================= */
 const STORY = [
   { text: '灰豆又一次从梦里醒来。' },
@@ -198,219 +190,309 @@ const STORY = [
 ];
 
 /* =========================================================
-   three.js 场景
+   状态
    ========================================================= */
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x02040a);
-scene.fog = new THREE.Fog(0x02040a, 2.5, 14);
+let spriteImg = null;
+let frameSize = 240;   // 加载后按图片宽度 / 8 更新
 
-const camera = new THREE.PerspectiveCamera(60, W / H, 0.06, 40);
+const raccoon = {
+  x: W / 2,
+  y: H * 0.72,
+  size: 320,
+  yaw: Math.PI,           // 弧度，初始朝前
+  frame: 32               // 0-63
+};
 
-const renderer = new THREE.WebGLRenderer({
-  canvas: cv,
-  antialias: true,
-  alpha: false
-});
-renderer.setClearColor(0x02040a, 1);
-
-/* ---------- 房间 ---------- */
-const ROOM = 12;
-const WALL_H = 4.0;
-
-const wallMat  = new THREE.MeshLambertMaterial({ color: 0x2a2030 });
-const floorMat = new THREE.MeshLambertMaterial({ color: 0x0a0810 });
-const ceilMat  = new THREE.MeshLambertMaterial({ color: 0x050408 });
-
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM, ROOM), floorMat);
-floor.rotation.x = -Math.PI / 2;
-floor.position.set(ROOM/2, 0, ROOM/2);
-scene.add(floor);
-
-const ceil = new THREE.Mesh(new THREE.PlaneGeometry(ROOM, ROOM), ceilMat);
-ceil.rotation.x = Math.PI / 2;
-ceil.position.set(ROOM/2, WALL_H, ROOM/2);
-scene.add(ceil);
-
-function makeWall(w, h, d, x, y, z){
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat);
-  m.position.set(x, y, z);
-  scene.add(m);
-}
-makeWall(ROOM, WALL_H, 1, ROOM/2, WALL_H/2, 0.5);
-makeWall(ROOM, WALL_H, 1, ROOM/2, WALL_H/2, ROOM-0.5);
-makeWall(1, WALL_H, ROOM, 0.5, WALL_H/2, ROOM/2);
-makeWall(1, WALL_H, ROOM, ROOM-0.5, WALL_H/2, ROOM/2);
-
-/* ---------- 灯光 ---------- */
-scene.add(new THREE.AmbientLight(0x8899bb, 0.35));
-
-const l1 = new THREE.PointLight(0xffd0a0, 3.5, 25, 2);
-l1.position.set(6, 3.5, 4.0);
-scene.add(l1);
-
-const l2 = new THREE.PointLight(0x90b0ff, 1.5, 25, 2);
-l2.position.set(6, 1.5, 8.5);
-scene.add(l2);
-
-const l3 = new THREE.PointLight(0x8090c0, 1.0, 25, 2);
-l3.position.set(3.5, 2.0, 4.0);
-scene.add(l3);
-
-/* ---------- 相机控制 ---------- */
-const cam = { x: 6, y: 1.8, z: 10.5, yaw: -Math.PI/2, pitch: -0.15 };
+const cam = { x: 0, y: 0 };
 const keys = {};
 
-function updateCamera(){
-  camera.position.set(cam.x, cam.y, cam.z);
-  const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
-  const cy = Math.cos(cam.yaw),   sy = Math.sin(cam.yaw);
-  const dx = cy*cp, dy = sp, dz = sy*cp;
-  camera.lookAt(cam.x + dx, cam.y + dy, cam.z + dz);
+let animTime = 0;
+let lastFrameTime = performance.now();
+
+/* =========================================================
+   输入
+   ========================================================= */
+window.addEventListener('keydown', function(e){
+  const k = e.key.toLowerCase();
+  keys[k] = true;
+  if(e.key.indexOf('Arrow') === 0 || k === ' ') e.preventDefault();
+});
+window.addEventListener('keyup', function(e){
+  const k = e.key.toLowerCase();
+  keys[k] = false;
+});
+
+/* 触摸旋转（拖动屏幕旋转角色） */
+let touchDrag = null;
+cv.addEventListener('touchstart', function(e){
+  if(!e.touches.length) return;
+  touchDrag = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+}, { passive: true });
+cv.addEventListener('touchmove', function(e){
+  if(!touchDrag || !e.touches.length) return;
+  const dx = e.touches[0].clientX - touchDrag.x;
+  touchDrag.x = e.touches[0].clientX;
+  touchDrag.y = e.touches[0].clientY;
+  raccoon.yaw += dx * 0.012;
+}, { passive: true });
+cv.addEventListener('touchend', function(){ touchDrag = null; });
+cv.addEventListener('touchcancel', function(){ touchDrag = null; });
+
+/* =========================================================
+   加载精灵图
+   ========================================================= */
+function loadSprite(){
+  return new Promise(function(resolve, reject){
+    const img = new Image();
+    img.onload = function(){
+      spriteImg = img;
+      if(img.width > 0) frameSize = img.width / GRID;
+      resolve();
+    };
+    img.onerror = function(){
+      reject(new Error('精灵图加载失败：' + SPRITE_URL));
+    };
+    img.src = SPRITE_URL;
+  });
 }
 
-function canStand(x, z){
-  if(x < 1.2 || x > ROOM - 1.2) return false;
-  if(z < 1.2 || z > ROOM - 1.2) return false;
-  return true;
-}
-
-/* ---------- 输入 ---------- */
-function bindInput(){
-  window.addEventListener('keydown', function(e){
-    keys[e.key.toLowerCase()] = true;
-    if(e.key.indexOf('Arrow') === 0 || e.key === ' ') e.preventDefault();
-  });
-  window.addEventListener('keyup', function(e){
-    keys[e.key.toLowerCase()] = false;
-  });
-  let dragging = false, lx = 0, ly = 0;
-  cv.addEventListener('mousedown', function(e){
-    dragging = true; lx = e.clientX; ly = e.clientY;
-  });
-  window.addEventListener('mousemove', function(e){
-    if(!dragging) return;
-    const dx = e.clientX - lx, dy = e.clientY - ly;
-    lx = e.clientX; ly = e.clientY;
-    cam.yaw += dx * 0.005; cam.pitch -= dy * 0.005;
-    if(cam.pitch >  0.9) cam.pitch =  0.9;
-    if(cam.pitch < -0.9) cam.pitch = -0.9;
-  });
-  window.addEventListener('mouseup', function(){ dragging = false; });
-
-  let tlx = 0, tly = 0, touching = false;
-  cv.addEventListener('touchstart', function(e){
-    if(!e.touches.length) return;
-    touching = true; tlx = e.touches[0].clientX; tly = e.touches[0].clientY;
-  }, {passive:true});
-  cv.addEventListener('touchmove', function(e){
-    if(!touching || !e.touches.length) return;
-    const dx = e.touches[0].clientX - tlx;
-    const dy = e.touches[0].clientY - tly;
-    tlx = e.touches[0].clientX; tly = e.touches[0].clientY;
-    cam.yaw += dx * 0.006; cam.pitch -= dy * 0.006;
-    if(cam.pitch >  0.9) cam.pitch =  0.9;
-    if(cam.pitch < -0.9) cam.pitch = -0.9;
-  }, {passive:true});
-  cv.addEventListener('touchend', function(){ touching = false; });
-}
-
-/* ---------- 放置浣熊到世界 ---------- */
-function placeRaccoon(model){
-  const box = new THREE.Box3().setFromObject(model);
-  const size = box.getSize(new THREE.Vector3());
-  const center = box.getCenter(new THREE.Vector3());
-
-  const targetHeight = 2.4;
-  const s = targetHeight / Math.max(size.y, 0.001);
-
-  model.scale.setScalar(s);
-  model.position.x = 6 - center.x * s;
-  model.position.y = 0 - box.min.y * s;
-  model.position.z = 4 - center.z * s;
-
-  scene.add(model);
-
-  console.log('[raccoon] 尺寸:', size.x.toFixed(3), '×', size.y.toFixed(3), '×', size.z.toFixed(3),
-              '| 中心:', center.x.toFixed(3), center.y.toFixed(3), center.z.toFixed(3),
-              '| 自动缩放:', s.toFixed(4));
-}
-
-/* ---------- 加载浣熊 ---------- */
-function loadRaccoon(){
+/* 假进度条（图片加载无进度事件，做个视觉增长） */
+let fakeProgress = 0;
+let fakeTimer = null;
+function startFakeProgress(){
+  loadFill.style.width = '8%';
   loadTip.textContent = '正在加载浣熊……';
-  loadFill.style.width = '20%';
-
-  const BASE = 'assets3d/models/';
-
-  const mtlLoader = new THREE.MTLLoader();
-  mtlLoader.setPath(BASE);
-  mtlLoader.setResourcePath(BASE);
-  mtlLoader.load('raccoon.mtl', function(materials){
-    materials.preload();
-    loadFill.style.width = '45%';
-    loadTip.textContent = '加载模型……';
-
-    const objLoader = new THREE.OBJLoader();
-    objLoader.setMaterials(materials);
-    objLoader.setPath(BASE);
-    objLoader.load('raccoon.obj', function(model){
-      placeRaccoon(model);
-      loadFill.style.width = '100%';
-      loadTip.textContent = '完成';
-      setTimeout(function(){
-        loading.classList.add('hide');
-        startStory();
-      }, 400);
-    }, function(progress){
-      if(progress.total){
-        const pct = 45 + Math.round(progress.loaded / progress.total * 50);
-        loadFill.style.width = pct + '%';
-      }
-    }, function(err){
-      console.error('[raccoon] OBJ 加载失败', err);
-      loadTip.textContent = '⚠ OBJ 加载失败';
-      loadTip.classList.add('error');
-      setTimeout(function(){
-        loading.classList.add('hide');
-        startStory();
-      }, 1800);
-    });
-  }, function(progress){
-    if(progress.total){
-      loadFill.style.width = (10 + Math.round(progress.loaded / progress.total * 30)) + '%';
+  fakeTimer = setInterval(function(){
+    if(fakeProgress < 88){
+      fakeProgress += Math.random() * 5 + 2;
+      if(fakeProgress > 88) fakeProgress = 88;
+      loadFill.style.width = fakeProgress.toFixed(1) + '%';
     }
-  }, function(err){
-    console.warn('[raccoon] MTL 加载失败，改用无贴图模式', err);
-    loadTip.textContent = '无贴图模式……';
-    const objLoader = new THREE.OBJLoader();
-    objLoader.setPath(BASE);
-    objLoader.load('raccoon.obj', function(model){
-      model.traverse(function(o){
-        if(o.isMesh) o.material = new THREE.MeshLambertMaterial({ color: 0x9a8a78 });
-      });
-      placeRaccoon(model);
-      loadFill.style.width = '100%';
-      loadTip.textContent = '完成（无贴图）';
-      setTimeout(function(){
-        loading.classList.add('hide');
-        startStory();
-      }, 400);
-    }, undefined, function(err2){
-      console.error('[raccoon] OBJ 也加载失败', err2);
-      loadTip.textContent = '⚠ 加载失败';
-      loadTip.classList.add('error');
-      setTimeout(function(){
-        loading.classList.add('hide');
-        startStory();
-      }, 1800);
-    });
+  }, 160);
+}
+function stopFakeProgress(ok){
+  if(fakeTimer){ clearInterval(fakeTimer); fakeTimer = null; }
+  loadFill.style.width = '100%';
+  loadTip.textContent = ok ? '完成' : '完成（占位）';
+}
+
+/* =========================================================
+   背景绘制
+   ========================================================= */
+function drawBackground(t){
+  /* 天空 / 房间远景 */
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+  skyGrad.addColorStop(0,   '#04070d');
+  skyGrad.addColorStop(0.35,'#0a1020');
+  skyGrad.addColorStop(0.7, '#181228');
+  skyGrad.addColorStop(1,   '#2a1a22');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  /* 远处建筑剪影 */
+  const skyline = [
+    { x: 0,   y: 200, w: 100, h: 200 },
+    { x: 100, y: 180, w: 120, h: 220 },
+    { x: 220, y: 220, w: 100, h: 180 },
+    { x: 320, y: 160, w: 140, h: 240 },
+    { x: 460, y: 200, w: 110, h: 200 },
+    { x: 570, y: 140, w: 130, h: 260 },
+    { x: 700, y: 180, w: 120, h: 220 },
+    { x: 820, y: 200, w: 140, h: 200 }
+  ];
+  ctx.fillStyle = '#03060c';
+  const parallaxX = cam.x * 0.1;
+  skyline.forEach(function(b){
+    ctx.fillRect(b.x + parallaxX, b.y, b.w, b.h);
   });
+
+  /* 远处零星窗灯 */
+  ctx.save();
+  for(let i = 0; i < 30; i++){
+    const bx = ((i * 137) % W) + parallaxX;
+    const by = 220 + ((i * 47) % 120);
+    const flick = 0.5 + 0.5 * Math.sin(t * 0.8 + i * 1.3);
+    ctx.globalAlpha = 0.25 + flick * 0.45;
+    ctx.fillStyle = (i % 5 === 0) ? '#ffb070' : '#ffd98f';
+    ctx.fillRect(bx, by, 3, 4);
+  }
+  ctx.restore();
+
+  /* 地面 */
+  const floorGrad = ctx.createLinearGradient(0, 400, 0, H);
+  floorGrad.addColorStop(0, '#0a0810');
+  floorGrad.addColorStop(1, '#050308');
+  ctx.fillStyle = floorGrad;
+  ctx.fillRect(0, 400, W, H - 400);
+
+  /* 地面纹理线 */
+  ctx.strokeStyle = 'rgba(60,50,70,0.14)';
+  ctx.lineWidth = 1;
+  for(let i = 0; i < 15; i++){
+    const y = 420 + i * 10;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+  }
+
+  /* 远处红屋顶房子剪影 */
+  const rx = 700 + parallaxX * 0.6;
+  ctx.fillStyle = '#3a1818';
+  ctx.beginPath();
+  ctx.moveTo(rx - 80, 380);
+  ctx.lineTo(rx,     320);
+  ctx.lineTo(rx + 80, 380);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#1a0e10';
+  ctx.fillRect(rx - 60, 380, 120, 30);
+
+  /* 窗户里的暖光 */
+  const windowGlow = ctx.createRadialGradient(rx, 360, 0, rx, 360, 70);
+  windowGlow.addColorStop(0, 'rgba(255,200,120,0.55)');
+  windowGlow.addColorStop(1, 'rgba(255,200,120,0)');
+  ctx.fillStyle = windowGlow;
+  ctx.fillRect(rx - 70, 290, 140, 140);
+  ctx.fillStyle = 'rgba(255,220,160,0.9)';
+  ctx.fillRect(rx - 10, 348, 20, 28);
+
+  /* 雨丝 */
+  ctx.save();
+  ctx.strokeStyle = 'rgba(180,210,240,0.22)';
+  ctx.lineWidth = 1;
+  for(let i = 0; i < 90; i++){
+    const rx2 = ((i * 67 + t * 300) % (W + 120)) - 60;
+    const ry2 = ((i * 43 + t * 800) % (H + 120)) - 60;
+    ctx.beginPath();
+    ctx.moveTo(rx2, ry2);
+    ctx.lineTo(rx2 - 2, ry2 + 12);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  /* 两侧渐暗（舞台聚光感） */
+  const vigL = ctx.createLinearGradient(0, 0, 220, 0);
+  vigL.addColorStop(0, 'rgba(0,0,0,0.65)');
+  vigL.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = vigL;
+  ctx.fillRect(0, 0, 220, H);
+
+  const vigR = ctx.createLinearGradient(W - 220, 0, W, 0);
+  vigR.addColorStop(0, 'rgba(0,0,0,0)');
+  vigR.addColorStop(1, 'rgba(0,0,0,0.65)');
+  ctx.fillStyle = vigR;
+  ctx.fillRect(W - 220, 0, 220, H);
+}
+
+/* =========================================================
+   绘制浣熊
+   ========================================================= */
+function drawRaccoon(t){
+  if(!spriteImg) return;
+
+  /* 地面阴影 */
+  const shadowY = raccoon.y + raccoon.size * 0.40;
+  const shadowGrad = ctx.createRadialGradient(
+    raccoon.x, shadowY, 0,
+    raccoon.x, shadowY, raccoon.size * 0.42
+  );
+  shadowGrad.addColorStop(0, 'rgba(0,0,0,0.55)');
+  shadowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = shadowGrad;
+  ctx.beginPath();
+  ctx.ellipse(raccoon.x, shadowY, raccoon.size * 0.42, raccoon.size * 0.08, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  /* 呼吸缩放 */
+  const breath = 1 + Math.sin(t * 1.2) * 0.015;
+
+  const col = raccoon.frame % GRID;
+  const row = Math.floor(raccoon.frame / GRID);
+  const sx = col * frameSize;
+  const sy = row * frameSize;
+
+  const drawSize = raccoon.size * breath;
+  const drawX = raccoon.x - drawSize / 2;
+  const drawY = raccoon.y - drawSize / 2;
+
+  ctx.drawImage(
+    spriteImg,
+    sx, sy, frameSize, frameSize,
+    drawX, drawY, drawSize, drawSize
+  );
+
+  /* 身上一点点暖光打光（增加融合感） */
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const warm = ctx.createRadialGradient(
+    raccoon.x - drawSize * 0.15, raccoon.y - drawSize * 0.15, 0,
+    raccoon.x - drawSize * 0.15, raccoon.y - drawSize * 0.15, drawSize * 0.55
+  );
+  warm.addColorStop(0, 'rgba(255,220,160,0.12)');
+  warm.addColorStop(1, 'rgba(255,220,160,0)');
+  ctx.fillStyle = warm;
+  ctx.fillRect(drawX, drawY, drawSize, drawSize);
+  ctx.restore();
+}
+
+/* =========================================================
+   主循环
+   ========================================================= */
+function loop(now){
+  const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
+  lastFrameTime = now;
+  animTime += dt;
+
+  /* 移动（WASD） */
+  const moveSpeed = 260 * dt;
+  if(keys['w']) raccoon.y -= moveSpeed;
+  if(keys['s']) raccoon.y += moveSpeed;
+  if(keys['a']) raccoon.x -= moveSpeed;
+  if(keys['d']) raccoon.x += moveSpeed;
+  raccoon.x = Math.max(150, Math.min(W - 150, raccoon.x));
+  raccoon.y = Math.max(H * 0.55, Math.min(H * 0.86, raccoon.y));
+
+  /* 视差相机 */
+  cam.x = (raccoon.x - W / 2) * 0.15;
+  cam.y = (raccoon.y - H * 0.7) * 0.1;
+
+  /* 旋转（← →） */
+  const rotSpeed = Math.PI * 0.55;
+  if(keys['arrowleft'])  raccoon.yaw -= rotSpeed * dt;
+  if(keys['arrowright']) raccoon.yaw += rotSpeed * dt;
+  /* ↑ ↓ 也做轻微上下位移（和 W/S 一致的手感） */
+  if(keys['arrowup'])    raccoon.y -= moveSpeed * 0.7;
+  if(keys['arrowdown'])  raccoon.y += moveSpeed * 0.7;
+  raccoon.y = Math.max(H * 0.55, Math.min(H * 0.86, raccoon.y));
+
+  /* yaw → frame */
+  let a = raccoon.yaw % (Math.PI * 2);
+  if(a < 0) a += Math.PI * 2;
+  raccoon.frame = Math.floor((a / (Math.PI * 2)) * TOTAL_FRAMES) % TOTAL_FRAMES;
+
+  /* 渲染 */
+  ctx.clearRect(0, 0, W, H);
+  drawBackground(animTime);
+  drawRaccoon(animTime);
+
+  /* 全屏暗角 */
+  const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.4, W / 2, H / 2, H * 1.05);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(0,0,0,0.75)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, W, H);
+
+  requestAnimationFrame(loop);
 }
 
 /* =========================================================
    剧情播放
    ========================================================= */
+let storyStarted = false;
 function startStory(){
+  if(storyStarted) return;
+  storyStarted = true;
   const GAP = 2100;
   let delay = 600;
   STORY.forEach(function(item){
@@ -428,8 +510,8 @@ function startStory(){
     delay += GAP + (item.pause || 0);
   });
   setTimeout(finishStory, delay + 1000);
-  /* 剧情开始后，跳过按钮出现 */
   skipBtn.classList.add('show');
+  setTimeout(function(){ hintEl.classList.add('show'); }, 2500);
 }
 
 let storyDone = false;
@@ -441,50 +523,12 @@ function finishStory(){
   setTimeout(leaveToNext, 800);
 }
 
-/* 跳过按钮 */
 skipBtn.addEventListener('click', function(e){
   e.stopPropagation();
   if(storyDone) return;
   storyLayer.innerHTML = '';
   finishStory();
 });
-
-/* =========================================================
-   主循环
-   ========================================================= */
-let lastFrame = performance.now();
-function loop(now){
-  const dt = Math.min(0.05, (now - lastFrame) / 1000);
-  lastFrame = now;
-
-  const rotSpeed = 1.8;
-  if(keys['arrowleft'])  cam.yaw -= rotSpeed * dt;
-  if(keys['arrowright']) cam.yaw += rotSpeed * dt;
-  if(keys['arrowup'])    cam.pitch += rotSpeed * 0.6 * dt;
-  if(keys['arrowdown'])  cam.pitch -= rotSpeed * 0.6 * dt;
-  if(cam.pitch >  0.9) cam.pitch =  0.9;
-  if(cam.pitch < -0.9) cam.pitch = -0.9;
-
-  const speed = 2.8;
-  let fwd = 0, str = 0;
-  if(keys['w']) fwd += 1;
-  if(keys['s']) fwd -= 1;
-  if(keys['a']) str -= 1;
-  if(keys['d']) str += 1;
-  if(fwd || str){
-    const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
-    let dx = cy*fwd - sy*str, dz = sy*fwd + cy*str;
-    const len = Math.hypot(dx, dz) || 1;
-    dx = dx/len * speed * dt; dz = dz/len * speed * dt;
-    const nx = cam.x + dx, nz = cam.z + dz;
-    if(canStand(nx, cam.z)) cam.x = nx;
-    if(canStand(cam.x, nz)) cam.z = nz;
-  }
-
-  updateCamera();
-  renderer.render(scene, camera);
-  requestAnimationFrame(loop);
-}
 
 /* =========================================================
    resize
@@ -500,13 +544,11 @@ function resize(){
   stage.style.top = Math.round((vh - h) / 2) + 'px';
 
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  renderer.setPixelRatio(dpr);
-  renderer.setSize(W, H, false);
+  cv.width = Math.round(W * dpr);
+  cv.height = Math.round(H * dpr);
   cv.style.width = '100%';
   cv.style.height = '100%';
-
-  camera.aspect = W / H;
-  camera.updateProjectionMatrix();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', function(){ setTimeout(resize, 200); });
@@ -515,11 +557,28 @@ window.addEventListener('orientationchange', function(){ setTimeout(resize, 200)
    启动
    ========================================================= */
 resize();
-bindInput();
-updateCamera();
-loadRaccoon();
-setTimeout(function(){ hintEl.classList.add('show'); }, 2500);
-requestAnimationFrame(loop);
+startFakeProgress();
+
+loadSprite().then(function(){
+  stopFakeProgress(true);
+  setTimeout(function(){
+    loading.classList.add('hide');
+    startStory();
+    lastFrameTime = performance.now();
+    requestAnimationFrame(loop);
+  }, 300);
+}).catch(function(err){
+  console.error('[raccoon]', err);
+  stopFakeProgress(false);
+  loadTip.textContent = '⚠ ' + (err.message || '加载失败');
+  loadTip.classList.add('error');
+  setTimeout(function(){
+    loading.classList.add('hide');
+    startStory();
+    lastFrameTime = performance.now();
+    requestAnimationFrame(loop); /* 无浣熊，背景照常跑，剧情继续 */
+  }, 1800);
+});
 
 })();
 </script>
