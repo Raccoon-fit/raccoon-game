@@ -1,5 +1,5 @@
 /* =========================================================
-   map.js — 雨痕地图 v6 完整版
+   map.js — 雨痕地图 v7 完整版
    ========================================================= */
 (function(global){
 'use strict';
@@ -57,6 +57,7 @@ const EDGES = [
   ['backstreet','shop'], ['shop','street'], ['street','underpass'],
   ['street','riverside'], ['street','doorstep'], ['doorstep','house'],
   ['doorstep','neighbor'], ['backstreet','parlor'],
+  
   /* 白天 */
   ['alley_day','backstreet_day'], ['backstreet_day','shop_day'],
   ['shop_day','street_day'], ['street_day','doorstep_day'], ['doorstep_day','house_day']
@@ -69,7 +70,7 @@ EDGES.forEach(e => {
   NEIGHBORS[e[1]].push(e[0]);
 });
 
-/* ==================== 存档与状态 ==================== */
+/* ==================== 存档读取 ==================== */
 function readSave(){
   try{
     var raw = localStorage.getItem(SAVE_KEY);
@@ -379,10 +380,11 @@ function render(t){
     return isDayMode ? isDayNode : !isDayNode;
   });
 
+  // ★ 恢复：绘制当前模式下所有的连线
   EDGES.forEach(e => {
-    if(!e.includes(curScene)) return;
     const eIsDay = e[0].endsWith('_day');
     if(eIsDay !== isDayMode) return;
+    
     const fromIsCurrent = e[0] === curScene || e[1] === curScene;
     let wp = 0;
     if(travelAnim){
@@ -564,10 +566,26 @@ function setTravelCallback(cb){
   if(_isFn(cb)) onTravel = cb;
 }
 
+/* ★ 恢复节点屏幕坐标计算（新手教程需要） */
+function getNodeScreenRect(key){
+  if(!_isStr(key)) return null;
+  if(!NODES[key]) return null;
+  const n = NODES[key];
+  if(!_isNum(n.x) || !_isNum(n.y)) return null;
+  const stage = document.getElementById('stage');
+  const sr = stage ? stage.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+  const sx = sr.width  / W;
+  const sy = sr.height / H;
+  const cx = sr.left + n.x * W * sx;
+  const cy = sr.top  + n.y * H * sy;
+  const size = Math.max(48 * Math.min(sx, sy), 44);
+  return { left: cx - size / 2, top: cy - size / 2, width: size, height: size };
+}
+
 global.RaccoonMap = {
   init, open, close, isOpen,
   setCurrentScene, setTravelCallback,
-  getNodeScreenRect: function(){ return null; },
+  getNodeScreenRect,
   getCurrentNodeKey: function(){ return curScene; },
   getAdjacentTargets: function(){ return []; }
 };
