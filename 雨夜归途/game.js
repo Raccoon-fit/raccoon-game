@@ -1,9 +1,8 @@
 /* =========================================================
-   game.js — 雨夜归途 · 全部游戏逻辑（自检增强版 v2）
-   v2 新增：
-     - enterBloodMode / exitBloodMode 拒绝 _day 场景
-     - changeScene 拒绝血模式下进入 _day
-     - beginGame 修复存档中 _day + bloodMode 冲突
+   game.js — 雨夜归途 · 全部游戏逻辑（自检增强版 v3）
+   v3 变更：
+     - devErr / devWarn 去掉去重，任何错误都会上报
+     - 保留 v2 的 _day + 血模式守卫
    ========================================================= */
 (function(){
 'use strict';
@@ -41,25 +40,16 @@ var btnAchvEl      = document.getElementById('btnAchievements');
 var gameFrame = null;
 
 /* =========================================================
-   ★ 开发者错误自检工具
+   ★ 开发者错误自检工具（无去重，全量上报）
    ========================================================= */
-var _devSeen = {};
 function devErr(msg, src){
   try{
-    var key = 'E|' + (src || '') + '|' + msg;
-    var now = Date.now();
-    if(_devSeen[key] && now - _devSeen[key] < 1200) return;
-    _devSeen[key] = now;
     if(window.__DEV_ERROR__) window.__DEV_ERROR__(msg, src || 'game.js');
     else console.error('[GAME_ERR]', src || 'game.js', msg);
   }catch(e){}
 }
 function devWarn(msg, src){
   try{
-    var key = 'W|' + (src || '') + '|' + msg;
-    var now = Date.now();
-    if(_devSeen[key] && now - _devSeen[key] < 1200) return;
-    _devSeen[key] = now;
     if(window.__DEV_WARN__) window.__DEV_WARN__(msg, src || 'game.js');
     else console.warn('[GAME_WARN]', src || 'game.js', msg);
   }catch(e){}
@@ -347,7 +337,6 @@ var streamerBlockMask = document.getElementById('streamerBlockMask');
 
 function showBloodWarn(){ bloodWarnMask.classList.add('show'); }
 
-/* ★ v2: 拒绝在 _day 场景进入血模式 */
 function enterBloodMode(){
   if(!S){ devErr('enterBloodMode: S 为空', 'enterBloodMode'); return; }
   if(isDayScene(S.scene)){
@@ -382,7 +371,6 @@ function enterBloodMode(){
   toast('🩸 暗夜模式 · 3D 场景');
 }
 
-/* ★ v2: 同样拒绝在 _day 场景退出（不会有 _day 的暗夜存在） */
 function exitBloodMode(){
   if(!S){ devErr('exitBloodMode: S 为空', 'exitBloodMode'); return; }
   if(isDayScene(S.scene)){
@@ -1680,7 +1668,6 @@ loadingRetryEl.addEventListener('click', function(){
   }
 });
 
-/* ★ v2: 拒绝血模式进入 _day 场景 */
 function changeScene(name, label){
   selfCheck('before-changeScene');
   if(!name){ devErr('changeScene: name 为空', 'changeScene'); return; }
@@ -2192,7 +2179,6 @@ document.addEventListener('keydown', function(e){
   }
 });
 
-/* ★ v2: 修复存档中 _day + bloodMode 冲突 */
 function beginGame(state, isNew){
   if(!state){ devErr('beginGame: state 为空', 'beginGame'); return; }
   S = state;
