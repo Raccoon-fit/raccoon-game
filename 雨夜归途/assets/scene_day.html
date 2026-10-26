@@ -6,11 +6,8 @@
 <title>scene_day</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
-  html,body{width:100%;height:100%;background:#000;overflow:hidden;
-    touch-action:none;user-select:none;-webkit-user-select:none;
-    -webkit-tap-highlight-color:transparent;}
-  #cv{display:block;width:100%;height:100%;cursor:none;
-    position:absolute;left:0;top:0;}
+  html,body{width:100%;height:100%;background:#000;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;}
+  #cv{display:block;width:100%;height:100%;cursor:none;position:absolute;left:0;top:0;}
 </style>
 </head>
 <body>
@@ -21,8 +18,7 @@
 (function(){
   /* 从 URL 读取场景 id：
      assets/scene_day.html?id=alley_day
-     assets/scene_day.html?id=backstreet_day
-     默认 alley_day */
+     assets/scene_day.html?id=halloween_alley */
   var m = /[?&]id=([^&]+)/.exec(location.search);
   var sid = m ? decodeURIComponent(m[1]) : 'alley_day';
   SceneCommon.boot(sid);
