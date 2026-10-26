@@ -1,10 +1,5 @@
 /* =========================================================
-   game.js — 雨夜归途 · 全部游戏逻辑（v5）
-   v5 变更：
-     - checkIntegrity 改为只检查当前场景（S.scene）
-     - 移除了启动时的全量检查
-     - 配合 map.js：地图报错在打开地图时触发，场景报错在进入场景时触发
-     - street.acts.gate 已修改为断电即可翻越
+   game.js — 雨夜归途 · 最终无省略完整版
    ========================================================= */
 (function(){
 'use strict';
@@ -26,7 +21,6 @@ var endEl          = document.getElementById('ending');
 var bloodEndEl     = document.getElementById('bloodEnding');
 var forgetEndEl    = document.getElementById('forgetEnding');
 var setEl          = document.getElementById('settings');
-var sceneTitleEl   = document.getElementById('sceneTitle');
 var loadingEl      = document.getElementById('loadingScreen');
 var loadingNameEl  = document.getElementById('loadingName');
 var loadingFill    = document.getElementById('loadingFill');
@@ -41,192 +35,90 @@ var achvTotalEl    = document.getElementById('achvTotal');
 var btnAchvEl      = document.getElementById('btnAchievements');
 var gameFrame = null;
 
-/* =========================================================
-   ★ 开发者错误自检工具（无去重）
-   ========================================================= */
 function devErr(msg, src){
-  try{
+  try {
     if(window.__DEV_ERROR__) window.__DEV_ERROR__(msg, src || 'game.js');
     else console.error('[GAME_ERR]', src || 'game.js', msg);
-  }catch(e){}
+  } catch(e){}
 }
+
 function devWarn(msg, src){
-  try{
+  try {
     if(window.__DEV_WARN__) window.__DEV_WARN__(msg, src || 'game.js');
     else console.warn('[GAME_WARN]', src || 'game.js', msg);
-  }catch(e){}
-}
-function selfCheck(ctx){
-  try{
-    var where = 'selfCheck:' + (ctx || '?');
-    if(S !== null && typeof S !== 'undefined'){
-      if(typeof S !== 'object'){ devErr('S 不是对象', where); return; }
-      if(!S.flags || typeof S.flags !== 'object') devErr('S.flags 缺失/非对象', where);
-      if(!Array.isArray(S.inv)) devErr('S.inv 不是数组', where);
-      if(!Array.isArray(S.invBlood)) devErr('S.invBlood 不是数组', where);
-      if(!S.scene) devErr('S.scene 为空', where);
-      else if(typeof SCENES !== 'undefined' && SCENES && !SCENES[S.scene]){
-        devErr('SCENES["' + S.scene + '"] 未定义', where);
-      }
-      if(Array.isArray(S.inv) && typeof ITEMS !== 'undefined'){
-        for(var i = 0; i < S.inv.length; i++){
-          if(!ITEMS[S.inv[i]]) devErr('S.inv 中物品 "' + S.inv[i] + '" 不在 ITEMS 中', where);
-        }
-      }
-      if(Array.isArray(S.invBlood) && typeof ITEMS !== 'undefined'){
-        for(var j = 0; j < S.invBlood.length; j++){
-          if(!ITEMS[S.invBlood[j]]) devErr('S.invBlood 中物品 "' + S.invBlood[j] + '" 不在 ITEMS 中', where);
-        }
-      }
-    }
-  }catch(e){
-    devErr('自检异常: ' + (e && e.message ? e.message : e), 'selfCheck');
-  }
+  } catch(e){}
 }
 
-/* =========================================================
-   ★ 完整性检查（仅检查当前场景）
-   ========================================================= */
-function checkIntegrity(){
-  try{
-    if(!gameFrame || !gameFrame.contentWindow) return;
-    var win = gameFrame.contentWindow;
-    var currentKey = S && S.scene;
-    if(!currentKey) return;
-
-    var isBlood = isBloodMode();
-
-    /* ---- 1) 2D 场景 acts ↔ spots 对应 ---- */
-    if(!isBlood){
-      var ss = win.__SCENES__;
-      if(ss){
-        var gs = SCENES[currentKey];
-        var s2 = ss[currentKey];
-        if(!s2){
-          devErr('完整性: 场景 "' + currentKey + '" 在 game.js 有定义但 assets/scenes.js 缺失', 'integrity');
-        } else if(gs && gs.acts && Array.isArray(s2.spots)){
-          var actIds = Object.keys(gs.acts);
-          var spotIds = s2.spots.map(function(s){ return s && s.id; });
-          actIds.forEach(function(actId){
-            if(spotIds.indexOf(actId) < 0){
-              devWarn('完整性: 场景 "' + currentKey + '" act "' + actId + '" 无对应 spot', 'integrity');
-            }
-          });
-          spotIds.forEach(function(spotId){
-            if(!spotId) return;
-            if(actIds.indexOf(spotId) < 0){
-              devWarn('完整性: 场景 "' + currentKey + '" spot "' + spotId + '" 无对应 act', 'integrity');
-            }
-          });
-        } else if(gs && gs.acts && !Array.isArray(s2.spots)){
-          devErr('完整性: 场景 "' + currentKey + '" 在 scenes.js 没有 spots 数组', 'integrity');
-        }
-      }
-    }
-
-    /* ---- 2) 3D 场景铁门 grid 碰撞 ---- */
-    if(isBlood){
-      var s3d = win.__SCENES_3D__;
-      if(s3d){
-        var sc = s3d[currentKey];
-        if(sc){
-          if(!Array.isArray(sc.things)){
-            devErr('完整性: 3D 场景 "' + currentKey + '" things 缺失', 'integrity:3d');
-          } else if(!Array.isArray(sc.grid)){
-            devErr('完整性: 3D 场景 "' + currentKey + '" grid 缺失', 'integrity:3d');
-          } else {
-            sc.things.forEach(function(t){
-              if(!t || t.id !== 'gate') return;
-              var gx = Math.floor(t.x);
-              var gy = Math.floor(t.y);
-              if(gx < 0 || gy < 0) return;
-              var row = sc.grid[gy];
-              if(row && row[gx] === '0'){
-                devWarn('完整性: 3D "' + currentKey + '" 铁门可穿模', 'integrity:3d');
-              }
-            });
-          }
-        }
-      }
-    }
-  }catch(e){
-    devErr('完整性检查异常: ' + (e && e.message ? e.message : e), 'integrity');
-  }
-}
-
-/* ---- 全局错误上报 ---- */
 window.addEventListener('error', function(ev){
-  try{
+  try {
     var tip = document.getElementById('loadingTip');
-    var retry = document.getElementById('loadingRetry');
-    if(tip){ tip.textContent = '脚本错误：' + (ev.message || '未知'); tip.classList.add('error'); }
-    if(retry) retry.classList.add('show');
-    console.error('[GLOBAL ERROR]', ev.message, ev.filename, ev.lineno);
+    if(tip && !loadingEl.classList.contains('hidden')){
+      tip.textContent = '脚本错误：' + (ev.message || '未知');
+      tip.classList.add('error');
+    }
     var where = (ev.filename ? String(ev.filename).split('/').pop() : '?') + ':' + (ev.lineno || 0);
     devErr(ev.message || '未知错误', 'JS ' + where);
-  }catch(_){}
+  } catch(_){}
 });
+
 window.addEventListener('unhandledrejection', function(ev){
-  try{
+  try {
     var r = ev && ev.reason;
     var m = r ? (r.message || String(r)) : '未知 Promise 错误';
     devErr(m, 'PROMISE');
-  }catch(_){}
+  } catch(_){}
 });
 
 function resize(){
   var vw = window.innerWidth, vh = window.innerHeight;
   var scale = Math.min(vw / 960, vh / 540);
-  stage.style.transform = 'scale(' + scale + ')';
+  if(stage) stage.style.transform = 'scale(' + scale + ')';
 }
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', function(){ setTimeout(resize, 220); });
-document.getElementById('btnForce').addEventListener('click', function(){
-  document.body.classList.add('forceLand'); setTimeout(resize, 60);
-});
+
+if(document.getElementById('btnForce')){
+  document.getElementById('btnForce').addEventListener('click', function(){
+    document.body.classList.add('forceLand');
+    setTimeout(resize, 60);
+  });
+}
 
 var settings = { fps:'60', quality:'high', textSpeed:'normal', fontSize:19, streamerMode:'off' };
-try{
+try {
   var _d = JSON.parse(localStorage.getItem(SET_KEY) || '{}');
   Object.keys(settings).forEach(function(k){ if(k in _d) settings[k] = _d[k]; });
-}catch(e){}
-function saveSettings(){ try{ localStorage.setItem(SET_KEY, JSON.stringify(settings)); }catch(e){} }
+} catch(e){}
 
-var streamerWarnShownThisSession = false;
+function saveSettings(){ try { localStorage.setItem(SET_KEY, JSON.stringify(settings)); } catch(e){} }
 
 function applySettings(){
-  dlgEl.style.fontSize = settings.fontSize + 'px';
-  var isStreamer = settings.streamerMode === 'on';
-  invEl.classList.toggle('streamer-mode', isStreamer);
-  document.body.classList.toggle('streamer-mode', isStreamer);
+  if(dlgEl) dlgEl.style.fontSize = settings.fontSize + 'px';
   document.querySelectorAll('.opts').forEach(function(g){
     var k = g.dataset.key, cur = String(settings[k]);
     g.querySelectorAll('button[data-v]').forEach(function(b){
       b.classList.toggle('on', b.dataset.v === cur);
     });
   });
-  if(S && S.flags){ S.flags.streamerMode = isStreamer; }
-  syncState();
-  if(isStreamer && S && S.flags && S.flags.bloodMode && !streamerWarnShownThisSession){
-    streamerWarnShownThisSession = true;
-    setTimeout(function(){
-      document.getElementById('streamerWarnMask').classList.add('show');
-    }, 260);
-  }
+  if(invEl) invEl.classList.toggle('streamer-mode', settings.streamerMode === 'on');
+  if(document.body) document.body.classList.toggle('streamer-mode', settings.streamerMode === 'on');
+  if(btnTempLightEl) btnTempLightEl.style.display = settings.streamerMode === 'on' ? 'inline-flex' : 'none';
 }
 
 var ITEMS = {
-  hook:{name:'生锈的挂钩',icon:'🪝',desc:'从垃圾桶里翻出来的，弯得像一个问号。'},
-  catfood:{name:'半罐猫粮',icon:'🥫',desc:'还剩一半。铁皮边缘被啃得参差不齐。'},
-  key:{name:'黄铜钥匙',icon:'🗝️',desc:'大橘从身下扒出来的，还带着猫毛。'},
-  torch:{name:'手电筒',icon:'🔦',desc:'外壳上有牙印。摇一摇，里面有东西松了。'},
-  battery:{name:'电池',icon:'🔋',desc:'还剩一点电。'},
-  torchOn:{name:'亮着的手电筒',icon:'🔦',desc:'一道细细的、温暖的光柱。'},
-  rope:{name:'晾衣绳',icon:'🧵',desc:'晾衣绳，上面还夹着两个塑料夹子。'},
-  grapnel:{name:'钩爪',icon:'⚓',desc:'挂钩绑上晾衣绳，歪歪扭扭，但结实。'},
-  photo1:{name:'照片碎片·一',icon:'🖼️',desc:'左半张旧照片：一个老人，和一只很小的浣熊。'},
-  photo2:{name:'照片碎片·二',icon:'🖼️',desc:'右半张：红屋顶的房子，门口的台阶。'},
-  photoFull:{name:'完整的照片',icon:'📷',desc:'一个老人抱着一只小浣熊，站在红屋顶的房子前。'}
+  hook: { name:'生锈的挂钩', icon:'🪝', desc:'从垃圾桶里翻出来的，弯得像一个问号。' },
+  catfood: { name:'半罐猫粮', icon:'🥫', desc:'还剩一半。铁皮边缘被啃得参差不齐。' },
+  key: { name:'黄铜钥匙', icon:'🗝️', desc:'大橘从身下扒出来的，还带着猫毛。' },
+  torch: { name:'手电筒', icon:'🔦', desc:'外壳上有牙印。摇一摇，里面有东西松了。' },
+  battery: { name:'电池', icon:'🔋', desc:'还剩一点电。' },
+  torchOn: { name:'亮着的手电筒', icon:'🔦', desc:'一道细细的、温暖的光柱。' },
+  rope: { name:'晾衣绳', icon:'🧵', desc:'晾衣绳，上面还夹着两个塑料夹子。' },
+  grapnel: { name:'钩爪', icon:'⚓', desc:'挂钩绑上晾衣绳，歪歪扭扭，但结实。' },
+  photo1: { name:'照片碎片·一', icon:'🖼️', desc:'左半张旧照片：一个老人，和一只很小的浣熊。' },
+  photo2: { name:'照片碎片·二', icon:'🖼️', desc:'右半张：红屋顶的房子，门口的台阶。' },
+  photoFull: { name:'完整的照片', icon:'📷', desc:'一个老人抱着一只小浣熊，站在红屋顶的房子前。' },
+  candy: { name:'女巫的糖果', icon:'🍬', desc:'散发着诡异的甜味。' },
+  pumpkin_seed: { name:'发光的南瓜籽', icon:'🎃', desc:'烫烫的。' }
 };
 
 var S = null;
@@ -235,7 +127,7 @@ var endingLock = false;
 var bloodPuddleCount = 0;
 
 function hintMap(){
-  if(!S || !S.flags) return;
+  if(!S || !S.flags || S.flags.halloween_mode) return;
   if(S.flags.mapHintShown) return;
   S.flags.mapHintShown = true;
   save();
@@ -251,26 +143,33 @@ var ACHIEVEMENTS = {
 };
 
 function loadAchievements(){
-  try{
+  try {
     var d = JSON.parse(localStorage.getItem(ACHV_KEY) || '{}');
     if(!d || typeof d !== 'object') return {};
     return d;
-  }catch(e){ return {}; }
+  } catch(e){ return {}; }
 }
-function saveAchievements(d){ try{ localStorage.setItem(ACHV_KEY, JSON.stringify(d)); }catch(e){} }
+
+function saveAchievements(d){
+  try { localStorage.setItem(ACHV_KEY, JSON.stringify(d)); } catch(e){}
+}
+
 function getAchievementCount(){
   var d = loadAchievements(), n = 0;
   for(var k in d){ if(ACHIEVEMENTS[k]) n++; }
   return n;
 }
-function getSeenCount(){ try{ return Number(localStorage.getItem(ACHV_SEEN_KEY) || '0'); }catch(e){ return 0; } }
-function setSeenCount(n){ try{ localStorage.setItem(ACHV_SEEN_KEY, String(n)); }catch(e){} }
+
+function getSeenCount(){
+  try { return Number(localStorage.getItem(ACHV_SEEN_KEY) || '0'); } catch(e){ return 0; }
+}
+
+function setSeenCount(n){
+  try { localStorage.setItem(ACHV_SEEN_KEY, String(n)); } catch(e){}
+}
 
 function unlockAchievement(id){
-  if(!ACHIEVEMENTS[id]){
-    devWarn('unlockAchievement: 未知成就 "' + id + '"', 'achv');
-    return;
-  }
+  if(!ACHIEVEMENTS[id]){ devWarn('unlockAchievement: 未知成就 "' + id + '"', 'achv'); return; }
   var d = loadAchievements();
   if(d[id]) return;
   d[id] = Date.now();
@@ -279,53 +178,28 @@ function unlockAchievement(id){
   updateAchvUnread();
   toastGold('🏆 达成结局 · ' + ACHIEVEMENTS[id].name);
 }
+
 function formatStamp(ms){
-  try{
+  try {
     var d = new Date(ms);
     return String(d.getMonth()+1).padStart(2,'0') + '-' +
            String(d.getDate()).padStart(2,'0') + ' ' +
            String(d.getHours()).padStart(2,'0') + ':' +
            String(d.getMinutes()).padStart(2,'0');
-  }catch(e){ return ''; }
+  } catch(e){ return ''; }
 }
+
 function renderAchvProgress(){
   var total = Object.keys(ACHIEVEMENTS).length;
   var got = getAchievementCount();
   if(achvProgressEl) achvProgressEl.textContent = got + ' / ' + total;
   if(achvTotalEl) achvTotalEl.innerHTML = '已达成 <b>' + got + '</b> / ' + total;
 }
+
 function updateAchvUnread(){
   if(!btnAchvEl) return;
   btnAchvEl.classList.toggle('unread', getAchievementCount() > getSeenCount());
 }
-function renderAchvPanel(){
-  if(!achvListEl) return;
-  var d = loadAchievements();
-  var html = '';
-  function row(id){
-    var a = ACHIEVEMENTS[id], ts = d[id], u = !!ts;
-    html += '<div class="achv-item' + (u?' unlocked':'') + '">';
-    html += '<div class="ico">' + (u ? a.icon : '?') + '</div>';
-    html += '<div class="txt">';
-    html += '<div class="name">' + (u ? a.name : '？？？') + '</div>';
-    html += '<div class="desc">' + (u ? a.desc : '尚未抵达') + '</div>';
-    html += '</div>';
-    if(u) html += '<div class="stamp">' + formatStamp(ts) + '</div>';
-    html += '</div>';
-  }
-  html += '<div class="achv-sec">主 线</div>';
-  row('truth_daybreak'); row('forget_alone');
-  html += '<div class="achv-sec">暗 夜</div>';
-  row('blood_dark'); row('blood_half'); row('blood_full');
-  achvListEl.innerHTML = html;
-}
-function openAchvPanel(){
-  renderAchvPanel();
-  achvPanelEl.classList.add('show');
-  setSeenCount(getAchievementCount());
-  updateAchvUnread();
-}
-function closeAchvPanel(){ achvPanelEl.classList.remove('show'); }
 
 function sceneURL(name){
   if(!name){ devErr('sceneURL: name 为空', 'sceneURL'); return null; }
@@ -333,7 +207,7 @@ function sceneURL(name){
     return 'assets3d/scene.html?id=' + name + '&blood=1';
   }
   if(SCENES[name] && SCENES[name].url) return SCENES[name].url;
-  if(/^[a-z]+_day$/.test(name)){
+  if(/^[a-z_]+_day$/.test(name) || name.indexOf('halloween_') === 0){
     return 'assets/scene_day.html?id=' + name;
   }
   if(!SCENES[name]){
@@ -352,43 +226,41 @@ function getInv(){
   if(!S.inv) S.inv = [];
   return S.inv;
 }
+
 function setInv(arr){
   if(!S) return;
   if(S.flags && S.flags.bloodMode) S.invBlood = arr;
   else S.inv = arr;
 }
+
 function is(key){
   if(!S || !S.flags) return false;
   return !!S.flags[S.flags.bloodMode ? ('b_' + key) : key];
 }
+
 function set(key, val){
   if(!S || !S.flags) return;
   S.flags[S.flags.bloodMode ? ('b_' + key) : key] = !!val;
 }
+
 function getVal(key, def){
   if(!S || !S.flags) return def;
   var v = S.flags[S.flags.bloodMode ? ('b_' + key) : key];
   return v === undefined ? def : v;
 }
+
 function setVal(key, val){
   if(!S || !S.flags) return;
   S.flags[S.flags.bloodMode ? ('b_' + key) : key] = val;
 }
 
-function torchLit(){ return !!(getInv().indexOf('torchOn') !== -1 && is('torchOn')); }
 function isBloodMode(){ return !!(S && S.flags && S.flags.bloodMode); }
-function isStreamer(){ return settings.streamerMode === 'on'; }
-function isDayScene(name){ return /^[a-z]+_day$/.test(name || (S && S.scene) || ''); }
+function isDayScene(name){ return /^[a-z_]+_day$/.test(name || (S && S.scene) || ''); }
+function freshState(){ return { scene:'alley', inv:[], invBlood:[], flags:{}, ended:false }; }
+function save(){ if(S) { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch(e){} } }
 
-function freshState(){
-  return { scene:'alley', inv:[], invBlood:[], flags:{}, ended:false };
-}
-function save(){
-  if(!S){ devWarn('save: S 为空', 'save'); return; }
-  try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(e){ devErr('save 失败: ' + e.message, 'save'); }
-}
 function loadSave(){
-  try{
+  try {
     var raw = localStorage.getItem(SAVE_KEY);
     if(!raw) return null;
     var d = JSON.parse(raw);
@@ -397,7 +269,7 @@ function loadSave(){
     if(!d.invBlood) d.invBlood = [];
     if(!d.flags) d.flags = {};
     return d;
-  }catch(e){
+  } catch(e){
     devErr('loadSave 解析失败: ' + e.message, 'loadSave');
     return null;
   }
@@ -407,110 +279,52 @@ var bloodWarnMask = document.getElementById('bloodWarnMask');
 var streamerWarnMask = document.getElementById('streamerWarnMask');
 var streamerBlockMask = document.getElementById('streamerBlockMask');
 
-function showBloodWarn(){ bloodWarnMask.classList.add('show'); }
-
-function enterBloodMode(){
-  if(!S){ devErr('enterBloodMode: S 为空', 'enterBloodMode'); return; }
-  if(isDayScene(S.scene)){
-    devErr('enterBloodMode: 不能在白天场景进入暗夜模式 ("' + S.scene + '")', 'enterBloodMode');
-    toast('🩸 白天场景无法进入暗夜模式');
-    return;
-  }
-  S.flags.bloodMode = true;
-  S.flags.bloodEnteredOnce = true;
-  bloodPuddleCount = 0;
-  save(); syncState();
-  renderInv();
-  if(SCENES[S.scene]){
-    showLoading(SCENES[S.scene].label);
-    createGameFrame(sceneURL(S.scene));
-  } else {
-    devErr('enterBloodMode: 当前场景不存在 "' + S.scene + '"', 'enterBloodMode');
-  }
-  say('它眨了眨眼。');
-  say('——水洼里的倒影，没有眨。');
-  say('雨声变了。');
-  say('变得很近、很沉，像是敲在**铁皮**上。');
-  say('远处那栋红屋顶的房子，变成了一片焦黑。');
-  say('（暗夜模式已开启。）');
-  say('（视图切换为**第一人称**。）');
-  say('（**WASD** 前后左右移动。）');
-  say('（**↑ ↓ ← →** 转动视角。）');
-  say('（**E / 空格** 与物件互动。）');
-  say('（靠近物件，左下角会出现互动按钮。）');
-  say('（主线里的东西，在这里**带不进来**。）');
-  say('（雨巷墙根处，有一道窄缝，似乎能回去。）');
-  toast('🩸 暗夜模式 · 3D 场景');
+if(document.getElementById('bloodCancel')){
+  document.getElementById('bloodCancel').addEventListener('click', function(){
+    bloodWarnMask.classList.remove('show');
+    toast('已回到原来的雨夜');
+  });
+}
+if(document.getElementById('bloodConfirm')){
+  document.getElementById('bloodConfirm').addEventListener('click', function(){
+    bloodWarnMask.classList.remove('show');
+    if(!S || isDayScene(S.scene)) return;
+    S.flags.bloodMode = true;
+    S.flags.bloodEnteredOnce = true;
+    bloodPuddleCount = 0;
+    save(); syncState(); renderInv();
+    changeScene(S.scene, SCENES[S.scene].label);
+    say('它眨了眨眼。');
+    say('——水洼里的倒影，没有眨。');
+    say('雨声变了。');
+    say('变得很近、很沉，像是敲在**铁皮**上。');
+    say('远处那栋红屋顶的房子，变成了一片焦黑。');
+    say('（暗夜模式已开启。）');
+    say('（视图切换为**第一人称**。）');
+    say('（**WASD** 前后左右移动。）');
+    say('（**↑ ↓ ← →** 转动视角。）');
+    say('（**E / 空格** 与物件互动。）');
+    say('（靠近物件，左下角会出现互动按钮。）');
+    say('（主线里的东西，在这里**带不进来**。）');
+    say('（雨巷墙根处，有一道窄缝，似乎能回去。）');
+    toast('🩸 暗夜模式 · 3D 场景');
+  });
 }
 
-function exitBloodMode(){
-  if(!S){ devErr('exitBloodMode: S 为空', 'exitBloodMode'); return; }
-  if(isDayScene(S.scene)){
-    devErr('exitBloodMode: 白天场景不存在暗夜模式可退出 ("' + S.scene + '")', 'exitBloodMode');
-    return;
-  }
-  S.flags.bloodMode = false;
-  bloodPuddleCount = 0;
-  save(); syncState();
-  renderInv();
-  if(SCENES[S.scene]){
-    showLoading(SCENES[S.scene].label);
-    createGameFrame(sceneURL(S.scene));
-  } else {
-    devErr('exitBloodMode: 当前场景不存在 "' + S.scene + '"', 'exitBloodMode');
-  }
-  toast('🌧 已回到原来的雨夜');
+if(document.getElementById('streamerOkBtn')){
+  document.getElementById('streamerOkBtn').addEventListener('click', function(){
+    streamerWarnMask.classList.remove('show');
+  });
 }
 
-bloodWarnMask.addEventListener('click', function(e){
-  if(e.target === bloodWarnMask) bloodWarnMask.classList.remove('show');
-});
-document.getElementById('bloodCancel').addEventListener('click', function(){
-  bloodWarnMask.classList.remove('show');
-  toast('已回到原来的雨夜');
-});
-document.getElementById('bloodConfirm').addEventListener('click', function(){
-  bloodWarnMask.classList.remove('show');
-  enterBloodMode();
-});
-streamerWarnMask.addEventListener('click', function(e){
-  if(e.target === streamerWarnMask) streamerWarnMask.classList.remove('show');
-});
-document.getElementById('streamerOkBtn').addEventListener('click', function(){
-  streamerWarnMask.classList.remove('show');
-});
-streamerBlockMask.addEventListener('click', function(e){
-  if(e.target === streamerBlockMask) streamerBlockMask.classList.remove('show');
-});
-document.getElementById('streamerBlockOk').addEventListener('click', function(){
-  streamerBlockMask.classList.remove('show');
-});
-
-var SILHOUETTES = {
-  alley: ['巷子的尽头，有一个模糊的轮廓。','——穿着雨衣。','灰豆看了一会儿。','那个轮廓没有动。','——也没有走。','（它在等。但灰豆不想走过去。）'],
-  backstreet: ['消防梯下面，站着一个背影。','——还是那件雨衣。','灰豆停了一下。','背影没有回头。','——像是在看着什么。','（灰豆也没有走过去。）'],
-  shop: ['后窗外，有一个人。','——隔着玻璃，正对着里面看。','雨衣的帽檐压得很低。','灰豆往后退了一步。','——那个人，也没动。','（它其实知道那是谁。）'],
-  street: ['铁门的另一侧。','——有人在。','一个老人。','雨衣的袖口里，攥着什么东西。','灰豆看不清。','——它也没有想看清。'],
-  doorstep: ['台阶上，站着一个身影。','——背对着门。','一动不动。','像是等了很久。','——也像是不打算再等了。'],
-  house: ['窗外，站着一个人。','雨衣湿透了。','——他终于抬起了头。','灰豆认出了他。','——是老周。','（他一直在雨里。）']
-};
-
-function maybeShowSilhouette(sceneName){
-  if(!S || !S.flags) return;
-  if(isBloodMode()) return;
-  if(S.flags.daySequence) return;
-  if(!SILHOUETTES[sceneName]) return;
-  if(!S.flags.seenSilhouettes) S.flags.seenSilhouettes = [];
-  if(S.flags.seenSilhouettes.indexOf(sceneName) >= 0) return;
-  S.flags.seenSilhouettes.push(sceneName);
-  save();
-  var lines = SILHOUETTES[sceneName];
-  setTimeout(function(){
-    lines.forEach(function(l){ say(l); });
-  }, 1400);
+if(document.getElementById('streamerBlockOk')){
+  document.getElementById('streamerBlockOk').addEventListener('click', function(){
+    streamerBlockMask.classList.remove('show');
+  });
 }
 
 function presentChoice(options, onPick){
+  if(!choiceBoxEl) return;
   if(!Array.isArray(options) || options.length === 0){
     devErr('presentChoice: options 为空或非数组', 'presentChoice');
     return;
@@ -531,7 +345,7 @@ function presentChoice(options, onPick){
     });
     choiceBoxEl.appendChild(btn);
   });
-  try{
+  try {
     var dlgRect = dlgEl.getBoundingClientRect();
     var stageRect = stage.getBoundingClientRect();
     var scale = stageRect.width / 960;
@@ -540,7 +354,7 @@ function presentChoice(options, onPick){
     if(bottom < 100) bottom = 100;
     if(bottom > 380) bottom = 380;
     choiceBoxEl.style.bottom = bottom + 'px';
-  }catch(e){
+  } catch(e){
     choiceBoxEl.style.bottom = '170px';
   }
   choiceBoxEl.classList.add('show');
@@ -551,253 +365,101 @@ function sayChoice(promptText, options, onPick){
   queue.push({ choice: true, options: options, onPick: onPick });
 }
 
-function triggerInjuredCat(){
-  var myInv = getInv();
-  if(myInv.indexOf('catfood') === -1){
-    say('垃圾桶旁边，什么都没有了。');
-    say('那只小猫，也不在了。');
-    set('injuredCatDone', true);
-    save();
-    return;
-  }
-  say('垃圾桶旁边，蹲着一只小猫。');
-  say('——很小。橘色的。');
-  say('它的一条后腿，在往外渗血。');
-  say('它看着灰豆。');
-  say('——没有躲。');
-  say('');
-  say('灰豆的包里，还有**半罐猫粮**。');
-  say('（猫粮可以喂大橘，可以换一把钥匙。）');
-  say('（也可以留给这只猫。）');
-  say('');
-  sayChoice('——你要怎么做？', [
-    { text:'把猫粮留给它', value:'feed' },
-    { text:'留着。它还有用。', value:'keep' }
-  ], function(v){
-    set('injuredCatDone', true);
-    if(v === 'feed'){
-      var arr = getInv().filter(function(i){ return i !== 'catfood'; });
-      setInv(arr);
-      set('injuredCatFed', true);
-      setVal('catKarma', 1);
-      renderInv(); save(); syncState();
-      say('灰豆把罐头撕开，推到它面前。');
-      say('小猫没有立刻吃。');
-      say('它先看了灰豆一会儿。');
-      say('——然后才低下头。');
-      say('');
-      say('灰豆把目光移开了。');
-      say('——它不想看那只猫的眼睛。');
-      say('——因为那只猫的眼睛里，有它自己的影子。');
-      say('它转身走了。');
-      say('（猫粮没了。你只剩下别的东西。）', function(){
-        afterInjuredCatChoice(v);
-      });
-    } else {
-      setVal('catKarma', -1);
-      save();
-      say('灰豆把罐头塞回包里。');
-      say('它告诉自己：“还有用。”');
-      say('——但它知道，它只是不想再对任何东西负责。');
-      say('');
-      say('小猫看着它。');
-      say('——很久。');
-      say('然后小猫把目光移开了。');
-      say('——像是在说：“我懂。”');
-      say('灰豆走了。');
-      say('（你还留着半罐猫粮。）', function(){
-        afterInjuredCatChoice(v);
-      });
-    }
-  });
-}
-
-function afterInjuredCatChoice(v){
-  if(v === 'feed'){
-    set('catFedByKarma', true);
-    save();
-  }
-}
-
-function triggerCatQuestion(){
-  say('大橘看着灰豆。');
-  say('——看得很久了。');
-  say('“那天晚上。”');
-  say('“——你跑了吗？”');
-  say('');
-  say('雨落在它身上。');
-  say('它没有眨眼。');
-  sayChoice('——你要怎么回答？', [
-    { text:'“跑了。”', value:'truth' },
-    { text:'“我没有。”', value:'lie' },
-    { text:'什么都不说', value:'silent' }
-  ], function(v){
-    set('catQuestionAsked', true);
-    if(v === 'truth'){
-      setVal('catTruth', 1);
-      save();
-      say('灰豆点了点头。');
-      say('大橘看了它很久。');
-      say('然后它把尾巴收了回来。');
-      say('“谢谢。”');
-      say('“说真话的，不多。”');
-      say('');
-      say('——但灰豆知道，那不是夸奖。');
-      say('——那只是：**“至少你没骗我。”**');
-      say('它转过头，继续睡了。');
-      say('（它记住了你的答案。）');
-    } else if(v === 'lie'){
-      setVal('catTruth', -1);
-      save();
-      say('灰豆摇了摇头。');
-      say('大橘看着它。');
-      say('——没有拆穿。');
-      say('“好。”它说。');
-      say('“那就好。”');
-      say('');
-      say('大橘从身下扒出那把钥匙，往灰豆那边推了一寸。');
-      say('——又收回了一寸。');
-      say('——然后才推过去。');
-      say('——比刚才远了一点点。');
-      say('');
-      say('灰豆拿了钥匙。');
-      say('——它没有说谢谢。');
-      say('因为它知道，那不是原谅。');
-      say('大橘闭上眼睛。');
-      say('（它不再看你了。）');
-    } else {
-      setVal('catTruth', 0);
-      save();
-      say('灰豆什么都没有说。');
-      say('大橘也没有再问。');
-      say('雨声里，它们沉默了一会儿。');
-      say('然后大橘把脸埋进了尾巴里。');
-      say('“走吧。”');
-      say('——不是“再见”。');
-      say('是“走吧”。');
-      say('（有些问题，本来就没有答案。）');
-    }
-  });
-}
-
-function triggerPhotoChoice(){
-  say('两片照片，都凑齐了。');
-  say('');
-  say('左边：一个老人，怀里抱着一只很小的浣熊。');
-  say('右边：红屋顶的房子，门口的台阶。');
-  say('');
-  say('——它们能拼上。');
-  say('拼上之后，是一张完整的照片。');
-  say('照片上是一个老人，抱着小浣熊。');
-  say('——站在家门口。');
-  say('');
-  say('灰豆的手停住了。');
-  say('（它其实可以只拼一半。）');
-  say('（那样的话，那张照片永远是缺的。）');
-  say('（——它就永远不知道另半张上是谁。）');
-  say('');
-  sayChoice('——你要怎么拼？', [
-    { text:'拼完整。我要看全部。', value:'full' },
-    { text:'只拼一半。我不想知道。', value:'half' }
-  ], function(v){
-    if(v === 'full'){
-      setVal('photoChoice', 'full');
-      save();
-      var myInv = getInv();
-      var newInv = myInv.filter(function(i){ return i!=='photo1' && i!=='photo2'; });
-      newInv.push('photoFull'); setInv(newInv);
-      set('photoJoined', true);
-      renderInv('photoFull'); save(); syncState();
-      say('灰豆把两片纸拼在一起。');
-      say('——照片完整了。');
-      say('那个老人，在笑着。');
-      say('小浣熊在他怀里，尾巴翘得老高。');
-      say('一只很小的蓝绳，系在小浣熊的脖子上。');
-      say('');
-      say('灰豆低头看了看自己的脖子。');
-      say('绳子早就没了。');
-      say('只剩一圈浅浅的毛。');
-      say('');
-      say('它把照片翻了过去。');
-      say('——它不需要再看了。');
-      say('它一直都知道。', function(){
-        setTimeout(startDaySequence, 800);
-      });
-    } else {
-      setVal('photoChoice', 'half');
-      save();
-      var myInv2 = getInv();
-      var newInv2 = myInv2.filter(function(i){ return i!=='photo1' && i!=='photo2'; });
-      newInv2.push('photo1'); setInv(newInv2);
-      set('photoJoined', true);
-      renderInv('photo1'); save(); syncState();
-      say('灰豆把左半张放进了相框。');
-      say('——右半张，它攥在手心里。');
-      say('');
-      say('它本来想把那半张也放进去。');
-      say('但它没有。');
-      say('——不是不想，是**不敢**。');
-      say('');
-      say('照片上只剩下那个老人。');
-      say('和他怀里的半只浣熊。');
-      say('');
-      say('灰豆站在那，很久。');
-      say('然后它转过身。');
-      say('——它没有哭。');
-      say('它只是把右半张攥得更紧了。', function(){
-        setTimeout(function(){
-          endingLock = true;
-          unlockAchievement('forget_alone');
-          endingShown = true;
-          syncState();
-          forgetEndEl.classList.add('show');
-        }, 900);
-      });
-    }
-  });
-}
-
-function startDaySequence(){
-  if(endingLock) return;
-  endingLock = true;
-  unlockAchievement('truth_daybreak');
-  S.flags.daySequence = true;
-  S.scene = 'alley_day';
-  save();
-  say('雨停了。');
-  say('——真的停了。');
-  say('');
-  say('灰豆抬起头。');
-  say('天边，有一点点亮。');
-  say('（天，要亮了。）', function(){
-    showLoading('雨 巷 · 早');
-    setLoadingProgress(15, 45);
-    createGameFrame(sceneURL('alley_day'));
-  });
-}
-
 var SCENES = {
   alley_day: {
     url: null, label: '雨 巷 · 早',
     acts: {
-      trash: function(){ say('垃圾桶翻倒在墙边。'); say('——是昨晚那一只。'); say('但现在，它安安静静地躺在阳光里。'); say('灰豆看了一眼，没有翻。'); },
-      cat: function(){ say('一只小猫蹲在垃圾桶旁边。'); say('——橘色的。'); say('它抬起头，看了灰豆一眼。'); say('——没有怕。'); say('也没有动。'); say('（像是在这里，等了很久。）'); },
-      graffiti: function(){ say('墙上那行字，白天看得很清楚。'); say('“……记得回家。”'); say('——原来是这五个字。'); say('昨晚雨太大，只能看见前四个。'); say(''); say('灰豆盯着看了很久。'); say('——它记得这五个字。'); say('——它只是不想承认自己记得。'); },
-      puddle: function(){ say('水洼还在。'); say('但已经干了半边。'); say('——现在是水。'); say('不是别的。'); },
-      lamp: function(){ say('路灯关着。'); say('——白天不需要它。'); say('灰豆抬头看了一眼。'); say('灯罩上什么都没有。'); say('（昨晚的那些，只是影子。）'); },
-      exit: function(){ say('灰豆往前走。'); say('阳光照在它的背上。'); say('——很暖。'); say('它走在昨晚跑过的那条巷子里。'); say('——走得很慢。'); changeScene('backstreet_day', '后 巷 · 早'); }
+      trash: function(){
+        say('垃圾桶翻倒在墙边。');
+        say('——是昨晚那一只。');
+        say('但现在，它安安静静地躺在阳光里。');
+        say('灰豆看了一眼，没有翻。');
+      },
+      cat: function(){
+        say('一只小猫蹲在垃圾桶旁边。');
+        say('——橘色的。');
+        say('它抬起头，看了灰豆一眼。');
+        say('——没有怕。');
+        say('也没有动。');
+        say('（像是在这里，等了很久。）');
+      },
+      graffiti: function(){
+        say('墙上那行字，白天看得很清楚。');
+        say('“……记得回家。”');
+        say('——原来是这五个字。');
+        say('昨晚雨太大，只能看见前四个。');
+        say('');
+        say('灰豆盯着看了很久。');
+        say('——它记得这五个字。');
+        say('——它只是不想承认自己记得。');
+      },
+      puddle: function(){
+        say('水洼还在。');
+        say('但已经干了半边。');
+        say('——现在是水。');
+        say('不是别的。');
+      },
+      lamp: function(){
+        say('路灯关着。');
+        say('——白天不需要它。');
+        say('灰豆抬头看了一眼。');
+        say('灯罩上什么都没有。');
+        say('（昨晚的那些，只是影子。）');
+      },
+      exit: function(){
+        say('灰豆往前走。');
+        say('阳光照在它的背上。');
+        say('——很暖。');
+        say('它走在昨晚跑过的那条巷子里。');
+        say('——走得很慢。');
+        changeScene('backstreet_day', '后 巷 · 早');
+      }
     }
   },
   backstreet_day: {
     url: null, label: '后 巷 · 早',
     acts: {
-      stairs: function(){ say('消防梯锈得更厉害了。'); say('——但它看起来没那么吓人了。'); say('铁栏杆上还留着灰豆的爪印。'); say('（昨晚它爬上去过。）'); },
-      mold: function(){ say('墙上的霉斑，白天看是一团普通的黑。'); say('——只是一块老墙。'); say('灰豆盯着看了一会儿。'); say('形状还是有点像一栋房子。'); say('——但屋顶是黑的了。'); },
-      box: function(){ say('三个纸箱都塌了。'); say('里面是空的。'); say('——只有雨水和一点碎报纸。'); },
-      cat: function(){ say('大橘蜷在纸箱上，在晒太阳。'); say('它看见灰豆，只抬了一下眼皮。'); say('“哦，是你。”'); say('“昨晚的事，就当没发生。”'); say('然后它把脸埋回尾巴里。'); },
-      door: function(){ say('后门开着。'); say('——是昨晚灰豆撞开的。'); say('里面是便利店。'); changeScene('shop_day', '便 利 店 · 早'); },
-      powerDoor: function(){ say('配电房的小铁门还开着。'); say('里面黑漆漆的。'); say('——白天看，只是一间小屋。'); say('灰豆没有进去。'); },
-      back: function(){ say('灰豆走回雨巷。'); changeScene('alley_day', '雨 巷 · 早'); }
+      stairs: function(){
+        say('消防梯锈得更厉害了。');
+        say('——但它看起来没那么吓人了。');
+        say('铁栏杆上还留着灰豆的爪印。');
+        say('（昨晚它爬上去过。）');
+      },
+      mold: function(){
+        say('墙上的霉斑，白天看是一团普通的黑。');
+        say('——只是一块老墙。');
+        say('灰豆盯着看了一会儿。');
+        say('形状还是有点像一栋房子。');
+        say('——但屋顶是黑的了。');
+      },
+      box: function(){
+        say('三个纸箱都塌了。');
+        say('里面是空的。');
+        say('——只有雨水和一点碎报纸。');
+      },
+      cat: function(){
+        say('大橘蜷在纸箱上，在晒太阳。');
+        say('它看见灰豆，只抬了一下眼皮。');
+        say('“哦，是你。”');
+        say('“昨晚的事，就当没发生。”');
+        say('然后它把脸埋回尾巴里。');
+      },
+      door: function(){
+        say('后门开着。');
+        say('——是昨晚灰豆撞开的。');
+        say('里面是便利店。');
+        changeScene('shop_day', '便 利 店 · 早');
+      },
+      powerDoor: function(){
+        say('配电房的小铁门还开着。');
+        say('里面黑漆漆的。');
+        say('——白天看，只是一间小屋。');
+        say('灰豆没有进去。');
+      },
+      back: function(){
+        say('灰豆走回雨巷。');
+        changeScene('alley_day', '雨 巷 · 早');
+      }
     }
   },
   shop_day: {
@@ -810,7 +472,8 @@ var SCENES = {
           say('“不着急。”他说。“慢慢来。”');
           return;
         }
-        set('zhouMet', true); save();
+        set('zhouMet', true);
+        save();
         say('一个老人从收银台后面走了出来。');
         say('——他穿着一件旧毛衣，手里端着一个茶缸。');
         say('他看见灰豆。');
@@ -836,37 +499,120 @@ var SCENES = {
         say('（他好像……已经等这一天很久了。）');
         say('（也好像……没打算等它。）');
       },
-      shelf: function(){ say('货架是空的。'); say('——白天看，就只是空的。'); say('昨天晚上那些红色的标签，都不在了。'); },
-      window: function(){ say('后窗外面，天已经大亮了。'); say('——巷子尽头，就是街。'); },
-      floor: function(){ say('地板上，还是那串爪印。'); say('——很小。'); say('是小浣熊的。'); say('灰豆把自己的爪子按了上去。'); say('——正好。'); say('——它不知道这算好事还是坏事。'); },
-      poster: function(){ say('墙上的海报。'); say('——白天看，只是一张普通的促销海报。'); say('右下角那只小小的浣熊，还是歪歪的。'); say('——但画得很认真。'); },
-      back: function(){ say('灰豆退回后巷。'); changeScene('backstreet_day', '后 巷 · 早'); },
-      exit: function(){ say('灰豆推开后门。'); say('外面是一条街。'); changeScene('street_day', '街 道 · 早'); }
+      shelf: function(){
+        say('货架是空的。');
+        say('——白天看，就只是空的。');
+        say('昨天晚上那些红色的标签，都不在了。');
+      },
+      window: function(){
+        say('后窗外面，天已经大亮了。');
+        say('——巷子尽头，就是街。');
+      },
+      floor: function(){
+        say('地板上，还是那串爪印。');
+        say('——很小。');
+        say('是小浣熊的。');
+        say('灰豆把自己的爪子按了上去。');
+        say('——正好。');
+        say('——它不知道这算好事还是坏事。');
+      },
+      poster: function(){
+        say('墙上的海报。');
+        say('——白天看，只是一张普通的促销海报。');
+        say('右下角那只小小的浣熊，还是歪歪的。');
+        say('——但画得很认真。');
+      },
+      back: function(){
+        say('灰豆退回后巷。');
+        changeScene('backstreet_day', '后 巷 · 早');
+      },
+      exit: function(){
+        say('灰豆推开后门。');
+        say('外面是一条街。');
+        changeScene('street_day', '街 道 · 早');
+      }
     }
   },
   street_day: {
     url: null, label: '街 道 · 早',
     acts: {
-      lamp: function(){ say('路灯是关着的。'); say('白天不需要它。'); },
-      power: function(){ say('配电房的门锁着。'); say('——老周说，白天的电，是给别人的。'); },
-      under: function(){ say('地下通道的入口，白天看只是一个普通的洞口。'); say('灰豆没有下去。'); },
-      river: function(){ say('河堤那边，能听见水声。'); say('——哗啦哗啦。'); say('河还在。'); },
-      rope: function(){ say('晾衣绳已经不在那里了。'); },
-      gate: function(){ say('铁门开着。'); say('——昨晚灰豆翻过去过。'); say('今天不用了。'); say('灰豆从门里走了过去。'); changeScene('doorstep_day', '门 前 · 早'); },
-      tree: function(){ say('梧桐树上的塑料袋，还在风里抖。'); say('——但白天看，就只是塑料袋。'); },
-      mailbox: function(){ say('信箱还在那里。'); say('——锁还是锈的。'); say('灰豆这次没有去扒。'); },
-      fire: function(){ say('消防栓在阳光里闪着一点光。'); say('灰豆凑过去蹭了蹭。'); say('——还是凉的。'); say('——但比昨晚暖。'); },
-      back: function(){ say('灰豆退回后巷。'); changeScene('backstreet_day', '后 巷 · 早'); }
+      lamp: function(){
+        say('路灯是关着的。');
+        say('白天不需要它。');
+      },
+      power: function(){
+        say('配电房的门锁着。');
+        say('——老周说，白天的电，是给别人的。');
+      },
+      under: function(){
+        say('地下通道的入口，白天看只是一个普通的洞口。');
+        say('灰豆没有下去。');
+      },
+      river: function(){
+        say('河堤那边，能听见水声。');
+        say('——哗啦哗啦。');
+        say('河还在。');
+      },
+      rope: function(){
+        say('晾衣绳已经不在那里了。');
+      },
+      gate: function(){
+        say('铁门开着。');
+        say('——昨晚灰豆翻过去过。');
+        say('今天不用了。');
+        say('灰豆从门里走了过去。');
+        changeScene('doorstep_day', '门 前 · 早');
+      },
+      tree: function(){
+        say('梧桐树上的塑料袋，还在风里抖。');
+        say('——但白天看，就只是塑料袋。');
+      },
+      mailbox: function(){
+        say('信箱还在那里。');
+        say('——锁还是锈的。');
+        say('灰豆这次没有去扒。');
+      },
+      fire: function(){
+        say('消防栓在阳光里闪着一点光。');
+        say('灰豆凑过去蹭了蹭。');
+        say('——还是凉的。');
+        say('——但比昨晚暖。');
+      },
+      back: function(){
+        say('灰豆退回后巷。');
+        changeScene('backstreet_day', '后 巷 · 早');
+      }
     }
   },
   doorstep_day: {
     url: null, label: '门 前 · 早',
     acts: {
-      window: function(){ say('窗户里，有人在走动。'); say('——是老周。'); say('他在整理什么东西。'); },
-      lamp: function(){ say('门框上的小灯，白天不需要亮。'); say('——灯罩上还挂着几滴昨晚的雨。'); },
-      door: function(){ say('门开着。'); say('——像是在等谁。'); say('灰豆走了进去。'); changeScene('house_day', '红 屋 顶 · 早'); },
-      steps: function(){ say('两级石阶，被早晨的阳光晒得暖暖的。'); say('——昨晚的青苔，还在。'); say('台阶上有一道被反复擦过的痕迹。'); say('——但爪印还在。'); say('擦的人很用力，但没擦干净。'); },
-      back: function(){ say('灰豆退回到街道。'); changeScene('street_day', '街 道 · 早'); }
+      window: function(){
+        say('窗户里，有人在走动。');
+        say('——是老周。');
+        say('他在整理什么东西。');
+      },
+      lamp: function(){
+        say('门框上的小灯，白天不需要亮。');
+        say('——灯罩上还挂着几滴昨晚的雨。');
+      },
+      door: function(){
+        say('门开着。');
+        say('——像是在等谁。');
+        say('灰豆走了进去。');
+        changeScene('house_day', '红 屋 顶 · 早');
+      },
+      steps: function(){
+        say('两级石阶，被早晨的阳光晒得暖暖的。');
+        say('——昨晚的青苔，还在。');
+        say('台阶上有一道被反复擦过的痕迹。');
+        say('——但爪印还在。');
+        say('擦的人很用力，但没擦干净。');
+      },
+      back: function(){
+        say('灰豆退回到街道。');
+        changeScene('street_day', '街 道 · 早');
+      }
     }
   },
   house_day: {
@@ -890,16 +636,38 @@ var SCENES = {
         say('他没有说话。');
         say('——但他笑了。');
         say('');
-        say('（老周还是没有问，它去哪了。）');
-        say('（它也没有说。）');
-        say('（他们都知道，有些话，说出来就不对了。）');
-        say('（主线 · 真相线 · 完结）', function(){
-          endingLock = true;
-          setTimeout(function(){
-            endingShown = true;
-            syncState();
-            endEl.classList.add('show');
-          }, 900);
+        sayChoice('灰豆看着老周，走上前去。', [
+          { text:'“我原谅你了。”', value:'forgive' },
+          { text:'“但我永远不会忘记那天。”', value:'regret' },
+          { text:'转身离开', value:'leave' }
+        ], function(v){
+          if(v === 'forgive'){
+            say('老周的眼泪流了下来。');
+            say('“是我对不起你。”');
+            say('“以后我们再也不分开了。”');
+            say('（主线 · 真相线 · 原谅）', function(){
+              endingLock = true;
+              setTimeout(function(){ endingShown = true; syncState(); if(endEl) endEl.classList.add('show'); }, 800);
+            });
+          } else if(v === 'regret'){
+            say('老周愣了一下，点了点头。');
+            say('“我知道。”');
+            say('“我不求你原谅，只要你好好活着。”');
+            say('灰豆在他脚边坐下了。');
+            say('（主线 · 真相线 · 遗憾）', function(){
+              endingLock = true;
+              setTimeout(function(){ endingShown = true; syncState(); if(endEl) endEl.classList.add('show'); }, 800);
+            });
+          } else {
+            say('灰豆转过身。');
+            say('走出了门。');
+            say('阳光照在它的背上。');
+            say('（主线 · 遗忘线 · 离开）', function(){
+              endingLock = true;
+              unlockAchievement('forget_alone');
+              setTimeout(function(){ endingShown = true; syncState(); if(forgetEndEl) forgetEndEl.classList.add('show'); }, 800);
+            });
+          }
         });
       },
       chair: function(){ say('摇椅还在慢慢地晃。'); say('——好像刚有人站起来。'); },
@@ -911,17 +679,140 @@ var SCENES = {
       back: function(){ say('灰豆退回门前。'); changeScene('doorstep_day', '门 前 · 早'); }
     }
   },
-
+  halloween_alley: {
+    url: null, label: '南瓜 巷 · 幻境',
+    acts: {
+      scarecrow: function(){
+        say('一个倒吊着的稻草人。');
+        say('它的头是一颗腐烂的南瓜，里面爬满了蛆虫。');
+        say('灰豆往后退了一步。');
+        say('“不给糖……就捣蛋……”稻草人发出了漏风的声音。');
+      },
+      path: function(){
+        say('巷子尽头，是一片闪烁着奇异绿光的树林。');
+        say('空气里弥漫着焦糖和腐烂的甜味。');
+        changeScene('halloween_forest', '糖果 林 · 幻境');
+      },
+      backReal: function(){
+        say('灰豆摇了摇头。');
+        say('幻境褪去，它依旧站在那个下着大雨的巷子里。');
+        S.flags.halloween_mode = false;
+        save(); syncState();
+        try{ if(window.parent) window.parent.postMessage({ type: 'triggerHalloweenOff' }, '*'); }catch(e){}
+        changeScene('alley', '雨 巷');
+      }
+    }
+  },
+  halloween_forest: {
+    url: null, label: '糖果 林 · 幻境',
+    acts: {
+      candyTree: function(){
+        say('树干里流出来的不是树脂，是黏稠的红色糖浆。');
+        say('灰豆伸出爪子沾了一点，尝了尝。');
+        say('……是血的味道。');
+        say('（获得：女巫的糖果）');
+        if(getInv().indexOf('candy') === -1){ pickup('candy'); }
+      },
+      lollipop: function(){
+        say('一根插在土里的巨大棒棒糖。');
+        say('上面有着红白相间的螺旋纹。');
+        say('仔细看，那些白色的部分，是一颗颗小动物的牙齿。');
+      },
+      path: function(){
+        say('树林深处，隐约能看到一片歪歪扭扭的墓碑。');
+        changeScene('halloween_graveyard', '南瓜 墓园 · 幻境');
+      },
+      back: function(){ changeScene('halloween_alley', '南瓜 巷 · 幻境'); }
+    }
+  },
+  halloween_graveyard: {
+    url: null, label: '南瓜 墓园 · 幻境',
+    acts: {
+      grave: function(){
+        say('一块无名墓碑。');
+        say('碑文上只刻着一行小字：');
+        say('“它跑得太快了，把灵魂落在了这里。”');
+        say('灰豆觉得脖子后面凉飕飕的。');
+      },
+      throne: function(){
+        say('南瓜王座上，坐着一个没有脸的西装男人。');
+        say('他的手里捧着一堆发光的南瓜籽。');
+        say('“欢迎来到永恒的万圣夜。”');
+        say('“在这里，你不需要寻找，也不需要回去。”');
+        say('“留下来吧。”');
+        sayChoice('你要怎么做？', [
+          { text:'留下（结束支线）', value:'stay' },
+          { text:'抓一把南瓜籽就跑！', value:'run' },
+          { text:'我不属于这里', value:'refuse' }
+        ], function(v){
+          if(v === 'stay'){
+            say('灰豆在墓碑前坐了下来。');
+            say('雨停了。');
+            say('但它再也找不到那个红屋顶了。');
+            toast('🎃 万圣节 · 迷失结局');
+            S.flags.halloween_mode = false;
+            save(); syncState();
+            try{ if(window.parent) window.parent.postMessage({ type: 'triggerHalloweenOff' }, '*'); }catch(e){}
+            S.scene = 'alley'; save();
+            setTimeout(function(){ changeScene('alley', '雨 巷'); }, 3000);
+          } else if(v === 'run'){
+            say('灰豆猛地扑上去，咬住一把南瓜籽。');
+            say('“你竟敢抢我的糖！捣蛋鬼！”男人发出尖叫。');
+            say('（获得：发光的南瓜籽）');
+            pickup('pumpkin_seed');
+            say('一阵天旋地转，灰豆被吐了出来。');
+            S.flags.halloween_mode = false;
+            save(); syncState();
+            try{ if(window.parent) window.parent.postMessage({ type: 'triggerHalloweenOff' }, '*'); }catch(e){}
+            setTimeout(function(){ changeScene('alley', '雨 巷'); }, 1500);
+          } else {
+            say('“我不属于这里。”灰豆说。');
+            say('男人笑了。');
+            say('“当然。现实很痛苦，对吧？”');
+            say('“但你会回来的。”');
+            S.flags.halloween_mode = false;
+            save(); syncState();
+            try{ if(window.parent) window.parent.postMessage({ type: 'triggerHalloweenOff' }, '*'); }catch(e){}
+            setTimeout(function(){ changeScene('alley', '雨 巷'); }, 1500);
+          }
+        });
+      },
+      back: function(){ changeScene('halloween_forest', '糖果 林 · 幻境'); }
+    }
+  },
   parlor: {
     url:'assets/scene_parlor.html', label:'棋 牌 室',
     acts: {
-      mahjong: function(){ say('一张老旧的绿绒麻将桌。'); say('上面散落着几张牌。'); say('——似乎有人在这里坐了很久。'); say('桌上还有半杯冷透的茶，和两个抽了一半的烟头。'); say('灰豆凑近闻了闻。'); say('——烟味里，混着一点很淡的霉味。'); say('这里以前是做什么的？'); say('——它不知道。'); say('它只知道自己不想在这里多待。'); },
-      window: function(){ say('后窗外，是下着雨的巷子。'); say('霓虹灯的光，在雨幕里糊成一片。'); say('——像是一张被水泡过的旧照片。'); say('灰豆看了一会儿。'); say('然后转身走了。'); },
-      clock: function(){ say('墙上的老挂钟。'); say('指针停在了凌晨两点。'); say('——不知道是坏了，还是那天晚上，时间就停在了这里。'); say('灰豆没有去碰它。'); },
-      back: function(){ say('灰豆退出了棋牌室。'); changeScene('backstreet', '后 巷'); }
+      mahjong: function(){
+        say('一张老旧的绿绒麻将桌。');
+        say('上面散落着几张牌。');
+        say('——似乎有人在这里坐了很久。');
+        say('桌上还有半杯冷透的茶，和两个抽了一半的烟头。');
+        say('灰豆凑近闻了闻。');
+        say('——烟味里，混着一点很淡的霉味。');
+        say('这里以前是做什么的？');
+        say('——它不知道。');
+        say('它只知道自己不想在这里多待。');
+      },
+      window: function(){
+        say('后窗外，是下着雨的巷子。');
+        say('霓虹灯的光，在雨幕里糊成一片。');
+        say('——像是一张被水泡过的旧照片。');
+        say('灰豆看了一会儿。');
+        say('然后转身走了。');
+      },
+      clock: function(){
+        say('墙上的老挂钟。');
+        say('指针停在了凌晨两点。');
+        say('——不知道是坏了，还是那天晚上，时间就停在了这里。');
+        say('灰豆没有去碰它。');
+      },
+      back: function(){
+        say('灰豆退出了棋牌室。');
+        changeScene('backstreet', '后 巷');
+      }
     }
   },
-
   alley: {
     url:'assets/scene1.html', label:'雨 巷',
     acts: {
@@ -930,8 +821,57 @@ var SCENES = {
         if(myInv.indexOf('hook') !== -1 && myInv.indexOf('torch') !== -1){
           if(isBloodMode()){ say('垃圾桶里，什么都没有了。'); say('只剩下那股腥甜。'); }
           else{
-            if(!is('injuredCatDone')){ triggerInjuredCat(); }
-            else{ say('除了一股馊味，什么也没有了。'); say('那张报纸还黏在桶底，像一层剥不下来的皮。'); }
+            if(!is('injuredCatDone')){
+              say('垃圾桶旁边，蹲着一只小猫。');
+              say('——很小。橘色的。');
+              say('它的一条后腿，在往外渗血。');
+              say('它看着灰豆。');
+              say('——没有躲。');
+              say('');
+              say('灰豆的包里，还有**半罐猫粮**。');
+              say('（猫粮可以喂大橘，可以换一把钥匙。）');
+              say('（也可以留给这只猫。）');
+              say('');
+              sayChoice('——你要怎么做？', [
+                { text:'把猫粮留给它', value:'feed' },
+                { text:'留着。它还有用。', value:'keep' }
+              ], function(v){
+                set('injuredCatDone', true);
+                if(v === 'feed'){
+                  setInv(getInv().filter(function(i){ return i !== 'catfood'; }));
+                  set('injuredCatFed', true);
+                  setVal('catKarma', 1);
+                  renderInv(); save(); syncState();
+                  say('灰豆把罐头撕开，推到它面前。');
+                  say('小猫没有立刻吃。');
+                  say('它先看了灰豆一会儿。');
+                  say('——然后才低下头。');
+                  say('');
+                  say('灰豆把目光移开了。');
+                  say('——它不想看那只猫的眼睛。');
+                  say('——因为那只猫的眼睛里，有它自己的影子。');
+                  say('它转身走了。');
+                  say('（猫粮没了。你只剩下别的东西。）');
+                } else {
+                  setVal('catKarma', -1);
+                  save();
+                  say('灰豆把罐头塞回包里。');
+                  say('它告诉自己：“还有用。”');
+                  say('——但它知道，它只是不想再对任何东西负责。');
+                  say('');
+                  say('小猫看着它。');
+                  say('——很久。');
+                  say('然后小猫把目光移开了。');
+                  say('——像是在说：“我懂。”');
+                  say('灰豆走了。');
+                  say('（你还留着半罐猫粮。）');
+                }
+              });
+            }
+            else{
+              say('除了一股馊味，什么也没有了。');
+              say('那张报纸还黏在桶底，像一层剥不下来的皮。');
+            }
           }
           return;
         }
@@ -1040,10 +980,29 @@ var SCENES = {
         say('——它走得很慢。');
         say('——像是不想走到。');
         hintMap();
+      },
+      halloween_pumpkin: function(){
+        say('地上放着一个南瓜灯。');
+        say('——不是这条街上的东西。');
+        say('里面点着一根蜡烛，火苗一跳一跳的。');
+        say('火光照在灰豆脸上，有一种说不上来的诡异感。');
+        sayChoice('要碰一下吗？', [
+          { text:'伸手摸一下', value:'enter' },
+          { text:'离它远点', value:'leave' }
+        ], function(v){
+          if(v === 'enter'){
+            say('灰豆的爪子刚碰到南瓜。');
+            say('——周围的世界，扭曲了。');
+            S.flags.halloween_mode = true; save(); syncState();
+            try{ if(window.parent) window.parent.postMessage({ type: 'triggerHalloween' }, '*'); }catch(e){}
+            changeScene('halloween_alley', '南瓜 巷 · 幻境');
+          } else {
+            say('灰豆绕过了南瓜灯。');
+          }
+        });
       }
     }
   },
-
   backstreet: {
     url:'assets/scene2.html', label:'后 巷',
     acts: {
@@ -1099,10 +1058,70 @@ var SCENES = {
           say('在**盯着灰豆看**。', function(){ pickup('photo1'); save(); syncState(); });
           return;
         }
-        if(myInv.indexOf('catfood') === -1){ say('一只橘猫蜷在纸箱上，尾巴圈住鼻子。'); say('它的肚子瘪瘪的。'); say('灰豆注意到，它的脖子上有一道浅浅的疤。'); say('大橘的耳朵动了一下，但{{没有睁眼}}。'); return; }
+        if(myInv.indexOf('catfood') === -1){ say('一只橘猫蜷在纸箱上，尾巴圈住鼻子。'); say('它的肚子瘪瘪的。'); say('灰豆注意到，它的脖子上有一道浅浅的疤。'); say('大橘的耳朵动了一下，但没有睁眼。'); return; }
         if(is('catFed') || myInv.indexOf('key') !== -1){
-          if(!is('catQuestionAsked')){ triggerCatQuestion(); }
-          else{ say('大橘已经睡了。'); say('——它的呼吸很轻。'); say('灰豆不想吵它。'); }
+          if(!is('catQuestionAsked')){
+            say('大橘看着灰豆。');
+            say('——看得很久了。');
+            say('“那天晚上。”');
+            say('“——你跑了吗？”');
+            say('');
+            say('雨落在它身上。');
+            say('它没有眨眼。');
+            sayChoice('——你要怎么回答？', [
+              { text:'“跑了。”', value:'truth' },
+              { text:'“我没有。”', value:'lie' },
+              { text:'什么都不说', value:'silent' }
+            ], function(v){
+              set('catQuestionAsked', true);
+              if(v === 'truth'){
+                setVal('catTruth', 1); save();
+                say('灰豆点了点头。');
+                say('大橘看了它很久。');
+                say('然后它把尾巴收了回来。');
+                say('“谢谢。”');
+                say('“说真话的，不多。”');
+                say('');
+                say('——但灰豆知道，那不是夸奖。');
+                say('——那只是：**“至少你没骗我。”**');
+                say('它转过头，继续睡了。');
+                say('（它记住了你的答案。）');
+              } else if(v === 'lie'){
+                setVal('catTruth', -1); save();
+                say('灰豆摇了摇头。');
+                say('大橘看着它。');
+                say('——没有拆穿。');
+                say('“好。”它说。');
+                say('“那就好。”');
+                say('');
+                say('大橘从身下扒出那把钥匙，往灰豆那边推了一寸。');
+                say('——又收回了一寸。');
+                say('——然后才推过去。');
+                say('——比刚才远了一点点。');
+                say('');
+                say('灰豆拿了钥匙。');
+                say('——它没有说谢谢。');
+                say('因为它知道，那不是原谅。');
+                say('大橘闭上眼睛。');
+                say('（它不再看你了。）');
+              } else {
+                setVal('catTruth', 0); save();
+                say('灰豆什么都没有说。');
+                say('大橘也没有再问。');
+                say('雨声里，它们沉默了一会儿。');
+                say('然后大橘把脸埋进了尾巴里。');
+                say('“走吧。”');
+                say('——不是“再见”。');
+                say('是“走吧”。');
+                say('（有些问题，本来就没有答案。）');
+              }
+            });
+          }
+          else{
+            say('大橘已经睡了。');
+            say('——它的呼吸很轻。');
+            say('灰豆不想吵它。');
+          }
           return;
         }
         set('catFed', true);
@@ -1116,7 +1135,7 @@ var SCENES = {
         say('“不过嘛……”它伸了个懒腰，从身下扒出一样东西。');
         say('一把**黄铜钥匙**，上面还沾着猫毛。', function(){ pickup('key'); save(); syncState(); });
         say('“前几天他掉这个的时候，我顺手收了。”');
-        say('“罐头归我，钥匙归你。{{公平。}}”');
+        say('“罐头归我，钥匙归你。公平。”');
         say('“对了——那扇门通着电，是死锁的。”');
         say('“得先断了这条街的电，才打得开。”');
         say('“巷子尽头有一扇小铁门，门上写着配电。”');
@@ -1126,7 +1145,21 @@ var SCENES = {
         say('“如果你哪天看见一栋**烧过的房子**——”');
         say('“别进去。”');
       },
-      parlorDoor: function(){ say('消防梯旁边，有一扇被木板钉死的小门。'); say('——但木板被撬开了一条缝。'); say('缝里透出昏黄的灯光，和一股陈旧的烟味。'); say('门虚掩着。'); say('灰豆侧身钻了进去。'); changeScene('parlor', '棋 牌 室'); },
+      parlorDoor: function(){
+        say('消防梯旁边，有一扇被木板钉死的小门。');
+        say('——但木板被撬开了一条缝。');
+        say('缝里透出昏黄的灯光，和一股陈旧的烟味。');
+        say('门虚掩着。');
+        sayChoice('要进去吗？', [
+          {text:'进去', value:'in'},
+          {text:'算了', value:'out'}
+        ], function(v){
+          if(v==='in'){
+            window.open('https://game.raccoon.fit/软软扑克/', '_blank');
+            toast('打开了棋牌室');
+          }
+        });
+      },
       door: function(){
         if(S.flags.doorOpen){ say('门开着一条缝。'); say('——里面的灯，是灰豆自己打开的。'); hintMap(); return; }
         var myInv = getInv();
@@ -1139,7 +1172,7 @@ var SCENES = {
         S.flags.doorOpen = true; save(); syncState();
         say('钥匙插进锁孔，转了两圈。');
         say('“咔哒。”');
-        say('门开了一条缝，里面{{黑得像一口井}}。');
+        say('门开了一条缝，里面黑得像一口井。');
         if(isBloodMode()){ say('——门里，传来很轻很轻的**水声**。'); say('像是有人在里面**洗手**。'); say('灰豆停了一下。'); say('——水声也停了一下。'); say('灰豆侧着身子钻了进去。'); setTimeout(function(){ changeScene('shop', '便 利 店'); }, 220); return; }
         say('——便利店就在里面。');
         say('灰豆没有立刻进去。');
@@ -1198,7 +1231,6 @@ var SCENES = {
       }
     }
   },
-
   shop: {
     url:'assets/scene3.html', label:'便 利 店',
     acts: {
@@ -1222,7 +1254,7 @@ var SCENES = {
           return;
         }
         if(myInv.indexOf('photo2') !== -1){ say('收银台上落了一层薄灰。'); say('便签还在那里，字迹有点被水洇糊了。'); return; }
-        if(myInv.indexOf('torch') !== -1 && myInv.indexOf('battery') !== -1){ say('灰豆把坏掉的手电筒放在收银台上。'); say('它用爪子去撬抽屉的底板。'); say('——木板翘起一条边。'); say('里面藏着一张照片。'); say('照片上，红屋顶的房子，门口的台阶，还有{{半只浣熊的影子}}。', function(){ pickup('photo2'); save(); syncState(); }); say('和刚才那半张，**正好能拼上**。'); return; }
+        if(myInv.indexOf('torch') !== -1 && myInv.indexOf('battery') !== -1){ say('灰豆把坏掉的手电筒放在收银台上。'); say('它用爪子去撬抽屉的底板。'); say('——木板翘起一条边。'); say('里面藏着一张照片。'); say('照片上，红屋顶的房子，门口的台阶，还有半只浣熊的影子。', function(){ pickup('photo2'); save(); syncState(); }); say('和刚才那半张，**正好能拼上**。'); return; }
         if(myInv.indexOf('torch') === -1 && myInv.indexOf('torchOn') === -1){ say('灰豆跳上收银台。'); say('抽屉卡住了，它用牙咬，用爪子刨。'); say('收银台的底下，贴着一张手写便签：'); say('“**老周，电闸不要再关了。**”'); say('——字迹很潦草，像是写得很急。'); say('一个**手电筒**滚了出来。外壳上有牙印——不是它的。', function(){ pickup('torch'); save(); syncState(); }); return; }
         say('抽屉里只剩下一些硬币和过期的会员卡。');
         say('——还有那张便签。');
@@ -1297,7 +1329,6 @@ var SCENES = {
       }
     }
   },
-
   street: {
     url:'assets/scene4.html', label:'街 道',
     acts: {
@@ -1332,55 +1363,13 @@ var SCENES = {
         say('绳子断了，它摔进了一堆落叶里。');
       },
       gate: function(){
-        if(isBloodMode()){
-          say('铁门。');
-          say('——但不是那扇铁门。');
-          say('灰豆伸手去推。');
-          say('手指没有碰到金属。');
-          say('——它**穿了过去**。');
-          say('像穿过去一层薄薄的水膜。');
-          say('门那边的世界，和它记忆里的，一模一样。', function(){
-            setTimeout(function(){
-              changeScene('neighbor', '邻 屋');
-              say('灰豆走了进去。');
-              say('——身后，铁门还在那里。');
-              say('——像是在等下一个走进去的人。');
-            }, 300);
-          });
-          return;
-        }
-        if(!S.flags.powerCut){
-          say('铁门的横梁上装着一把黑色的电子锁。');
-          say('指示灯是**红色**的，一闪，一闪。');
-          say('灰豆伸爪去碰——');
-          say('一道细小的电流窜上来，麻得它缩回爪子。');
-          say('门上钉着一块小铁牌：');
-          say('“**电路控制 · 请先断电**”。');
-          say('——这条街上应该有一间配电房。');
-          return;
-        }
-        if(S.flags.gateOpen){
-          say('铁门开着。');
-          say('——灰豆已经翻过来过了。');
-          hintMap();
-          return;
-        }
-        /* ★ 断电之后：有钩爪用钩爪，没有钩爪直接用爪子爬 */
-        S.flags.gateOpen = true;
-        save();
-        syncState();
-        if(getInv().indexOf('grapnel') !== -1){
-          say('灰豆甩出钩爪。');
-          say('挂钩在空中划了一道弧，**咬住了门顶**。');
-          say('——灰豆爬了上去，翻过了铁门。');
-        } else {
-          say('断电之后，铁门的电子锁松了。');
-          say('灰豆把爪子伸进栏杆缝里，一点一点往上爬。');
-          say('栏杆冰凉。');
-          say('——但它翻过去了。');
-        }
-        say('门那边，是一栋红屋顶的房子。');
-        hintMap();
+        if(isBloodMode()){ say('铁门。'); say('——但不是那扇铁门。'); say('灰豆伸手去推。'); say('手指没有碰到金属。'); say('——它**穿了过去**。'); say('像穿过去一层薄薄的水膜。'); say('门那边的世界，和它记忆里的，一模一样。', function(){ setTimeout(function(){ changeScene('neighbor', '邻 屋'); say('灰豆走了进去。'); say('——身后，铁门还在那里。'); say('——像是在等下一个走进去的人。'); }, 300); }); return; }
+        if(!S.flags.powerCut){ say('铁门的横梁上装着一把黑色的电子锁。'); say('指示灯是**红色**的，一闪，一闪。'); say('灰豆伸爪去碰——'); say('一道细小的电流窜上来，麻得它缩回爪子。'); say('门上钉着一块小铁牌：'); say('“**电路控制 · 请先断电**”。'); say('——这条街上应该有一间配电房。'); return; }
+        if(S.flags.gateOpen){ say('铁门开着。'); say('——灰豆已经翻过来过了。'); hintMap(); return; }
+        S.flags.gateOpen = true; save(); syncState();
+        if(getInv().indexOf('grapnel') !== -1){ say('灰豆甩出钩爪。'); say('挂钩在空中划了一道弧，**咬住了门顶**。'); say('——灰豆爬了上去，翻过了铁门。'); }
+        else { say('断电之后，铁门的电子锁松了。'); say('灰豆把爪子伸进栏杆缝里，一点一点往上爬。'); say('栏杆冰凉。'); say('——但它翻过去了。'); }
+        say('门那边，是一栋红屋顶的房子。'); hintMap();
       },
       fire: function(){
         if(isBloodMode()){ say('消防栓锈死了。'); say('——上面有一道很深的划痕。'); say('——不是爪子。'); say('是**手指**。'); say('五道。'); say('从上面，一直划到下面。'); return; }
@@ -1416,7 +1405,6 @@ var SCENES = {
       }
     }
   },
-
   doorstep: {
     url:'assets/scene10.html', label:'门 前',
     acts: {
@@ -1454,7 +1442,6 @@ var SCENES = {
       }
     }
   },
-
   house: {
     url:'assets/scene5.html', label:'红 屋 顶',
     acts: {
@@ -1504,15 +1491,14 @@ var SCENES = {
         else if(!has1){ say('还缺**雨巷**那半张——老人和一只小浣熊。'); }
         else if(!has2){ say('还缺**便利店**那半张——红屋顶和台阶。'); }
       },
-      chair: function(){ if(isBloodMode()){ say('摇椅还在慢慢地晃。'); say('——但它没有风。'); say('灰豆走过去，把爪子按在扶手上。'); say('扶手上有一圈浅浅的印子。'); say('——像是什么东西，**经常坐在那里**。'); return; } if(is('photoJoined')){ say('摇椅还在轻轻地晃。'); say('像有人刚刚站起来，**去开门**。'); } else { say('一把旧摇椅。'); say('灰豆跳上去，椅子吱呀一声，晃了很久。'); say('它突然{{不想下来了}}。'); } },
+      chair: function(){ if(isBloodMode()){ say('摇椅还在慢慢地晃。'); say('——但它没有风。'); say('灰豆走过去，把爪子按在扶手上。'); say('扶手上有一圈浅浅的印子。'); say('——像是什么东西，**经常坐在那里**。'); return; } if(is('photoJoined')){ say('摇椅还在轻轻地晃。'); say('像有人刚刚站起来，**去开门**。'); } else { say('一把旧摇椅。'); say('灰豆跳上去，椅子吱呀一声，晃了很久。'); say('它突然不想下来了。'); } },
       bowl: function(){ if(isBloodMode()){ say('地上有一只小碗。'); say('碗底结了一层黑色的东西。'); say('——像干了的血。'); say('碗边上刻着两个字。'); say('灰豆没有去看。'); return; } say('地上有一只小碗，边上刻着两个字。'); say('——**灰豆**。'); say('碗是干净的。好像每天都有人把它洗一遍。'); },
       window: function(){ if(isBloodMode()){ say('灰豆跳到窗台上。'); say('——窗台是烫的。'); say('像刚刚烧过。'); say('外面什么都没有。'); say('没有月亮，没有街灯。'); say('只有雨。'); return; } say('灰豆跳到窗台上。'); say('月亮挂在那里，像一枚不肯落下的硬币。'); say('它用额头抵着玻璃——冰凉的。'); say('——但比雨夜暖。'); },
-      books: function(){ if(isBloodMode()){ say('书架上的书，全烧焦了。'); say('灰豆用爪子碰了碰——'); say('书页碎成了灰。'); say('——像有很多话，再也没有人说了。'); return; } say('书架上排着一些旧书，书脊都褪了色。'); say('灰豆用爪子抽出一本。'); say('里面夹着一片枯叶，压得很平整。'); say('叶子上写着很小很小的字：“{{给你的。}}”'); },
+      books: function(){ if(isBloodMode()){ say('书架上的书，全烧焦了。'); say('灰豆用爪子碰了碰——'); say('书页碎成了灰。'); say('——像有很多话，再也没有人说了。'); return; } say('书架上排着一些旧书，书脊都褪了色。'); say('灰豆用爪子抽出一本。'); say('里面夹着一片枯叶，压得很平整。'); say('叶子上写着很小很小的字：“给你的。”'); },
       clock: function(){ if(isBloodMode()){ say('挂钟停了。'); say('指针卡在凌晨两点。'); say('——那是那栋房子烧起来的时间。'); say('灰豆不想再看它。'); return; } if(S.flags.powerCut){ say('挂钟停了。'); say('指针卡在某一个时刻。'); say('——那是拉下电闸的瞬间。'); } else { say('墙上的挂钟还在走。'); say('滴答。滴答。'); say('指针停在某个早就过去的时间里，却还在往前。'); } },
       lamp: function(){ if(isBloodMode()){ say('台灯早就没了。'); say('只剩一个铁架子。'); say('——上面还挂着一点烧化的塑料。'); return; } if(S.flags.powerCut){ say('台灯灭了。'); say('灯罩上还留着一点温度。'); say('灰豆把爪子贴在灯罩上——凉的。'); say('很快就凉透了。'); } else { say('台灯的灯罩上落了一层薄薄的灰。'); say('但灯还是亮的。'); say('灰豆伸出一只爪子，在光里停了一会儿。'); say('——像是在暖手。'); } }
     }
   },
-
   powerstation: {
     url:'assets/scene6.html', label:'配 电 房',
     acts: {
@@ -1545,7 +1531,6 @@ var SCENES = {
       back: function(){ var from = S.flags.powerFrom === 'street' ? 'street' : 'backstreet'; var label = from === 'street' ? '街 道' : '后 巷'; if(isBloodMode()){ changeScene(from, label); return; } say('灰豆回头看了一眼。'); say('——门外的雨，还在下。'); hintMap(); }
     }
   },
-
   rooftop: {
     url:'assets/scene7.html', label:'屋 顶',
     acts: {
@@ -1556,7 +1541,6 @@ var SCENES = {
       back: function(){ if(isBloodMode()){ say('灰豆顺着消防梯下去了。'); changeScene('backstreet', '后 巷'); return; } say('灰豆回头看了一眼消防梯。'); say('——后巷，就在下面。'); hintMap(); }
     }
   },
-
   underpass: {
     url:'assets/scene8.html', label:'地 下 通 道',
     acts: {
@@ -1618,7 +1602,6 @@ var SCENES = {
       back: function(){ if(isBloodMode()){ say('灰豆顺着楼梯爬了上去。'); changeScene('street', '街 道'); return; } say('灰豆回头看了一眼楼梯。'); say('——街道，就在上面。'); hintMap(); }
     }
   },
-
   riverside: {
     url:'assets/scene9.html', label:'河 堤',
     acts: {
@@ -1629,7 +1612,6 @@ var SCENES = {
       back: function(){ if(isBloodMode()){ changeScene('street', '街 道'); return; } say('灰豆回头看了一眼缺口。'); say('——街道，就在那边。'); hintMap(); }
     }
   },
-
   neighbor: {
     url:'assets/scene11.html', label:'邻 屋',
     acts: {
@@ -1643,25 +1625,188 @@ var SCENES = {
   }
 };
 
-/* =========================================================
-   iframe 生命周期
-   ========================================================= */
+function triggerPhotoChoice(){
+  say('两片照片，都凑齐了。');
+  say('');
+  say('左边：一个老人，怀里抱着一只很小的浣熊。');
+  say('右边：红屋顶的房子，门口的台阶。');
+  say('');
+  say('——它们能拼上。');
+  say('拼上之后，是一张完整的照片。');
+  say('照片上是一个老人，抱着小浣熊。');
+  say('——站在家门口。');
+  say('');
+  say('灰豆的手停住了。');
+  say('（它其实可以只拼一半。）');
+  say('（那样的话，那张照片永远是缺的。）');
+  say('（——它就永远不知道另半张上是谁。）');
+  say('');
+  sayChoice('——你要怎么拼？', [
+    { text:'拼完整。我要看全部。', value:'full' },
+    { text:'只拼一半。我不想知道。', value:'half' }
+  ], function(v){
+    if(v === 'full'){
+      setVal('photoChoice', 'full');
+      save();
+      var myInv = getInv();
+      var newInv = myInv.filter(function(i){ return i!=='photo1' && i!=='photo2'; });
+      newInv.push('photoFull'); setInv(newInv);
+      set('photoJoined', true);
+      renderInv('photoFull'); save(); syncState();
+      say('灰豆把两片纸拼在一起。');
+      say('——照片完整了。');
+      say('那个老人，在笑着。');
+      say('小浣熊在他怀里，尾巴翘得老高。');
+      say('一只很小的蓝绳，系在小浣熊的脖子上。');
+      say('');
+      say('灰豆低头看了看自己的脖子。');
+      say('绳子早就没了。');
+      say('只剩一圈浅浅的毛。');
+      say('');
+      say('它把照片翻了过去。');
+      say('——它不需要再看了。');
+      say('它一直都知道。', function(){
+        setTimeout(startDaySequence, 800);
+      });
+    } else {
+      setVal('photoChoice', 'half');
+      save();
+      var myInv2 = getInv();
+      var newInv2 = myInv2.filter(function(i){ return i!=='photo1' && i!=='photo2'; });
+      newInv2.push('photo1'); setInv(newInv2);
+      set('photoJoined', true);
+      renderInv('photo1'); save(); syncState();
+      say('灰豆把左半张放进了相框。');
+      say('——右半张，它攥在手心里。');
+      say('');
+      say('它本来想把那半张也放进去。');
+      say('但它没有。');
+      say('——不是不想，是**不敢**。');
+      say('');
+      say('照片上只剩下那个老人。');
+      say('和他怀里的半只浣熊。');
+      say('');
+      say('灰豆站在那，很久。');
+      say('然后它转过身。');
+      say('——它没有哭。');
+      say('它只是把右半张攥得更紧了。', function(){
+        setTimeout(function(){
+          endingLock = true;
+          unlockAchievement('forget_alone');
+          endingShown = true;
+          syncState();
+          forgetEndEl.classList.add('show');
+        }, 900);
+      });
+    }
+  });
+}
+
+function triggerCatQuestion(){
+  say('大橘看着灰豆。');
+  say('——看得很久了。');
+  say('“那天晚上。”');
+  say('“——你跑了吗？”');
+  say('');
+  say('雨落在它身上。');
+  say('它没有眨眼。');
+  sayChoice('——你要怎么回答？', [
+    { text:'“跑了。”', value:'truth' },
+    { text:'“我没有。”', value:'lie' },
+    { text:'什么都不说', value:'silent' }
+  ], function(v){
+    set('catQuestionAsked', true);
+    if(v === 'truth'){
+      setVal('catTruth', 1);
+      save();
+      say('灰豆点了点头。');
+      say('大橘看了它很久。');
+      say('然后它把尾巴收了回来。');
+      say('“谢谢。”');
+      say('“说真话的，不多。”');
+      say('');
+      say('——但灰豆知道，那不是夸奖。');
+      say('——那只是：**“至少你没骗我。”**');
+      say('它转过头，继续睡了。');
+      say('（它记住了你的答案。）');
+    } else if(v === 'lie'){
+      setVal('catTruth', -1);
+      save();
+      say('灰豆摇了摇头。');
+      say('大橘看着它。');
+      say('——没有拆穿。');
+      say('“好。”它说。');
+      say('“那就好。”');
+      say('');
+      say('大橘从身下扒出那把钥匙，往灰豆那边推了一寸。');
+      say('——又收回了一寸。');
+      say('——然后才推过去。');
+      say('——比刚才远了一点点。');
+      say('');
+      say('灰豆拿了钥匙。');
+      say('——它没有说谢谢。');
+      say('因为它知道，那不是原谅。');
+      say('大橘闭上眼睛。');
+      say('（它不再看你了。）');
+    } else {
+      setVal('catTruth', 0);
+      save();
+      say('灰豆什么都没有说。');
+      say('大橘也没有再问。');
+      say('雨声里，它们沉默了一会儿。');
+      say('然后大橘把脸埋进了尾巴里。');
+      say('“走吧。”');
+      say('——不是“再见”。');
+      say('是“走吧”。');
+      say('（有些问题，本来就没有答案。）');
+    }
+  });
+}
+
+function startDaySequence(){
+  if(endingLock) return;
+  endingLock = true;
+  unlockAchievement('truth_daybreak');
+  S.flags.daySequence = true;
+  S.scene = 'alley_day';
+  save();
+  say('雨停了。');
+  say('——真的停了。');
+  say('');
+  say('灰豆抬起头。');
+  say('天边，有一点点亮。');
+  say('（天，要亮了。）', function(){
+    showLoading('雨 巷 · 早');
+    setLoadingProgress(15, 45);
+    createGameFrame(sceneURL('alley_day'));
+  });
+}
+
+function showBloodWarn(){ if(bloodWarnMask) bloodWarnMask.classList.add('show'); }
+function exitBloodMode(){ S.flags.bloodMode = false; bloodPuddleCount = 0; save(); syncState(); renderInv(); changeScene(S.scene, '雨 巷'); }
+
 var expectingLoad = false;
 function destroyFrame(){
   if(!gameFrame) return;
-  var old = gameFrame; gameFrame = null;
-  try{
-    old.style.visibility = 'hidden'; old.style.display = 'none';
-    old.style.opacity = '0'; old.style.pointerEvents = 'none';
-    old.style.zIndex = '-1'; old.style.left = '-9999px'; old.style.top = '-9999px';
-    try{ old.src = 'about:blank'; }catch(e){}
-  }catch(e){}
-  try{ if(old.contentWindow && old.contentWindow.__engineStop) old.contentWindow.__engineStop(); }catch(e){}
-  try{ old.contentWindow.postMessage({ type:'stop' }, '*'); }catch(e){}
+  var old = gameFrame;
+  gameFrame = null;
+  try {
+    old.style.visibility = 'hidden';
+    old.style.display = 'none';
+    old.style.opacity = '0';
+    old.style.pointerEvents = 'none';
+    old.style.zIndex = '-1';
+    old.style.left = '-9999px';
+    old.style.top = '-9999px';
+    try { old.src = 'about:blank'; } catch(e){}
+  } catch(e){}
+  try { if(old.contentWindow && old.contentWindow.__engineStop) old.contentWindow.__engineStop(); } catch(e){}
+  try { old.contentWindow.postMessage({ type:'stop' }, '*'); } catch(e){}
   setTimeout(function(){
-    if(old.parentNode){ try{ old.parentNode.removeChild(old); }catch(e){} }
+    if(old.parentNode){ try { old.parentNode.removeChild(old); } catch(e){} }
   }, 300);
 }
+
 function createGameFrame(url){
   if(!url){ devErr('createGameFrame: url 为空', 'createGameFrame'); return; }
   if(!stage){ devErr('createGameFrame: #stage 缺失', 'createGameFrame'); return; }
@@ -1683,20 +1828,19 @@ function createGameFrame(url){
   fresh.src = url;
 }
 
-/* =========================================================
-   加载动画
-   ========================================================= */
 var loadingRAF = null, loadingShown = 0, loadingTarget = 0;
 var loadingCeiling = 40, loadingActive = false, loadingReady = false;
 var loadingFinishCb = null, loadingSlowTimer = null, loadingErrTimer = null;
+
 function tickLoading(){
   if(!loadingActive) return;
   if(loadingTarget < loadingCeiling) loadingTarget = Math.min(loadingTarget + 0.18, loadingCeiling);
   var diff = loadingTarget - loadingShown;
-  if(Math.abs(diff) < 0.1){ loadingShown = loadingTarget; } else { loadingShown += diff * 0.14; }
+  if(Math.abs(diff) < 0.1){ loadingShown = loadingTarget; }
+  else { loadingShown += diff * 0.14; }
   if(loadingShown > 100) loadingShown = 100;
-  loadingFill.style.width = loadingShown.toFixed(2) + '%';
-  loadingPctEl.textContent = Math.round(loadingShown) + '%';
+  if(loadingFill) loadingFill.style.width = loadingShown.toFixed(2) + '%';
+  if(loadingPctEl) loadingPctEl.textContent = Math.round(loadingShown) + '%';
   loadingRAF = requestAnimationFrame(tickLoading);
 }
 
@@ -1704,18 +1848,20 @@ function showLoading(sceneName){
   var wasActive = loadingActive;
   var preserved = wasActive ? Math.max(loadingShown, loadingTarget) : 0;
   loadingActive = true; loadingReady = false;
-  loadingShown = preserved;
-  loadingTarget = preserved;
+  loadingShown = preserved; loadingTarget = preserved;
   loadingCeiling = 40; loadingFinishCb = null;
-  loadingNameEl.textContent = sceneName || '雨 夜 归 途';
+  if(loadingNameEl) loadingNameEl.textContent = sceneName || '雨 夜 归 途';
   if(!preserved){
-    loadingFill.style.width = '0%';
-    loadingPctEl.textContent = '0%';
+    if(loadingFill) loadingFill.style.width = '0%';
+    if(loadingPctEl) loadingPctEl.textContent = '0%';
   }
-  loadingTipEl.textContent = '正在准备……';
-  loadingTipEl.classList.remove('slow'); loadingTipEl.classList.remove('error');
-  loadingRetryEl.classList.remove('show');
-  loadingEl.classList.remove('hidden');
+  if(loadingTipEl){
+    loadingTipEl.textContent = '正在准备……';
+    loadingTipEl.classList.remove('slow');
+    loadingTipEl.classList.remove('error');
+  }
+  if(loadingRetryEl) loadingRetryEl.classList.remove('show');
+  if(loadingEl) loadingEl.classList.remove('hidden');
   if(loadingRAF) cancelAnimationFrame(loadingRAF);
   loadingRAF = requestAnimationFrame(tickLoading);
   if(loadingSlowTimer) clearTimeout(loadingSlowTimer);
@@ -1723,24 +1869,24 @@ function showLoading(sceneName){
   loadingSlowTimer = setTimeout(function(){
     if(!loadingReady && loadingActive){
       loadingCeiling = 90;
-      loadingTipEl.textContent = '加载较慢，请稍候……';
-      loadingTipEl.classList.add('slow');
+      if(loadingTipEl){ loadingTipEl.textContent = '加载较慢，请稍候……'; loadingTipEl.classList.add('slow'); }
     }
   }, 5000);
   loadingErrTimer = setTimeout(function(){
     if(!loadingReady && loadingActive){
       loadingCeiling = 95;
-      loadingTipEl.textContent = '加载失败，可点击重试';
-      loadingTipEl.classList.add('error');
-      loadingRetryEl.classList.add('show');
+      if(loadingTipEl){ loadingTipEl.textContent = '加载失败，可点击重试'; loadingTipEl.classList.add('error'); }
+      if(loadingRetryEl) loadingRetryEl.classList.add('show');
     }
   }, 15000);
 }
+
 function setLoadingProgress(target, ceiling){
   if(!loadingActive) return;
   if(target > loadingTarget) loadingTarget = target;
   if(ceiling !== undefined) loadingCeiling = ceiling;
 }
+
 function finishLoading(callback){
   if(!loadingActive) return;
   loadingReady = true; loadingCeiling = 100; loadingTarget = 100;
@@ -1753,7 +1899,7 @@ function finishLoading(callback){
     setTimeout(function(){
       loadingActive = false;
       if(loadingRAF){ cancelAnimationFrame(loadingRAF); loadingRAF = null; }
-      loadingEl.classList.add('hidden');
+      if(loadingEl) loadingEl.classList.add('hidden');
       var cb = loadingFinishCb;
       loadingFinishCb = null;
       if(cb) cb();
@@ -1761,60 +1907,45 @@ function finishLoading(callback){
   };
   waitTop();
 }
-loadingRetryEl.addEventListener('click', function(){
-  loadingRetryEl.classList.remove('show');
-  var sceneName = S ? S.scene : 'alley';
-  if(SCENES[sceneName]){
-    showLoading(SCENES[sceneName].label);
-    createGameFrame(sceneURL(sceneName));
-  } else {
-    devErr('loadingRetry: 场景不存在 "' + sceneName + '"', 'loadingRetry');
-  }
-});
+
+if(loadingRetryEl){
+  loadingRetryEl.addEventListener('click', function(){
+    loadingRetryEl.classList.remove('show');
+    var sceneName = S ? S.scene : 'alley';
+    if(SCENES[sceneName]){
+      showLoading(SCENES[sceneName].label);
+      createGameFrame(sceneURL(sceneName));
+    } else {
+      devErr('loadingRetry: 场景不存在 "' + sceneName + '"', 'loadingRetry');
+    }
+  });
+}
 
 function changeScene(name, label){
-  selfCheck('before-changeScene');
   if(!name){ devErr('changeScene: name 为空', 'changeScene'); return; }
-  if(!SCENES[name]){
-    devErr('changeScene: 未知场景 "' + name + '"', 'changeScene');
-    return;
-  }
-  if(isDayScene(name) && isBloodMode()){
-    devErr('changeScene: 血模式下不能进入白天场景 "' + name + '"', 'changeScene');
-    return;
-  }
+  if(!SCENES[name]){ devErr('changeScene: 未知场景 "' + name + '"', 'changeScene'); return; }
+  if(isDayScene(name) && isBloodMode()){ devErr('changeScene: 血模式下不能进入白天场景', 'changeScene'); return; }
   S.scene = name;
   if(!S.flags.seenScenes) S.flags.seenScenes = [];
   if(S.flags.seenScenes.indexOf(name) < 0) S.flags.seenScenes.push(name);
   save();
-  try{ if(window.RaccoonMap) RaccoonMap.setCurrentScene(name); }catch(e){}
+  try { if(window.RaccoonMap) RaccoonMap.setCurrentScene(name); } catch(e){}
   showLoading(label || SCENES[name].label);
   createGameFrame(sceneURL(name));
-  selfCheck('after-changeScene:' + name);
 }
 
-/* =========================================================
-   iframe 通信
-   ========================================================= */
-var pendingOpeningMonologue = false;
 window.addEventListener('message', function(e){
   var d = e.data;
   if(!d || !d.type) return;
-
   if(d.type === 'devError'){ devErr(d.message || '?', d.source || 'IFRAME'); return; }
   if(d.type === 'devWarn'){ devWarn(d.message || '?', d.source || 'IFRAME'); return; }
-
   if(d.type === 'engineError'){
-    loadingActive = true;
-    loadingCeiling = 100;
-    loadingTarget = 100;
-    loadingTipEl.textContent = '⚠ ' + (d.message || '引擎错误');
-    loadingTipEl.classList.add('error');
-    loadingRetryEl.classList.add('show');
+    loadingActive = true; loadingCeiling = 100; loadingTarget = 100;
+    if(loadingTipEl){ loadingTipEl.textContent = '⚠ ' + (d.message || '引擎错误'); loadingTipEl.classList.add('error'); }
+    if(loadingRetryEl) loadingRetryEl.classList.add('show');
     devErr(d.message || '引擎错误', 'engine');
     return;
   }
-
   if(!gameFrame || !gameFrame.contentWindow) return;
   if(e.source !== gameFrame.contentWindow) return;
   if(d.type === 'ready'){
@@ -1822,51 +1953,8 @@ window.addEventListener('message', function(e){
     syncState();
     finishLoading(function(){
       window.__GAME_READY__ = true;
-      try{ gameFrame.contentWindow.postMessage({ type:'refocus' }, '*'); }catch(err){}
-      
-      /* ★ 每次进入场景 ready 后，只检查当前场景的完整性 */
-      setTimeout(checkIntegrity, 200);
-
-      if(pendingOpeningMonologue){
-        pendingOpeningMonologue = false;
-        setTimeout(function(){
-          say('雨下了**三天**。');
-          say('——不，是三年。');
-          say('它数不清了。');
-          say('');
-          say('它只记得，那天晚上。');
-          say('它跑了。');
-          say('它记得自己回头看了一眼。');
-          say('——就一眼。');
-          say('');
-          say('然后它就一直跑。');
-          say('跑到忘了自己在跑什么。');
-          say('');
-          say('直到今天。');
-          say('——它停下来了。');
-        }, 100);
-      } else if(S){
-        maybeShowSilhouette(S.scene);
-      }
+      try { gameFrame.contentWindow.postMessage({ type:'refocus' }, '*'); } catch(err){}
     });
-  }
-  if(d.type === 'bloodAcknowledge'){
-    if(!S || !S.flags) return;
-    var ackId = d.id;
-    if(!ackId) return;
-    if(!S.flags.b_acked) S.flags.b_acked = {};
-    if(S.flags.b_acked[ackId]) return;
-    S.flags.b_acked[ackId] = true;
-    var cnt = 0;
-    for(var k in S.flags.b_acked){ if(S.flags.b_acked[k]) cnt++; }
-    S.flags.b_knows = cnt;
-    save(); syncState();
-    var ackTexts = {
-      pawprints: ['灰豆看着那串爪印。','——它认得那双小脚。','“是我。”'],
-      ropeEnd: ['灰豆把断绳叼起来。','断口是齐的。','“是我咬断的。”'],
-      photoBack: ['灰豆把相框翻了过来。','背面的字，是它写的。','“我那天……跑掉了。”']
-    };
-    if(ackTexts[ackId]){ ackTexts[ackId].forEach(function(l){ say(l); }); }
   }
   if(d.type === 'hit'){
     if(!S){ devErr('hit 时 S 为空', 'msg:hit'); return; }
@@ -1874,50 +1962,26 @@ window.addEventListener('message', function(e){
     if(!sc){ devErr('hit 时 SCENES["' + S.scene + '"] 未定义', 'msg:hit'); return; }
     if(!sc.acts){ devErr('hit 时 SCENES["' + S.scene + '"].acts 缺失', 'msg:hit'); return; }
     var act = sc.acts[d.spotId];
-    if(!act){
-      devWarn('hit: 场景 "' + S.scene + '" 没有 act "' + d.spotId + '"', 'msg:hit');
-      return;
-    }
-    try{ act(); }
-    catch(err){ devErr('act 执行异常: ' + (err && err.message ? err.message : err), 'msg:hit:' + S.scene + '.' + d.spotId); }
+    if(!act){ devWarn('hit: 场景 "' + S.scene + '" 没有 act "' + d.spotId + '"', 'msg:hit'); return; }
+    try { act(); } catch(err){ devErr('act 执行异常: ' + (err && err.message ? err.message : err), 'msg:hit'); }
   }
 });
+
 function syncState(){
   if(!S || !gameFrame || !gameFrame.contentWindow) return;
-  try{
+  try {
     gameFrame.contentWindow.postMessage({ type: 'setState', state: S }, '*');
     gameFrame.contentWindow.postMessage({ type: 'setEnding', value: endingShown }, '*');
-  }catch(e){}
-}
-function triggerHighlight(){
-  if(!gameFrame || !gameFrame.contentWindow) return;
-  try{ gameFrame.contentWindow.postMessage({ type: 'setHighlight', duration: 5 }, '*'); }catch(e){}
-}
-function triggerTempLight(){
-  if(!gameFrame || !gameFrame.contentWindow) return;
-  try{ gameFrame.contentWindow.postMessage({ type: 'tempLight' }, '*'); }catch(e){}
+  } catch(e){}
 }
 
-btnTempLightEl.addEventListener('click', function(e){
-  e.stopPropagation();
-  if(settings.streamerMode !== 'on') return;
-  if(isBloodMode()){ toast('🩸 暗夜模式中不提供该功能'); return; }
-  triggerTempLight();
-  toast('✨ 全局点亮 · 3 秒');
-});
-
-/* =========================================================
-   对话系统
-   ========================================================= */
 var SPEEDS = { slow: 58, normal: 30, fast: 14, instant: 0 };
 var typing = { active:false, spans:[], idx:0, acc:0 };
 var queue = [];
 var currentDlg = null;
-var comboLock = false;
 
 function parseRich(text){
-  var out = [], stack = [];
-  var i = 0;
+  var out = [], stack = [], i = 0;
   while(i < text.length){
     if(text.startsWith('**', i)){ var k1=stack.lastIndexOf('b'); if(k1>=0) stack.splice(k1,1); else stack.push('b'); i+=2; continue; }
     if(text.startsWith('{{', i)){ stack.push('g'); i+=2; continue; }
@@ -1931,6 +1995,7 @@ function parseRich(text){
   }
   return out;
 }
+
 function typeLine(text){
   var tokens = parseRich(text);
   dlgEl.innerHTML = '';
@@ -1950,10 +2015,12 @@ function typeLine(text){
   typing = { active:true, spans:spans, idx:0, acc:0 };
   if(spd === 0 || spans.length === 0) finishTyping();
 }
+
 function finishTyping(){
   typing.active = false;
   for(var i=0;i<typing.spans.length;i++) typing.spans[i].style.opacity = '1';
 }
+
 var lastTyping = performance.now();
 function tickTyping(){
   var now = performance.now();
@@ -1973,10 +2040,7 @@ function tickTyping(){
 setInterval(tickTyping, 30);
 
 function say(text, cb){
-  if(typeof text !== 'string'){
-    devWarn('say: text 不是字符串 (' + (typeof text) + ')', 'say');
-    text = text == null ? '' : String(text);
-  }
+  if(typeof text !== 'string'){ devWarn('say: text 不是字符串', 'say'); text = String(text || ''); }
   queue.push({text:text, cb:cb});
   if(!currentDlg) nextDlg();
 }
@@ -1987,7 +2051,7 @@ function nextDlg(){
     dlgEl.classList.remove('show');
     dlgMaskEl.classList.remove('show');
     choiceBoxEl.classList.remove('show');
-    try{ if(gameFrame && gameFrame.contentWindow){ gameFrame.contentWindow.postMessage({ type:'dlgClosed' }, '*'); } }catch(err){}
+    try { if(gameFrame && gameFrame.contentWindow) gameFrame.contentWindow.postMessage({ type:'dlgClosed' }, '*'); } catch(err){}
     checkCombos();
     return;
   }
@@ -1996,7 +2060,7 @@ function nextDlg(){
     currentDlg = null;
     dlgEl.classList.remove('show');
     dlgMaskEl.classList.remove('show');
-    try{ if(gameFrame && gameFrame.contentWindow){ gameFrame.contentWindow.postMessage({ type:'dlgClosed' }, '*'); } }catch(err){}
+    try { if(gameFrame && gameFrame.contentWindow) gameFrame.contentWindow.postMessage({ type:'dlgClosed' }, '*'); } catch(err){}
     presentChoice(item.options, function(v){
       if(item.onPick) item.onPick(v);
       if(!currentDlg) nextDlg();
@@ -2006,9 +2070,10 @@ function nextDlg(){
   currentDlg = item;
   dlgEl.classList.add('show');
   dlgMaskEl.classList.add('show');
-  try{ if(gameFrame && gameFrame.contentWindow){ gameFrame.contentWindow.postMessage({ type:'dlgOpen' }, '*'); } }catch(err){}
+  try { if(gameFrame && gameFrame.contentWindow) gameFrame.contentWindow.postMessage({ type:'dlgOpen' }, '*'); } catch(err){}
   typeLine(currentDlg.text);
 }
+
 function advanceDialog(){
   if(!currentDlg) return;
   if(typing.active){ finishTyping(); return; }
@@ -2017,68 +2082,52 @@ function advanceDialog(){
   nextDlg();
   if(cb) cb();
 }
-dlgEl.addEventListener('click', function(e){ e.stopPropagation(); advanceDialog(); });
-dlgEl.addEventListener('touchend', function(e){ e.stopPropagation(); e.preventDefault(); advanceDialog(); }, {passive:false});
-dlgMaskEl.addEventListener('click', function(e){ e.stopPropagation(); if(currentDlg) advanceDialog(); });
-dlgMaskEl.addEventListener('touchend', function(e){ e.stopPropagation(); e.preventDefault(); if(currentDlg) advanceDialog(); }, {passive:false});
+
+if(dlgEl){
+  dlgEl.addEventListener('click', function(e){ e.stopPropagation(); advanceDialog(); });
+  dlgEl.addEventListener('touchend', function(e){ e.stopPropagation(); e.preventDefault(); advanceDialog(); }, {passive:false});
+}
+if(dlgMaskEl){
+  dlgMaskEl.addEventListener('click', function(e){ e.stopPropagation(); if(currentDlg) advanceDialog(); });
+  dlgMaskEl.addEventListener('touchend', function(e){ e.stopPropagation(); e.preventDefault(); if(currentDlg) advanceDialog(); }, {passive:false});
+}
 
 function checkCombos(){
-  if(comboLock || !S) return;
-  comboLock = true;
+  if(!S) return;
   var myInv = getInv();
   if(myInv.indexOf('torch') !== -1 && myInv.indexOf('battery') !== -1){
-    var n = myInv.filter(function(i){ return i !== 'torch' && i !== 'battery'; });
-    n.push('torchOn');
-    setInv(n);
+    setInv(myInv.filter(function(i){ return i !== 'torch' && i !== 'battery'; }).concat(['torchOn']));
     set('torchOn', true);
-    save(); syncState();
-    renderInv('torchOn');
-    comboLock = false;
+    save(); syncState(); renderInv('torchOn');
     say('灰豆把电池塞进手电筒，用尾盖拧紧。');
     say('啪。');
     say('——没亮。');
-    say('');
     say('它晃了晃。');
     say('里面有什么东西——**咔嗒**。');
-    say('');
     say('一道细细的光柱，落在墙上。');
     say('（手电筒亮了。在暗的地方，点击物品栏里的手电筒可以开关。）');
     return;
   }
   if(myInv.indexOf('hook') !== -1 && myInv.indexOf('rope') !== -1 && myInv.indexOf('grapnel') === -1){
-    var n2 = myInv.filter(function(i){ return i!=='hook' && i!=='rope'; });
-    n2.push('grapnel');
-    setInv(n2);
+    setInv(myInv.filter(function(i){ return i!=='hook' && i!=='rope'; }).concat(['grapnel']));
     renderInv('grapnel'); save(); syncState();
-    comboLock = false;
     say('灰豆把晾衣绳一圈一圈缠在挂钩上，打了个死结。');
     say('**歪歪扭扭**的，但看起来挺结实。');
     return;
   }
-  comboLock = false;
 }
 
-/* =========================================================
-   物品栏 / 提示
-   ========================================================= */
-var PICKUP_FLAGS = {
-  rope: 'ropeTaken',
-  catfood: 'catfoodTaken',
-  torch: 'torchTaken',
-  battery: 'batteryTaken',
-  photo2: 'photo2Taken'
-};
+var PICKUP_FLAGS = { rope: 'ropeTaken', catfood: 'catfoodTaken', torch: 'torchTaken', battery: 'batteryTaken', photo2: 'photo2Taken' };
 
 function renderInv(newId){
-  selfCheck('renderInv');
   invEl.innerHTML = '';
-  if(!S){ devErr('renderInv: S 为空', 'renderInv'); return; }
+  if(!S) return;
   var arr = getInv();
-  if(!Array.isArray(arr)){ devErr('renderInv: getInv() 不是数组', 'renderInv'); return; }
+  if(!Array.isArray(arr)) return;
   for(var i=0;i<arr.length;i++){
     (function(id){
       var it = ITEMS[id];
-      if(!it){ devWarn('renderInv: 未知物品 "' + id + '"', 'renderInv'); return; }
+      if(!it) return;
       var d = document.createElement('div');
       d.className = 'slot' + (id === newId ? ' new' : '');
       var iconEl = document.createElement('span');
@@ -2101,7 +2150,7 @@ function renderInv(newId){
           set('torchOn', !cur);
           if(!isBloodMode()) S.flags.lightsOn = !cur;
           save(); syncState(); renderInv();
-          if(!cur){ toast('🔦 手电筒已打开 · 光会跟随你的手指 / 光标'); }
+          if(!cur){ toast('🔦 手电筒已打开'); }
           else { toast('🔦 手电筒已关闭'); }
           return;
         }
@@ -2113,16 +2162,14 @@ function renderInv(newId){
     })(arr[i]);
   }
 }
+
 var toastTimer = null;
 function toast(msg){
   toastEl.textContent = msg;
   toastEl.classList.remove('gold');
   toastEl.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(function(){
-    toastEl.classList.remove('show');
-    toastEl.classList.remove('gold');
-  }, 3000);
+  toastTimer = setTimeout(function(){ toastEl.classList.remove('show'); toastEl.classList.remove('gold'); }, 3000);
 }
 function toastGold(msg){
   toastEl.textContent = msg;
@@ -2131,15 +2178,11 @@ function toastGold(msg){
   toastEl.classList.add('gold');
   toastEl.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(function(){
-    toastEl.classList.remove('show');
-    toastEl.classList.remove('gold');
-  }, 4200);
+  toastTimer = setTimeout(function(){ toastEl.classList.remove('show'); toastEl.classList.remove('gold'); }, 4200);
 }
+
 function pickup(id){
-  if(!id){ devErr('pickup: id 为空', 'pickup'); return; }
-  if(!ITEMS[id]){ devErr('pickup: 未知物品 "' + id + '"', 'pickup'); return; }
-  if(!S){ devErr('pickup: S 为空', 'pickup'); return; }
+  if(!id || !ITEMS[id] || !S) return;
   var arr = getInv();
   if(arr.indexOf(id) !== -1) return;
   arr.push(id);
@@ -2149,9 +2192,6 @@ function pickup(id){
   save();
 }
 
-/* =========================================================
-   结局
-   ========================================================= */
 function startBloodEnding(){
   if(endingLock) return;
   endingLock = true;
@@ -2163,199 +2203,102 @@ function startBloodEnding(){
   if(count >= 3){ unlockAchievement('blood_full'); }
   else if(count === 2){ unlockAchievement('blood_half'); }
   else { unlockAchievement('blood_dark'); }
-  setTimeout(function(){
-    endingShown = true; syncState();
-    bloodEndEl.classList.add('show');
-  }, 500);
+  setTimeout(function(){ endingShown = true; syncState(); if(bloodEndEl) bloodEndEl.classList.add('show'); }, 500);
 }
 
-document.getElementById('btnAgain').addEventListener('click', function(){
-  try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
-  endEl.classList.remove('show');
-  endingShown = false; endingLock = false;
-  beginGame(freshState(), true); save();
-});
-document.getElementById('btnBloodAgain').addEventListener('click', function(){
-  if(this.disabled) return;
-  var btn = this;
-  btn.disabled = true;
-  btn.textContent = '— 完 —';
-  setTimeout(function(){
-    bloodEndEl.style.transition = 'opacity 7s ease';
-    bloodEndEl.style.opacity = '0';
-  }, 1400);
-  setTimeout(function(){
-    bloodEndEl.classList.remove('show');
-    bloodEndEl.style.opacity = '';
-    bloodEndEl.style.transition = '';
-    var curtain = document.getElementById('finalCurtain');
-    if(!curtain){
-      curtain = document.createElement('div');
-      curtain.id = 'finalCurtain';
-      curtain.style.cssText =
-        'position:absolute;inset:0;background:#000;z-index:9999;' +
-        'display:flex;align-items:center;justify-content:center;' +
-        'opacity:0;transition:opacity 3s ease;pointer-events:auto;';
-      var word = document.createElement('div');
-      word.textContent = '—— 雨 还 在 下 ——';
-      word.style.cssText =
-        'color:#3a0a0e;font-family:inherit;font-size:13px;' +
-        'letter-spacing:8px;user-select:none;';
-      curtain.appendChild(word);
-      document.getElementById('stage').appendChild(curtain);
-      requestAnimationFrame(function(){
-        requestAnimationFrame(function(){ curtain.style.opacity = '1'; });
-      });
-    }
-  }, 8600);
-});
-document.getElementById('btnForgetAgain').addEventListener('click', function(){
-  try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
-  forgetEndEl.classList.remove('show');
-  endingShown = false; endingLock = false;
-  beginGame(freshState(), true); save();
-});
+if(document.getElementById('btnAgain')){
+  document.getElementById('btnAgain').addEventListener('click', function(){
+    try { localStorage.removeItem(SAVE_KEY); } catch(e){}
+    endEl.classList.remove('show'); endingShown = false; endingLock = false;
+    beginGame(freshState(), true); save();
+  });
+}
+if(document.getElementById('btnBloodAgain')){
+  document.getElementById('btnBloodAgain').addEventListener('click', function(){
+    if(this.disabled) return;
+    var btn = this; btn.disabled = true; btn.textContent = '— 完 —';
+    setTimeout(function(){ bloodEndEl.style.transition = 'opacity 7s ease'; bloodEndEl.style.opacity = '0'; }, 1400);
+    setTimeout(function(){
+      bloodEndEl.classList.remove('show'); bloodEndEl.style.opacity = ''; bloodEndEl.style.transition = '';
+      var curtain = document.getElementById('finalCurtain');
+      if(!curtain){
+        curtain = document.createElement('div'); curtain.id = 'finalCurtain';
+        curtain.style.cssText = 'position:absolute;inset:0;background:#000;z-index:9999;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 3s ease;pointer-events:auto;';
+        var word = document.createElement('div'); word.textContent = '—— 雨 还 在 下 ——';
+        word.style.cssText = 'color:#3a0a0e;font-family:inherit;font-size:13px;letter-spacing:8px;user-select:none;';
+        curtain.appendChild(word); document.getElementById('stage').appendChild(curtain);
+        requestAnimationFrame(function(){ requestAnimationFrame(function(){ curtain.style.opacity = '1'; }); });
+      }
+    }, 8600);
+  });
+}
+if(document.getElementById('btnForgetAgain')){
+  document.getElementById('btnForgetAgain').addEventListener('click', function(){
+    try { localStorage.removeItem(SAVE_KEY); } catch(e){}
+    forgetEndEl.classList.remove('show'); endingShown = false; endingLock = false;
+    beginGame(freshState(), true); save();
+  });
+}
 
-btnAchvEl.addEventListener('click', function(){ openAchvPanel(); });
-document.getElementById('btnCloseAchv').addEventListener('click', function(){ closeAchvPanel(); });
-achvPanelEl.addEventListener('click', function(e){ if(e.target === achvPanelEl) closeAchvPanel(); });
-
-document.getElementById('btnSet').addEventListener('click', function(){ setEl.classList.add('show'); applySettings(); });
-document.getElementById('btnCloseSet').addEventListener('click', function(){ setEl.classList.remove('show'); });
-document.getElementById('btnHighlight').addEventListener('click', function(){
-  triggerHighlight(); setEl.classList.remove('show');
-  toast('🔍 可交互物品高亮 · 5 秒');
-});
+if(btnAchvEl) btnAchvEl.addEventListener('click', function(){ if(achvPanelEl) achvPanelEl.classList.add('show'); });
+if(document.getElementById('btnCloseAchv')) document.getElementById('btnCloseAchv').addEventListener('click', function(){ if(achvPanelEl) achvPanelEl.classList.remove('show'); });
+if(document.getElementById('btnSet')) document.getElementById('btnSet').addEventListener('click', function(){ if(setEl) setEl.classList.add('show'); applySettings(); });
+if(document.getElementById('btnCloseSet')) document.getElementById('btnCloseSet').addEventListener('click', function(){ if(setEl) setEl.classList.remove('show'); });
+if(document.getElementById('btnHighlight')) document.getElementById('btnHighlight').addEventListener('click', function(){ if(gameFrame && gameFrame.contentWindow) gameFrame.contentWindow.postMessage({ type: 'setHighlight', duration: 5 }, '*'); setEl.classList.remove('show'); });
 document.querySelectorAll('.opts').forEach(function(group){
   group.addEventListener('click', function(e){
-    var btn = e.target.closest('button[data-v]');
-    if(!btn) return;
+    var btn = e.target.closest('button[data-v]'); if(!btn) return;
     var key = group.dataset.key, v = btn.dataset.v;
     if(key === 'fontSize') v = Number(v);
-    settings[key] = v;
-    saveSettings(); applySettings();
-    if(key === 'streamerMode'){
-      if(v === 'on'){ toast('🎬 主播模式已开启'); }
-      else{ toast('主播模式已关闭'); }
-    }
+    settings[key] = v; saveSettings(); applySettings();
   });
 });
-var warnMask = document.getElementById('warnMask');
-var warnConfirm = document.getElementById('warnConfirm');
-var warnCancel = document.getElementById('warnCancel');
-document.getElementById('btnReset').addEventListener('click', function(){ warnMask.classList.add('show'); });
-warnCancel.addEventListener('click', function(){ warnMask.classList.remove('show'); toast('已取消'); });
-warnConfirm.addEventListener('click', function(){
-  warnMask.classList.remove('show');
-  try{ localStorage.removeItem(SAVE_KEY); localStorage.removeItem(SET_KEY); }catch(e){}
-  toast('进度已清除 · 即将重启');
-  setTimeout(function(){ location.reload(); }, 700);
-});
-warnMask.addEventListener('click', function(e){ if(e.target === warnMask) warnMask.classList.remove('show'); });
 
-var historyOk = false;
-try{ history.pushState({ page:'game' }, '', location.href); historyOk = true; }catch(e){}
-function handleBack(){
-  if(loadingActive) return true;
-  if(window.RaccoonMap && RaccoonMap.isOpen()){ RaccoonMap.close(); return true; }
-  if(achvPanelEl.classList.contains('show')){ closeAchvPanel(); return true; }
-  if(currentDlg){ advanceDialog(); return true; }
-  if(choiceBoxEl.classList.contains('show')) return true;
-  if(streamerBlockMask.classList.contains('show')){ streamerBlockMask.classList.remove('show'); return true; }
-  if(streamerWarnMask.classList.contains('show')){ streamerWarnMask.classList.remove('show'); return true; }
-  if(bloodWarnMask.classList.contains('show')){ bloodWarnMask.classList.remove('show'); return true; }
-  if(warnMask.classList.contains('show')){ warnMask.classList.remove('show'); return true; }
-  if(setEl.classList.contains('show')){ setEl.classList.remove('show'); return true; }
-  if(endingShown) return true;
-  setEl.classList.add('show'); applySettings();
-  return true;
-}
-window.addEventListener('popstate', function(){
-  if(historyOk){ try{ history.pushState({ page:'game' }, '', location.href); }catch(e){} }
-  handleBack();
-});
+var warnMask = document.getElementById('warnMask');
+if(document.getElementById('btnReset')) document.getElementById('btnReset').addEventListener('click', function(){ if(warnMask) warnMask.classList.add('show'); });
+if(document.getElementById('warnCancel')) document.getElementById('warnCancel').addEventListener('click', function(){ if(warnMask) warnMask.classList.remove('show'); });
+if(document.getElementById('warnConfirm')) document.getElementById('warnConfirm').addEventListener('click', function(){ try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(SET_KEY); } catch(e){} location.reload(); });
+
 document.addEventListener('keydown', function(e){
   if(e.key === 'Escape'){
     if(window.RaccoonMap && RaccoonMap.isOpen()){ RaccoonMap.close(); return; }
-    if(achvPanelEl.classList.contains('show')){ closeAchvPanel(); return; }
-    if(streamerBlockMask.classList.contains('show')){ streamerBlockMask.classList.remove('show'); return; }
-    if(streamerWarnMask.classList.contains('show')){ streamerWarnMask.classList.remove('show'); return; }
-    if(bloodWarnMask.classList.contains('show')){ bloodWarnMask.classList.remove('show'); return; }
-    if(warnMask.classList.contains('show')){ warnMask.classList.remove('show'); return; }
-    if(setEl.classList.contains('show')){ setEl.classList.remove('show'); return; }
+    if(achvPanelEl && achvPanelEl.classList.contains('show')){ achvPanelEl.classList.remove('show'); return; }
+    if(setEl && setEl.classList.contains('show')){ setEl.classList.remove('show'); return; }
     if(currentDlg){ advanceDialog(); return; }
   }
 });
 
 function beginGame(state, isNew){
-  if(!state){ devErr('beginGame: state 为空', 'beginGame'); return; }
+  if(!state) return;
   S = state;
   if(!S.flags) S.flags = {};
   if(!Array.isArray(S.inv)) S.inv = [];
   if(!Array.isArray(S.invBlood)) S.invBlood = [];
   if(!S.scene) S.scene = 'alley';
-  if(isDayScene(S.scene) && isBloodMode()){
-    devWarn('beginGame: 存档中白天场景与血模式冲突，已回退到 alley', 'beginGame');
-    S.scene = 'alley';
-  }
-  S.flags.ended = false;
-  endingShown = false; endingLock = false;
-  S.flags.streamerMode = (settings.streamerMode === 'on');
-  selfCheck('beginGame');
+  S.flags.ended = false; endingShown = false; endingLock = false;
   renderInv(); applySettings();
-  var sceneName = S.scene;
-  if(SCENES[sceneName]){
-    showLoading(SCENES[sceneName].label);
-    setLoadingProgress(15, 45);
-    createGameFrame(sceneURL(sceneName));
-  } else {
-    devErr('beginGame: 初始场景不存在 "' + sceneName + '"，回退到 alley', 'beginGame');
-    S.scene = 'alley';
-    showLoading(SCENES.alley.label);
-    createGameFrame(sceneURL('alley'));
-  }
-  pendingOpeningMonologue = isNew;
-  try{ if(window.RaccoonMap) RaccoonMap.setCurrentScene(S.scene); }catch(e){}
+  if(SCENES[S.scene]){ showLoading(SCENES[S.scene].label); setLoadingProgress(15, 45); createGameFrame(sceneURL(S.scene)); }
+  try { if(window.RaccoonMap) RaccoonMap.setCurrentScene(S.scene); } catch(e){}
 }
 
 (function init(){
-  try{
-    resize(); applySettings();
-    renderAchvProgress();
-    updateAchvUnread();
-    var mode = 'new';
-    try{
-      mode = localStorage.getItem(LAUNCH_KEY) || 'new';
-      localStorage.removeItem(LAUNCH_KEY);
-    }catch(e){}
+  try {
+    resize(); applySettings(); renderAchvProgress(); updateAchvUnread();
+    var mode = 'new'; try { mode = localStorage.getItem(LAUNCH_KEY) || 'new'; localStorage.removeItem(LAUNCH_KEY); } catch(e){}
     var state, isNew;
-    if(mode === 'continue'){
-      var saved = loadSave();
-      if(saved){ state = saved; isNew = false; }
-      else{ state = freshState(); isNew = true; }
-    }else{
-      try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
-      state = freshState(); isNew = true;
-    }
-    try{
+    if(mode === 'continue'){ var saved = loadSave(); if(saved){ state = saved; isNew = false; } else { state = freshState(); isNew = true; } }
+    else { try { localStorage.removeItem(SAVE_KEY); } catch(e){} state = freshState(); isNew = true; }
+    try {
       if(window.RaccoonMap){
-        RaccoonMap.init();
-        RaccoonMap.setCurrentScene(state.scene || 'alley');
-        RaccoonMap.setTravelCallback(function(sceneKey){
-          if(!SCENES[sceneKey]){ devWarn('地图传送目标场景不存在: ' + sceneKey, 'map'); return; }
-          RaccoonMap.close();
-          changeScene(sceneKey, SCENES[sceneKey].label);
-        });
+        RaccoonMap.init(); RaccoonMap.setCurrentScene(state.scene || 'alley');
+        RaccoonMap.setTravelCallback(function(sceneKey){ if(SCENES[sceneKey]){ RaccoonMap.close(); changeScene(sceneKey, SCENES[sceneKey].label); } });
       }
-    }catch(e){ console.error('[map init]', e); devErr('地图初始化失败: ' + (e.message || e), 'init:map'); }
+    } catch(e){}
     beginGame(state, isNew); save();
-  }catch(err){
-    console.error('[init 失败]', err);
+  } catch(err){
     devErr('init 失败: ' + (err && err.message ? err.message : err), 'init');
-    var tip = document.getElementById('loadingTip');
-    if(tip){ tip.textContent = '启动失败：' + (err.message || err); tip.classList.add('error'); }
-    var retry = document.getElementById('loadingRetry');
-    if(retry) retry.classList.add('show');
+    if(loadingTipEl){ loadingTipEl.textContent = '启动失败：' + (err.message || err); loadingTipEl.classList.add('error'); }
+    if(loadingRetryEl) loadingRetryEl.classList.add('show');
   }
 })();
 
