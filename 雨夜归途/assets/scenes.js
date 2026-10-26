@@ -1,22 +1,8 @@
 /* =========================================================
-   scenes.js — 2D 场景绘制 + 定义
-   依赖 window.S
-   v4: 完整夜间场景 + 6 个 _day 白天场景 + iframe 错误上报
-       + 修复 street 场景缺少 rope spot（铁门过不去）
+   scenes.js — 2D 场景绘制 + 定义 (完整版)
    ========================================================= */
 (function(){
 'use strict';
-
-/* ===== 错误转发（让父页面 #devErrorPanel 能看到本文件内部异常） ===== */
-function reportDevError(msg, src){
-  try{
-    if(window.parent && window.parent !== window){
-      window.parent.postMessage({ type:'devError', message: String(msg), source: src || 'scenes.js' }, '*');
-    }
-  }catch(e){}
-  try{ console.error('[scenes.js]', src || '', msg); }catch(e){}
-}
-try {
 
 const W = 960, H = 540;
 let ctx = null;
@@ -139,7 +125,7 @@ function drawParlorMid(){
   const tx = 380, ty = 400, tw = 220, th = 120;
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.beginPath(); ctx.ellipse(tx+tw/2, ty+th+8, tw*0.55, 24, 0, 0, Math.PI*2); ctx.fill();
-
+  
   ctx.fillStyle = '#1a1008';
   ctx.fillRect(tx+30, ty+th, 20, 60);
   ctx.fillRect(tx+tw-50, ty+th, 20, 60);
@@ -193,14 +179,14 @@ function drawParlorMid(){
 
 function drawParlorNear(){
   const t = performance.now() / 1000;
-
+  
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.beginPath(); ctx.ellipse(220, 505, 55, 18, 0, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle = '#1a1410';
   ctx.beginPath(); ctx.ellipse(220, 500, 55, 15, 0, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle = '#3a2a1a';
   ctx.beginPath(); ctx.ellipse(220, 498, 40, 10, 0, 0, Math.PI*2); ctx.fill();
-
+  
   ctx.fillStyle = '#e8e0d0';
   ctx.fillRect(200, 492, 6, 18);
   ctx.fillRect(230, 495, 5, 15);
@@ -214,7 +200,7 @@ function drawParlorNear(){
   ctx.beginPath(); ctx.ellipse(720, 500, 30, 12, 0, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle = '#3a2a1a';
   ctx.beginPath(); ctx.ellipse(720, 498, 22, 8, 0, 0, Math.PI*2); ctx.fill();
-
+  
   const steamY = 500 - (t * 20 % 60);
   ctx.fillStyle = `rgba(255,255,255,${0.06 + 0.04*Math.sin(t*2)})`;
   ctx.beginPath();
@@ -310,7 +296,7 @@ function drawAlleyFar(){
   ctx.closePath(); ctx.fill();
   ctx.fillStyle = blood ? '#050202' : '#101820';
   ctx.fillRect(hx, hy, 84, 82);
-
+  
   if(!cut && !blood){
     ctx.fillStyle = 'rgba(255,200,120,0.75)';
     ctx.fillRect(hx+28, hy+28, 28, 34);
@@ -355,7 +341,7 @@ function drawAlleyMid(){
     ctx.fillRect(44, 228, 36, 26);
   }
 
-  ctx.fillStyle = blood ? '#1a0c0c' : '#141b25';
+  ctx.fillStyle = blood ? '#1a0c0c' : '#141b25'; 
   ctx.fillRect(164, 116, 9, 336);
   ctx.fillStyle = blood ? '#241414' : '#1c2531';
   ctx.beginPath();
@@ -381,7 +367,7 @@ function drawAlleyMid(){
     ? [[0,'#1a0810'],[1,'#0a040a']]
     : [[0,'#121a24'],[1,'#04070b']]);
   ctx.fillRect(-10, 430, W + 20, 140);
-
+  
   ctx.strokeStyle = 'rgba(255,255,255,0.025)'; ctx.lineWidth = 1;
   for(let x = -60; x < W+80; x += 120){
     ctx.beginPath();
@@ -405,7 +391,7 @@ function drawAlleyMid(){
 
 function drawAlleyNear(){
   const blood = isBloodMode();
-
+  
   ctx.save();
   ctx.beginPath();
   ctx.ellipse(330, 492, 120, 26, 0, 0, Math.PI*2);
@@ -436,13 +422,34 @@ function drawAlleyNear(){
     ctx.lineTo(x - len * 0.16, y - len);
     ctx.stroke();
   }
+
+  // 万圣节南瓜灯
+  if(!blood){
+    const px = 760, py = 460;
+    ctx.save();
+    ctx.translate(px, py);
+    const flick = 0.8 + 0.2 * Math.sin(t * 10) * (Math.random() * 0.5 + 0.5);
+    const glow = ctx.createRadialGradient(0, 0, 5, 0, 0, 90);
+    glow.addColorStop(0, `rgba(255, 150, 50, ${0.4 * flick})`);
+    glow.addColorStop(1, 'rgba(255, 100, 0, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(-90, -90, 180, 180);
+    ctx.fillStyle = '#ff6b00';
+    ctx.beginPath(); ctx.ellipse(0, 0, 25, 20, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ffcc00';
+    ctx.shadowColor = '#ffcc00';
+    ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.moveTo(-12, -5); ctx.lineTo(-4, -5); ctx.lineTo(-8, 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(12, -5); ctx.lineTo(4, -5); ctx.lineTo(8, 2); ctx.fill();
+    ctx.restore();
+  }
 }
 
 function drawAlleyDynamic(t, dt){
   const cut = isPowerCut();
   const blood = isBloodMode();
   const f = flags();
-
+  
   const sway = Math.sin(t*0.9)*3;
   ctx.strokeStyle = blood ? 'rgba(60,15,20,0.7)' : 'rgba(0,0,0,0.6)';
   ctx.lineWidth = 1.5;
@@ -527,7 +534,7 @@ function drawBackstreetMid(){
   }
   ctx.strokeStyle = blood ? '#3a1418' : '#28333f'; ctx.lineWidth = 7;
   ctx.strokeRect(dx, dy, dw, dh);
-
+  
   if(cut || blood){
     ctx.fillStyle = blood ? '#3a0f12' : '#2a2a2a';
     ctx.beginPath(); ctx.ellipse(dx + dw/2, dy - 24, 8, 4, 0, 0, Math.PI*2); ctx.fill();
@@ -560,6 +567,15 @@ function drawBackstreetMid(){
   ctx.fillStyle = blood ? '#1a0c08' : '#28221a'; ctx.fillRect(c1x, c1y, c1w, c1h);
   ctx.fillStyle = blood ? '#221008' : '#38301f'; ctx.fillRect(c1x, c1y, c1w, 15);
   ctx.fillStyle = blood ? '#150a06' : '#252019'; ctx.fillRect(c1x + 42, c1y - 58, 122, 60);
+
+  // 棋牌室的门
+  ctx.fillStyle = '#2a1a12';
+  ctx.fillRect(330, 260, 70, 120);
+  ctx.fillStyle = '#1a0e08';
+  ctx.fillRect(340, 270, 50, 100);
+  ctx.strokeStyle = '#5a3a20';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(330, 260, 70, 120);
 }
 
 function drawBackstreetNear(){
@@ -620,11 +636,11 @@ function drawShopFar(){
     ctx.fillRect(110, y, 320, 13);
     ctx.fillRect(110, y, 11, 90);
     ctx.fillRect(419, y, 11, 90);
-
-    const colors = blood
-      ? ['#3a1a22', '#2a121a']
+    
+    const colors = blood 
+      ? ['#3a1a22', '#2a121a'] 
       : (lit ? ['#8a5a3a', '#5a7a4a', '#4a6a8a', '#8a4a5a'] : ['#0d141c', '#121a24']);
-
+      
     for(let j = 0; j < 7; j++){
       const w0 = 22 + ((j*13) % 10);
       const h0 = 26 + ((j*7) % 16);
@@ -651,7 +667,7 @@ function drawShopMid(){
   ctx.fillRect(680, 256, 96, 66);
   ctx.fillStyle = blood ? '#1a0a10' : (lit ? '#1c2631' : '#091018');
   ctx.fillRect(692, 266, 72, 34);
-
+  
   if(lit){
     ctx.fillStyle = 'rgba(120,200,255,0.22)';
     ctx.fillRect(694, 268, 68, 30);
@@ -722,7 +738,7 @@ function drawShopDynamic(t, dt){
     g2.addColorStop(1, 'rgba(255,210,150,0)');
     ctx.fillStyle = g2;
     ctx.fillRect(0, 0, W, H);
-
+    
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for(let i=0; i<15; i++){
@@ -851,7 +867,7 @@ function drawStreetMid(){
   ctx.moveTo(0, 110);
   ctx.quadraticCurveTo(300, 152, 520, 102);
   ctx.stroke();
-
+  
   if(!f.ropeTaken){
     ctx.fillStyle = 'rgba(160,175,190,0.25)';
     ctx.beginPath();
@@ -1065,6 +1081,7 @@ function drawDoorstepMid(){
   ctx.closePath();
   ctx.fill();
 
+  // 左窗
   const wx = hx + 40, wy = hy + 120, ww = 100, wh = 120;
   ctx.fillStyle = '#1a222c';
   ctx.fillRect(wx, wy, ww, wh);
@@ -1090,6 +1107,7 @@ function drawDoorstepMid(){
     ctx.fillRect(wx + 4, wy + 4, ww - 8, wh - 8);
   }
 
+  // 门
   const dx = hx + hw/2 - 55, dy = hy + 200, dw = 110, dh = 140;
   ctx.fillStyle = '#2a2018';
   ctx.fillRect(dx - 12, dy - 12, dw + 24, dh + 12);
@@ -1106,6 +1124,7 @@ function drawDoorstepMid(){
   ctx.arc(dx + dw - 22, dy + dh / 2 + 6, 5, 0, Math.PI * 2);
   ctx.fill();
 
+  // 门灯
   const lx = hx + hw/2, ly = dy - 28;
   ctx.fillStyle = '#2a3038';
   ctx.beginPath();
@@ -1216,6 +1235,7 @@ function drawHouseMid(){
   ctx.fillStyle = '#2e2118';
   ctx.fillRect(0, 414, W, 6);
 
+  // 窗户
   ctx.fillStyle = '#584430';
   ctx.fillRect(72, 80, 228, 228);
   ctx.fillStyle = '#16202c';
@@ -1241,6 +1261,7 @@ function drawHouseMid(){
   ctx.moveTo(80, 194); ctx.lineTo(292, 194);
   ctx.stroke();
 
+  // 台灯
   ctx.fillStyle = '#4a3524';
   ctx.fillRect(846, 306, 12, 130);
   ctx.beginPath();
@@ -1250,6 +1271,7 @@ function drawHouseMid(){
   ctx.fillStyle = cut ? '#4a4030' : '#c9a35a';
   ctx.fill();
 
+  // 书架
   ctx.fillStyle = '#3a2c1e';
   ctx.fillRect(60, 300, 60, 140);
   ctx.fillStyle = '#2a2016';
@@ -1268,6 +1290,7 @@ function drawHouseMid(){
     }
   }
 
+  // 桌子
   ctx.fillStyle = 'rgba(0,0,0,0.45)';
   ctx.beginPath(); ctx.ellipse(510, 516, 175, 13, 0, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle = '#4a3524';
@@ -1276,6 +1299,7 @@ function drawHouseMid(){
   ctx.fillRect(378, 406, 16, 122);
   ctx.fillRect(626, 406, 16, 122);
 
+  // 相框
   ctx.save();
   ctx.translate(470, 292); ctx.rotate(-0.045);
   ctx.fillStyle = '#7a5a3a';
@@ -1286,6 +1310,7 @@ function drawHouseMid(){
   ctx.fillRect(-53, -45, 106, 90);
   ctx.restore();
 
+  // 挂钟
   ctx.fillStyle = '#4a3524';
   ctx.beginPath(); ctx.arc(540, 120, 32, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle = '#e8d8b8';
@@ -1303,7 +1328,7 @@ function drawHouseMid(){
 function drawHouseNear(){
   const cut = isPowerCut();
   const f = flags();
-
+  
   if(!cut){
     const lampB = 0.94 + 0.06 * Math.sin(performance.now() * 0.0017);
     const lg = ctx.createRadialGradient(852, 300, 0, 852, 300, 500);
@@ -1448,7 +1473,7 @@ function drawPowerStationFar(){
 function drawPowerStationMid(){
   const cut = isPowerCut();
   const cx = 380, cy = 120, cw = 200, ch = 300;
-
+  
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.fillRect(cx + 8, cy + 8, cw, ch);
   ctx.fillStyle = '#1c2430';
@@ -1469,7 +1494,7 @@ function drawPowerStationMid(){
   ctx.fillRect(fX + 4, fY + 4, fW - 8, fH - 8);
   ctx.strokeStyle = '#2a3644'; ctx.lineWidth = 2;
   ctx.strokeRect(fX, fY, fW, fH);
-
+  
   for(let i=0;i<4;i++){
     const fy = fY + 24 + i*38;
     ctx.fillStyle = '#050810';
@@ -1651,7 +1676,7 @@ function drawRooftopMid(){
   ctx.beginPath();
   ctx.moveTo(140, 200); ctx.lineTo(140, 440);
   ctx.stroke();
-
+  
   ctx.fillStyle = '#1a222c';
   ctx.fillRect(800, 320, 8, 120);
   ctx.fillRect(880, 320, 8, 120);
@@ -2196,7 +2221,7 @@ function drawBloodStain(x, y, t){
 }
 
 /* =========================================================
-   ★ 白天场景 —— 共用辅助
+   ★ 白天场景辅助
    ========================================================= */
 function daySky(top, bot){
   ctx.fillStyle = grad(0, 0, 0, 460, [[0, top], [0.7, bot], [1, bot]]);
@@ -2232,7 +2257,7 @@ function dayWarmOverlay(t){
 }
 
 /* =========================================================
-   ★ 雨巷 · 早（alley_day）
+   ★ 白天场景：雨巷·早（alley_day）
    ========================================================= */
 function drawAlleyDayFar(){
   daySky('#b4d8f0', '#f2e8d2');
@@ -2347,7 +2372,7 @@ function drawAlleyDayMid(){
   ctx.fillStyle = '#5a6878';
   ctx.beginPath(); ctx.ellipse(bx + bw/2, by + 14, bw/2, 15, 0, 0, Math.PI * 2); ctx.fill();
 
-  /* 小猫（白天常驻） */
+  // 小猫（白天常驻）
   ctx.save();
   ctx.translate(bx + 30, by + bh + 26);
   ctx.fillStyle = '#d89050';
@@ -2389,7 +2414,7 @@ function drawAlleyDayDynamic(t, dt){
 }
 
 /* =========================================================
-   ★ 后巷 · 早（backstreet_day）
+   ★ 白天场景：后巷·早（backstreet_day）
    ========================================================= */
 function drawBackstreetDayFar(){
   daySky('#b8daf0', '#f0e6ce');
@@ -2473,6 +2498,15 @@ function drawBackstreetDayMid(){
   ctx.beginPath(); ctx.moveTo(-40, 4); ctx.quadraticCurveTo(-78, -2, -64, 26); ctx.stroke();
   ctx.restore();
 
+  // 棋牌室的门 (白天)
+  ctx.fillStyle = '#4a3828';
+  ctx.fillRect(330, 260, 70, 120);
+  ctx.fillStyle = '#3a2c1e';
+  ctx.fillRect(340, 270, 50, 100);
+  ctx.strokeStyle = '#6a4828';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(330, 260, 70, 120);
+
   ctx.fillStyle = '#4a3828';
   ctx.fillRect(20, 260, 100, 220);
   ctx.fillStyle = '#3a2c1e';
@@ -2517,7 +2551,7 @@ function drawBackstreetDayDynamic(t, dt){
 }
 
 /* =========================================================
-   ★ 便利店 · 早（shop_day）
+   ★ 白天场景：便利店·早（shop_day）
    ========================================================= */
 function drawShopDayFar(){
   ctx.fillStyle = grad(0, 0, 0, H, [
@@ -2655,7 +2689,7 @@ function drawShopDayDynamic(t, dt){
 }
 
 /* =========================================================
-   ★ 街道 · 早（street_day）
+   ★ 白天场景：街道·早（street_day）
    ========================================================= */
 function drawStreetDayFar(){
   daySky('#bfe0f5', '#f4ebd5');
@@ -2854,7 +2888,7 @@ function drawStreetDayDynamic(t, dt){
 }
 
 /* =========================================================
-   ★ 门前 · 早（doorstep_day）
+   ★ 白天场景：门前·早（doorstep_day）
    ========================================================= */
 function drawDoorstepDayFar(){
   daySky('#bcdcf2', '#f2e8d0');
@@ -3003,7 +3037,7 @@ function drawDoorstepDayDynamic(t, dt){
 }
 
 /* =========================================================
-   ★ 红屋顶 · 早（house_day）
+   ★ 白天场景：红屋顶·早（house_day）
    ========================================================= */
 function drawHouseDayFar(){
   ctx.fillStyle = grad(0, 0, 0, H, [
@@ -3216,6 +3250,117 @@ function drawHouseDayDynamic(t, dt){
 }
 
 /* =========================================================
+   ★ 万圣节专属场景 —— 南瓜巷 (Halloween Alley)
+   ========================================================= */
+function drawHalloweenAlleyFar(){
+  ctx.fillStyle = grad(0,0,0,460, [[0,'#1a0b2e'],[0.5,'#0f0518'],[1,'#05010a']]);
+  ctx.fillRect(0,0,W,460);
+  ctx.fillStyle = '#ff9900';
+  ctx.beginPath(); ctx.arc(W/2, 180, 120, 0, Math.PI*2); ctx.fill();
+  const mg = ctx.createRadialGradient(W/2, 180, 100, W/2, 180, 250);
+  mg.addColorStop(0, 'rgba(255,153,0,0.3)'); mg.addColorStop(1, 'rgba(255,153,0,0)');
+  ctx.fillStyle = mg; ctx.fillRect(0,0,W,460);
+  ctx.fillStyle = '#000';
+  for(let i=0; i<15; i++){
+    let bx = (i*173)%W, by = 100 + (i*47)%200;
+    ctx.beginPath(); ctx.moveTo(bx,by); ctx.quadraticCurveTo(bx-10,by-10,bx-20,by+5); ctx.quadraticCurveTo(bx-10,by,bx,by+5); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(bx,by); ctx.quadraticCurveTo(bx+10,by-10,bx+20,by+5); ctx.quadraticCurveTo(bx+10,by,bx,by+5); ctx.fill();
+  }
+}
+function drawHalloweenAlleyMid(){
+  ctx.fillStyle = '#120816';
+  ctx.beginPath(); ctx.moveTo(100, 500); ctx.quadraticCurveTo(150, 250, 80, 100); ctx.lineTo(120, 90); ctx.quadraticCurveTo(180, 250, 150, 500); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(850, 500); ctx.quadraticCurveTo(800, 300, 880, 80); ctx.lineTo(840, 70); ctx.quadraticCurveTo(760, 300, 800, 500); ctx.fill();
+  ctx.fillStyle = '#3a2a1a'; ctx.fillRect(780, 150, 4, 100);
+  ctx.fillStyle = '#4a3a2a'; ctx.fillRect(760, 200, 44, 60);
+  for(let i=0; i<5; i++){
+    let px = 200 + i*150, py = 420 + Math.sin(i)*20;
+    ctx.fillStyle = '#e65c00'; ctx.beginPath(); ctx.ellipse(px, py, 30, 25, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ffcc00'; ctx.beginPath(); ctx.arc(px-8, py-5, 4, 0, Math.PI*2); ctx.arc(px+8, py-5, 4, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.fillStyle = '#0a0510'; ctx.fillRect(0, 430, W, 110);
+}
+function drawHalloweenAlleyNear(){
+  for(let i=0; i<8; i++){
+    let cx = 50 + i*120, cy = 480 + Math.sin(i*2)*30;
+    ctx.fillStyle = '#f0e6d2'; ctx.fillRect(cx-5, cy-20, 10, 20);
+    ctx.fillStyle = '#ffaa00'; ctx.beginPath(); ctx.ellipse(cx, cy-25, 4, 8, 0, 0, Math.PI*2); ctx.fill();
+  }
+}
+function drawHalloweenAlleyDynamic(t){ ctx.fillStyle = 'rgba(255, 150, 0, 0.05)'; ctx.fillRect(0,0,W,H); }
+
+function drawHalloweenForestFar(){
+  ctx.fillStyle = grad(0,0,0,460, [[0,'#0c1a0b'],[1,'#020601']]); ctx.fillRect(0,0,W,460);
+  const fg = ctx.createRadialGradient(W/2, 300, 0, W/2, 300, 500);
+  fg.addColorStop(0, 'rgba(80, 200, 100, 0.15)'); fg.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = fg; ctx.fillRect(0,0,W,H);
+}
+function drawHalloweenForestMid(){
+  for(let i=0; i<4; i++){
+    let tx = 100 + i*220, tw = 40 + i*10;
+    ctx.fillStyle = '#110805'; ctx.fillRect(tx, 150, tw, 350);
+    ctx.beginPath(); ctx.moveTo(tx+tw/2, 200); ctx.lineTo(tx-50, 100); ctx.lineTo(tx-40, 100); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(tx+tw/2, 250); ctx.lineTo(tx+tw+80, 150); ctx.lineTo(tx+tw+70, 150); ctx.fill();
+    for(let j=0; j<8; j++){
+      let cx = tx + Math.random()*tw, cy = 150 + Math.random()*250;
+      ctx.fillStyle = j%2===0 ? '#ff0044' : '#00ccff';
+      ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI*2); ctx.fill();
+    }
+  }
+  ctx.fillStyle = '#0a0510'; ctx.fillRect(0, 450, W, 90);
+}
+function drawHalloweenForestNear(){
+  for(let i=0; i<5; i++){
+    let lx = 80 + i*200;
+    ctx.fillStyle = '#ddd'; ctx.fillRect(lx, 350, 8, 150);
+    ctx.fillStyle = i%2===0 ? '#ff0066' : '#ffcc00';
+    ctx.beginPath(); ctx.arc(lx+4, 330, 35, 0, Math.PI*2); ctx.fill();
+  }
+}
+function drawHalloweenForestDynamic(t){
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  for(let i=0; i<20; i++){
+    let px = (i*133 + t*50)%W, py = (i*77 + t*100)%H;
+    ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+function drawHalloweenGraveyardFar(){
+  ctx.fillStyle = grad(0,0,0,460, [[0,'#1a0a0a'],[1,'#000']]); ctx.fillRect(0,0,W,460);
+  ctx.fillStyle = '#880000'; ctx.beginPath(); ctx.arc(700, 150, 80, 0, Math.PI*2); ctx.fill();
+  const rg = ctx.createRadialGradient(700, 150, 60, 700, 150, 200);
+  rg.addColorStop(0, 'rgba(200,0,0,0.4)'); rg.addColorStop(1, 'rgba(200,0,0,0)');
+  ctx.fillStyle = rg; ctx.fillRect(0,0,W,460);
+}
+function drawHalloweenGraveyardMid(){
+  for(let i=0; i<7; i++){
+    let gx = 80 + i*130, gy = 320 + Math.sin(i)*30;
+    ctx.fillStyle = '#333';
+    ctx.beginPath(); ctx.moveTo(gx, gy+100); ctx.lineTo(gx, gy); ctx.arc(gx+30, gy, 30, Math.PI, 0); ctx.lineTo(gx+60, gy+100); ctx.fill();
+    ctx.fillStyle = '#111'; ctx.fillRect(gx+25, gy+30, 10, 20);
+  }
+  ctx.fillStyle = '#662200'; ctx.beginPath(); ctx.ellipse(W/2, 350, 150, 120, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#e65c00'; ctx.beginPath(); ctx.ellipse(W/2, 330, 120, 100, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#00ffcc';
+  for(let i=0; i<5; i++){
+    let fx = 150 + i*150, fy = 450;
+    ctx.beginPath(); ctx.ellipse(fx, fy, 10, 25, Math.sin(performance.now()/500+i)*0.2, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.fillStyle = '#0a0000'; ctx.fillRect(0, 480, W, 60);
+}
+function drawHalloweenGraveyardNear(){
+  ctx.fillStyle = '#ddd'; ctx.fillRect(200, 520, 30, 8); ctx.fillRect(220, 528, 10, 12); ctx.fillRect(700, 500, 40, 8);
+}
+function drawHalloweenGraveyardDynamic(t){
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  for(let i=0; i<3; i++){
+    let ghx = W/2 + Math.sin(t*0.5 + i*2)*200;
+    let ghy = 200 + Math.cos(t*0.3 + i)*50;
+    ctx.beginPath(); ctx.arc(ghx, ghy, 30, Math.PI, 0); ctx.fillRect(ghx-30, ghy, 60, 50); ctx.fill();
+  }
+}
+
+/* =========================================================
    ★ 场景 SPOTS 定义
    ========================================================= */
 const SCENES = {
@@ -3240,6 +3385,7 @@ const SCENES = {
       { id:'photo1',   x:442, y:470, w:70,  h:56,  label:'湿透的纸片',
         cond: () => !flags().photo1Taken && !flags().bloodMode },
       { id:'puddle',   x:236, y:466, w:190, h:56,  label:'水洼' },
+      { id:'halloween_pumpkin', x:735, y:430, w:60, h:60, label:'发光的南瓜灯', cond: () => !flags().bloodMode },
       { id:'bloodExit', x:170, y:520, w:60, h:20, label:'墙根窄缝',
         cond: () => flags().bloodMode },
       { id:'exit',     x:892, y:244, w:52,  h:52,  label:'巷子深处' }
@@ -3256,7 +3402,7 @@ const SCENES = {
         cond: () => !flags().catGone },
       { id:'door',   x:566, y:130, w:210, h:340, label:'后门' },
       { id:'powerDoor', x:390, y:290, w:180, h:170, label:'配电房' },
-      { id:'parlorDoor', x:340, y:300, w:50, h:80, label:'棋牌室', cond: () => true },
+      { id:'parlorDoor', x:330, y:260, w:70, h:120, label:'棋牌室' },
       { id:'back',   x:16,  y:244, w:52,  h:52,  label:'回到雨巷' }
     ]
   },
@@ -3283,6 +3429,9 @@ const SCENES = {
       { id:'rope',    x:232, y:126, w:64,  h:76,  label:'晾衣绳',
         cond: () => !flags().ropeTaken },
       { id:'gate',    x:520, y:148, w:360, h:382, label:'铁门' },
+      { id:'fire',    x:750, y:440, w:80,  h:60,  label:'消防栓' },
+      { id:'mailbox', x:820, y:320, w:60,  h:80,  label:'信箱' },
+      { id:'tree',    x:820, y:150, w:120, h:200, label:'梧桐树' },
       { id:'back',    x:16,  y:244, w:52,  h:52,  label:'回后巷' }
     ]
   },
@@ -3341,6 +3490,9 @@ const SCENES = {
       { id:'emergency',  x:180, y:160, w:80,  h:40,  label:'应急灯' },
       { id:'trash',      x:540, y:410, w:100, h:90,  label:'垃圾桶' },
       { id:'room',       x:820, y:240, w:100, h:160, label:'配电房的门' },
+      { id:'oldPaper',   x:80,  y:300, w:80,  h:80,  label:'发黄的纸' },
+      { id:'floorWords', x:400, y:480, w:200, h:60,  label:'地上的字' },
+      { id:'tinBox',     x:700, y:440, w:60,  h:60,  label:'铁皮盒' },
       { id:'back',       x:16,  y:244, w:52,  h:52,  label:'回到街道' }
     ]
   },
@@ -3447,15 +3599,38 @@ const SCENES = {
       { id:'chair',  x:106, y:292, w:146, h:154, label:'摇椅' },
       { id:'bowl',   x:258, y:472, w:90,  h:46,  label:'小碗' }
     ]
+  },
+
+  /* ============ ★ 万圣节专属场景 ============ */
+  halloween_alley: {
+    layers: { far: drawHalloweenAlleyFar, mid: drawHalloweenAlleyMid, near: drawHalloweenAlleyNear },
+    dynamic: drawHalloweenAlleyDynamic, rain: false,
+    spots: [
+      { id:'scarecrow', x:760, y:200, w:60,  h:100, label:'倒吊的稻草人' },
+      { id:'path',      x:850, y:350, w:100, h:150, label:'前往糖果林' },
+      { id:'backReal',  x:16,  y:244, w:52,  h:52,  label:'回到现实' }
+    ]
+  },
+  halloween_forest: {
+    layers: { far: drawHalloweenForestFar, mid: drawHalloweenForestMid, near: drawHalloweenForestNear },
+    dynamic: drawHalloweenForestDynamic, rain: false,
+    spots: [
+      { id:'candyTree', x:300, y:200, w:100, h:200, label:'糖果树' },
+      { id:'lollipop',  x:480, y:330, w:60,  h:60,  label:'大棒棒糖' },
+      { id:'path',      x:850, y:350, w:100, h:150, label:'前往墓园' },
+      { id:'back',      x:16,  y:244, w:52,  h:52,  label:'回南瓜巷' }
+    ]
+  },
+  halloween_graveyard: {
+    layers: { far: drawHalloweenGraveyardFar, mid: drawHalloweenGraveyardMid, near: drawHalloweenGraveyardNear },
+    dynamic: drawHalloweenGraveyardDynamic, rain: false,
+    spots: [
+      { id:'throne', x:330, y:230, w:300, h:200, label:'南瓜王座' },
+      { id:'grave',  x:100, y:320, w:60,  h:100, label:'无名墓碑' },
+      { id:'back',   x:16,  y:244, w:52,  h:52,  label:'回糖果林' }
+    ]
   }
 };
 
 window.__SCENES__ = Object.assign({ setCtx, getCtx }, SCENES);
-
-} catch (__scenesErr) {
-  reportDevError((__scenesErr && __scenesErr.message ? __scenesErr.message : String(__scenesErr)), 'scenes.js');
-  if(!window.__SCENES__){
-    window.__SCENES__ = { setCtx: function(){}, getCtx: function(){} };
-  }
-}
 })();
