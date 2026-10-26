@@ -1,9 +1,35 @@
 /* =========================================================
-   map.js — 雨痕地图 v2
-   修复：shop 在街道时意外解锁的 bug
+   map.js — 雨痕地图 v4
+   v4: 全面自检与错误上报，去掉去重（全量上报）
+       - 任何空值/null/未定义/杂值都会通过 __DEV_ERROR__ / __DEV_WARN__ 上报
+       - NODES/EDGES/UNLOCK/NEIGHBORS 一致性会在 init 时校验
+       - 已知缺口（parlor、_day 节点未定义）会明确上报
+       - ★ 本轮不修复已知缺口，只上报
    ========================================================= */
 (function(global){
 'use strict';
+
+/* =========================================================
+   ★ 错误上报工具（无去重，全量上报）
+   ========================================================= */
+function _push(level, src, msg){
+  try{
+    if(level === 'warn'){
+      if(global.__DEV_WARN__) global.__DEV_WARN__(msg, src);
+      else console.warn('[MAP_WARN]', src, msg);
+    } else {
+      if(global.__DEV_ERROR__) global.__DEV_ERROR__(msg, src);
+      else console.error('[MAP_ERR]', src, msg);
+    }
+  }catch(e){}
+}
+function mapErr(msg, src){ _push('error', 'map:' + (src || '?'), msg); }
+function mapWarn(msg, src){ _push('warn',  'map:' + (src || '?'), msg); }
+
+function _isObj(v){ return v !== null && typeof v === 'object'; }
+function _isNum(v){ return typeof v === 'number' && isFinite(v); }
+function _isStr(v){ return typeof v === 'string' && v.length > 0; }
+function _isFn(v){ return typeof v === 'function'; }
 
 const W = 960, H = 540;
 const SAVE_KEY = 'raccoon_rainy_night_v5';
@@ -40,16 +66,38 @@ EDGES.forEach(e => {
 
 /* ==================== 存档读取 ==================== */
 function readSave(){
-  try{ return JSON.parse(localStorage.getItem(SAVE_KEY) || '{}'); }
-  catch(e){ return {}; }
+  try{
+    var raw = localStorage.getItem(SAVE_KEY);
+    if(raw === null || raw === undefined || raw === '') return {};
+    var parsed = JSON.parse(raw);
+    if(!_isObj(parsed)){
+      mapWarn('readSave: 存档不是对象 (' + (typeof parsed) + ')', 'readSave');
+      return {};
+    }
+    return parsed;
+  }catch(e){
+    mapWarn('readSave: 解析失败 - ' + (e && e.message ? e.message : e), 'readSave');
+    return {};
+  }
 }
 function getFlag(k){
+  if(!_isStr(k)){
+    mapErr('getFlag: key 非法 (' + String(k) + ')', 'getFlag');
+    return false;
+  }
   const s = readSave();
-  return !!(s.flags && s.flags[k]);
+  if(!_isObj(s.flags)){
+    return false;
+  }
+  return !!s.flags[k];
 }
 function hasSeenScene(k){
+  if(!_isStr(k)){
+    mapErr('hasSeenScene: key 非法 (' + String(k) + ')', 'hasSeenScene');
+    return false;
+  }
   const s = readSave();
-  const arr = (s.flags && s.flags.seenScenes) || [];
+  const arr = (_isObj(s.flags) && Array.isArray(s.flags.seenScenes)) ? s.flags.seenScenes : [];
   return arr.indexOf(k) >= 0;
 }
 
@@ -58,7 +106,15 @@ let curScene = 'alley';
 
 /* 相邻于当前所在节点 —— 可点，但没去过就不发光 */
 function isAdjacentToCurrent(key){
-  const nb = NEIGHBORS[curScene] || [];
+  if(!_isStr(key)){
+    mapErr('isAdjacentToCurrent: key 非法', 'isAdjacent');
+    return false;
+  }
+  const nb = NEIGHBORS[curScene];
+  if(!Array.isArray(nb)){
+    mapErr('isAdjacentToCurrent: NEIGHBORS["' + curScene + '"] 不是数组', 'isAdjacent');
+    return false;
+  }
   return nb.indexOf(key) >= 0;
 }
 
@@ -67,10 +123,10 @@ const UNLOCK = {
   backstreet:   () => hasSeenScene('backstreet')   || isAdjacentToCurrent('backstreet'),
   powerstation: () => hasSeenScene('powerstation') || isAdjacentToCurrent('powerstation'),
   rooftop:      () => hasSeenScene('rooftop')      || isAdjacentToCurrent('rooftop'),
-  
-  /* ★ 修复：便利店只能通过“后门被打开”解锁，不再因为和街道相邻而白给 */
+
+  /* ★ 便利店只能通过“后门被打开”解锁 */
   shop:         () => getFlag('doorOpen'),
-  
+
   street:       () => hasSeenScene('street')       || isAdjacentToCurrent('street'),
   underpass:    () => hasSeenScene('underpass')    || hasSeenScene('street'),
   riverside:    () => hasSeenScene('riverside')    || hasSeenScene('street'),
@@ -172,7 +228,22 @@ function drawPaper(t){
 
 /* ==================== 路径 ==================== */
 function drawEdge(a, b, t, highlight, waterProgress){
-  const A = NODES[a], B = NODES[b];
+  const A = NODES[a];
+  const B = NODES[b];
+  if(!_isObj(A)){
+    mapErr('drawEdge: NODES["' + String(a) + '"] 不存在', 'drawEdge');
+    return;
+  }
+  if(!_isObj(B)){
+    mapErr('drawEdge: NODES["' + String(b) + '"] 不存在', 'drawEdge');
+    return;
+  }
+  if(!_isNum(A.x) || !_isNum(A.y) || !_isNum(B.x) || !_isNum(B.y)){
+    mapErr('drawEdge: 节点坐标非法 ' + a + ' / ' + b, 'drawEdge');
+    return;
+  }
+  if(!_isNum(waterProgress)) waterProgress = 0;
+
   const ax = px(A.x), ay = py(A.y);
   const bx = px(B.x), by = py(B.y);
 
@@ -218,6 +289,7 @@ function drawEdge(a, b, t, highlight, waterProgress){
 }
 
 function drawWaterStreak(ax, ay, cx1, cy1, cx2, cy2, bx, by, progress, seed){
+  if(!_isStr(seed)) seed = 'xx';
   const steps = 32;
   const N = Math.max(1, Math.floor(steps * progress));
   const pts = [];
@@ -458,6 +530,25 @@ const ICONS = {
 /* ==================== 节点绘制 ==================== */
 function drawNode(key, t){
   const n = NODES[key];
+  if(!_isObj(n)){
+    mapErr('drawNode: NODES["' + String(key) + '"] 不存在或非对象', 'drawNode');
+    return;
+  }
+  if(!_isNum(n.x) || !_isNum(n.y)){
+    mapErr('drawNode: 节点 "' + key + '" 坐标非法', 'drawNode');
+    return;
+  }
+  if(!_isStr(n.icon)){
+    mapWarn('drawNode: 节点 "' + key + '" icon 缺失', 'drawNode');
+  }
+  if(!_isStr(n.name)){
+    mapWarn('drawNode: 节点 "' + key + '" name 缺失', 'drawNode');
+  }
+  if(!_isFn(UNLOCK[key])){
+    mapErr('drawNode: UNLOCK["' + key + '"] 未定义', 'drawNode');
+    return;
+  }
+
   const x = px(n.x), y = py(n.y);
   const unlocked = UNLOCK[key]();
   const isCurrent = key === curScene;
@@ -492,7 +583,7 @@ function drawNode(key, t){
     ctx.fill();
   }
 
-  /* ★ 只有"去过的"节点发光 */
+  /* 只有"去过的"节点发光 */
   if(unlocked && !isCurrent && isSeen){
     const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 26);
     g.addColorStop(0, 'rgba(255,200,120,0.14)');
@@ -504,7 +595,22 @@ function drawNode(key, t){
   }
 
   /* 图标 */
-  ICONS[n.icon]();
+  const iconFn = ICONS[n.icon];
+  if(_isFn(iconFn)){
+    iconFn();
+  } else {
+    mapWarn('drawNode: 未定义图标 "' + String(n.icon) + '"（节点 ' + key + '）', 'drawNode');
+    /* 退化画一个问号 */
+    stroke('#7a6a55', 1.8);
+    ctx.beginPath();
+    ctx.arc(0, -2, 8, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.fillStyle = '#7a6a55';
+    ctx.font = 'bold 12px "PingFang SC",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('?', 0, -2);
+  }
 
   /* 未解锁：叠水渍 */
   if(!unlocked){
@@ -535,7 +641,7 @@ function drawNode(key, t){
   ctx.font = '13px "PingFang SC","Microsoft YaHei",sans-serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = unlocked ? 'rgba(220,190,140,0.85)' : 'rgba(140,155,170,0.55)';
-  ctx.fillText(n.name, 0, 30);
+  ctx.fillText(n.name || key, 0, 30);
 
   /* 未解锁小字 */
   if(!unlocked){
@@ -549,6 +655,14 @@ function drawNode(key, t){
 
 /* ==================== 雨痕动画 ==================== */
 function startTravel(fromKey, toKey, path){
+  if(!_isStr(fromKey) || !_isStr(toKey)){
+    mapErr('startTravel: fromKey/toKey 非法', 'startTravel');
+    return;
+  }
+  if(!Array.isArray(path) || path.length === 0){
+    mapErr('startTravel: path 为空或非数组 (' + fromKey + ' → ' + toKey + ')', 'startTravel');
+    return;
+  }
   const short = path.length <= 2;
   travelAnim = {
     fromKey, toKey, path,
@@ -560,19 +674,52 @@ function startTravel(fromKey, toKey, path){
   };
   path.forEach((k, i) => {
     if(i === 0) return;
+    if(!_isStr(k)){
+      mapErr('startTravel: path 中含非法节点 (' + String(k) + ')', 'startTravel');
+      return;
+    }
     const ekey = path[i-1] + '_' + k;
     travelAnim.edgeProgress[ekey] = 0;
   });
 }
 
 function findPath(from, to){
+  if(!_isStr(from)){
+    mapErr('findPath: from 非法 (' + String(from) + ')', 'findPath');
+    return null;
+  }
+  if(!_isStr(to)){
+    mapErr('findPath: to 非法 (' + String(to) + ')', 'findPath');
+    return null;
+  }
+  if(!_isObj(NODES[from])){
+    mapErr('findPath: 起点场景 "' + from + '" 未定义（NODES 中没有）', 'findPath');
+    return null;
+  }
+  if(!_isObj(NODES[to])){
+    mapErr('findPath: 终点场景 "' + to + '" 未定义（NODES 中没有）', 'findPath');
+    return null;
+  }
+  if(!Array.isArray(NEIGHBORS[from])){
+    mapErr('findPath: NEIGHBORS["' + from + '"] 不是数组（邻接表损坏）', 'findPath');
+    return null;
+  }
   if(from === to) return null;
   const visited = { [from]: true };
   const queue = [[from]];
   while(queue.length){
     const cur = queue.shift();
     const last = cur[cur.length - 1];
-    for(const nb of NEIGHBORS[last]){
+    const nbList = NEIGHBORS[last];
+    if(!Array.isArray(nbList)){
+      mapWarn('findPath: NEIGHBORS["' + last + '"] 缺失，跳过', 'findPath');
+      continue;
+    }
+    for(const nb of nbList){
+      if(!_isFn(UNLOCK[nb])){
+        mapWarn('findPath: UNLOCK["' + nb + '"] 未定义，跳过', 'findPath');
+        continue;
+      }
       if(!UNLOCK[nb]()) continue;
       if(visited[nb]) continue;
       const next = cur.concat([nb]);
@@ -581,6 +728,7 @@ function findPath(from, to){
       queue.push(next);
     }
   }
+  mapWarn('findPath: 找不到从 "' + from + '" 到 "' + to + '" 的路径', 'findPath');
   return null;
 }
 
@@ -618,8 +766,11 @@ function render(t){
 
   drawPaper(t);
 
-  const showIconsAt = Math.max(0, (eo - 0.4) / 0.6);
   EDGES.forEach(e => {
+    if(!Array.isArray(e) || e.length !== 2){
+      mapErr('render: EDGES 中含非法项', 'render');
+      return;
+    }
     const fromIsCurrent = e[0] === curScene || e[1] === curScene;
     let wp = 0;
     if(travelAnim){
@@ -646,21 +797,23 @@ function render(t){
     const p = travelAnim.paw;
     if(p.life > 0){
       const n = NODES[p.node];
-      const x = px(n.x), y = py(n.y);
-      ctx.save();
-      ctx.globalAlpha = Math.min(1, p.life * 2);
-      ctx.translate(x, y);
-      ctx.fillStyle = 'rgba(60,90,110,0.75)';
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 8, 5, 0, 0, Math.PI*2);
-      ctx.fill();
-      for(let i = 0; i < 3; i++){
-        const a = -0.6 + i * 0.6;
+      if(_isObj(n)){
+        const x = px(n.x), y = py(n.y);
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, p.life * 2);
+        ctx.translate(x, y);
+        ctx.fillStyle = 'rgba(60,90,110,0.75)';
         ctx.beginPath();
-        ctx.arc(Math.cos(a-1.57)*10, Math.sin(a-1.57)*10 - 4, 2.5, 0, Math.PI*2);
+        ctx.ellipse(0, 0, 8, 5, 0, 0, Math.PI*2);
         ctx.fill();
+        for(let i = 0; i < 3; i++){
+          const a = -0.6 + i * 0.6;
+          ctx.beginPath();
+          ctx.arc(Math.cos(a-1.57)*10, Math.sin(a-1.57)*10 - 4, 2.5, 0, Math.PI*2);
+          ctx.fill();
+        }
+        ctx.restore();
       }
-      ctx.restore();
     }
   }
 
@@ -722,7 +875,8 @@ function update(dt, t){
       if(travelAnim.paw.life <= 0){
         const to = travelAnim.toKey;
         travelAnim = null;
-        if(onTravel) onTravel(to);
+        if(_isFn(onTravel)) onTravel(to);
+        else mapWarn('update: onTravel 回调未设置', 'update');
         return;
       }
     }
@@ -751,6 +905,7 @@ function findNodeAt(mx, my){
   let best = null, bestD = 40 * 40;
   Object.keys(NODES).forEach(k => {
     const n = NODES[k];
+    if(!_isObj(n) || !_isNum(n.x) || !_isNum(n.y)) return;
     const x = px(n.x), y = py(n.y);
     const d = dist2(mx, my, x, y);
     if(d < bestD){ bestD = d; best = k; }
@@ -761,11 +916,23 @@ function findNodeAt(mx, my){
 function onClick(e){
   if(opened < 0.5) return;
   if(travelAnim) return;
+  if(!canvas){
+    mapErr('onClick: canvas 为空', 'onClick');
+    return;
+  }
   const r = canvas.getBoundingClientRect();
+  if(!r || !_isNum(r.width) || !_isNum(r.height) || r.width === 0 || r.height === 0){
+    mapErr('onClick: canvas 尺寸非法', 'onClick');
+    return;
+  }
   const mx = (e.clientX - r.left) * (W / r.width);
   const my = (e.clientY - r.top) * (H / r.height);
   const k = findNodeAt(mx, my);
   if(!k) return;
+  if(!_isFn(UNLOCK[k])){
+    mapErr('onClick: UNLOCK["' + k + '"] 未定义', 'onClick');
+    return;
+  }
   if(!UNLOCK[k]()) return;
   if(k === curScene) return;
   const path = findPath(curScene, k);
@@ -778,21 +945,102 @@ function onMove(e){
     hoverNode = null;
     return;
   }
+  if(!canvas){
+    hoverNode = null;
+    return;
+  }
   const r = canvas.getBoundingClientRect();
+  if(!r || !_isNum(r.width) || !_isNum(r.height) || r.width === 0 || r.height === 0){
+    hoverNode = null;
+    return;
+  }
   const mx = (e.clientX - r.left) * (W / r.width);
   const my = (e.clientY - r.top) * (H / r.height);
   hoverNode = findNodeAt(mx, my);
+}
+
+/* ==================== 一致性自检 ==================== */
+function selfCheckMap(stage){
+  const tag = 'selfCheck:' + (stage || '?');
+
+  /* NODES 合法性 */
+  if(!_isObj(NODES)){
+    mapErr('NODES 不存在或非对象', tag);
+    return;
+  }
+  const keys = Object.keys(NODES);
+  if(keys.length === 0){
+    mapErr('NODES 为空', tag);
+    return;
+  }
+  keys.forEach(k => {
+    const n = NODES[k];
+    if(!_isObj(n)){
+      mapErr('NODES["' + k + '"] 不是对象', tag);
+      return;
+    }
+    if(!_isNum(n.x)) mapErr('NODES["' + k + '"].x 非数值', tag);
+    if(!_isNum(n.y)) mapErr('NODES["' + k + '"].y 非数值', tag);
+    if(!_isStr(n.name)) mapWarn('NODES["' + k + '"].name 缺失', tag);
+    if(!_isStr(n.icon)){
+      mapWarn('NODES["' + k + '"].icon 缺失', tag);
+    } else if(!_isFn(ICONS[n.icon])){
+      mapWarn('NODES["' + k + '"].icon "' + n.icon + '" 在 ICONS 中未定义', tag);
+    }
+    if(!_isFn(UNLOCK[k])){
+      mapErr('UNLOCK["' + k + '"] 未定义', tag);
+    }
+    if(!Array.isArray(NEIGHBORS[k])){
+      mapErr('NEIGHBORS["' + k + '"] 不是数组', tag);
+    }
+  });
+
+  /* EDGES 合法性 */
+  if(!Array.isArray(EDGES)){
+    mapErr('EDGES 不是数组', tag);
+    return;
+  }
+  EDGES.forEach((e, i) => {
+    if(!Array.isArray(e) || e.length !== 2){
+      mapErr('EDGES[' + i + '] 不是二元数组', tag);
+      return;
+    }
+    if(!NODES[e[0]]) mapErr('EDGES[' + i + '] 引用未定义节点 "' + String(e[0]) + '"', tag);
+    if(!NODES[e[1]]) mapErr('EDGES[' + i + '] 引用未定义节点 "' + String(e[1]) + '"', tag);
+  });
+
+  /* curScene 合法性 */
+  if(!_isStr(curScene)){
+    mapErr('curScene 非字符串 ("' + String(curScene) + '")', tag);
+  } else if(!NODES[curScene]){
+    mapWarn('curScene="' + curScene + '" 未在 NODES 中定义（地图上找不到当前位置）', tag);
+  }
+
+  /* 已知缺口提示（game.js 会用到但 NODES 里没有的场景） */
+  ['parlor','alley_day','backstreet_day','shop_day','street_day','doorstep_day','house_day'].forEach(k => {
+    if(!NODES[k]){
+      mapWarn('NODES 缺少场景 "' + k + '"（game.js 可能切到该场景，地图将无法定位）', tag);
+    }
+  });
 }
 
 /* ==================== API ==================== */
 function init(){
   canvas = document.getElementById('mapCanvas');
   if(!canvas){
-    console.error('[map] 缺少 #mapCanvas');
+    mapErr('缺少 #mapCanvas 元素', 'init');
     return;
   }
   ctx = canvas.getContext('2d');
+  if(!ctx){
+    mapErr('#mapCanvas.getContext("2d") 返回空', 'init');
+    return;
+  }
   dpr = Math.min(window.devicePixelRatio || 1, 2);
+  if(!_isNum(dpr) || dpr <= 0){
+    mapWarn('devicePixelRatio 非法，回退为 1', 'init');
+    dpr = 1;
+  }
   canvas.width = W * dpr;
   canvas.height = H * dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -809,16 +1057,30 @@ function init(){
       if(!rafId) rafId = requestAnimationFrame(loop);
     }
   });
+
+  selfCheckMap('init');
 }
 
 function open(){
   if(visible) return;
   if(!canvas){
     init();
-    if(!canvas) return;
+    if(!canvas){
+      mapErr('open: canvas 仍未就绪，无法打开地图', 'open');
+      return;
+    }
+  }
+  if(!ctx){
+    mapErr('open: ctx 为空，无法渲染地图', 'open');
+    return;
   }
   visible = true;
   targetOpened = 1;
+  if(!canvas.parentNode){
+    mapErr('open: canvas.parentNode 为空', 'open');
+    visible = false;
+    return;
+  }
   canvas.parentNode.classList.add('show');
   lastTime = performance.now();
   if(!rafId) rafId = requestAnimationFrame(loop);
@@ -840,7 +1102,9 @@ function close(){
   if(!visible) return;
   visible = false;
   targetOpened = 0;
-  canvas.parentNode.classList.remove('show');
+  if(canvas && canvas.parentNode){
+    canvas.parentNode.classList.remove('show');
+  }
   travelAnim = null;
   hoverNode = null;
   clearTimeout(fallbackTimer);
@@ -849,23 +1113,48 @@ function close(){
 function isOpen(){ return visible; }
 
 function setCurrentScene(s){
-  if(s) curScene = s;
+  if(!_isStr(s)){
+    mapErr('setCurrentScene: 参数非法 ("' + String(s) + '")', 'setCurrentScene');
+    return;
+  }
+  if(!NODES[s]){
+    mapWarn('setCurrentScene: 场景 "' + s + '" 不在 NODES 中（地图将无法显示当前节点）', 'setCurrentScene');
+  }
+  curScene = s;
 }
 
 function setTravelCallback(cb){
+  if(!_isFn(cb)){
+    mapErr('setTravelCallback: 传入的不是函数 ("' + typeof cb + '")', 'setTravelCallback');
+    return;
+  }
   onTravel = cb;
 }
 
 function refreshUnlocks(){}
 
 function getNodeScreenRect(key){
-  if(!NODES[key]) return null;
+  if(!_isStr(key)){
+    mapErr('getNodeScreenRect: key 非法 ("' + String(key) + '")', 'getNodeScreenRect');
+    return null;
+  }
+  if(!NODES[key]){
+    mapErr('getNodeScreenRect: NODES["' + key + '"] 不存在', 'getNodeScreenRect');
+    return null;
+  }
   const n = NODES[key];
+  if(!_isNum(n.x) || !_isNum(n.y)){
+    mapErr('getNodeScreenRect: 节点 "' + key + '" 坐标非法', 'getNodeScreenRect');
+    return null;
+  }
   const stage = document.getElementById('stage');
   const sr = stage ? stage.getBoundingClientRect() : {
     left: 0, top: 0,
     width: window.innerWidth, height: window.innerHeight
   };
+  if(!sr || !_isNum(sr.width) || !_isNum(sr.height) || sr.width === 0 || sr.height === 0){
+    mapWarn('getNodeScreenRect: stage 尺寸非法，使用视口回退', 'getNodeScreenRect');
+  }
   const sx = sr.width  / W;
   const sy = sr.height / H;
   const cx = sr.left + n.x * W * sx;
@@ -879,10 +1168,21 @@ function getNodeScreenRect(key){
   };
 }
 
-function getCurrentNodeKey(){ return curScene; }
+function getCurrentNodeKey(){
+  return curScene;
+}
 
 function getAdjacentTargets(){
-  return (NEIGHBORS[curScene] || []).filter(function(k){
+  const list = NEIGHBORS[curScene];
+  if(!Array.isArray(list)){
+    mapErr('getAdjacentTargets: NEIGHBORS["' + curScene + '"] 不是数组', 'getAdjacentTargets');
+    return [];
+  }
+  return list.filter(function(k){
+    if(!_isFn(UNLOCK[k])){
+      mapWarn('getAdjacentTargets: UNLOCK["' + k + '"] 未定义，跳过', 'getAdjacentTargets');
+      return false;
+    }
     return UNLOCK[k]();
   });
 }
