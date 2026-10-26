@@ -1,8 +1,10 @@
 /* =========================================================
-   game.js — 雨夜归途 · 全部游戏逻辑（自检增强版 v3）
-   v3 变更：
-     - devErr / devWarn 去掉去重，任何错误都会上报
-     - 保留 v2 的 _day + 血模式守卫
+   game.js — 雨夜归途 · 全部游戏逻辑（v4）
+   v4 变更：
+     - street.acts.gate 改为断电即可翻过去，不再强制要求 grapnel
+     - 新增 checkIntegrity()：在 iframe ready 后检查
+       acts ↔ spots 对应关系、3D 铁门 grid 碰撞
+     - 其余与 v3 完全一致
    ========================================================= */
 (function(){
 'use strict';
@@ -40,7 +42,7 @@ var btnAchvEl      = document.getElementById('btnAchievements');
 var gameFrame = null;
 
 /* =========================================================
-   ★ 开发者错误自检工具（无去重，全量上报）
+   ★ 开发者错误自检工具（无去重）
    ========================================================= */
 function devErr(msg, src){
   try{
@@ -79,6 +81,89 @@ function selfCheck(ctx){
     }
   }catch(e){
     devErr('自检异常: ' + (e && e.message ? e.message : e), 'selfCheck');
+  }
+}
+
+/* =========================================================
+   ★ 完整性检查（只上报，不修复）
+   ========================================================= */
+var _integrityDone = { full: false, s3d: false };
+
+function checkIntegrity(){
+  try{
+    if(!gameFrame || !gameFrame.contentWindow) return;
+    var win = gameFrame.contentWindow;
+
+    /* ---- 1) 2D 场景 acts ↔ spots 对应 ---- */
+    var ss = win.__SCENES__;
+    if(ss){
+      var currentKey = S && S.scene;
+      var checkList;
+      if(_integrityDone.full){
+        checkList = currentKey ? [currentKey] : [];
+      } else {
+        checkList = Object.keys(SCENES);
+      }
+      checkList.forEach(function(sceneKey){
+        if(!sceneKey) return;
+        if(!SCENES[sceneKey]) return;
+        var gs = SCENES[sceneKey];
+        var s2 = ss[sceneKey];
+        if(!s2){
+          devErr('完整性: 场景 "' + sceneKey + '" 在 game.js 有定义但 assets/scenes.js 缺失', 'integrity');
+          return;
+        }
+        if(gs.acts && Array.isArray(s2.spots)){
+          var actIds = Object.keys(gs.acts);
+          var spotIds = s2.spots.map(function(s){ return s && s.id; });
+          actIds.forEach(function(actId){
+            if(spotIds.indexOf(actId) < 0){
+              devWarn('完整性: 场景 "' + sceneKey + '" act "' + actId + '" 无对应 spot（玩家无法触发）', 'integrity');
+            }
+          });
+          spotIds.forEach(function(spotId){
+            if(!spotId) return;
+            if(actIds.indexOf(spotId) < 0){
+              devWarn('完整性: 场景 "' + sceneKey + '" spot "' + spotId + '" 无对应 act', 'integrity');
+            }
+          });
+        } else if(gs.acts && !Array.isArray(s2.spots)){
+          devErr('完整性: 场景 "' + sceneKey + '" 在 scenes.js 没有 spots 数组', 'integrity');
+        }
+      });
+      _integrityDone.full = true;
+    }
+
+    /* ---- 2) 3D 场景铁门 grid 碰撞 ---- */
+    var s3d = win.__SCENES_3D__;
+    if(s3d && !_integrityDone.s3d){
+      Object.keys(s3d).forEach(function(k){
+        var sc = s3d[k];
+        if(!sc) return;
+        if(!Array.isArray(sc.things)){
+          devErr('完整性: 3D 场景 "' + k + '" things 缺失', 'integrity:3d');
+          return;
+        }
+        if(!Array.isArray(sc.grid)){
+          devErr('完整性: 3D 场景 "' + k + '" grid 缺失', 'integrity:3d');
+          return;
+        }
+        sc.things.forEach(function(t){
+          if(!t || t.id !== 'gate') return;
+          var gx = Math.floor(t.x);
+          var gy = Math.floor(t.y);
+          if(gx < 0 || gy < 0) return;
+          var row = sc.grid[gy];
+          if(!row) return;
+          if(row[gx] === '0'){
+            devWarn('完整性: 3D "' + k + '" 铁门可穿模（grid[' + gy + '][' + gx + '] = 0）', 'integrity:3d');
+          }
+        });
+      });
+      _integrityDone.s3d = true;
+    }
+  }catch(e){
+    devErr('完整性检查异常: ' + (e && e.message ? e.message : e), 'integrity');
   }
 }
 
@@ -780,7 +865,7 @@ var SCENES = {
       under: function(){ say('地下通道的入口，白天看只是一个普通的洞口。'); say('灰豆没有下去。'); },
       river: function(){ say('河堤那边，能听见水声。'); say('——哗啦哗啦。'); say('河还在。'); },
       rope: function(){ say('晾衣绳已经不在那里了。'); },
-      gate: function(){ say('铁门开着。'); say('——昨晚灰豆用钩爪翻过去过。'); say('今天不用了。'); say('灰豆从门里走了过去。'); changeScene('doorstep_day', '门 前 · 早'); },
+      gate: function(){ say('铁门开着。'); say('——昨晚灰豆翻过去过。'); say('今天不用了。'); say('灰豆从门里走了过去。'); changeScene('doorstep_day', '门 前 · 早'); },
       tree: function(){ say('梧桐树上的塑料袋，还在风里抖。'); say('——但白天看，就只是塑料袋。'); },
       mailbox: function(){ say('信箱还在那里。'); say('——锁还是锈的。'); say('灰豆这次没有去扒。'); },
       fire: function(){ say('消防栓在阳光里闪着一点光。'); say('灰豆凑过去蹭了蹭。'); say('——还是凉的。'); say('——但比昨晚暖。'); },
@@ -1260,23 +1345,55 @@ var SCENES = {
         say('绳子断了，它摔进了一堆落叶里。');
       },
       gate: function(){
-        if(isBloodMode()){ say('铁门。'); say('——但不是那扇铁门。'); say('灰豆伸手去推。'); say('手指没有碰到金属。'); say('——它**穿了过去**。'); say('像穿过去一层薄薄的水膜。'); say('门那边的世界，和它记忆里的，一模一样。', function(){ setTimeout(function(){ changeScene('neighbor', '邻 屋'); say('灰豆走了进去。'); say('——身后，铁门还在那里。'); say('——像是在等下一个走进去的人。'); }, 300); }); return; }
-        if(!S.flags.powerCut){ say('铁门的横梁上装着一把黑色的电子锁。'); say('指示灯是**红色**的，一闪，一闪。'); say('灰豆伸爪去碰——'); say('一道细小的电流窜上来，麻得它缩回爪子。'); say('门上钉着一块小铁牌：'); say('“**电路控制 · 请先断电**”。'); say('——这条街上应该有一间配电房。'); return; }
+        if(isBloodMode()){
+          say('铁门。');
+          say('——但不是那扇铁门。');
+          say('灰豆伸手去推。');
+          say('手指没有碰到金属。');
+          say('——它**穿了过去**。');
+          say('像穿过去一层薄薄的水膜。');
+          say('门那边的世界，和它记忆里的，一模一样。', function(){
+            setTimeout(function(){
+              changeScene('neighbor', '邻 屋');
+              say('灰豆走了进去。');
+              say('——身后，铁门还在那里。');
+              say('——像是在等下一个走进去的人。');
+            }, 300);
+          });
+          return;
+        }
+        if(!S.flags.powerCut){
+          say('铁门的横梁上装着一把黑色的电子锁。');
+          say('指示灯是**红色**的，一闪，一闪。');
+          say('灰豆伸爪去碰——');
+          say('一道细小的电流窜上来，麻得它缩回爪子。');
+          say('门上钉着一块小铁牌：');
+          say('“**电路控制 · 请先断电**”。');
+          say('——这条街上应该有一间配电房。');
+          return;
+        }
+        if(S.flags.gateOpen){
+          say('铁门开着。');
+          say('——灰豆已经翻过来过了。');
+          hintMap();
+          return;
+        }
+        /* ★ 断电之后：有钩爪用钩爪，没有钩爪直接用爪子爬 */
+        S.flags.gateOpen = true;
+        save();
+        syncState();
         if(getInv().indexOf('grapnel') !== -1){
-          if(S.flags.gateOpen){ say('铁门开着。'); say('——灰豆已经翻过来过了。'); hintMap(); return; }
-          S.flags.gateOpen = true; save(); syncState();
           say('灰豆甩出钩爪。');
           say('挂钩在空中划了一道弧，**咬住了门顶**。');
           say('——灰豆爬了上去，翻过了铁门。');
-          say('门那边，是一栋红屋顶的房子。');
-          hintMap();
         } else {
-          say('铁门比灰豆站起来还高。');
-          say('栏杆冰凉，爪子抓不住。');
-          say('门后是一栋{{红屋顶的房子}}。');
-          say('窗户是黑的。');
-          say('——刚才那一盏灯，也被灰豆亲手关掉了。');
+          say('断电之后，铁门的电子锁松了。');
+          say('灰豆把爪子伸进栏杆缝里，一点一点往上爬。');
+          say('栏杆冰凉。');
+          say('——但它翻过去了。');
         }
+        say('门那边，是一栋红屋顶的房子。');
+        hintMap();
       },
       fire: function(){
         if(isBloodMode()){ say('消防栓锈死了。'); say('——上面有一道很深的划痕。'); say('——不是爪子。'); say('是**手指**。'); say('五道。'); say('从上面，一直划到下面。'); return; }
@@ -1719,6 +1836,8 @@ window.addEventListener('message', function(e){
     finishLoading(function(){
       window.__GAME_READY__ = true;
       try{ gameFrame.contentWindow.postMessage({ type:'refocus' }, '*'); }catch(err){}
+      /* ★ 完整性检查 */
+      setTimeout(checkIntegrity, 200);
       if(pendingOpeningMonologue){
         pendingOpeningMonologue = false;
         setTimeout(function(){
