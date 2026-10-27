@@ -20,6 +20,7 @@ var toastEl        = document.getElementById('toast');
 var endEl          = document.getElementById('ending');
 var bloodEndEl     = document.getElementById('bloodEnding');
 var forgetEndEl    = document.getElementById('forgetEnding');
+var halloweenEndEl = document.getElementById('halloweenEnding');
 var setEl          = document.getElementById('settings');
 var loadingEl      = document.getElementById('loadingScreen');
 var loadingNameEl  = document.getElementById('loadingName');
@@ -142,7 +143,8 @@ var ACHIEVEMENTS = {
   forget_alone:   { section:'main',  icon:'🌫', name:'一个人的早晨', desc:'遗忘线 · 街上是空的' },
   blood_dark:     { section:'blood', icon:'🕯', name:'雨还在下',     desc:'什么都没承认' },
   blood_half:     { section:'blood', icon:'⚡', name:'半承认',       desc:'承认了一部分' },
-  blood_full:     { section:'blood', icon:'🌑', name:'另一个雨夜',   desc:'全部承认' }
+  blood_full:     { section:'blood', icon:'🌑', name:'另一个雨夜',   desc:'全部承认' },
+  halloween_lost: { section:'halloween', icon:'🎃', name:'迷失结局', desc:'留在永恒的万圣夜，再也找不到红屋顶' }
 };
 
 function loadAchievements(){
@@ -200,10 +202,11 @@ function renderAchvProgress(){
   if(achvTotalEl) achvTotalEl.innerHTML = '已达成 <b>' + got + '</b> / ' + total;
 }
 
-/* 结局图鉴列表（按主线 / 暗夜分组） */
+/* 结局图鉴列表（按主线 / 暗夜 / 万圣节支线分组） */
 var ACHV_SECTIONS = [
-  { key:'main',  name:'主线 · 两条路' },
-  { key:'blood', name:'暗夜 · 另一种记得' }
+  { key:'main',      name:'主线 · 两条路' },
+  { key:'blood',     name:'暗夜 · 另一种记得' },
+  { key:'halloween', name:'万圣节·支线' }
 ];
 function renderAchvList(){
   if(!achvListEl) return;
@@ -1953,15 +1956,20 @@ var SCENES = {
           { text:'我不属于这里', value:'refuse' }
         ], function(v){
           if(v === 'stay'){
+            endingLock = true;
             say('灰豆在墓碑前坐了下来。');
             say('雨停了。');
-            say('但它再也找不到那个红屋顶了。');
-            toast('🎃 万圣节 · 迷失结局');
-            S.flags.halloween_mode = false;
-            save(); syncState();
-            try{ if(window.parent) window.parent.postMessage({ type: 'triggerHalloweenOff' }, '*'); }catch(e){}
-            S.scene = 'alley'; save();
-            setTimeout(function(){ changeScene('alley', '雨 巷'); }, 3000);
+            say('但它再也找不到那个红屋顶了。', function(){
+              unlockAchievement('halloween_lost');
+              S.ended = true;
+              S.flags.halloweenEnding = true;
+              save(); syncState();
+              setTimeout(function(){
+                endingShown = true;
+                syncState();
+                if(halloweenEndEl) halloweenEndEl.classList.add('show');
+              }, 650);
+            });
           } else if(v === 'run'){
             say('灰豆猛地扑上去，咬住一把南瓜籽。');
             say('「你竟敢抢我的糖！捣蛋鬼！」男人发出尖叫。');
@@ -2648,6 +2656,15 @@ if(document.getElementById('btnAgain')){
     beginGame(freshState(), true); save();
   });
 }
+if(document.getElementById('btnHalloweenAgain')){
+  document.getElementById('btnHalloweenAgain').addEventListener('click', function(){
+    try { localStorage.removeItem(SAVE_KEY); } catch(e){}
+    if(halloweenEndEl) halloweenEndEl.classList.remove('show');
+    document.body.classList.remove('halloween-mode');
+    endingShown = false; endingLock = false;
+    beginGame(freshState(), true); save();
+  });
+}
 if(document.getElementById('btnBloodAgain')){
   document.getElementById('btnBloodAgain').addEventListener('click', function(){
     if(this.disabled) return;
@@ -2776,4 +2793,4 @@ function beginGame(state, isNew){
   }
 })();
 
-})()
+})();
