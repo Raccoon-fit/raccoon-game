@@ -48,7 +48,12 @@ const NODES = {
   shop_day:       { x:0.48, y:0.52, name:'便利店·早',  icon:'can'    },
   street_day:     { x:0.62, y:0.68, name:'街道·早',    icon:'traffic'},
   doorstep_day:   { x:0.78, y:0.52, name:'门前·早',    icon:'arch'   },
-  house_day:      { x:0.88, y:0.28, name:'红屋顶·早',  icon:'house'  }
+  house_day:      { x:0.88, y:0.28, name:'红屋顶·早',  icon:'house'  },
+
+  /* 万圣节幻境 */
+  halloween_alley:     { x:0.18, y:0.62, name:'南瓜巷',   icon:'pumpkin' },
+  halloween_forest:    { x:0.50, y:0.38, name:'糖果林',   icon:'candy'   },
+  halloween_graveyard: { x:0.82, y:0.62, name:'南瓜墓园', icon:'grave'   }
 };
 
 const EDGES = [
@@ -60,7 +65,10 @@ const EDGES = [
   
   /* 白天 */
   ['alley_day','backstreet_day'], ['backstreet_day','shop_day'],
-  ['shop_day','street_day'], ['street_day','doorstep_day'], ['doorstep_day','house_day']
+  ['shop_day','street_day'], ['street_day','doorstep_day'], ['doorstep_day','house_day'],
+
+  /* 万圣节幻境 */
+  ['halloween_alley','halloween_forest'], ['halloween_forest','halloween_graveyard']
 ];
 
 const NEIGHBORS = {};
@@ -118,7 +126,11 @@ const UNLOCK = {
   shop_day:       () => getFlag('daySequence') && hasSeenScene('shop_day'),
   street_day:     () => getFlag('daySequence') && hasSeenScene('street_day'),
   doorstep_day:   () => getFlag('daySequence') && hasSeenScene('doorstep_day'),
-  house_day:      () => getFlag('daySequence') && hasSeenScene('house_day')
+  house_day:      () => getFlag('daySequence') && hasSeenScene('house_day'),
+
+  halloween_alley:     () => getFlag('halloween_mode'),
+  halloween_forest:    () => getFlag('halloween_mode') && (hasSeenScene('halloween_forest') || isAdjacentToCurrent('halloween_forest')),
+  halloween_graveyard: () => getFlag('halloween_mode') && (hasSeenScene('halloween_graveyard') || isAdjacentToCurrent('halloween_graveyard'))
 };
 
 let canvas, ctx, dpr;
@@ -134,7 +146,21 @@ function ease(t){ return t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2; }
 function clamp(v,a,b){ return v<a?a:v>b?b:v; }
 
 /* ==================== 绘制底层 ==================== */
+function isHalloweenMode(){ return /^halloween_/.test(curScene) || getFlag('halloween_mode'); }
+
+function drawHalloweenPaper(t){
+  const g = ctx.createRadialGradient(W*.5,H*.46,40,W*.5,H*.46,W*.72);
+  g.addColorStop(0,'#3b174f'); g.addColorStop(.58,'#20102f'); g.addColorStop(1,'#0b0712');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='rgba(255,124,28,.10)';
+  for(let i=0;i<18;i++){ const x=(i*173+51)%W,y=(i*97+33)%H; ctx.beginPath(); ctx.arc(x,y,2+(i%3),0,Math.PI*2); ctx.fill(); }
+  ctx.fillStyle='rgba(8,5,12,.55)'; ctx.fillRect(0,H*.78,W,H*.22);
+  ctx.font='bold 24px serif'; ctx.textAlign='center'; ctx.fillStyle='rgba(255,145,38,.8)'; ctx.fillText('🎃  万 圣 夜 幻 境  🎃',W/2,55);
+  ctx.font='14px sans-serif'; ctx.fillStyle='rgba(205,151,255,.65)'; ctx.fillText('沿着糖纸与墓碑之间的路走',W/2,80);
+}
+
 function drawPaper(t){
+  if(isHalloweenMode()){ drawHalloweenPaper(t); return; }
   const bg = ctx.createRadialGradient(W*0.55, H*0.45, 80, W*0.55, H*0.45, W*0.75);
   bg.addColorStop(0,   '#3d2c1d');
   bg.addColorStop(0.55,'#2e2015');
@@ -249,6 +275,9 @@ const ICONS = {
   wave(){ stroke(); for(let k = 0; k < 3; k++){ const y = -6 + k * 6; ctx.beginPath(); for(let i = 0; i <= 20; i++){ const x = -14 + i * 1.4; const wy = y + Math.sin(i * 0.8 + k * 1.3) * 2; if(i === 0) ctx.moveTo(x, wy); else ctx.lineTo(x, wy); } ctx.stroke(); } },
   arch(){ stroke(); ctx.beginPath(); ctx.moveTo(-10, 14); ctx.lineTo(-10, -2); ctx.arc(0, -2, 10, Math.PI, 0); ctx.lineTo(10, 14); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-7, 14); ctx.lineTo(-7, -2); ctx.arc(0, -2, 7, Math.PI, 0); ctx.lineTo(7, 14); ctx.stroke(); ctx.fillStyle = 'rgba(200,160,80,0.8)'; ctx.beginPath(); ctx.arc(4, 6, 1.5, 0, Math.PI*2); ctx.fill(); },
   house(){ stroke(); ctx.beginPath(); ctx.moveTo(-11, 4); ctx.lineTo(-11, 14); ctx.lineTo(11, 14); ctx.lineTo(11, 4); ctx.stroke(); ctx.fillStyle = 'rgba(170,60,40,0.85)'; ctx.beginPath(); ctx.moveTo(-14, 4); ctx.lineTo(0, -14); ctx.lineTo(14, 4); ctx.closePath(); ctx.fill(); stroke('rgba(120,35,25,0.9)', 1.4); ctx.stroke(); ctx.fillStyle = 'rgba(80,45,25,0.9)'; ctx.fillRect(-3, 6, 6, 8); ctx.fillStyle = 'rgba(255,220,140,0.9)'; ctx.fillRect(-9, 8, 4, 4); ctx.fillRect(5, 8, 4, 4); },
+  pumpkin(){ stroke('#ff9a31',2); ctx.fillStyle='rgba(255,112,20,.72)'; ctx.beginPath(); ctx.ellipse(0,2,14,12,0,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.fillStyle='#ffe06d'; ctx.beginPath(); ctx.moveTo(-7,0);ctx.lineTo(-3,-4);ctx.lineTo(0,1);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(7,0);ctx.lineTo(3,-4);ctx.lineTo(0,1);ctx.closePath();ctx.fill();ctx.fillRect(-5,6,10,2); ctx.fillStyle='#6b8d35';ctx.fillRect(-2,-13,4,5); },
+  candy(){ stroke('#b76cff',2); ctx.fillStyle='rgba(255,107,190,.75)'; ctx.beginPath();ctx.arc(0,0,8,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(-8,0);ctx.lineTo(-16,-6);ctx.lineTo(-15,7);ctx.closePath();ctx.moveTo(8,0);ctx.lineTo(16,-6);ctx.lineTo(15,7);ctx.closePath();ctx.fill();ctx.stroke(); },
+  grave(){ stroke('#9c78bd',2); ctx.fillStyle='rgba(72,48,84,.9)';ctx.beginPath();ctx.moveTo(-11,14);ctx.lineTo(-9,-5);ctx.arc(0,-5,9,Math.PI,0);ctx.lineTo(11,14);ctx.closePath();ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(0,7);ctx.moveTo(-5,-2);ctx.lineTo(5,-2);ctx.stroke(); },
   ruin(){ stroke(); ctx.beginPath(); ctx.moveTo(-12, 6); ctx.lineTo(-6, -10); ctx.lineTo(0, 6); ctx.lineTo(0, 14); ctx.lineTo(-12, 14); ctx.closePath(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, 6); ctx.lineTo(4, 4); ctx.lineTo(6, 10); ctx.lineTo(4, 14); ctx.lineTo(0, 14); ctx.stroke(); ctx.beginPath(); ctx.moveTo(2, 2); ctx.lineTo(12, -6); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-9, 8); ctx.lineTo(-4, 8); ctx.lineTo(-4, 12); ctx.stroke(); }
 };
 
@@ -269,7 +298,7 @@ function drawNode(key, t){
     const waveR = 26 + Math.sin(t * 2) * 6;
     for(let k = 0; k < 2; k++){
       const r = waveR + k * 10, a = 0.35 * (1 - k * 0.4);
-      ctx.strokeStyle = `rgba(140,200,230,${a})`; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = isHalloweenMode() ? `rgba(255,132,32,${a})` : `rgba(140,200,230,${a})`; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.ellipse(0, 0, r, r * 0.55, 0, 0, Math.PI*2); ctx.stroke();
     }
   }
@@ -375,15 +404,20 @@ function render(t){
   drawPaper(t);
 
   const isDayMode = getFlag('daySequence');
+  const halloweenMode = isHalloweenMode();
   const visibleNodes = Object.keys(NODES).filter(k => {
+    const isHalloweenNode = k.indexOf('halloween_') === 0;
     const isDayNode = k.endsWith('_day');
+    if(halloweenMode) return isHalloweenNode;
+    if(isHalloweenNode) return false;
     return isDayMode ? isDayNode : !isDayNode;
   });
 
   // ★ 恢复：绘制当前模式下所有的连线
   EDGES.forEach(e => {
+    const eIsHalloween = e[0].indexOf('halloween_') === 0;
     const eIsDay = e[0].endsWith('_day');
-    if(eIsDay !== isDayMode) return;
+    if(halloweenMode ? !eIsHalloween : (eIsHalloween || eIsDay !== isDayMode)) return;
     
     const fromIsCurrent = e[0] === curScene || e[1] === curScene;
     let wp = 0;
@@ -482,8 +516,10 @@ function loop(now){
 function findNodeAt(mx, my){
   let best = null, bestD = 40 * 40;
   const isDayMode = getFlag('daySequence');
+  const halloweenMode = isHalloweenMode();
   Object.keys(NODES).forEach(k => {
-    if(isDayMode !== k.endsWith('_day')) return;
+    const isHalloweenNode = k.indexOf('halloween_') === 0;
+    if(halloweenMode ? !isHalloweenNode : (isHalloweenNode || isDayMode !== k.endsWith('_day'))) return;
     const n = NODES[k];
     if(!_isObj(n) || !_isNum(n.x) || !_isNum(n.y)) return;
     const x = px(n.x), y = py(n.y);
@@ -516,8 +552,10 @@ function onMove(e){
 function selfCheckMap(stage){
   const tag = 'selfCheck:' + (stage || '?');
   const isDayMode = getFlag('daySequence');
+  const halloweenMode = isHalloweenMode();
   Object.keys(NODES).forEach(k => {
-    if(isDayMode !== k.endsWith('_day')) return;
+    const isHalloweenNode = k.indexOf('halloween_') === 0;
+    if(halloweenMode ? !isHalloweenNode : (isHalloweenNode || isDayMode !== k.endsWith('_day'))) return;
     if(!_isFn(UNLOCK[k])) mapErr('UNLOCK["' + k + '"] 未定义', tag);
   });
 }
