@@ -1,0 +1,1091 @@
+/* =========================================================
+   3D 场景定义 —— 暗夜模式专属 v5
+   v4 + 通用 buildDoor 门构造函数，所有门贴墙且把手朝内
+   ========================================================= */
+(function(){
+'use strict';
+
+const F = () => (window.S && window.S.flags) || {};
+
+/* ==================== 辅助函数 ==================== */
+function bloodSpots(cx, cz, count, spread, color){
+  color = color || '#2a0404';
+  const arr = [];
+  for(let i = 0; i < count; i++){
+    const a = (i / count) * Math.PI * 2 + Math.random() * 0.9;
+    const d = Math.random() * spread;
+    arr.push({
+      shape: 'low',
+      x: cx + Math.cos(a) * d,
+      y: 0.006 + Math.random() * 0.008,
+      z: cz + Math.sin(a) * d,
+      w: 0.12 + Math.random() * 0.32,
+      h: 0.01,
+      color: color
+    });
+  }
+  arr.push({ shape:'low', x:cx, y:0.005, z:cz, w:0.5 + Math.random()*0.4, h:0.01, color:'#1a0202' });
+  return arr;
+}
+
+function bloodTrail(x0, z0, x1, z1, count, color){
+  color = color || '#1e0303';
+  const arr = [];
+  for(let i = 0; i < count; i++){
+    const t = i / (count - 1);
+    arr.push({
+      shape: 'low',
+      x: x0 + (x1 - x0) * t + (Math.random() - 0.5) * 0.2,
+      y: 0.005,
+      z: z0 + (z1 - z0) * t + (Math.random() - 0.5) * 0.2,
+      w: 0.18 + Math.random() * 0.22,
+      h: 0.01,
+      color: color
+    });
+  }
+  return arr;
+}
+
+function hangingMeat(wx, wy, wz, dir){
+  const arr = [];
+  const dh = 0.22;
+  let dx = 0, dz = 0;
+  if(dir === 'n') dz = -dh;
+  if(dir === 's') dz =  dh;
+  if(dir === 'e') dx =  dh;
+  if(dir === 'w') dx = -dh;
+  arr.push({ shape:'cyl', x:wx, y:wy + 0.5, z:wz, w:0.05, h:0.55, color:'#1a1410' });
+  arr.push({ shape:'torus', x:wx, y:wy + 0.5, z:wz, w:0.1, r2:0.02, color:'#0e0a08' });
+  arr.push({ shape:'bevelBox', x:wx + dx*0.3, y:wy, z:wz + dz*0.3, w:0.38, h:0.55, d:0.32, bevel:0.04, color:'#3a0606' });
+  arr.push({ shape:'plate', x:wx + dx*0.5, y:wy + 0.15, z:wz + dz*0.5, w:0.06, h:0.3, color:'#180202' });
+  arr.push({ shape:'low', x:wx, y:0.005, z:wz, w:0.35, h:0.01, color:'#1a0202' });
+  return arr;
+}
+
+function wallHandprint(wx, wy, wz){
+  const arr = [];
+  arr.push({ shape:'plate', x:wx, y:wy, z:wz, w:0.22, h:0.28, color:'#3a0404' });
+  const fingers = [[-0.09, 0.15],[-0.04, 0.19],[0.01, 0.20],[0.06, 0.18],[0.11, 0.13]];
+  for(let i = 0; i < 5; i++){
+    arr.push({
+      shape:'plate',
+      x: wx + fingers[i][0], y: wy + fingers[i][1], z: wz,
+      w: 0.04, h: 0.12, color:'#2a0303'
+    });
+  }
+  arr.push({ shape:'plate', x:wx, y:wy - 0.35, z:wz, w:0.06, h:0.6, color:'#1e0202' });
+  return arr;
+}
+
+function hangingBags(wx, wy, wz, count){
+  const arr = [];
+  for(let i = 0; i < count; i++){
+    const a = (i / count) * Math.PI * 2;
+    arr.push({ shape:'cyl', x:wx + Math.cos(a)*0.15, y:wy, z:wz + Math.sin(a)*0.15, w:0.06, h:0.35, color:'#0a0606' });
+    arr.push({ shape:'bevelBox', x:wx + Math.cos(a)*0.15, y:wy - 0.1, z:wz + Math.sin(a)*0.15, w:0.2, h:0.25, d:0.18, bevel:0.03, color:'#1a1210' });
+  }
+  return arr;
+}
+
+function burnMark(cx, cz, radius){
+  const arr = [];
+  arr.push({ shape:'low', x:cx, y:0.003, z:cz, w:radius*2, h:0.01, color:'#080404' });
+  for(let i = 0; i < 8; i++){
+    const a = (i / 8) * Math.PI * 2;
+    arr.push({
+      shape:'low',
+      x: cx + Math.cos(a) * radius * 0.9,
+      y: 0.004, z: cz + Math.sin(a) * radius * 0.9,
+      w: 0.25 + Math.random()*0.25, h:0.01, color:'#1a0c08'
+    });
+  }
+  return arr;
+}
+
+/* =========================================================
+   ★ 通用门构造函数
+   wall: 'n' | 's' | 'e' | 'w' —— 门所在的墙
+        'n' 北墙（z 小的一侧）—— 门朝 +z 方向（房间内）
+        's' 南墙（z 大的一侧）—— 门朝 -z 方向（房间内）
+        'w' 西墙（x 小的一侧）—— 门朝 +x 方向（房间内）
+        'e' 东墙（x 大的一侧）—— 门朝 -x 方向（房间内）
+   x, z: 门中心在墙内表面上的位置
+   w: 门洞宽（沿墙方向）
+   h: 门洞高
+   color: 门板主色
+   ========================================================= */
+function buildDoor(wall, x, z, w, h, color){
+  const arr = [];
+  const col = color || '#5a2814';
+  const frameCol = '#1a0a08';
+  const trimCol = '#3a1808';
+  const pillarCol = '#3a2418';
+  const handleCol = '#d0a040';
+  const sillCol = '#2a1a12';
+
+  if(wall === 'n' || wall === 's'){
+    /* 南北墙 —— 门宽沿 x 轴，把手朝房间内（n → +z，s → -z） */
+    const zDir = (wall === 'n') ? 1 : -1;
+
+    const zFrame  = z + zDir * 0.06;
+    const zDoor   = z + zDir * 0.14;
+    const zTrim   = z + zDir * 0.18;
+    const zHandle = z + zDir * 0.20;
+
+    /* 门框（凸出） */
+    arr.push({ shape:'box', x:x, y:0, z:zFrame, w:w + 0.20, h:h + 0.20, d:0.10, color: frameCol });
+    /* 门板 */
+    arr.push({ shape:'box', x:x, y:0.05, z:zDoor, w:w - 0.10, h:h - 0.15, d:0.08, color: col });
+    /* 3 条装饰横线 */
+    arr.push({ shape:'box', x:x, y:0.40, z:zTrim, w:w - 0.30, h:0.04, d:0.02, color: trimCol });
+    arr.push({ shape:'box', x:x, y:1.00, z:zTrim, w:w - 0.30, h:0.04, d:0.02, color: trimCol });
+    arr.push({ shape:'box', x:x, y:1.60, z:zTrim, w:w - 0.30, h:0.04, d:0.02, color: trimCol });
+    /* 门把手（在门板正面，靠右侧，朝房间内） */
+    arr.push({ shape:'sphere', x:x + w * 0.35, y:h * 0.5, z:zHandle, w:0.10, color: handleCol });
+    /* 门楣 */
+    arr.push({ shape:'box', x:x, y:h + 0.05, z:zFrame, w:w + 0.26, h:0.12, d:0.14, color: pillarCol });
+    /* 两侧壁柱 */
+    arr.push({ shape:'box', x:x - w/2 - 0.08, y:0, z:zFrame, w:0.14, h:h + 0.15, d:0.15, color: pillarCol });
+    arr.push({ shape:'box', x:x + w/2 + 0.08, y:0, z:zFrame, w:0.14, h:h + 0.15, d:0.15, color: pillarCol });
+    /* 门槛 */
+    arr.push({ shape:'box', x:x, y:0, z:zDoor, w:w + 0.10, h:0.05, d:0.24, color: sillCol });
+    /* 门口微光（房间内侧地面反光） */
+    arr.push({ shape:'low', x:x, y:0.02, z:z + zDir * 0.5, w:w + 0.3, h:0.02, color:'#1a0e08' });
+  } else {
+    /* 东西墙 —— 门宽沿 z 轴，把手朝房间内（e → -x，w → +x） */
+    const xDir = (wall === 'w') ? 1 : -1;
+
+    const xFrame  = x + xDir * 0.06;
+    const xDoor   = x + xDir * 0.14;
+    const xTrim   = x + xDir * 0.18;
+    const xHandle = x + xDir * 0.20;
+
+    /* 门框 */
+    arr.push({ shape:'box', x:xFrame, y:0, z:z, w:0.10, h:h + 0.20, d:w + 0.20, color: frameCol });
+    /* 门板 */
+    arr.push({ shape:'box', x:xDoor, y:0.05, z:z, w:0.08, h:h - 0.15, d:w - 0.10, color: col });
+    /* 3 条装饰横线 */
+    arr.push({ shape:'box', x:xTrim, y:0.40, z:z, w:0.02, h:0.04, d:w - 0.30, color: trimCol });
+    arr.push({ shape:'box', x:xTrim, y:1.00, z:z, w:0.02, h:0.04, d:w - 0.30, color: trimCol });
+    arr.push({ shape:'box', x:xTrim, y:1.60, z:z, w:0.02, h:0.04, d:w - 0.30, color: trimCol });
+    /* 门把手（朝房间内） */
+    arr.push({ shape:'sphere', x:xHandle, y:h * 0.5, z:z + w * 0.35, w:0.10, color: handleCol });
+    /* 门楣 */
+    arr.push({ shape:'box', x:xFrame, y:h + 0.05, z:z, w:0.14, h:0.12, d:w + 0.26, color: pillarCol });
+    /* 两侧壁柱 */
+    arr.push({ shape:'box', x:xFrame, y:0, z:z - w/2 - 0.08, w:0.15, h:h + 0.15, d:0.14, color: pillarCol });
+    arr.push({ shape:'box', x:xFrame, y:0, z:z + w/2 + 0.08, w:0.15, h:h + 0.15, d:0.14, color: pillarCol });
+    /* 门槛 */
+    arr.push({ shape:'box', x:xDoor, y:0, z:z, w:0.24, h:0.05, d:w + 0.10, color: sillCol });
+    /* 门口微光 */
+    arr.push({ shape:'low', x:x + xDir * 0.5, y:0.02, z:z, w:0.3, h:0.02, color:'#1a0e08' });
+  }
+  return arr;
+}
+
+/* =========================================================
+   通用建筑构件
+   ========================================================= */
+function buildFullLamp(x, z){
+  return [
+    { shape:'cyl',    x:x, y:0,    z:z, w:0.55, h:0.08, color:'#1a1814' },
+    { shape:'torus',  x:x, y:0.06, z:z, w:0.5,  r2:0.035, color:'#2a2018' },
+    { shape:'cyl',    x:x, y:0.1,  z:z, w:0.4,  h:0.08, color:'#161210' },
+    { shape:'cyl',    x:x, y:0.18, z:z, w:0.28, h:0.06, color:'#1a1814' },
+    { shape:'cyl',    x:x, y:0.24, z:z, w:0.18, h:2.3,  color:'#1e1a16' },
+    { shape:'torus',  x:x, y:0.4,  z:z, w:0.22, r2:0.018, color:'#2a2018' },
+    { shape:'torus',  x:x, y:1.4,  z:z, w:0.22, r2:0.018, color:'#2a2018' },
+    { shape:'torus',  x:x, y:2.4,  z:z, w:0.22, r2:0.018, color:'#2a2018' },
+    { shape:'cyl',    x:x, y:2.54, z:z, w:0.55, h:0.06, color:'#1a1814' },
+    { shape:'cone',   x:x, y:2.6,  z:z, w:0.6,  h:0.35, color:'#2a1d10' },
+    { shape:'sphere', x:x, y:2.55, z:z, w:0.42, color:'#ffe0a0' },
+    { shape:'cone',   x:x, y:2.95, z:z, w:0.65, h:0.08, color:'#1a0e08' },
+    { shape:'cyl',    x:x, y:3.03, z:z, w:0.08, h:0.15, color:'#1a1410' },
+    { shape:'sphere', x:x, y:3.2,  z:z, w:0.12, color:'#2a1d10' }
+  ];
+}
+
+function buildCrate(x, y, z, w, h, d, col){
+  return [
+    { shape:'bevelBox', x:x, y:y, z:z, w:w, h:h, d:d, bevel:Math.min(w,h,d)*0.08, color: col },
+    { shape:'box', x:x, y:y+h-0.02, z:z, w:w*1.02, h:0.03, d:d*1.02, color: '#2a2018' },
+    { shape:'box', x:x, y:y+0.01, z:z, w:w*1.02, h:0.02, d:d*1.02, color: '#1a1208' },
+    { shape:'box', x:x, y:y+h*0.4, z:z+d/2+0.005, w:w*0.7, h:h*0.2, d:0.003, color: '#0a0604' }
+  ];
+}
+
+function buildFullTrashCan(x, z){
+  return [
+    { shape:'cyl',   x:x, y:0,    z:z, w:0.78, h:0.05, color:'#0e0a08' },
+    { shape:'cyl',   x:x, y:0.05, z:z, w:0.7,  h:0.85, color:'#1a1612' },
+    { shape:'torus', x:x, y:0.15, z:z, w:0.72, r2:0.02, color:'#0a0604' },
+    { shape:'torus', x:x, y:0.55, z:z, w:0.72, r2:0.02, color:'#0a0604' },
+    { shape:'cyl',   x:x, y:0.9,  z:z, w:0.78, h:0.06, color:'#0e0a08' },
+    { shape:'cyl',   x:x, y:0.96, z:z, w:0.72, h:0.08, color:'#1a1410' },
+    { shape:'sphere',x:x, y:1.05, z:z, w:0.1,  color:'#0e0a08' }
+  ];
+}
+
+/* =========================================================
+   场景定义
+   ========================================================= */
+function buildWetSteps(x,z,count,stepW,stepD,stepH,color){
+  const arr=[]; color=color||'#24211f';
+  for(let i=0;i<count;i++){
+    arr.push({shape:'box',x:x,y:i*stepH,z:z+i*stepD,w:stepW,h:stepH,d:stepD+0.04,color:color});
+    arr.push({shape:'box',x:x,y:i*stepH+stepH,z:z+i*stepD,w:stepW*.94,h:.012,d:stepD*.86,color:i%3===0?'#342428':'#17191b'});
+  }
+  for(let side=-1;side<=1;side+=2){
+    arr.push({shape:'cyl',x:x+side*stepW*.48,y:0,z:z,w:.07,h:count*stepH+1.0,color:'#332f2b'});
+    arr.push({shape:'cyl',x:x+side*stepW*.48,y:count*stepH,z:z+(count-1)*stepD,w:.07,h:1.0,color:'#332f2b'});
+  }
+  return arr;
+}
+function appendVerticalStoryDetails(){
+  const sc=window.__SCENES_3D__; if(!sc)return;
+  sc.backstreet.props.push(...buildWetSteps(4.5,1.8,12,1.7,.22,.18,'#282321'));
+  sc.rooftop.props.push(
+    {shape:'box',x:10.5,y:.02,z:7.2,w:16,h:.025,d:1.0,color:'#171b20'},
+    {shape:'box',x:10.5,y:.05,z:7.2,w:14,h:.012,d:.68,color:'#251015'},
+    {shape:'box',x:10.5,y:.08,z:7.2,w:8,h:.008,d:.18,color:'#301010'});
+  sc.underpass.props.push(...buildWetSteps(3.5,1.8,10,2.0,.25,.17,'#25282a'));
+  sc.underpass.props.push(
+    {shape:'box',x:8.0,y:.01,z:7.5,w:8.5,h:.018,d:1.2,color:'#111a20'},
+    {shape:'box',x:8.0,y:.025,z:7.5,w:5.5,h:.01,d:.45,color:'#291015'});
+  sc.doorstep.props.push(...buildWetSteps(8.5,9.8,3,2.8,.34,.12,'#352b27'));
+  sc.riverside.props.push({shape:'box',x:7.5,y:.01,z:8.8,w:11,h:.018,d:2.2,color:'#111b20'});
+}
+window.__SCENES_3D__ = {
+
+  /* ================== 雨巷（9×20） ================== */
+  alley: {
+    wallTex: { type:'burnt', base:'#150c0a' },
+    floorTex: { base: '#0a0607' },
+    ceilTex: { base: '#050303' },
+    spawn: { x:1.5, y:14.5, dir:-Math.PI/2 },
+    rain: true,
+    shadow: { x: 5.5, z: 18.0, h: 1.7 },
+    lights: [
+      { x:1.7, y:2.6, z:2.0,  color: [1.0, 0.35, 0.15] },
+      { x:5.5, y:2.6, z:9.5,  color: [0.9, 0.30, 0.15] },
+      { x:1.7, y:2.6, z:17.5, color: [0.85, 0.25, 0.12] }
+    ],
+    grid: [
+      '111111111',
+      '100000001','100000001','100000001','100000001','100000001',
+      '100000001','100000001','100000001','100000001','100000001',
+      '100000001','100000001','100000001','100000001','100000001',
+      '100000001','100000001','100000001',
+      '111111111'
+    ],
+    props: [
+      ...buildFullLamp(1.9, 2.2),
+      ...buildFullLamp(5.6, 9.5),
+      ...buildFullLamp(1.9, 17.8),
+
+      /* ★ 巷子深处 —— 北墙 z=1，门朝 +z（房间内） */
+      ...buildDoor('n', 4.5, 1.12, 1.6, 2.30, '#3a2218'),
+
+      ...buildFullTrashCan(5.5, 6.5),
+      ...buildFullTrashCan(5.5, 7.5),
+      ...buildCrate(3.8, 0, 2.5, 0.9, 0.7, 0.9, '#1a1410'),
+      ...buildCrate(4.6, 0, 2.6, 0.6, 0.5, 0.6, '#221a12'),
+      { shape:'cyl',    x:7.8, y:0,   z:3.0, w:0.2, h:5.5, color:'#1a1410' },
+      { shape:'torus',  x:7.8, y:4.5, z:3.0, w:0.24, r2:0.03, color:'#0e0a08' },
+      { shape:'box',    x:7.8, y:5.0, z:3.0, w:0.06, h:0.06, d:2.0, color:'#1a1410' },
+      { shape:'box',    x:7.8, y:4.7, z:3.0, w:0.06, h:0.06, d:1.6, color:'#1a1410' },
+      { shape:'cyl',    x:1.4, y:0,    z:6.0, w:0.45, h:0.08, color:'#5a1510' },
+      { shape:'cyl',    x:1.4, y:0.08, z:6.0, w:0.35, h:0.7,  color:'#8a2424' },
+      { shape:'sphere', x:1.4, y:0.85, z:6.0, w:0.42, color:'#8a2424' },
+      { shape:'cyl',    x:1.15, y:0.35, z:6.0, w:0.1, h:0.18, color:'#5a1510' },
+      { shape:'cyl',    x:1.65, y:0.35, z:6.0, w:0.1, h:0.18, color:'#5a1510' },
+      { shape:'sphere', x:1.4, y:1.05, z:6.0, w:0.15, color:'#5a1510' },
+      ...bloodSpots(1.7, 3.5, 14, 0.9, '#2a0404'),
+      ...bloodTrail(5.5, 6.5, 5.5, 9.5, 10, '#1e0303'),
+      ...bloodSpots(1.7, 6.8, 8, 0.4, '#240303'),
+      ...bloodSpots(7.5, 5.5, 12, 0.8, '#260303'),
+      ...bloodSpots(7.5, 7.5, 12, 0.8, '#260303'),
+      ...wallHandprint(1.6, 1.5, 8.5),
+      ...wallHandprint(1.6, 0.9, 9.5),
+      ...wallHandprint(1.6, 1.3, 10.5),
+      ...wallHandprint(7.4, 1.6, 11.5),
+      ...wallHandprint(7.4, 1.0, 12.5),
+      { shape:'low', x:3.0, y:0.012, z:14.5, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:3.3, y:0.012, z:14.3, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:3.6, y:0.012, z:14.5, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:3.9, y:0.012, z:14.3, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:4.2, y:0.012, z:14.5, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:4.5, y:0.012, z:14.3, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:4.8, y:0.012, z:14.5, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:5.1, y:0.012, z:14.3, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'plate', x:1.6, y:1.0, z:6.5, w:0.8, h:0.5, color:'#1c1614' },
+      ...hangingMeat(7.3, 1.5, 5.5, 'w'),
+      ...hangingMeat(7.3, 1.5, 7.5, 'w'),
+      /* 墙根窄缝（bloodExit）—— 西墙 x=1 小缝 */
+      { shape:'box', x:1.06, y:0, z:17.0, w:0.15, h:2.2, d:0.3, color:'#0a0406' },
+      { shape:'box', x:1.06, y:0, z:17.6, w:0.15, h:2.2, d:0.3, color:'#0a0406' },
+      { shape:'box', x:1.09, y:0.05, z:17.3, w:0.04, h:2.0, d:0.18, color:'#5a3a10' },
+      { shape:'cyl', x:4.5, y:0, z:11.5, w:0.06, h:0.3, color:'#2a1a10' },
+      { shape:'cyl', x:4.7, y:0, z:11.6, w:0.06, h:0.28, color:'#2a1a10' },
+      { shape:'cyl', x:4.3, y:0, z:11.7, w:0.06, h:0.32, color:'#2a1a10' },
+      { shape:'sphere', x:6.2, y:0.02, z:12.5, w:0.08, color:'#2a2620' },
+      { shape:'sphere', x:2.5, y:0.02, z:11.5, w:0.06, color:'#2a2620' },
+      { shape:'sphere', x:6.8, y:0.02, z:8.5,  w:0.09, color:'#2a2620' }
+    ],
+    things: [
+      { id:'alley__lamp', storyId:'lamp',      x:1.9, y:2.2,  icon:'🕯', label:'烧了一半的路灯', scale:0.9 },
+      { id:'alley__wires', storyId:'wires',     x:3.5, y:2.0,  icon:'⚡', label:'垂下的电线',     scale:0.7 },
+      { id:'alley__graffiti', storyId:'graffiti',  x:1.6, y:6.5,  icon:'🖍', label:'墙上那半句话',   scale:0.8 },
+      { id:'alley__trash', storyId:'trash',     x:5.5, y:6.5,  icon:'🔥', label:'烧过的垃圾桶',   scale:1.0 },
+      { id:'alley__photo1', storyId:'photo1',    x:5.5, y:14.5, icon:'📄', label:'湿透的纸片',     scale:0.7,
+        cond: () => !F().photo1Taken },
+      { id:'alley__puddle', storyId:'puddle',    x:3.5, y:14.5, icon:'🩸', label:'水洼',           scale:0.6 },
+      { id:'alley__pawprints', storyId:'pawprints', x:4.3, y:14.4, icon:'🐾', label:'一串小爪印',     scale:0.6,
+        ack: true, ackId: 'pawprints' },
+      { id:'alley__bloodExit', storyId:'bloodExit', x:1.6, y:17.3, icon:'🚪', label:'墙根窄缝',       scale:0.8 },
+      { id:'alley__exit', storyId:'exit',      x:4.5, y:2.5,  icon:'➡',  label:'巷子深处',       scale:0.9 }
+    ]
+  },
+
+  /* ================== 后巷（20×16） ================== */
+  backstreet: {
+    wallTex: { type:'burnt', base:'#100806' },
+    floorTex: { base: '#080505' },
+    ceilTex: { base: '#040202' },
+    spawn: { x:1.5, y:7.5, dir:0 },
+    rain: true,
+    shadow: { x: 4.5, z: 2.5, h: 1.7 },
+    lights: [
+      { x:4.5,  y:2.6, z:2.0,  color: [0.9, 0.35, 0.15] },
+      { x:10.5, y:2.6, z:7.5,  color: [0.85, 0.30, 0.15] },
+      { x:16.5, y:2.6, z:12.5, color: [0.8, 0.25, 0.12] }
+    ],
+    grid: [
+      '11111111111111111111',
+      '10000000000000000001','10000000000000000001','10000000000000000001',
+      '10000000000000000001','10000000000000000001','10000000000000000001',
+      '10000000000000000001','10000000000000000001','10000000000000000001',
+      '10000000000000000001','10000000000000000001','10000000000000000001',
+      '10000000000000000001','10000000000000000001',
+      '11111111111111111111'
+    ],
+    props: [
+      /* 消防梯 */
+      { shape:'box',   x:4.5, y:0,    z:1.6, w:2.4, h:0.1, d:0.2, color:'#0f0a08' },
+      { shape:'cyl',   x:3.4, y:0,    z:1.7, w:0.12, h:2.5, color:'#0d0908' },
+      { shape:'cyl',   x:5.6, y:0,    z:1.7, w:0.12, h:2.5, color:'#0d0908' },
+      { shape:'cyl',   x:3.4, y:1.0,  z:1.7, w:0.14, h:0.04, color:'#1a1410' },
+      { shape:'cyl',   x:5.6, y:1.0,  z:1.7, w:0.14, h:0.04, color:'#1a1410' },
+      { shape:'cyl',   x:3.4, y:2.0,  z:1.7, w:0.14, h:0.04, color:'#1a1410' },
+      { shape:'cyl',   x:5.6, y:2.0,  z:1.7, w:0.14, h:0.04, color:'#1a1410' },
+      { shape:'cyl',   x:4.5, y:0.3,  z:1.6, w:0.05, h:2.0, color:'#2a1810' },
+      ...hangingMeat(4.5, 1.8, 2.2, 's'),
+
+      /* 纸箱堆 */
+      ...buildCrate(2.5, 0, 8.5, 0.9, 0.7, 0.9, '#100a06'),
+      ...buildCrate(3.2, 0, 8.4, 0.6, 0.4, 0.6, '#0d0804'),
+      ...buildCrate(2.0, 0, 9.2, 0.7, 0.5, 0.7, '#0e0805'),
+
+      /* ★ 后门 —— 东墙 x=19，门朝 -x（房间内） */
+      ...buildDoor('e', 18.62, 7.5, 1.4, 2.30, '#5a2814'),
+
+      /* ★ 配电房 —— 南墙 z=15，门朝 -z（房间内） */
+      ...buildDoor('s', 10.5, 14.62, 1.0, 1.80, '#2a1a12'),
+
+      ...hangingMeat(9.4, 1.6, 4.5, 'w'),
+      ...hangingMeat(9.4, 1.6, 6.5, 'w'),
+      ...hangingMeat(9.4, 1.6, 8.5, 'w'),
+      ...bloodSpots(3.0, 9.5, 18, 1.2, '#2a0404'),
+      ...bloodTrail(3.0, 9.5, 3.5, 5.0, 14, '#1e0303'),
+      ...bloodSpots(3.5, 8.5, 10, 0.5, '#240303'),
+      ...bloodSpots(12.5, 7.5, 14, 0.9, '#2a0404'),
+      ...bloodSpots(9.5, 6.5, 20, 1.4, '#260303'),
+      ...wallHandprint(1.6, 1.5, 6.5),
+      ...wallHandprint(1.6, 1.2, 8.5),
+      ...wallHandprint(1.6, 0.9, 10.5),
+      ...wallHandprint(1.6, 1.4, 12.5),
+      ...wallHandprint(14.4, 1.5, 4.5),
+      ...wallHandprint(14.4, 1.2, 6.5),
+      ...burnMark(16.5, 12.5, 1.2),
+      { shape:'cyl',    x:15.5, y:0, z:5.5, w:0.08, h:0.12, color:'#2a2018' },
+      { shape:'cyl',    x:15.8, y:0, z:5.7, w:0.07, h:0.11, color:'#2a2018' },
+      { shape:'cyl',    x:16.1, y:0, z:5.5, w:0.09, h:0.13, color:'#2a2018' },
+      { shape:'low', x:3.5, y:0.005, z:8.5, w:1.0, h:0.06, color:'#1c0e08' },
+      ...buildCrate(15.5, 0, 3.5, 0.6, 0.5, 0.6, '#1a1410')
+    ],
+    things: [
+      { id:'backstreet__stairs', storyId:'stairs',    x:4.5,  y:1.7, icon:'🪢', label:'挂断绳的消防梯', scale:1.1 },
+      { id:'backstreet__mold', storyId:'mold',      x:9.5,  y:2.0, icon:'🟥', label:'墙上的红斑',     scale:0.8 },
+      { id:'backstreet__box', storyId:'box',       x:2.5,  y:8.5, icon:'📦', label:'塌掉的纸箱',     scale:0.9 },
+      { id:'backstreet__cat', storyId:'cat',       x:3.5,  y:8.5, icon:'🩸', label:'一团灰烬',       scale:0.9,
+        cond: () => !F().catGone },
+      { id:'backstreet__door', storyId:'door',      x:17.0, y:7.5, icon:'🚪', label:'后门',           scale:1.1 },
+      { id:'backstreet__powerDoor', storyId:'powerDoor', x:10.5, y:13.0, icon:'⚡', label:'配电房',         scale:0.9 },
+      { id:'backstreet__ropeEnd', storyId:'ropeEnd',   x:4.5,  y:2.3, icon:'🪢', label:'消防梯下的断绳', scale:0.7,
+        ack: true, ackId: 'ropeEnd' },
+      { id:'backstreet__back', storyId:'back',      x:1.5,  y:7.5, icon:'⬅',  label:'回到雨巷',       scale:0.8 }
+    ]
+  },
+
+  /* ================== 便利店（15×13） ================== */
+  shop: {
+    wallTex: { type:'burnt', base:'#130b0a' },
+    floorTex: { base: '#0b0708' },
+    ceilTex: { base: '#050404' },
+    spawn: { x:2.5, y:7.5, dir:0 },
+    shadow: { x: 1.7, z: 4.5, h: 1.7 },
+    lights: [
+      { x:4.5,  y:2.6, z:4.5,  color: [1.0, 0.55, 0.25] },
+      { x:9.5,  y:2.6, z:9.5,  color: [0.9, 0.35, 0.18] },
+      { x:13.0, y:2.6, z:5.5,  color: [0.85, 0.30, 0.15] }
+    ],
+    grid: [
+      '111111111111111',
+      '100000000000001','100000000000001','100000000000001','100000000000001',
+      '100000000000001','100000000000001','100000000000001','100000000000001',
+      '100000000000001','100000000000001','100000000000001',
+      '111111111111111'
+    ],
+    props: [
+      { shape:'bevelBox', x:4.5, y:0,    z:5.5, w:4.0, h:1.8, d:0.6, bevel:0.1, color:'#100a08' },
+      { shape:'box',      x:4.5, y:1.8,  z:5.5, w:4.2, h:0.1, d:0.7, color:'#0a0605' },
+      { shape:'cyl',   x:3.5, y:0, z:4.8, w:0.2, h:0.25, color:'#1a0a0a' },
+      { shape:'cyl',   x:4.3, y:0, z:4.6, w:0.2, h:0.25, color:'#1a0a0a' },
+      { shape:'cyl',   x:5.1, y:0, z:4.9, w:0.2, h:0.25, color:'#1a0a0a' },
+      { shape:'cyl',   x:5.8, y:0, z:4.7, w:0.2, h:0.25, color:'#1a0a0a' },
+      { shape:'sphere',x:3.5, y:0.25, z:4.8, w:0.15, color:'#2a0a0a' },
+      { shape:'sphere',x:4.3, y:0.25, z:4.6, w:0.15, color:'#2a0a0a' },
+      { shape:'bevelBox', x:11.5, y:0, z:7.5, w:1.4, h:1.0, d:0.9, bevel:0.08, color:'#0f0a0a' },
+      { shape:'bevelBox', x:10.5, y:0, z:7.6, w:0.6, h:0.6, d:0.6, bevel:0.04, color:'#0a0606' },
+      { shape:'box',    x:11.5, y:1.0, z:7.4, w:0.6, h:0.4, d:0.4, color:'#050303' },
+      { shape:'plate',  x:11.5, y:1.0, z:7.2, w:0.5, h:0.3, color:'#2a0a0a' },
+
+      /* ★ 后窗 / 回后巷门 —— 西墙 x=1，门朝 +x（房间内） */
+      ...buildDoor('w', 1.10, 7.5, 1.2, 2.20, '#3a2218'),
+
+      { shape:'low', x:3.5, y:0.012, z:8.5, w:0.15, h:0.01, color:'#1a0808' },
+      { shape:'low', x:4.0, y:0.012, z:8.3, w:0.15, h:0.01, color:'#1a0808' },
+      { shape:'low', x:4.5, y:0.012, z:8.5, w:0.15, h:0.01, color:'#1a0808' },
+      { shape:'low', x:5.0, y:0.012, z:8.3, w:0.15, h:0.01, color:'#1a0808' },
+      { shape:'low', x:5.5, y:0.012, z:8.5, w:0.15, h:0.01, color:'#1a0808' },
+      { shape:'low', x:6.0, y:0.012, z:8.3, w:0.15, h:0.01, color:'#1a0808' },
+      { shape:'low', x:6.5, y:0.012, z:8.5, w:0.15, h:0.01, color:'#1a0808' },
+      { shape:'low', x:7.0, y:0.012, z:8.3, w:0.15, h:0.01, color:'#1a0808' },
+      ...bloodTrail(11.5, 7.5, 2.5, 7.5, 18, '#240303'),
+      ...bloodSpots(2.5, 7.5, 16, 1.1, '#2a0404'),
+      ...hangingMeat(13.4, 1.5, 5.5, 'w'),
+      ...hangingMeat(13.4, 1.5, 9.5, 'w'),
+      ...wallHandprint(1.6, 1.4, 4.5),
+      ...wallHandprint(1.6, 1.0, 10.5),
+      ...wallHandprint(13.4, 1.5, 11.5),
+      ...wallHandprint(13.4, 1.2, 2.5),
+      { shape:'plate', x:7.5, y:1.4, z:1.7, w:0.8, h:1.0, color:'#1a1008' },
+      ...hangingBags(9.5, 2.3, 3.5, 4),
+      ...burnMark(8.5, 11.5, 0.9),
+      { shape:'bevelBox', x:12.5, y:0.2, z:3.5, w:0.5, h:0.1, d:0.5, bevel:0.03, color:'#1a1410' },
+      { shape:'cyl', x:12.5, y:0, z:3.5, w:0.08, h:0.2, color:'#0a0606' },
+      { shape:'cyl', x:12.8, y:0, z:3.2, w:0.08, h:0.2, color:'#0a0606' },
+      { shape:'low', x:10.5, y:0.008, z:8.5, w:0.08, h:0.006, color:'#3a2a10' },
+      { shape:'low', x:10.8, y:0.008, z:8.7, w:0.07, h:0.006, color:'#3a2a10' },
+      { shape:'low', x:11.1, y:0.008, z:8.4, w:0.08, h:0.006, color:'#3a2a10' }
+    ],
+    things: [
+      { id:'shop__poster', storyId:'poster',  x:7.5,  y:1.7, icon:'📜', label:'烧了一半的海报', scale:0.8 },
+      { id:'shop__counter', storyId:'counter', x:11.5, y:7.5, icon:'💳', label:'翻倒的收银台',   scale:1.0 },
+      { id:'shop__shelf', storyId:'shelf',   x:4.5,  y:5.5, icon:'📚', label:'烧毁的货架',     scale:1.1 },
+      { id:'shop__floor', storyId:'floor',   x:7.5,  y:9.5, icon:'🐾', label:'地板上的脚印',   scale:0.7 },
+      { id:'shop__window', storyId:'window',  x:2.5,  y:7.5, icon:'🪟', label:'后窗',           scale:0.8 },
+      { id:'shop__back', storyId:'back',    x:2.5,  y:7.5, icon:'⬅',  label:'回到后巷',       scale:0.8 }
+    ]
+  },
+
+  /* ================== 街道（22×13） ================== */
+  street: {
+    wallTex: { type:'burnt', base:'#120c0a' },
+    floorTex: { base: '#0a0806' },
+    ceilTex: { base: '#040404' },
+    spawn: { x:2.5, y:7.5, dir:0 },
+    rain: true,
+    shadow: { x: 15.5, z: 7.5, h: 1.7 },
+    lights: [
+      { x:5.5,  y:2.6, z:2.0,  color: [1.0, 0.4, 0.2] },
+      { x:12.5, y:2.6, z:7.5,  color: [0.9, 0.35, 0.18] },
+      { x:20.5, y:2.6, z:11.5, color: [0.85, 0.28, 0.14] }
+    ],
+    grid: [
+      '1111111111111111111111',
+      '1000000000000000000001','1000000000000000000001','1000000000000000000001',
+      '1000000000000000000001','1000000000000000000001','1000000000000000000001',
+      '1000000000000000000001','1000000000000000000001','1000000000000000000001',
+      '1000000000000000000001','1000000000000000000001',
+      '1111111111111111111111'
+    ],
+    props: [
+      ...buildFullLamp(2.5, 2.0),
+      { shape:'bevelBox', x:4.5, y:0, z:2.0, w:0.9, h:1.8, d:0.6, bevel:0.05, color:'#0d0a08' },
+      { shape:'plate',    x:4.5, y:1.4, z:1.65, w:0.5, h:0.2, color:'#3a0a0a' },
+      { shape:'sphere',   x:4.9, y:1.0, z:1.68, w:0.08, color:'#d0a040' },
+
+      /* ★ 铁门 —— 东西向横跨街道（把街道截断成两半） */
+      /* 门柱 × 2 */
+      { shape:'box', x:15.5, y:0, z:0.6, w:0.3, h:2.8, d:0.3, color:'#2a1d10' },
+      { shape:'box', x:15.5, y:0, z:12.4, w:0.3, h:2.8, d:0.3, color:'#2a1d10' },
+      /* 顶部横梁 */
+      { shape:'box', x:15.5, y:2.6, z:6.5, w:0.18, h:0.18, d:11.8, color:'#1a1410' },
+      /* 中部横梁 */
+      { shape:'box', x:15.5, y:1.4, z:6.5, w:0.16, h:0.1, d:11.8, color:'#1a1410' },
+      /* 底部横梁 */
+      { shape:'box', x:15.5, y:0.15, z:6.5, w:0.18, h:0.18, d:11.8, color:'#1a1410' },
+      /* 竖栏杆 × 18（沿 z 均匀分布） */
+      { shape:'box', x:15.5, y:0, z:1.1, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:1.75, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:2.4, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:3.05, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:3.7, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:4.35, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:5.0, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:5.65, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:6.3, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:6.95, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:7.6, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:8.25, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:8.9, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:9.55, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:10.2, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:10.85, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      { shape:'box', x:15.5, y:0, z:11.5, w:0.09, h:2.5, d:0.09, color:'#1a1410' },
+      /* 封条（红布条）*/
+      { shape:'box', x:15.55, y:1.6, z:6.5, w:0.02, h:0.5, d:0.6, color:'#5a0a0a' },
+
+      /* 消防栓 */
+      { shape:'cyl',    x:11.5, y:0, z:4.5, w:0.5, h:0.08, color:'#5a1510' },
+      { shape:'cyl',    x:11.5, y:0.08, z:4.5, w:0.4, h:0.7, color:'#8a2424' },
+      { shape:'sphere', x:11.5, y:0.85, z:4.5, w:0.42, color:'#8a2424' },
+      { shape:'cyl',    x:11.2, y:0.35, z:4.5, w:0.1, h:0.18, color:'#5a1510' },
+      { shape:'cyl',    x:11.8, y:0.35, z:4.5, w:0.1, h:0.18, color:'#5a1510' },
+      { shape:'sphere', x:11.5, y:1.05, z:4.5, w:0.15, color:'#5a1510' },
+
+      /* 信箱 */
+      { shape:'cyl',    x:18.5, y:0,    z:3.5, w:0.08, h:0.9, color:'#1a1814' },
+      { shape:'bevelBox', x:18.5, y:0.9, z:3.5, w:0.5, h:0.6, d:0.4, bevel:0.05, color:'#3a2a1a' },
+      { shape:'box',    x:18.5, y:1.5, z:3.5, w:0.55, h:0.04, d:0.45, color:'#2a1e10' },
+
+      /* 消防栓（远处）*/
+      { shape:'cyl',    x:20.0, y:0,    z:11.5, w:0.4, h:0.08, color:'#5a1510' },
+      { shape:'cyl',    x:20.0, y:0.08, z:11.5, w:0.3, h:0.5, color:'#8a2424' },
+      { shape:'sphere', x:20.0, y:0.65, z:11.5, w:0.32, color:'#8a2424' },
+
+      /* 树 */
+      { shape:'cyl',    x:18.5, y:0, z:7.5, w:0.4, h:2.4, color:'#0a0604' },
+      { shape:'cyl',    x:18.5, y:2.4, z:7.5, w:0.6, h:0.1, color:'#0a0604' },
+      { shape:'sphere', x:18.5, y:3.0, z:7.5, w:2.2, color:'#1a2010' },
+      { shape:'sphere', x:17.8, y:3.3, z:7.8, w:1.6, color:'#16200c' },
+      { shape:'sphere', x:19.2, y:3.2, z:7.2, w:1.8, color:'#16200c' },
+
+      /* 电线杆 */
+      { shape:'cyl', x:5.5, y:0, z:6.5, w:0.15, h:5.5, color:'#1a1410' },
+      { shape:'box', x:5.5, y:5.0, z:6.5, w:0.05, h:0.05, d:2.4, color:'#1a1410' },
+      { shape:'box', x:5.5, y:4.7, z:6.5, w:0.05, h:0.05, d:1.8, color:'#1a1410' },
+      { shape:'cyl', x:8.5, y:0, z:6.5, w:0.15, h:5.5, color:'#1a1410' },
+      { shape:'box', x:8.5, y:5.0, z:6.5, w:0.05, h:0.05, d:2.4, color:'#1a1410' },
+      ...hangingMeat(15.3, 1.8, 6.5, 'w'),
+      ...hangingMeat(15.3, 1.8, 8.5, 'w'),
+      ...hangingMeat(21.4, 1.6, 3.5, 'w'),
+      ...hangingMeat(21.4, 1.6, 5.5, 'w'),
+      ...hangingMeat(21.4, 1.6, 9.5, 'w'),
+      ...hangingMeat(21.4, 1.6, 11.5, 'w'),
+      ...bloodSpots(8.5, 7.5, 22, 1.8, '#2a0404'),
+      ...bloodTrail(8.5, 7.5, 15.5, 7.5, 20, '#1e0303'),
+      ...bloodSpots(3.5, 10.5, 12, 1.0, '#260303'),
+      ...bloodSpots(13.5, 3.5, 14, 1.2, '#240303'),
+      ...bloodSpots(18.5, 7.5, 12, 1.0, '#260303'),
+      ...wallHandprint(1.6, 1.5, 4.5),
+      ...wallHandprint(1.6, 1.0, 9.5),
+      ...wallHandprint(21.4, 1.5, 6.5),
+      ...wallHandprint(21.4, 1.2, 8.5),
+      ...wallHandprint(21.4, 1.5, 7.5),
+      ...burnMark(5.5, 11.5, 1.1),
+      ...burnMark(16.5, 11.5, 0.9),
+      { shape:'torus', x:10.5, y:0.02, z:10.5, w:0.7, r2:0.04, color:'#1a1814' },
+      { shape:'torus', x:11.5, y:0.02, z:10.5, w:0.7, r2:0.04, color:'#1a1814' },
+      { shape:'box',   x:11.0, y:0.35, z:10.5, w:1.2, h:0.06, d:0.06, color:'#2a2018' },
+      { shape:'box',   x:11.0, y:0.55, z:10.5, w:0.05, h:0.4, d:0.4, color:'#2a2018' },
+      { shape:'bevelBox', x:7.5, y:0.5, z:3.0, w:2.0, h:0.08, d:0.6, bevel:0.03, color:'#3a2a1a' },
+      { shape:'box',      x:6.7, y:0, z:3.0, w:0.08, h:0.5, d:0.5, color:'#1a1410' },
+      { shape:'box',      x:8.3, y:0, z:3.0, w:0.08, h:0.5, d:0.5, color:'#1a1410' },
+      { shape:'bevelBox', x:7.5, y:0.5, z:3.35, w:2.0, h:0.6, d:0.08, bevel:0.03, color:'#3a2a1a' }
+    ],
+    things: [
+      { id:'street__lamp', storyId:'lamp',    x:2.5,  y:2.0, icon:'🕯', label:'烧断的路灯',     scale:0.9 },
+      { id:'street__power', storyId:'power',   x:4.5,  y:2.0, icon:'⚡', label:'配电房',         scale:1.0 },
+      { id:'street__under', storyId:'under',   x:7.5,  y:2.0, icon:'⬇',  label:'地下通道',       scale:0.9 },
+      { id:'street__river', storyId:'river',   x:1.7,  y:7.5, icon:'🌊', label:'河堤',           scale:0.9 },
+      { id:'street__rope', storyId:'rope',    x:7.5,  y:6.5, icon:'🧵', label:'晾衣绳',         scale:0.7 },
+      { id:'street__gate', storyId:'gate',    x:15.5, y:7.5, icon:'📜', label:'贴着封条的铁门', scale:1.2 },
+      { id:'street__tree', storyId:'tree',    x:18.5, y:3.5, icon:'🌳', label:'烧焦的梧桐',     scale:1.1 },
+      { id:'street__mailbox', storyId:'mailbox', x:18.5, y:10.5, icon:'📮', label:'信箱',           scale:0.8 },
+      { id:'street__fire', storyId:'fire',    x:20.0, y:11.5, icon:'🧯', label:'消防栓',         scale:0.7 },
+      { id:'street__back', storyId:'back',    x:1.5,  y:7.5, icon:'⬅',  label:'回后巷',         scale:0.8 }
+    ]
+  },
+
+  /* ================== 门前（15×13） ================== */
+  doorstep: {
+    wallTex: { type:'burnt', base:'#150d0a' },
+    floorTex: { base: '#0a0605' },
+    ceilTex: { base: '#040202' },
+    spawn: { x:2.5, y:11.5, dir:0 },
+    shadow: { x: 8.5, z: 10.5, h: 1.7 },
+    lights: [
+      { x:8.5, y:2.6, z:2.0,   color: [1.0, 0.4, 0.15] },
+      { x:5.5, y:2.6, z:5.5,   color: [0.85, 0.30, 0.14] },
+      { x:8.5, y:2.6, z:10.5,  color: [0.8, 0.25, 0.12] }
+    ],
+    grid: [
+      '111111111111111',
+      '100000000000001','100000000000001','100000000000001','100000000000001',
+      '100000000000001','100000000000001','100000000000001','100000000000001',
+      '100000000000001','100000000000001','100000000000001',
+      '111111111111111'
+    ],
+    props: [
+      /* 左侧窗户（房子的窗户） */
+      { shape:'plate', x:5.5, y:1.4, z:2.0, w:1.2, h:1.2, color:'#050304' },
+      { shape:'bevelBox', x:5.5, y:0, z:3.0, w:1.4, h:0.4, d:0.5, bevel:0.05, color:'#0a0605' },
+
+      /* ★ 主门（通向红屋顶）—— 北墙 z=1，门朝 +z */
+      ...buildDoor('n', 8.5, 1.12, 1.4, 2.40, '#6a3020'),
+
+      /* ★ 回街道门 —— 西墙 x=1，门朝 +x */
+      ...buildDoor('w', 1.12, 7.5, 1.2, 2.20, '#3a2218'),
+
+      /* 台阶 × 3 */
+      { shape:'bevelBox', x:8.5, y:0,    z:10.5, w:2.2, h:0.14, d:0.6, bevel:0.04, color:'#0d0908' },
+      { shape:'bevelBox', x:8.5, y:0.14, z:9.8,  w:1.8, h:0.14, d:0.6, bevel:0.04, color:'#0f0a08' },
+      { shape:'bevelBox', x:8.5, y:0.28, z:9.1,  w:1.4, h:0.14, d:0.6, bevel:0.04, color:'#100b08' },
+
+      /* 台阶爪印 */
+      { shape:'low', x:8.2, y:0.30, z:8.8, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:8.6, y:0.30, z:8.6, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:8.9, y:0.16, z:9.4, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:8.5, y:0.16, z:9.2, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:8.2, y:0.02, z:10.2, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:8.6, y:0.02, z:10.0, w:0.14, h:0.01, color:'#1a0808' },
+
+      /* 门灯 × 2 */
+      { shape:'cyl',    x:7.0, y:2.4, z:2.05, w:0.05, h:0.3, color:'#1a1410' },
+      { shape:'cone',   x:7.0, y:2.25, z:2.15, w:0.32, h:0.2, color:'#1a1410' },
+      { shape:'sphere', x:7.0, y:2.2, z:2.15, w:0.22, color:'#ffd27a' },
+      { shape:'cyl',    x:10.0, y:2.4, z:2.05, w:0.05, h:0.3, color:'#1a1410' },
+      { shape:'cone',   x:10.0, y:2.25, z:2.15, w:0.32, h:0.2, color:'#1a1410' },
+      { shape:'sphere', x:10.0, y:2.2, z:2.15, w:0.22, color:'#ffd27a' },
+
+      ...bloodSpots(8.5, 11.5, 16, 1.2, '#2a0404'),
+      ...bloodTrail(8.5, 11.5, 8.5, 7.5, 12, '#1e0303'),
+      ...hangingMeat(4.5, 1.6, 2.5, 's'),
+      ...hangingMeat(6.5, 1.6, 2.5, 's'),
+      ...hangingMeat(10.5, 1.6, 2.5, 's'),
+      ...wallHandprint(2.0, 1.5, 5.5),
+      ...wallHandprint(13.4, 1.4, 5.5),
+      ...wallHandprint(13.4, 1.0, 8.5),
+      { shape:'cone',   x:12.5, y:0, z:3.5, w:0.5, h:0.5, color:'#0a0605' },
+      { shape:'sphere', x:12.5, y:0.6, z:3.5, w:0.4, color:'#2a3018' },
+      { shape:'sphere', x:12.5, y:0.75, z:3.5, w:0.25, color:'#3a4020' },
+      { shape:'cyl', x:11.5, y:0.008, z:8.5, w:0.7, h:0.02, color:'#0a0606' },
+      { shape:'torus', x:11.5, y:0.02, z:8.5, w:0.65, r2:0.04, color:'#1a1410' }
+    ],
+    things: [
+      { id:'doorstep__window', storyId:'window', x:5.5,  y:2.0,  icon:'🪟', label:'烧穿的窗户',     scale:1.0 },
+      { id:'doorstep__lamp', storyId:'lamp',   x:8.5,  y:2.0,  icon:'🕯', label:'烧化的门灯',     scale:0.7 },
+      { id:'doorstep__door', storyId:'door',   x:8.5,  y:2.5,  icon:'🚪', label:'门',             scale:1.2 },
+      { id:'doorstep__steps', storyId:'steps',  x:8.5,  y:10.5, icon:'🐾', label:'台阶上的脚印',   scale:0.6 },
+      { id:'doorstep__back', storyId:'back',   x:2.5,  y:7.5,  icon:'⬅',  label:'回到街道',       scale:0.8 }
+    ]
+  },
+
+  /* ================== 红屋顶（15×13） ================== */
+  house: {
+    wallTex: { type:'burnt', base:'#100806' },
+    floorTex: { base: '#0c0604' },
+    ceilTex: { base: '#030202' },
+    spawn: { x:7.5, y:7.5, dir:Math.PI },
+    shadow: { x: 3.5, z: 2.0, h: 1.7 },
+    lights: [
+      { x:3.5,  y:2.6, z:2.5,  color: [1.0, 0.5, 0.25] },
+      { x:7.5,  y:2.6, z:7.5,  color: [0.95, 0.40, 0.20] },
+      { x:12.5, y:2.6, z:11.5, color: [0.85, 0.30, 0.15] }
+    ],
+    grid: [
+      '111111111111111',
+      '100000000000001','100000000000001','100000000000001','100000000000001',
+      '100000000000001','100000000000001','100000000000001','100000000000001',
+      '100000000000001','100000000000001','100000000000001',
+      '111111111111111'
+    ],
+    props: [
+      { shape:'plate', x:3.5, y:1.4, z:2.0, w:1.2, h:1.2, color:'#040204' },
+
+      /* ★ 回门前的出口 —— 北墙 z=1，门朝 +z */
+      ...buildDoor('n', 7.5, 1.12, 1.4, 2.30, '#3a2218'),
+
+      { shape:'bevelBox', x:2.0, y:0, z:6.5, w:0.5, h:2.0, d:1.2, bevel:0.04, color:'#0a0605' },
+      { shape:'box',      x:2.0, y:0.6, z:6.5, w:0.55, h:0.04, d:1.25, color:'#1a1208' },
+      { shape:'box',      x:2.0, y:1.2, z:6.5, w:0.55, h:0.04, d:1.25, color:'#1a1208' },
+      { shape:'box',      x:2.0, y:1.8, z:6.5, w:0.55, h:0.04, d:1.25, color:'#1a1208' },
+      { shape:'cyl',    x:12.5, y:0,    z:4.5, w:0.35, h:0.5, color:'#0a0605' },
+      { shape:'cyl',    x:12.5, y:0.5,  z:4.5, w:0.12, h:0.8, color:'#0a0605' },
+      { shape:'cone',   x:12.5, y:1.3,  z:4.5, w:0.7, h:0.5, color:'#1a1208' },
+      { shape:'sphere', x:12.5, y:1.5,  z:4.5, w:0.35, color:'#3a2010' },
+      { shape:'box', x:7.5, y:0.9, z:11.5, w:0.8, h:0.6, d:0.05, color:'#100a06' },
+      { shape:'box', x:7.5, y:0.9, z:11.52, w:0.7, h:0.5, d:0.02, color:'#1a1208' },
+      { shape:'bevelBox', x:3.5, y:0,    z:9.5, w:0.9, h:0.15, d:1.1, bevel:0.04, color:'#0a0605' },
+      { shape:'bevelBox', x:3.5, y:0.15, z:10.0, w:0.9, h:0.6, d:0.15, bevel:0.04, color:'#0a0605' },
+      { shape:'cyl',      x:3.0, y:0.15, z:9.0, w:0.06, h:0.6, color:'#0a0605' },
+      { shape:'cyl',      x:4.0, y:0.15, z:9.0, w:0.06, h:0.6, color:'#0a0605' },
+      { shape:'cone',   x:4.5, y:0.02, z:11.5, w:0.35, h:0.12, color:'#1a0a08' },
+      { shape:'torus',  x:4.5, y:0.12, z:11.5, w:0.32, r2:0.025, color:'#2a1a10' },
+      { shape:'bevelBox', x:7.5, y:0.5, z:5.0, w:1.8, h:0.1, d:0.7, bevel:0.05, color:'#1a1008' },
+      { shape:'cyl', x:6.8, y:0, z:4.7, w:0.1, h:0.5, color:'#0a0605' },
+      { shape:'cyl', x:8.2, y:0, z:4.7, w:0.1, h:0.5, color:'#0a0605' },
+      { shape:'cyl', x:6.8, y:0, z:5.3, w:0.1, h:0.5, color:'#0a0605' },
+      { shape:'cyl', x:8.2, y:0, z:5.3, w:0.1, h:0.5, color:'#0a0605' },
+      { shape:'low', x:7.5, y:0.005, z:7.5, w:2.2, h:0.02, color:'#1a0a08' },
+      { shape:'low', x:7.5, y:0.006, z:2.0, w:1.2, h:0.02, color:'#060404' },
+      ...bloodSpots(7.5, 10.5, 20, 1.6, '#2a0404'),
+      ...bloodTrail(7.5, 10.5, 7.5, 4.5, 16, '#1e0303'),
+      ...bloodTrail(7.5, 2.5, 3.5, 2.5, 12, '#240303'),
+      ...hangingMeat(13.4, 1.6, 6.5, 'w'),
+      ...hangingMeat(13.4, 1.6, 8.5, 'w'),
+      ...hangingMeat(13.4, 1.6, 10.5, 'w'),
+      ...bloodSpots(12.5, 8.5, 16, 1.2, '#260303'),
+      ...wallHandprint(2.0, 1.5, 4.5),
+      ...wallHandprint(2.0, 1.2, 8.5),
+      ...wallHandprint(13.4, 1.5, 3.5),
+      ...wallHandprint(13.4, 1.2, 11.5),
+      { shape:'cyl',    x:7.5, y:2.3, z:12.8, w:0.4, h:0.08, color:'#2a1a10' },
+      { shape:'cyl',    x:7.5, y:2.28, z:12.85, w:0.32, h:0.05, color:'#d8c8a8' },
+      { shape:'sphere', x:7.5, y:2.28, z:12.88, w:0.04, color:'#3a2010' },
+      { shape:'cyl',    x:7.5, y:2.6, z:7.5, w:0.03, h:0.5, color:'#0a0605' },
+      { shape:'sphere', x:7.5, y:2.5, z:7.5, w:0.15, color:'#1a0a08' },
+      { shape:'bevelBox', x:10.5, y:0, z:10.5, w:0.5, h:0.6, d:0.5, bevel:0.04, color:'#0a0605' }
+    ],
+    things: [
+      { id:'house__window', storyId:'window', x:3.5,  y:2.0,  icon:'🪟', label:'窗户',           scale:1.1 },
+      { id:'house__clock', storyId:'clock',  x:7.5,  y:2.0,  icon:'🕰', label:'停了的挂钟',     scale:0.8 },
+      { id:'house__books', storyId:'books',  x:2.0,  y:6.5,  icon:'📚', label:'烧掉的书架',     scale:0.9 },
+      { id:'house__lamp', storyId:'lamp',   x:12.5, y:4.5,  icon:'💡', label:'台灯的铁架',     scale:0.8 },
+      { id:'house__frame', storyId:'frame',  x:7.5,  y:11.5, icon:'🖼', label:'烧焦的相框',     scale:0.9,
+        ack: true, ackId: 'photoBack' },
+      { id:'house__chair', storyId:'chair',  x:3.5,  y:9.5,  icon:'🪑', label:'翻倒的摇椅',     scale:1.0 },
+      { id:'house__bowl', storyId:'bowl',   x:4.5,  y:11.5, icon:'🥣', label:'小碗',           scale:0.6 },
+      { id:'house__back', storyId:'back',   x:7.5,  y:2.5,  icon:'⬅',  label:'回到门前',       scale:0.8 }
+    ]
+  },
+
+  /* ================== 配电房（12×11） ================== */
+  powerstation: {
+    wallTex: { type:'burnt', base:'#0e0c0c' },
+    floorTex: { base: '#080606' },
+    ceilTex: { base: '#030303' },
+    spawn: { x:2.5, y:7.5, dir:0 },
+    lights: [
+      { x:2.5,  y:2.6, z:4.5,  color: [0.9, 0.35, 0.18] },
+      { x:7.5,  y:2.6, z:9.5,  color: [0.9, 0.30, 0.15] },
+      { x:10.5, y:2.6, z:4.5,  color: [1.0, 0.30, 0.15] }
+    ],
+    grid: [
+      '111111111111',
+      '100000000001','100000000001','100000000001','100000000001',
+      '100000000001','100000000001','100000000001','100000000001',
+      '100000000001',
+      '111111111111'
+    ],
+    props: [
+      { shape:'bevelBox', x:10.5, y:0, z:4.5, w:1.4, h:2.0, d:0.9, bevel:0.06, color:'#0d0a08' },
+      { shape:'box',      x:10.5, y:1.3, z:4.5, w:0.5, h:0.2, d:0.1, color:'#2a0808' },
+      { shape:'sphere',   x:10.5, y:1.4, z:4.42, w:0.1, color:'#ff2020' },
+      { shape:'cyl',      x:9.8, y:0.02, z:5.0, w:0.1, h:0.4, color:'#1a0606' },
+      { shape:'bevelBox', x:2.0, y:0.8, z:4.5, w:0.7, h:1.4, d:0.25, bevel:0.03, color:'#0d0a08' },
+      { shape:'sphere',   x:2.0, y:1.5, z:4.35, w:0.06, color:'#40c040' },
+      { shape:'sphere',   x:2.0, y:1.3, z:4.35, w:0.06, color:'#40c040' },
+      { shape:'sphere',   x:2.0, y:1.1, z:4.35, w:0.06, color:'#40c040' },
+      { shape:'sphere',   x:2.0, y:0.9, z:4.35, w:0.06, color:'#40c040' },
+      { shape:'bevelBox', x:7.5, y:0, z:9.5, w:1.8, h:0.7, d:1.0, bevel:0.05, color:'#0d0a08' },
+      { shape:'plate',    x:7.5, y:0.7, z:9.5, w:0.7, h:0.4, color:'#2a1a10' },
+      { shape:'plate', x:7.5, y:0.72, z:9.3, w:0.4, h:0.1, color:'#3a2a1a' },
+      ...bloodSpots(7.5, 9.5, 12, 0.8, '#2a0404'),
+      ...bloodTrail(7.5, 10.0, 2.0, 7.5, 14, '#1e0303'),
+      { shape:'cyl',    x:2.5, y:2.2, z:2.0, w:0.25, h:0.15, color:'#1a0606' },
+      { shape:'sphere', x:2.5, y:2.15, z:2.0, w:0.2, color:'#ff8040' },
+      { shape:'cyl', x:7.5, y:0.5, z:2.0, w:0.05, h:1.8, color:'#0a0606' },
+      ...hangingMeat(10.4, 1.6, 7.5, 'w'),
+      ...hangingMeat(10.4, 1.6, 9.5, 'w'),
+      ...hangingMeat(1.6, 1.6, 4.5, 'e'),
+      ...hangingMeat(1.6, 1.6, 7.5, 'e'),
+      ...wallHandprint(1.6, 1.5, 9.5),
+      ...wallHandprint(10.4, 1.5, 2.5),
+      ...burnMark(4.5, 7.5, 0.8),
+      { shape:'cyl',   x:4.5, y:0, z:6.0, w:0.6, h:0.9, color:'#1a1410' },
+      { shape:'torus', x:4.5, y:0.15, z:6.0, w:0.62, r2:0.02, color:'#0a0604' },
+      { shape:'torus', x:4.5, y:0.75, z:6.0, w:0.62, r2:0.02, color:'#0a0604' }
+    ],
+    things: [
+      { id:'powerstation__breaker', storyId:'breaker', x:10.5, y:4.5,  icon:'⚡', label:'断了的电闸',     scale:1.0 },
+      { id:'powerstation__fuse', storyId:'fuse',    x:2.0,  y:4.5,  icon:'🔌', label:'保险丝盒',       scale:0.9 },
+      { id:'powerstation__log', storyId:'log',     x:7.5,  y:9.5,  icon:'📓', label:'工作日志',       scale:0.8 },
+      { id:'powerstation__back', storyId:'back',    x:1.5,  y:7.5,  icon:'⬅',  label:'回去',           scale:0.8 }
+    ]
+  },
+
+  /* ================== 屋顶（20×16） ================== */
+  rooftop: {
+    wallTex: { type:'burnt', base:'#0c0a08' },
+    floorTex: { base: '#060604' },
+    ceilTex: { base: '#020203' },
+    spawn: { x:7.5, y:11.5, dir:Math.PI },
+    lights: [
+      { x:7.5,  y:3.5, z:7.5,  color: [0.35, 0.35, 0.6], conditional: false },
+      { x:15.5, y:1.5, z:4.5,  color: [1.0, 0.35, 0.15], conditional: false },
+      { x:3.5,  y:2.6, z:3.5,  color: [0.9, 0.30, 0.15] }
+    ],
+    grid: [
+      '11111111111111111111',
+      '10000000000000000001','10000000000000000001','10000000000000000001',
+      '10000000000000000001','10000000000000000001','10000000000000000001',
+      '10000000000000000001','10000000000000000001','10000000000000000001',
+      '10000000000000000001','10000000000000000001','10000000000000000001',
+      '10000000000000000001','10000000000000000001',
+      '11111111111111111111'
+    ],
+    props: [
+      { shape:'cyl',    x:3.5, y:0,   z:2.0, w:0.12, h:2.5, color:'#0d0908' },
+      { shape:'torus',  x:3.5, y:2.2, z:2.0, w:0.2, r2:0.03, color:'#1a1410' },
+      { shape:'sphere', x:3.5, y:2.55, z:2.0, w:0.15, color:'#2a1d10' },
+      { shape:'cyl',    x:3.5, y:2.5, z:2.0, w:0.06, h:0.3, color:'#0d0908' },
+      { shape:'sphere', x:3.5, y:2.85, z:2.0, w:0.1, color:'#ff6060' },
+      { shape:'cyl',    x:17.5, y:0,   z:2.0, w:0.9, h:1.2, color:'#0a0806' },
+      { shape:'torus',  x:17.5, y:0.15, z:2.0, w:0.92, r2:0.03, color:'#1a1410' },
+      { shape:'torus',  x:17.5, y:0.6,  z:2.0, w:0.92, r2:0.03, color:'#1a1410' },
+      { shape:'torus',  x:17.5, y:1.05, z:2.0, w:0.92, r2:0.03, color:'#1a1410' },
+      { shape:'cone',   x:17.5, y:1.2,  z:2.0, w:1.1, h:0.5, color:'#1a1410' },
+      { shape:'sphere', x:17.5, y:1.75, z:2.0, w:0.15, color:'#0a0806' },
+      { shape:'cyl', x:9.5, y:0, z:3.5, w:0.08, h:2.0, color:'#0a0606' },
+      { shape:'box', x:9.5, y:2.0, z:3.5, w:0.04, h:0.04, d:1.0, color:'#0a0606' },
+      { shape:'cyl', x:9.5, y:0.5, z:6.0, w:0.05, h:1.6, color:'#2a1810' },
+      ...hangingMeat(9.5, 1.2, 6.4, 's'),
+      ...hangingMeat(9.5, 1.2, 5.6, 's'),
+      { shape:'box', x:7.5, y:0, z:8.5, w:5.0, h:0.7, d:0.2, color:'#0a0806' },
+      { shape:'bevelBox', x:15.5, y:0, z:4.5, w:1.5, h:1.2, d:1.2, bevel:0.08, color:'#0a0404' },
+      { shape:'sphere',   x:15.5, y:1.75, z:4.5, w:0.5, color:'#5a1010' },
+      { shape:'cyl',    x:15.5, y:1.6, z:4.5, w:0.5, h:0.4, color:'#1a0a08' },
+      { shape:'sphere', x:15.5, y:1.95, z:4.5, w:0.2, color:'#ff4020' },
+      ...bloodSpots(7.5, 11.5, 20, 1.8, '#2a0404'),
+      ...bloodTrail(7.5, 11.5, 7.5, 6.5, 16, '#1e0303'),
+      ...bloodSpots(15.5, 7.5, 14, 1.2, '#240303'),
+      ...wallHandprint(1.6, 1.5, 6.5),
+      ...wallHandprint(1.6, 1.2, 10.5),
+      ...wallHandprint(18.4, 1.5, 6.5),
+      ...wallHandprint(18.4, 1.2, 10.5),
+      ...burnMark(15.5, 12.5, 1.3),
+      { shape:'cyl',    x:5.5, y:0, z:11.5, w:0.5, h:0.3, color:'#2a1810' },
+      { shape:'torus',  x:5.5, y:0.15, z:11.5, w:0.5, r2:0.04, color:'#1a1410' }
+    ],
+    things: [
+      { id:'rooftop__antenna', storyId:'antenna',   x:3.5,  y:2.0,  icon:'📡', label:'锈天线',         scale:1.1 },
+      { id:'rooftop__watertank', storyId:'watertank', x:17.5, y:2.0,  icon:'🛢', label:'水塔',           scale:1.1 },
+      { id:'rooftop__hang', storyId:'hang',      x:9.5,  y:3.5,  icon:'🧵', label:'晾衣架',         scale:0.8 },
+      { id:'rooftop__houseroof', storyId:'houseroof', x:15.5, y:4.5,  icon:'🏠', label:'远处的焦黑屋顶', scale:1.0 },
+      { id:'rooftop__back', storyId:'back',      x:1.5,  y:7.5,  icon:'⬅',  label:'回到后巷',       scale:0.8 }
+    ]
+  },
+
+  /* ================== 地下通道（16×12） ================== */
+  underpass: {
+    wallTex: { type:'burnt', base:'#0e0e10' },
+    floorTex: { base: '#060606' },
+    ceilTex: { base: '#030303' },
+    spawn: { x:2.5, y:7.5, dir:0 },
+    lights: [
+      { x:3.5,  y:2.6, z:2.0,  color: [0.9, 0.30, 0.15] },
+      { x:7.5,  y:2.6, z:7.5,  color: [0.9, 0.28, 0.14] },
+      { x:11.5, y:2.6, z:11.5, color: [0.85, 0.25, 0.12] }
+    ],
+    grid: [
+      '1111111111111111',
+      '1000000000000001','1000000000000001','1000000000000001','1000000000000001',
+      '1000000000000001','1000000000000001','1000000000000001','1000000000000001',
+      '1000000000000001','1000000000000001',
+      '1111111111111111'
+    ],
+    props: [
+      { shape:'bevelBox', x:3.5, y:0,   z:2.0, w:1.4, h:0.3, d:0.9, bevel:0.04, color:'#0a0808' },
+      { shape:'bevelBox', x:3.5, y:0.3, z:2.5, w:1.2, h:0.3, d:0.5, bevel:0.04, color:'#0c0a08' },
+      { shape:'bevelBox', x:3.5, y:0.6, z:2.9, w:1.0, h:0.3, d:0.4, bevel:0.04, color:'#0e0c0a' },
+      { shape:'plate', x:6.5, y:1.0, z:2.0, w:1.4, h:0.7, color:'#1a1008' },
+      { shape:'box',    x:10.5, y:2.2, z:2.0, w:0.3, h:0.15, d:0.15, color:'#0a1408' },
+      { shape:'sphere', x:10.5, y:2.15, z:2.0, w:0.15, color:'#40c040' },
+      { shape:'bevelBox', x:11.5, y:0, z:10.5, w:1.2, h:0.15, d:0.9, bevel:0.04, color:'#1a1208' },
+      { shape:'bevelBox', x:11.5, y:0.15, z:10.5, w:0.8, h:0.12, d:0.7, bevel:0.04, color:'#1a1208' },
+
+      /* ★ 配电房门 —— 东墙 x=15，门朝 -x（房间内） */
+      ...buildDoor('e', 14.62, 7.5, 1.0, 1.80, '#2a1a12'),
+
+      ...bloodSpots(6.5, 2.5, 8, 0.5, '#240303'),
+      ...bloodSpots(11.5, 10.5, 12, 0.9, '#2a0404'),
+      ...bloodTrail(3.5, 2.5, 3.5, 10.5, 16, '#1e0303'),
+      ...bloodTrail(11.5, 10.5, 3.5, 10.5, 14, '#240303'),
+      ...bloodSpots(7.5, 7.5, 18, 1.4, '#280404'),
+      ...wallHandprint(1.6, 1.5, 5.5),
+      ...wallHandprint(1.6, 1.2, 9.5),
+      ...wallHandprint(14.4, 1.5, 5.5),
+      ...wallHandprint(14.4, 1.2, 9.5),
+      ...hangingMeat(14.4, 1.6, 4.5, 'w'),
+      ...hangingMeat(1.6, 1.6, 4.5, 'e'),
+      ...burnMark(5.5, 11.5, 0.8),
+      { shape:'cyl',    x:7.5, y:2.5, z:7.5, w:0.15, h:0.15, color:'#2a1a10' },
+      { shape:'torus',  x:7.5, y:2.5, z:7.5, w:0.18, r2:0.03, color:'#1a1410' },
+      { shape:'box',    x:7.5, y:2.5, z:7.5, w:0.05, h:0.05, d:3.0, color:'#1a1410' }
+    ],
+    things: [
+      { id:'underpass__stairs', storyId:'stairs',    x:3.5,  y:2.0,  icon:'🪜', label:'上方的楼梯',     scale:1.0 },
+      { id:'underpass__graffiti', storyId:'graffiti',  x:6.5,  y:2.0,  icon:'✍',  label:'墙上的字',       scale:0.8 },
+      { id:'underpass__emergency', storyId:'emergency', x:10.5, y:2.0,  icon:'💡', label:'应急灯',         scale:0.7 },
+      { id:'underpass__trash', storyId:'trash',     x:11.5, y:10.5, icon:'📦', label:'角落里的纸板',   scale:0.9 },
+      { id:'underpass__room', storyId:'room',      x:13.0, y:7.5,  icon:'⚡', label:'配电房的门',     scale:0.9 },
+      { id:'underpass__back', storyId:'back',      x:1.5,  y:7.5,  icon:'⬅',  label:'回到街道',       scale:0.8 }
+    ]
+  },
+
+  /* ================== 河堤（15×11） ================== */
+  riverside: {
+    wallTex: { type:'burnt', base:'#0c0a0c' },
+    floorTex: { base: '#060608' },
+    ceilTex: { base: '#020203' },
+    spawn: { x:2.5, y:7.5, dir:0 },
+    rain: true,
+    lights: [
+      { x:3.5,  y:2.6, z:2.0,  color: [0.95, 0.35, 0.16] },
+      { x:7.5,  y:1.4, z:5.5,  color: [0.30, 0.40, 0.65], conditional: false },
+      { x:12.5, y:2.6, z:10.5, color: [0.85, 0.28, 0.14] }
+    ],
+    grid: [
+      '111111111111111',
+      '100000000000001','100000000000001','100000000000001','100000000000001',
+      '100000000000001','100000000000001','100000000000001','100000000000001',
+      '100000000000001',
+      '111111111111111'
+    ],
+    props: [
+      ...buildFullLamp(3.5, 2.0),
+      { shape:'bevelBox', x:7.5, y:0.6,  z:2.0, w:1.8, h:0.1, d:0.5, bevel:0.04, color:'#0a0605' },
+      { shape:'bevelBox', x:7.5, y:0.7,  z:2.3, w:1.8, h:0.15, d:0.4, bevel:0.04, color:'#1a0e08' },
+      { shape:'box',      x:7.5, y:0,    z:1.85, w:0.1, h:0.6, d:0.5, color:'#0a0605' },
+      { shape:'box',      x:7.5, y:0,    z:2.15, w:0.1, h:0.6, d:0.5, color:'#0a0605' },
+      { shape:'cyl',      x:6.7, y:0,    z:2.0, w:0.08, h:0.6, color:'#0a0605' },
+      { shape:'cyl',      x:8.3, y:0,    z:2.0, w:0.08, h:0.6, color:'#0a0605' },
+      { shape:'cone',   x:11.5, y:0.5, z:2.0, w:0.9, h:0.3, color:'#1a0a08' },
+      { shape:'cyl',    x:11.5, y:0,   z:2.0, w:0.05, h:0.5, color:'#0a0606' },
+      { shape:'sphere', x:11.5, y:0.85, z:2.0, w:0.1, color:'#0a0606' },
+      { shape:'low', x:7.5, y:0.02, z:11.5, w:8.0, h:0.03, color:'#030408' },
+      { shape:'cyl',    x:2.5, y:0, z:5.5, w:0.08, h:1.0, color:'#0a0806' },
+      { shape:'torus',  x:2.5, y:1.0, z:5.5, w:0.1, r2:0.02, color:'#1a1410' },
+      { shape:'cyl',    x:12.5, y:0, z:5.5, w:0.08, h:1.0, color:'#0a0806' },
+      ...bloodSpots(7.5, 2.0, 12, 0.7, '#2a0404'),
+      ...hangingMeat(4.0, 1.5, 5.4, 's'),
+      ...hangingMeat(10.5, 1.5, 5.4, 's'),
+      ...bloodSpots(7.5, 7.5, 18, 1.6, '#2a0404'),
+      ...bloodTrail(7.5, 7.5, 3.5, 7.5, 12, '#1e0303'),
+      ...wallHandprint(1.6, 1.5, 5.5),
+      ...wallHandprint(13.4, 1.5, 5.5),
+      ...wallHandprint(13.4, 1.2, 9.5),
+      { shape:'cone',   x:5.5, y:0, z:11.5, w:0.3, h:0.5, color:'#1a1210' },
+      { shape:'cone',   x:6.2, y:0, z:11.6, w:0.25, h:0.45, color:'#1a1210' },
+      { shape:'cone',   x:9.5, y:0, z:11.4, w:0.28, h:0.5, color:'#1a1210' },
+      { shape:'cyl', x:7.5, y:0.5, z:5.5, w:0.1, h:0.1, color:'#0a0806' },
+      { shape:'box', x:7.5, y:0.5, z:5.5, w:5.0, h:0.06, d:0.06, color:'#0a0806' },
+      { shape:'cyl', x:5.5, y:0, z:5.5, w:0.06, h:0.5, color:'#0a0806' },
+      { shape:'cyl', x:9.5, y:0, z:5.5, w:0.06, h:0.5, color:'#0a0806' }
+    ],
+    things: [
+      { id:'riverside__lamp', storyId:'lamp',     x:3.5,  y:2.0,  icon:'🕯', label:'熄灭的路灯',     scale:0.9 },
+      { id:'riverside__bench', storyId:'bench',    x:7.5,  y:2.0,  icon:'🧥', label:'长椅上的旧外套', scale:1.0 },
+      { id:'riverside__umbrella', storyId:'umbrella', x:11.5, y:2.0,  icon:'☂',  label:'丢弃的伞',       scale:0.9 },
+      { id:'riverside__river', storyId:'river',    x:7.5,  y:11.5, icon:'🌊', label:'河面',           scale:1.2 },
+      { id:'riverside__back', storyId:'back',     x:1.5,  y:7.5,  icon:'⬅',  label:'回到街道',       scale:0.8 }
+    ]
+  },
+
+  /* ================== 邻屋（15×13） ================== */
+  neighbor: {
+    wallTex: { type:'burnt', base:'#0a0606' },
+    floorTex: { base: '#060404' },
+    ceilTex: { base: '#020202' },
+    spawn: { x:2.5, y:7.5, dir:0 },
+    lights: [
+      { x:7.5,  y:2.6, z:2.0,  color: [1.2, 0.35, 0.2], conditional: false },
+      { x:7.5,  y:2.6, z:7.5,  color: [0.85, 0.30, 0.15] },
+      { x:12.5, y:2.6, z:10.5, color: [0.8, 0.25, 0.12] }
+    ],
+    grid: [
+      '111111111111111',
+      '100000000000001','100000000000001','100000000000001','100000000000001',
+      '100000000000001','100000000000001','100000000000001','100000000000001',
+      '100000000000001','100000000000001','100000000000001',
+      '111111111111111'
+    ],
+    props: [
+      /* 窗户 */
+      { shape:'plate', x:7.5, y:1.4, z:2.0, w:1.8, h:1.6, color:'#0a0404' },
+      { shape:'plate', x:7.5, y:1.7, z:1.95, w:0.6, h:0.4, color:'#3a0808' },
+
+      /* 日历 */
+      { shape:'plate', x:3.5, y:1.6, z:2.0, w:0.5, h:0.7, color:'#2a1e10' },
+
+      /* 小床 */
+      { shape:'bevelBox', x:12.5, y:0,   z:7.5, w:2.2, h:0.5, d:1.2, bevel:0.06, color:'#0a0605' },
+      { shape:'bevelBox', x:12.5, y:0.5, z:7.5, w:2.0, h:0.1, d:1.0, bevel:0.04, color:'#1a1008' },
+      { shape:'low',      x:12.5, y:0.6, z:7.5, w:0.9, h:0.04, color:'#0a0605' },
+
+      /* 地板爪印 */
+      { shape:'low', x:7.5, y:0.005, z:5.5, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:7.5, y:0.005, z:7.5, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:7.5, y:0.005, z:9.5, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:9.5, y:0.005, z:7.5, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:9.5, y:0.005, z:5.5, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:9.5, y:0.005, z:9.5, w:0.14, h:0.01, color:'#1a0808' },
+      { shape:'low', x:11.5, y:0.005, z:7.5, w:0.14, h:0.01, color:'#1a0808' },
+
+      /* ★ 通向院子的门 —— 东墙 x=14，门朝 -x */
+      ...buildDoor('e', 13.62, 7.5, 1.4, 2.30, '#5a2814'),
+
+      /* ★ 来的路 —— 南墙 z=12，门朝 -z */
+      ...buildDoor('s', 3.5, 11.62, 1.2, 2.20, '#3a2218'),
+
+      ...bloodSpots(7.5, 5.5, 16, 1.4, '#2a0404'),
+      ...bloodTrail(7.5, 5.5, 12.5, 7.5, 14, '#1e0303'),
+      ...hangingMeat(1.6, 1.6, 5.5, 'e'),
+      ...hangingMeat(1.6, 1.6, 9.5, 'e'),
+      ...hangingMeat(14.4, 1.6, 4.5, 'w'),
+      ...hangingMeat(14.4, 1.6, 10.5, 'w'),
+      ...wallHandprint(1.6, 1.5, 7.5),
+      ...wallHandprint(14.4, 1.5, 6.5),
+      ...wallHandprint(14.4, 1.2, 9.5),
+      { shape:'bevelBox', x:3.5, y:0.5, z:8.5, w:1.0, h:0.5, d:0.7, bevel:0.04, color:'#0a0605' },
+      { shape:'sphere',   x:3.5, y:1.1, z:8.5, w:0.2, color:'#1a0a08' },
+      { shape:'low', x:5.5, y:0.006, z:4.5, w:1.8, h:0.015, color:'#3a0404' },
+      { shape:'cyl',    x:1.8, y:2.2, z:7.5, w:0.35, h:0.06, color:'#1a0a08' },
+      { shape:'sphere', x:1.78, y:2.2, z:7.5, w:0.05, color:'#3a1010' }
+    ],
+    things: [
+      { id:'neighbor__neighborWindow', storyId:'neighborWindow',   x:7.5,  y:2.0,  icon:'🪟', label:'对着红屋顶的窗户', scale:1.1 },
+      { id:'neighbor__neighborCalendar', storyId:'neighborCalendar', x:3.5,  y:2.0,  icon:'📅', label:'停在那一夜的日历', scale:0.8 },
+      { id:'neighbor__neighborFloor', storyId:'neighborFloor',    x:7.5,  y:7.5,  icon:'🐾', label:'地板上的爪印',     scale:0.7 },
+      { id:'neighbor__neighborBed', storyId:'neighborBed',      x:12.5, y:7.5,  icon:'🛏', label:'塌了一半的小床',   scale:1.0 },
+      { id:'neighbor__back', storyId:'back',             x:3.5,  y:10.5, icon:'⬅',  label:'来的路',           scale:0.8 },
+      { id:'neighbor__exit', storyId:'exit',             x:12.5, y:7.5,  icon:'➡',  label:'通向院子的门',     scale:0.9 }
+    ]
+  }
+};
+appendVerticalStoryDetails();
+
+})();
