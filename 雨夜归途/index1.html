@@ -8,7 +8,10 @@
 <style>
 #btnShop{position:absolute;right:76px;top:18px;width:46px;height:46px;border-radius:13px;background:linear-gradient(180deg, rgba(255,214,140,.22), rgba(120,80,20,.35));border:1px solid rgba(255,214,140,.55);color:#ffe6a8;font-size:21px;display:flex;align-items:center;justify-content:center;cursor:pointer;pointer-events:auto;transition:.25s;font-family:inherit;}
 #btnShop:active{transform:scale(.9);}
-#btnTempLight{right:188px !important;}
+/* 主播模式相关 HUD 位置覆盖：
+   「临时点亮全局」移到右下角（右上角会被设置面板压住），主播徽章与粉丝团挪到左下角成组 */
+#btnTempLight{right:20px !important;bottom:18px !important;top:auto !important;width:46px !important;height:46px !important;padding:0 !important;font-size:20px !important;letter-spacing:0;}
+#streamerBadge{left:20px !important;right:auto !important;bottom:66px !important;}
 #btnMap{position:absolute;right:132px;top:18px;width:46px;height:46px;border-radius:13px;background:linear-gradient(180deg,rgba(20,32,46,.85),rgba(9,15,24,.9));border:1px solid rgba(150,190,230,.22);color:#9fb6cc;display:flex;align-items:center;justify-content:center;cursor:pointer;pointer-events:auto;transition:.2s;font-family:inherit;overflow:hidden;padding:0;}
 #btnMap canvas{position:absolute;left:50%;top:50%;width:26px;height:26px;transform:translate(-50%,-50%);display:block;pointer-events:none;}
 #mapPanel{position:absolute;inset:0;z-index:45;pointer-events:none;opacity:0;transition:opacity .3s;}
@@ -18,11 +21,44 @@
 #mapPanel.show #btnCloseMap{display:flex;}
 #shopPanel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.92);width:680px;max-height:620px;border-radius:22px;background:linear-gradient(180deg,rgba(24,30,44,.988) 0%,rgba(14,20,32,.992) 45%,rgba(8,12,20,.995) 100%);border:1px solid rgba(255,214,140,.42);opacity:0;pointer-events:none;transition:opacity .28s,transform .28s;overflow:hidden;z-index:35;display:flex;flex-direction:column;}
 #shopPanel.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1);}
-.shop-head{padding:22px 28px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,214,140,.15);}
+.shop-head{padding:22px 28px 16px;display:flex;flex-direction:column;align-items:center;gap:6px;border-bottom:1px solid rgba(255,214,140,.15);}
 .shop-head h3{font-size:22px;letter-spacing:12px;font-weight:800;color:#ffe6a8;}
-.shop-scroll{padding:18px 24px 22px;overflow-y:auto;flex:1 1 auto;}
-.shop-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px;}
-.shop-item{padding:18px 12px 14px;border-radius:16px;background:linear-gradient(180deg,rgba(30,42,58,.95),rgba(12,18,28,.98));border:1px solid rgba(150,190,230,.28);text-align:center;cursor:pointer;}
+.shop-sub{margin:0;font-size:12.5px;letter-spacing:1.5px;color:#8fa4ba;}
+.shop-scroll{padding:20px 24px 24px;overflow-y:auto;flex:1 1 auto;}
+.shop-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px;}
+.shop-item{appearance:none;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:3px;padding:18px 12px 14px;border-radius:16px;background:linear-gradient(180deg,rgba(30,42,58,.95),rgba(12,18,28,.98));border:1px solid rgba(150,190,230,.28);text-align:center;cursor:pointer;transition:transform .15s,border-color .2s,box-shadow .2s,background .2s;}
+.shop-item:hover{transform:translateY(-3px);border-color:rgba(255,214,140,.6);box-shadow:0 10px 26px rgba(0,0,0,.55),0 0 22px rgba(255,200,120,.14);}
+.shop-item:active{transform:scale(.97);}
+.shop-item .si-ico{font-size:30px;line-height:1.2;filter:drop-shadow(0 3px 8px rgba(255,180,80,.35));}
+.shop-item .si-name{font-size:13px;letter-spacing:3px;color:#c9d8ea;margin-top:4px;}
+.shop-item .si-amount{font-size:26px;font-weight:800;letter-spacing:1px;color:#ffe6a8;text-shadow:0 0 14px rgba(255,200,120,.35);margin-top:2px;}
+.shop-item .si-price{font-size:13px;letter-spacing:2px;color:#ffd98f;}
+.shop-item.chosen{border-color:rgba(255,214,140,.85);background:linear-gradient(180deg,rgba(58,44,22,.95),rgba(22,16,8,.98));box-shadow:0 0 26px rgba(255,200,120,.28);}
+.shop-note{margin:0;font-size:12.5px;line-height:2;letter-spacing:.8px;color:#8fa4ba;text-align:center;}
+.shop-note b{color:#ffd98f;font-weight:700;}
+.shop-done{display:none;margin-top:16px;align-items:center;justify-content:center;gap:10px;padding:12px;border-radius:12px;background:rgba(255,205,90,.08);border:1px solid rgba(255,214,140,.3);}
+.shop-done.show{display:flex;}
+.shop-done .sd-ic{font-size:18px;color:#ffd98f;}
+.shop-done .sd-tx{font-size:13.5px;letter-spacing:1.5px;color:#ffd98f;}
+
+/* 成就（结局图鉴） */
+#btnAchievements{position:absolute;left:20px;top:18px;width:46px;height:46px;border-radius:13px;
+  background:linear-gradient(180deg,rgba(46,34,58,.9),rgba(18,12,30,.94));
+  border:1px solid rgba(255,214,140,.26);color:#ffe6a8;font-size:20px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;pointer-events:auto;
+  transition:.2s;font-family:inherit;box-shadow:0 4px 16px rgba(0,0,0,.5);}
+#btnAchievements:active{transform:scale(.9);}
+#btnAchievements.unread{border-color:rgba(255,214,140,.8);box-shadow:0 4px 16px rgba(0,0,0,.5),0 0 20px rgba(255,200,120,.4);}
+#achvBadge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;
+  background:linear-gradient(180deg,#ff9a7a,#d9412a);color:#fff;font-size:10.5px;font-weight:800;line-height:18px;
+  text-align:center;display:none;box-shadow:0 2px 8px rgba(0,0,0,.65);}
+#btnAchievements.unread #achvBadge{display:block;}
+.achv-prog{margin-top:10px;}
+.achv-prog span{display:inline-block;padding:3px 14px;border-radius:12px;font-size:12.5px;letter-spacing:3px;
+  color:rgba(255,214,140,.8);background:rgba(255,214,140,.08);border:1px solid rgba(255,214,140,.2);}
+.achv-hint{margin-top:8px;font-size:11.5px;letter-spacing:1.5px;color:rgba(200,180,140,.6);}
+#inv{top:74px !important;}
+#inv.streamer-mode{top:70px !important;}
 #btnSet{position:absolute;right:20px;top:18px;width:46px;height:46px;border-radius:13px;background:linear-gradient(180deg,rgba(20,32,46,.85),rgba(9,15,24,.9));border:1px solid rgba(150,190,230,.22);color:#9fb6cc;font-size:21px;display:flex;align-items:center;justify-content:center;cursor:pointer;pointer-events:auto;}
 #toast{position:absolute;left:50%;top:24px;transform:translate(-50%,-16px);padding:10px 26px;border-radius:24px;font-size:15px;background:linear-gradient(180deg,rgba(26,42,62,.95),rgba(12,20,32,.96));border:1px solid rgba(255,214,140,.32);color:#ffd98f;opacity:0;transition:.3s;pointer-events:none;white-space:nowrap;z-index:99;}
 #toast.show{opacity:1;transform:translate(-50%,0);}
@@ -62,6 +98,100 @@
 }
 #devErrorPanel.show{ display: flex; }
 .dev-err-item{ word-break: break-word; white-space: pre-wrap; }
+
+/* ============================================================
+   新手教程（普通玩家 / 主播 双分支）
+   ============================================================ */
+#tutRoot{position:absolute;inset:0;z-index:70;display:none;pointer-events:none;}
+#tutRoot.show{display:block;}
+#tutSpot{position:absolute;left:0;top:0;width:0;height:0;border-radius:12px;opacity:0;
+  box-shadow:0 0 0 2px rgba(255,214,140,.95), 0 0 0 9999px rgba(2,5,9,.80);
+  transition:left .34s cubic-bezier(.22,.9,.28,1),top .34s cubic-bezier(.22,.9,.28,1),
+             width .34s cubic-bezier(.22,.9,.28,1),height .34s cubic-bezier(.22,.9,.28,1),opacity .25s;}
+#tutSpotRing{position:absolute;inset:0;border-radius:inherit;border:2px solid rgba(255,214,140,.9);
+  opacity:0;animation:tutRing 1.9s ease-out infinite;}
+@keyframes tutRing{0%{opacity:.8;transform:scale(1);}70%{opacity:0;transform:scale(1.13);}100%{opacity:0;transform:scale(1.13);}}
+#tutCard{position:absolute;left:308px;top:165px;width:344px;max-height:496px;overflow-y:auto;
+  padding:18px 20px 14px;border-radius:16px;
+  background:linear-gradient(180deg,rgba(16,26,40,.985),rgba(8,13,22,.995));
+  border:1px solid rgba(255,214,140,.42);
+  box-shadow:0 24px 70px rgba(0,0,0,.92),0 0 40px rgba(255,200,120,.12),inset 0 1px 0 rgba(255,255,255,.05);
+  pointer-events:auto;opacity:0;
+  transition:left .34s cubic-bezier(.22,.9,.28,1),top .34s cubic-bezier(.22,.9,.28,1),opacity .2s;}
+#tutRoot.show #tutCard{opacity:1;}
+#tutCard .tut-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+#tutCard .tut-tag{font-size:10.5px;letter-spacing:2.5px;color:rgba(255,214,140,.72);
+  padding:3px 9px;border-radius:11px;border:1px solid rgba(255,214,140,.25);white-space:nowrap;}
+#tutCard .tut-step{font-size:11.5px;letter-spacing:2px;color:#7d90a6;font-variant-numeric:tabular-nums;}
+#tutCard h4{margin:0 0 10px;font-size:19px;letter-spacing:4px;color:#ffe6a8;font-weight:700;
+  padding-left:4px;text-shadow:0 0 18px rgba(255,200,120,.3);}
+#tutBody{font-size:12.8px;line-height:1.85;letter-spacing:.5px;color:#c2d3e4;}
+#tutBody b{color:#ffd98f;font-weight:700;text-shadow:0 0 12px rgba(255,190,100,.3);}
+#tutBody .g{color:#7ff0b0;font-weight:700;}
+#tutBody .r{color:#ff9a8a;font-weight:700;}
+#tutNote{display:none;margin-top:10px;padding:7px 11px;border-radius:8px;font-size:12.5px;letter-spacing:.6px;
+  color:#ffd98f;background:rgba(255,205,90,.1);border:1px solid rgba(255,214,140,.28);}
+#tutExtra{margin-top:14px;}
+#tutExtra .tut-act{width:100%;padding:10px 0;font-size:13.5px;letter-spacing:3px;cursor:pointer;
+  font-family:inherit;font-weight:700;color:#1a1208;
+  background:linear-gradient(180deg,#ffe6b0,#d9a24a);border:1px solid rgba(255,232,175,.7);border-radius:11px;
+  box-shadow:0 4px 16px rgba(255,190,110,.3);transition:transform .15s,box-shadow .15s;}
+#tutExtra .tut-act:hover{box-shadow:0 6px 22px rgba(255,190,110,.45);}
+#tutExtra .tut-act:active{transform:scale(.97);}
+#tutFoot{display:flex;align-items:center;justify-content:space-between;margin-top:16px;
+  padding-top:13px;border-top:1px solid rgba(140,180,220,.1);}
+#tutFoot button{font-family:inherit;cursor:pointer;border-radius:9px;transition:.15s;}
+#tutSkip{padding:7px 4px;font-size:12px;letter-spacing:2px;color:#75899f;background:transparent;border:none;}
+#tutSkip:hover{color:#c9d8ea;}
+#tutNav{display:flex;gap:10px;}
+#tutPrev{padding:8px 18px;font-size:13px;letter-spacing:2px;color:#a9bdd2;
+  background:rgba(30,44,60,.7);border:1px solid rgba(140,180,220,.22);}
+#tutPrev:hover{background:rgba(44,60,80,.85);}
+#tutNext{padding:8px 22px;font-size:13.5px;letter-spacing:3px;font-weight:700;color:#1a1208;
+  background:linear-gradient(180deg,#ffe6b0,#d9a24a);border:1px solid rgba(255,232,175,.7);
+  box-shadow:0 3px 12px rgba(255,190,110,.28);}
+#tutNext:active{transform:scale(.96);}
+
+#tutPick{position:absolute;inset:0;display:none;align-items:center;justify-content:center;pointer-events:auto;
+  background:radial-gradient(ellipse at center,rgba(6,10,18,.90),rgba(2,4,8,.97));}
+#tutRoot.pick-mode #tutPick{display:flex;}
+#tutRoot.pick-mode #tutCard{display:none;}
+#tutRoot.pick-mode #tutSpot{opacity:0;}
+.tut-pick-inner{width:600px;max-width:92%;padding:32px 34px 24px;border-radius:20px;text-align:center;
+  background:linear-gradient(180deg,rgba(16,26,40,.99),rgba(8,13,22,.995));
+  border:1px solid rgba(255,214,140,.38);
+  box-shadow:0 30px 90px rgba(0,0,0,.92),0 0 60px rgba(255,200,120,.10),inset 0 1px 0 rgba(255,255,255,.05);
+  animation:tutIn .34s cubic-bezier(.2,1.1,.4,1) both;}
+@keyframes tutIn{from{opacity:0;transform:translateY(16px) scale(.97);}to{opacity:1;transform:none;}}
+.tut-pick-title{font-size:24px;letter-spacing:9px;color:#ffe6a8;font-weight:700;padding-left:9px;
+  text-shadow:0 0 24px rgba(255,200,120,.35);}
+.tut-pick-sub{margin:12px 0 22px;font-size:13.5px;line-height:2;letter-spacing:1px;color:#9fb3c8;}
+.tut-pick-sub b{color:#ffd98f;font-weight:700;}
+.tut-pick-opts{display:flex;gap:16px;}
+.tut-pick-opt{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:20px 18px 18px;
+  border-radius:16px;cursor:pointer;font-family:inherit;text-align:center;
+  background:linear-gradient(180deg,rgba(30,42,58,.95),rgba(12,18,28,.98));
+  border:1px solid rgba(150,190,230,.26);
+  transition:transform .16s,border-color .2s,box-shadow .2s,background .2s;}
+.tut-pick-opt:hover{transform:translateY(-3px);border-color:rgba(255,214,140,.6);
+  box-shadow:0 10px 30px rgba(0,0,0,.6),0 0 26px rgba(255,200,120,.16);}
+.tut-pick-opt:active{transform:scale(.98);}
+.tut-pick-opt .tut-pick-ico{font-size:32px;line-height:1;}
+.tut-pick-opt .tut-pick-name{font-size:17px;letter-spacing:4px;color:#ffe6a8;font-weight:700;padding-left:4px;}
+.tut-pick-opt .tut-pick-desc{margin-top:4px;font-size:12.5px;line-height:1.8;letter-spacing:.5px;color:#9fb3c8;}
+.tut-pick-opt[data-role="streamer"]{background:linear-gradient(180deg,rgba(20,42,32,.95),rgba(8,20,14,.98));
+  border-color:rgba(127,240,176,.3);}
+.tut-pick-opt[data-role="streamer"] .tut-pick-name{color:#7ff0b0;text-shadow:0 0 16px rgba(80,240,150,.35);}
+.tut-pick-opt[data-role="streamer"]:hover{border-color:rgba(127,240,176,.65);
+  box-shadow:0 10px 30px rgba(0,0,0,.6),0 0 30px rgba(80,240,150,.18);}
+#tutPickSkip{margin-top:20px;padding:8px 20px;font-size:12.5px;letter-spacing:3px;cursor:pointer;
+  font-family:inherit;color:#7d90a6;background:transparent;border:1px solid rgba(140,180,220,.22);
+  border-radius:9px;transition:.15s;}
+#tutPickSkip:hover{color:#c9d8ea;border-color:rgba(140,180,220,.45);}
+.tut-link-btn{padding:7px 16px;font-size:12.5px;letter-spacing:2px;cursor:pointer;font-family:inherit;
+  color:#7ff0b0;background:rgba(20,42,32,.6);border:1px solid rgba(127,240,176,.3);border-radius:9px;transition:.15s;}
+.tut-link-btn:hover{background:rgba(28,58,42,.85);border-color:rgba(127,240,176,.6);}
+.tut-link-btn:active{transform:scale(.96);}
 </style>
 </head>
 <body>
@@ -70,7 +200,8 @@
   <div id="overlay">
     <div id="hud">
       <div id="inv"></div>
-      <button id="btnTempLight">✨ 临时点亮全局</button>
+      <button id="btnAchievements" aria-label="结局图鉴">🏆<span id="achvBadge">0</span></button>
+      <button id="btnTempLight" title="临时点亮全局" aria-label="临时点亮全局">✨</button>
       <button id="btnShop">🛒</button>
       <button id="btnMap" aria-label="地图"></button>
       <button id="btnSet">⚙</button>
@@ -94,24 +225,100 @@
         <div class="row"><span>游戏进度</span><button class="danger" id="btnReset">清除所有进度</button></div>
       </div>
     </div>
+    <div id="achvPanel">
+      <button class="close-x" id="btnCloseAchv">✕</button>
+      <div class="achv-head">
+        <h3>结 局 图 鉴</h3>
+        <div class="achv-prog"><span id="achvProgress">0 / 5</span></div>
+      </div>
+      <div class="achv-scroll">
+        <div id="achvList"></div>
+      </div>
+      <div class="achv-foot">
+        <div class="total" id="achvTotal">已达成 <b>0</b> / 5</div>
+        <div class="achv-hint">每一条路，走到底都不一样。</div>
+      </div>
+    </div>
     <div id="shopPanel">
       <button class="close-x" id="btnCloseShop">✕</button>
-      <div class="shop-head"><h3>补 给 站</h3></div>
+      <div class="shop-head"><h3>补 给 站</h3><p class="shop-sub">天太黑了。给还在赶路的你，添一盏灯。</p></div>
       <div class="shop-scroll">
         <div class="shop-grid">
-          <div class="shop-item" data-amount="6"><div class="si-amount">6</div><div class="si-price">¥ 6</div></div>
-          <div class="shop-item" data-amount="30"><div class="si-amount">30</div><div class="si-price">¥ 30</div></div>
-          <div class="shop-item" data-amount="68"><div class="si-amount">68</div><div class="si-price">¥ 68</div></div>
+          <button class="shop-item" data-amount="6" data-tier="小灯">
+            <span class="si-ico">🪔</span>
+            <span class="si-name">小灯</span>
+            <span class="si-amount">6</span>
+            <span class="si-price">¥ 6</span>
+          </button>
+          <button class="shop-item" data-amount="30" data-tier="提灯">
+            <span class="si-ico">🏮</span>
+            <span class="si-name">提灯</span>
+            <span class="si-amount">30</span>
+            <span class="si-price">¥ 30</span>
+          </button>
+          <button class="shop-item" data-amount="68" data-tier="灯笼">
+            <span class="si-ico">🏮</span>
+            <span class="si-name">灯笼</span>
+            <span class="si-amount">68</span>
+            <span class="si-price">¥ 68</span>
+          </button>
         </div>
+        <p class="shop-note">这些灯，是<b>软软的小窝工作室</b>替你点的。<br>它们不会出现在灰豆的背包里——但今晚这条夜路，会稍微亮一点。</p>
+        <div class="shop-done" id="shopDone"><span class="sd-ic">✦</span><span class="sd-tx"></span></div>
       </div>
     </div>
     <div id="mapPanel"><canvas id="mapCanvas"></canvas><button id="btnCloseMap" aria-label="关闭地图">✕</button></div>
+    <div id="bloodWarnMask"><div id="bloodWarnBox"><div class="warn-ic">🩸</div><h4>另 一 条 路</h4><p>水洼里的那栋房子，<span class="hl">烧过</span>。</p><p>如果你走进去，这只浣熊会走进另一场雨——<span class="hl">同一只浣熊，另一种记得</span>。</p><p class="dim">那一条路没有结局图鉴里的光，只有一个更沉的夜。</p><div class="warn-btns"><button id="bloodCancel">我 不过 去</button><button id="bloodConfirm">我 要 过 去</button></div></div></div>
+    <div id="streamerWarnMask"><div id="streamerWarnBox"><div class="warn-ic">📺</div><h4>主 播 模 式</h4><p><span class="hl">已开启。</span>物品栏收窄成带名字的一排，左下角出现状态徽章与粉丝团，右下角多出一个「✨」。</p><p>直播安全：<span class="hl">血腥线会被拦下来</span>，水洼不会把你带进另一场雨。</p><div class="warn-btns"><button id="streamerOkBtn">知 道 了</button></div></div></div>
+    <div id="streamerBlockMask"><div id="streamerBlockBox"><div class="warn-ic">🛑</div><h4>这 条 路 被 拦 下 了</h4><p>主播模式下，水洼里的另一条路<span class="hl">不会打开</span>。</p><p>直播还在进行——这条线不适合当着观众的面走。</p><p class="dim">关掉「设置 → 主播模式」之后，它还会回来。</p><div class="warn-btns"><button id="streamerBlockOk">好</button></div></div></div>
+    <div id="rotate"><div class="ic">📱</div><p>请 横 过 来</p><button id="btnForce">坚 持 横 屏</button></div>
     <div id="warnMask"><div id="warnBox"><h4>警 告</h4><p>即将清除所有进度。此操作无法撤销。</p><div class="warn-btns"><button id="warnCancel">取 消</button><button id="warnConfirm">确 认</button></div></div></div>
     <div id="ending"><h2>雨 停 了</h2><p>第二天早上，红屋顶的房子门口，多了一只浣熊。<br>它在晒太阳。</p><button id="btnAgain">再 走 一 次</button></div>
-    <div id="bloodEnding"><h2>雨 还 在 下</h2><p>它想起来了。全部。</p><button id="btnBloodAgain">结 束 了 …</button></div>
+    <div id="bloodEnding"><h2>雨 还 在 下</h2><p id="bloodEndText">它想起来了。全部。</p><p id="bloodEndSub" class="dim"></p><button id="btnBloodAgain">结 束 了 …</button></div>
     <div id="forgetEnding"><h2>一 个 人 的 早 晨</h2><p>第二天早上，街上没有人。</p><button id="btnForgetAgain">再 走 一 次</button></div>
   </div>
   <div id="loadingScreen"><div class="loading-box"><div class="loading-scene-name" id="loadingName">雨 夜 归 途</div><div class="loading-bar"><div class="loading-bar-fill" id="loadingFill"></div></div><div class="loading-row"><span class="loading-tip" id="loadingTip">正在准备……</span><span class="loading-pct" id="loadingPct">0%</span></div><button class="loading-retry" id="loadingRetry">重 试</button></div></div>
+
+  <!-- 新手教程：身份选择 + 分支引导 -->
+  <div id="tutRoot">
+    <div id="tutSpot"><div id="tutSpotRing"></div></div>
+    <div id="tutCard">
+      <div class="tut-head">
+        <span class="tut-tag" id="tutRoleTag">新手教程</span>
+        <span class="tut-step" id="tutStepNum">1 / 1</span>
+      </div>
+      <h4 id="tutTitle"></h4>
+      <div id="tutBody"></div>
+      <div id="tutNote"></div>
+      <div id="tutExtra"></div>
+      <div id="tutFoot">
+        <button id="tutSkip">跳过教程</button>
+        <div id="tutNav">
+          <button id="tutPrev">上一步</button>
+          <button id="tutNext">下一步</button>
+        </div>
+      </div>
+    </div>
+    <div id="tutPick">
+      <div class="tut-pick-inner">
+        <div class="tut-pick-title">第一次走这条路</div>
+        <p class="tut-pick-sub">《雨夜归途》是一场关于一只浣熊、一场雨，和一栋红屋顶房子的故事。<br>没有任务列表，也没有战斗——<b>看到能点的东西，就去点它</b>。<br><br>开始之前，先告诉我你打算怎么玩：</p>
+        <div class="tut-pick-opts">
+          <button class="tut-pick-opt" data-role="player">
+            <span class="tut-pick-ico">🎮</span>
+            <span class="tut-pick-name">普通玩家</span>
+            <span class="tut-pick-desc">安静地走完这条夜路。<br>剧情、地图、设置，一次讲清楚。</span>
+          </button>
+          <button class="tut-pick-opt" data-role="streamer">
+            <span class="tut-pick-ico">📺</span>
+            <span class="tut-pick-name">主播</span>
+            <span class="tut-pick-desc">打开直播模式，<br>把画面调成观众一眼能看懂的样子。</span>
+          </button>
+        </div>
+        <button id="tutPickSkip">跳过教程</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -140,8 +347,12 @@
 })();
 </script>
 
+<!-- 记录本次启动方式（game.js 启动时会消费掉这个 key），供新手教程判断 -->
+<script>window.__LAUNCH_MODE__=(function(){try{return localStorage.getItem('raccoon_launch_mode')||'new';}catch(e){return 'new';}})();</script>
+
 <script src="map.js"></script>
 <script src="game.js"></script>
+<script src="tutorial.js"></script>
 
 <script>
 /* 商店与地图初始化 */
