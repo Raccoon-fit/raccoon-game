@@ -2190,6 +2190,80 @@ function denyBlood(key, label){
   return false;
 }
 
+/* 地图传送由父页面唯一裁决；地图仅能提出请求。 */
+var MAP_TRAVEL_TARGETS = Object.freeze({
+  alley:{x:1.5,y:0,z:14.5,yaw:-Math.PI/2},
+  backstreet:{x:10.5,y:0,z:8.5,yaw:0},
+  shop:{x:31.5,y:0,z:9.5,yaw:0},
+  street:{x:46.5,y:0,z:9.5,yaw:0},
+  powerstation:{x:33.5,y:0,z:27.5,yaw:0},
+  rooftop:{x:17.5,y:5.04,z:-8.5,yaw:Math.PI},
+  underpass:{x:50.5,y:-3.06,z:25.5,yaw:0},
+  riverside:{x:68.5,y:-.54,z:22.5,yaw:0},
+  doorstep:{x:74.5,y:.18,z:9.5,yaw:Math.PI},
+  house:{x:84.5,y:.18,z:9.5,yaw:0},
+  neighbor:{x:70.5,y:.18,z:26.5,yaw:0}
+});
+var MAP_TRAVEL_BLOOD_ONLY = Object.freeze({neighbor:true});
+function mapTravelReply(scene, ok, reason){
+  try{ if(window.RaccoonMap) RaccoonMap.reportTravelResult({scene:scene,ok:!!ok,reason:reason||'',source:'parent-authority',version:1}); }catch(e){}
+}
+function mapTravelReject(scene, reason){ mapTravelReply(scene,false,reason); toast('无法传送：'+reason); return false; }
+function hasOpenNarrativeLock(){
+  return !!(endingShown || endingLock || currentDlg || queue.length || typing.active ||
+    (choiceBoxEl && choiceBoxEl.classList.contains('show')) ||
+    (dlgEl && dlgEl.classList.contains('show')) ||
+    (endEl && endEl.classList.contains('show')) ||
+    (bloodEndEl && bloodEndEl.classList.contains('show')) ||
+    (forgetEndEl && forgetEndEl.classList.contains('show')) ||
+    (halloweenEndEl && halloweenEndEl.classList.contains('show')));
+}
+function validateMapTravel(d){
+  var target=String(d&&d.scene||'');
+  if(!d || d.type!=='raccoon-map-travel-request' || d.source!=='panorama-map' || d.version!==1) return '请求协议无效';
+  if(!Object.prototype.hasOwnProperty.call(MAP_TRAVEL_TARGETS,target)) return '该节点仅供查看，不能从地图传送';
+  if(!S || !S.flags) return '游戏状态尚未就绪';
+  if(S.ended || S.flags.ended || endingShown || endingLock) return '结局演出期间不能传送';
+  if(hasOpenNarrativeLock()) return '剧情、对话或选择进行中，不能传送';
+  if(loadingActive || expectingLoad) return '场景正在切换，请稍后再试';
+  if(S.flags.halloween_mode || String(S.scene).indexOf('halloween_')===0) return '万圣节幻境中不能使用地图传送';
+  if(isDayScene(S.scene)) return '白天剧情中不能使用地图传送';
+  if(S.scene==='parlor') return '棋牌室剧情中不能使用地图传送';
+  if(MAP_TRAVEL_BLOOD_ONLY[target] && !isBloodMode()) return '该异常区域仅在暗夜剧情中开放';
+  if(isStreamer() && (isBloodMode() || MAP_TRAVEL_BLOOD_ONLY[target])) return '主播模式限制暗夜内容传送';
+  var seen=Array.isArray(S.flags.seenScenes)?S.flags.seenScenes:[];
+  if(target!=='alley' && target!==S.scene && seen.indexOf(target)<0) return '目标区域尚未解锁或到访';
+  if(!SCENES[target]) return '目标场景不存在';
+  return '';
+}
+function executeMapTravel(d){
+  var target=String(d.scene||''), reason=validateMapTravel(d);
+  if(reason) return mapTravelReject(target,reason);
+  var spawn=MAP_TRAVEL_TARGETS[target];
+  try{
+    /* 成功路径才修改权威存档：先冻结输入与引擎，再设置安全世界坐标。 */
+    if(window.RaccoonMap) RaccoonMap.close();
+    if(gameFrame && gameFrame.contentWindow){
+      gameFrame.contentWindow.postMessage({type:'pause'},location.origin);
+      gameFrame.contentWindow.postMessage({type:'stop'},location.origin);
+    }
+    S.scene=target;
+    S.worldPosition={x:spawn.x,y:spawn.y,z:spawn.z,yaw:spawn.yaw};
+    if(!Array.isArray(S.flags.seenScenes)) S.flags.seenScenes=[];
+    if(S.flags.seenScenes.indexOf(target)<0) S.flags.seenScenes.push(target);
+    save();
+    if(window.RaccoonMap) RaccoonMap.setCurrentScene(target);
+    pendingSceneTitle=SCENES[target].label;
+    showLoading(SCENES[target].label);
+    createGameFrame(sceneURL(target));
+    mapTravelReply(target,true,'已安全传送至'+SCENES[target].label);
+    return true;
+  }catch(err){
+    devErr('地图传送失败：'+(err&&err.message?err.message:err),'mapTravel');
+    return mapTravelReject(target,'传送执行失败，请重试');
+  }
+}
+
 var expectingLoad = false;
 function destroyFrame(){
   if(!gameFrame) return;
@@ -2203,10 +2277,10 @@ function destroyFrame(){
     old.style.zIndex = '-1';
     old.style.left = '-9999px';
     old.style.top = '-9999px';
-    try { old.src = 'about:blank'; } catch(e){}
   } catch(e){}
   try { if(old.contentWindow && old.contentWindow.__engineStop) old.contentWindow.__engineStop(); } catch(e){}
-  try { old.contentWindow.postMessage({ type:'stop' }, '*'); } catch(e){}
+  try { old.contentWindow.postMessage({ type:'stop' }, location.origin); } catch(e){}
+  try { old.src = 'about:blank'; } catch(e){}
   setTimeout(function(){
     if(old.parentNode){ try { old.parentNode.removeChild(old); } catch(e){} }
   }, 300);
@@ -2361,8 +2435,13 @@ function changeScene(name, label){
 window.addEventListener('message', function(e){
   var d = e.data;
   if(!d || !d.type) return;
-  /* 同源校验 + 当前 iframe 来源校验，拒绝陈旧或外部窗口注入。 */
+  /* 同源校验；地图请求只接受当前父页面自身发送，iframe 消息另行校验。 */
   if(e.origin !== location.origin && e.origin !== 'null') return;
+  if(d.type === 'raccoon-map-travel-request'){
+    if(e.source !== window) return;
+    executeMapTravel(d);
+    return;
+  }
   if(!gameFrame || !gameFrame.contentWindow || e.source !== gameFrame.contentWindow) return;
   if(d.type === 'devError'){ devErr(d.message || '?', d.source || 'IFRAME'); return; }
   if(d.type === 'devWarn'){ devWarn(d.message || '?', d.source || 'IFRAME'); return; }
@@ -2814,7 +2893,9 @@ function beginGame(state, isNew){
     try {
       if(window.RaccoonMap){
         RaccoonMap.init(); RaccoonMap.setCurrentScene(state.scene || 'alley');
-        RaccoonMap.setTravelCallback(function(sceneKey){ if(SCENES[sceneKey]){ toast('地图仅供查看，请在三维世界中步行前往'); } });
+        RaccoonMap.setTravelCallback(function(sceneKey){
+          window.postMessage({type:'raccoon-map-travel-request',scene:sceneKey,from:(S&&S.scene)||null,source:'panorama-map',version:1}, location.origin);
+        });
       }
     } catch(e){}
     beginGame(state, isNew); save();
