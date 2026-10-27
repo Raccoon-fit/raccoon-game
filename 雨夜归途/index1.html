@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>雨夜归途</title>
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="metro2d.css">
 <style>
 #btnShop{position:absolute;right:76px;top:18px;width:46px;height:46px;border-radius:13px;background:linear-gradient(180deg, rgba(255,214,140,.22), rgba(120,80,20,.35));border:1px solid rgba(255,214,140,.55);color:#ffe6a8;font-size:21px;display:flex;align-items:center;justify-content:center;cursor:pointer;pointer-events:auto;transition:.25s;font-family:inherit;}
 #btnShop:active{transform:scale(.9);}
@@ -24,7 +25,8 @@
 .rm-head{position:absolute;left:22px;top:18px;z-index:3;color:#d7efff;pointer-events:none;text-shadow:0 2px 8px #000}.rm-head b{display:block;font-size:19px;letter-spacing:5px}.rm-head small{color:#7293aa;font-size:10px;letter-spacing:1px}
 .rm-tools{position:absolute;left:22px;bottom:18px;z-index:4;display:flex;gap:7px}.rm-tools button{border:1px solid rgba(103,187,226,.38);background:rgba(5,18,31,.9);color:#a9cee2;border-radius:8px;padding:8px 11px;font-family:inherit;cursor:pointer}.rm-tools button.on{color:#ffd37c;border-color:#ffd37c}
 .rm-detail{position:absolute;right:20px;top:78px;bottom:22px;width:270px;z-index:3;box-sizing:border-box;padding:23px;transform:translateX(310px);transition:.25s;background:linear-gradient(160deg,rgba(11,29,46,.97),rgba(3,10,18,.98));border:1px solid rgba(112,190,226,.28);border-radius:14px;color:#bad1df;box-shadow:0 18px 50px #000}.rm-detail.show{transform:none}.rm-detail h2{margin:12px 0;color:#e0f4ff;letter-spacing:2px}.rm-detail p{font-size:13px;line-height:1.9}.rm-kind{color:#5f95b4;font-size:10px}.rm-status{margin:18px 0;padding:12px;background:rgba(81,151,188,.08);font-size:12px;line-height:1.8}.rm-go{width:100%;padding:11px;border-radius:9px;border:1px solid #54bddd;background:#123e53;color:#dff7ff;font-family:inherit}.rm-go:disabled{filter:grayscale(1);opacity:.42}.rm-status .rm-ok{color:#7ff0b0}.rm-status .rm-deny{color:#ff9a8a}.rm-x{position:absolute;right:10px;top:8px;background:none;border:0;color:#8ab1c6;font-size:22px}
-@media(max-width:700px){.rm-head{left:12px;top:10px}.rm-head small{display:none}.rm-tools{left:10px;bottom:10px}.rm-tools button{padding:7px;font-size:11px}.rm-detail{right:8px;left:8px;top:auto;bottom:52px;width:auto;height:190px;padding:16px}.rm-detail p{line-height:1.5}.rm-status{margin:8px 0;padding:6px}.rm-go{position:absolute;right:16px;bottom:14px;width:130px}}
+#mapPanel:not(.rm3d-active) .rm-head,#mapPanel:not(.rm3d-active) .rm-tools,#mapPanel:not(.rm3d-active) .rm-detail{display:none}
+@media(max-width:700px){.rm-head{left:12px;top:10px}.rm-head small{display:none}.rm-tools{left:10px;bottom:10px}.rm-tools button{padding:7px;font-size:11px}.rm-detail{right:8px;left:8px;top:auto;bottom:52px;width:auto;height:184px;padding:14px}.rm-detail h2{margin:5px 0;font-size:17px}.rm-detail p{line-height:1.4;margin:5px 0;font-size:11px}.rm-status{margin:8px 0;padding:6px}.rm-go{position:absolute;right:16px;bottom:14px;width:130px}}
 
 #shopPanel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.92);width:680px;max-height:620px;border-radius:22px;background:linear-gradient(180deg,rgba(24,30,44,.988) 0%,rgba(14,20,32,.992) 45%,rgba(8,12,20,.995) 100%);border:1px solid rgba(255,214,140,.42);opacity:0;pointer-events:none;transition:opacity .28s,transform .28s;overflow:hidden;z-index:35;display:flex;flex-direction:column;}
 #shopPanel.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1);}
@@ -223,6 +225,14 @@
 #btnHalloweenAgain{margin-top:22px;padding:11px 27px;border-radius:11px;cursor:pointer;font-family:inherit;font-size:13px;letter-spacing:4px;
   color:#281126;background:linear-gradient(180deg,#ffd18b,#df762f);border:1px solid rgba(255,218,155,.8);box-shadow:0 5px 20px rgba(255,108,30,.25);}
 </style>
+
+<style>
+#mapPanel.classic-active{background:#1a120c}#mapPanel.classic-active #mapCanvas{display:block}
+.map-style-row>span{display:flex;flex-direction:column;gap:3px}.map-style-row>span small{font-size:10px;line-height:1.45;letter-spacing:.3px;color:#71869c;font-weight:400}
+.opts[data-key="map2dStyle"] button{min-width:76px}
+@media(max-width:640px){.map-style-row{align-items:flex-start;gap:8px}.map-style-row .opts{margin-top:2px}.opts[data-key="map2dStyle"] button{min-width:68px;padding-left:8px;padding-right:8px}}
+@media(prefers-reduced-motion:reduce){#mapPanel.classic-active,#mapPanel.classic-active *{transition:none!important;animation:none!important}}
+</style>
 </head>
 <body>
 <div id="devErrorPanel"></div>
@@ -251,6 +261,7 @@
         <div class="row"><span>帧率</span><div class="opts" data-key="fps"><button data-v="30">30</button><button data-v="45">45</button><button data-v="60">60</button></div></div>
         <div class="row"><span>文字速度</span><div class="opts" data-key="textSpeed"><button data-v="slow">慢</button><button data-v="normal">中</button><button data-v="fast">快</button><button data-v="instant">瞬显</button></div></div>
         <div class="row"><span>文字大小</span><div class="opts" data-key="fontSize"><button data-v="17">小</button><button data-v="19">中</button><button data-v="22">大</button></div></div>
+        <div class="row map-style-row"><span>二维地图样式<small>原版流水：经典动态路线<br>未来轨道：全息线路报站</small></span><div class="opts" data-key="map2dStyle"><button data-v="classic">原版流水</button><button data-v="future">未来轨道</button></div></div>
         <div class="row"><span>主播模式</span><div class="opts" data-key="streamerMode"><button data-v="off">关</button><button data-v="on">开</button></div></div>
         <div class="row dev-team"><span class="dev-team-title">开发团队</span><div class="dev-team-list"><div>创作者　<b>软软的小窝</b></div><div class="dev-team-ai"><span>AI组</span><span>DeepSeek</span><span>MiniMax</span><span>商汤小浣熊</span></div></div></div>
         <div class="row"><span>游戏进度</span><button class="danger" id="btnReset">清除所有进度</button></div>
@@ -383,6 +394,7 @@
 <script>window.__LAUNCH_MODE__=(function(){try{return localStorage.getItem('raccoon_launch_mode')||'new';}catch(e){return 'new';}})();</script>
 
 <script src="map2d.js"></script>
+<script src="map2d-classic.js"></script>
 <script src="map3d.js"></script>
 <script src="map.js"></script>
 <script src="game.js"></script>
