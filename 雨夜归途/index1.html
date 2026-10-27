@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>雨夜归途</title>
 <link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="metro2d.css">
 <style>
 #btnShop{position:absolute;right:76px;top:18px;width:46px;height:46px;border-radius:13px;background:linear-gradient(180deg, rgba(255,214,140,.22), rgba(120,80,20,.35));border:1px solid rgba(255,214,140,.55);color:#ffe6a8;font-size:21px;display:flex;align-items:center;justify-content:center;cursor:pointer;pointer-events:auto;transition:.25s;font-family:inherit;}
 #btnShop:active{transform:scale(.9);}
@@ -227,11 +226,6 @@
 </style>
 
 <style>
-#mapPanel.classic-active{background:#1a120c}#mapPanel.classic-active #mapCanvas{display:block}
-.map-style-row>span{display:flex;flex-direction:column;gap:3px}.map-style-row>span small{font-size:10px;line-height:1.45;letter-spacing:.3px;color:#71869c;font-weight:400}
-.opts[data-key="map2dStyle"] button{min-width:76px}
-@media(max-width:640px){.map-style-row{align-items:flex-start;gap:8px}.map-style-row .opts{margin-top:2px}.opts[data-key="map2dStyle"] button{min-width:68px;padding-left:8px;padding-right:8px}}
-@media(prefers-reduced-motion:reduce){#mapPanel.classic-active,#mapPanel.classic-active *{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
@@ -261,7 +255,6 @@
         <div class="row"><span>帧率</span><div class="opts" data-key="fps"><button data-v="30">30</button><button data-v="45">45</button><button data-v="60">60</button></div></div>
         <div class="row"><span>文字速度</span><div class="opts" data-key="textSpeed"><button data-v="slow">慢</button><button data-v="normal">中</button><button data-v="fast">快</button><button data-v="instant">瞬显</button></div></div>
         <div class="row"><span>文字大小</span><div class="opts" data-key="fontSize"><button data-v="17">小</button><button data-v="19">中</button><button data-v="22">大</button></div></div>
-        <div class="row map-style-row"><span>二维地图样式<small>原版流水：经典动态路线<br>未来轨道：全息线路报站</small></span><div class="opts" data-key="map2dStyle"><button data-v="classic">原版流水</button><button data-v="future">未来轨道</button></div></div>
         <div class="row"><span>主播模式</span><div class="opts" data-key="streamerMode"><button data-v="off">关</button><button data-v="on">开</button></div></div>
         <div class="row dev-team"><span class="dev-team-title">开发团队</span><div class="dev-team-list"><div>创作者　<b>软软的小窝</b></div><div class="dev-team-ai"><span>AI组</span><span>DeepSeek</span><span>MiniMax</span><span>商汤小浣熊</span></div></div></div>
         <div class="row"><span>游戏进度</span><button class="danger" id="btnReset">清除所有进度</button></div>
@@ -393,9 +386,6 @@
 <!-- 记录本次启动方式（game.js 启动时会消费掉这个 key），供新手教程判断 -->
 <script>window.__LAUNCH_MODE__=(function(){try{return localStorage.getItem('raccoon_launch_mode')||'new';}catch(e){return 'new';}})();</script>
 
-<script src="map2d.js"></script>
-<script src="map2d-classic.js"></script>
-<script src="map3d.js"></script>
 <script src="map.js"></script>
 <script src="game.js"></script>
 <script src="tutorial.js"></script>
