@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            overflow: hidden;
+            touch-action: none;
+        }
+        
+        #cv {
+            display: block;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            left: 0;
+            top: 0;
+            cursor: none;
+        }
+    </style>
+</head>
+
+<body><canvas id="cv"></canvas>
+    <script src="common.js"></script>
+    <script src="scenes.js"></script>
+    <script>
+        SceneCommon.boot('parlor');
+    </script>
+</body>
+
+</html>
