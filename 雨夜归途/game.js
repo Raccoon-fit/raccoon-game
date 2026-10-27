@@ -85,11 +85,12 @@ if(document.getElementById('btnForce')){
   });
 }
 
-var settings = { fps:'60', quality:'high', textSpeed:'normal', fontSize:19, streamerMode:'off' };
+var settings = { fps:'60', quality:'high', textSpeed:'normal', fontSize:19, streamerMode:'off', map2dStyle:'future' };
 try {
   var _d = JSON.parse(localStorage.getItem(SET_KEY) || '{}');
   Object.keys(settings).forEach(function(k){ if(k in _d) settings[k] = _d[k]; });
 } catch(e){}
+if(settings.map2dStyle!=='classic' && settings.map2dStyle!=='future') settings.map2dStyle='future';
 
 function saveSettings(){ try { localStorage.setItem(SET_KEY, JSON.stringify(settings)); } catch(e){} }
 
@@ -104,6 +105,7 @@ function applySettings(){
   if(invEl) invEl.classList.toggle('streamer-mode', settings.streamerMode === 'on');
   if(document.body) document.body.classList.toggle('streamer-mode', settings.streamerMode === 'on');
   if(btnTempLightEl) btnTempLightEl.style.display = settings.streamerMode === 'on' ? 'inline-flex' : 'none';
+  if(window.RaccoonMap&&RaccoonMap.set2DStyle) RaccoonMap.set2DStyle(settings.map2dStyle);
 }
 
 /* 主播模式判定：设置面板里「主播模式」切到「开」即为开启 */
