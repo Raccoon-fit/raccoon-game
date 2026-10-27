@@ -16,19 +16,54 @@
     box-shadow:0 0 120px rgba(0,0,0,1);transform-origin:center center;flex:0 0 auto;}
   #cv{display:block;width:100%;height:100%;position:absolute;left:0;top:0;}
 
-  #loading{position:absolute;inset:0;background:#000;display:flex;
-    align-items:center;justify-content:center;flex-direction:column;gap:16px;
-    color:#8fa4ba;z-index:10;transition:opacity .6s;}
-  #loading.hide{opacity:0;pointer-events:none;}
-  #loading .name{font-size:22px;letter-spacing:14px;color:#f2e6cb;
-    padding-left:14px;text-shadow:0 0 40px rgba(255,200,120,.5);}
-  #loading .bar{width:320px;height:6px;border-radius:3px;
-    background:rgba(20,30,44,.9);border:1px solid rgba(140,180,220,.25);
+  #loading{position:absolute;inset:0;display:flex;
+    align-items:center;justify-content:center;flex-direction:column;
+    color:#8fa4ba;z-index:10;transition:opacity .75s ease,filter .75s ease;
+    background:
+      radial-gradient(circle at 50% 38%,rgba(90,56,35,.28),transparent 34%),
+      radial-gradient(circle at 50% 65%,rgba(36,70,110,.22),transparent 42%),
+      linear-gradient(180deg,#02050a 0%,#050912 42%,#0c0710 100%);
     overflow:hidden;}
-  #loading .fill{height:100%;width:0%;background:linear-gradient(90deg,#e8b661,#ffe6b0);
-    box-shadow:0 0 16px rgba(255,200,120,.85);transition:width .2s;}
-  #loading .tip{font-size:12px;letter-spacing:2px;color:#8fa4ba;}
-  #loading .tip.error{color:#ff6a5a;}
+  #loading.hide{opacity:0;filter:blur(10px);pointer-events:none;}
+  #loading::before{content:'';position:absolute;inset:-80px;opacity:.42;pointer-events:none;
+    background-image:linear-gradient(115deg,transparent 0 48%,rgba(170,210,255,.22) 49%,transparent 52%);
+    background-size:18px 80px;animation:loaderRain 1.15s linear infinite;}
+  #loading::after{content:'';position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(ellipse at center,transparent 0%,rgba(0,0,0,.20) 48%,rgba(0,0,0,.78) 100%);}
+  @keyframes loaderRain{from{transform:translate3d(-36px,-80px,0);}to{transform:translate3d(36px,80px,0);}}
+  .loaderCard{position:relative;z-index:1;width:min(560px,82%);padding:34px 34px 28px;
+    border:1px solid rgba(230,190,120,.22);border-radius:24px;
+    background:linear-gradient(180deg,rgba(10,16,28,.70),rgba(5,8,14,.56));
+    box-shadow:0 24px 80px rgba(0,0,0,.68),inset 0 0 38px rgba(255,205,120,.045);
+    backdrop-filter:blur(10px);}
+  .loaderCard::before{content:'';position:absolute;inset:1px;border-radius:23px;pointer-events:none;
+    background:linear-gradient(135deg,rgba(255,230,180,.20),transparent 32%,rgba(115,180,255,.10) 100%);opacity:.9;}
+  #loading .name{position:relative;font-size:26px;letter-spacing:15px;color:#fff1cc;
+    padding-left:15px;text-align:center;text-shadow:0 0 20px rgba(255,213,134,.85),0 0 70px rgba(255,166,80,.32);}
+  #loading .sub{position:relative;margin-top:10px;text-align:center;font-size:12px;letter-spacing:4px;color:rgba(170,194,220,.72);}
+  .progressWrap{position:relative;margin-top:28px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;}
+  #loading .bar{position:relative;height:14px;border-radius:999px;
+    background:linear-gradient(180deg,rgba(3,8,16,.95),rgba(19,32,48,.88));
+    border:1px solid rgba(154,198,238,.24);overflow:hidden;
+    box-shadow:inset 0 2px 8px rgba(0,0,0,.80),0 0 34px rgba(60,130,190,.10);}
+  #loading .bar::before{content:'';position:absolute;inset:2px;border-radius:999px;
+    background:repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 10px,transparent 10px 20px);}
+  #loading .fill{position:relative;height:100%;width:0%;border-radius:999px;
+    background:linear-gradient(90deg,#5ad0ff 0%,#e8b661 45%,#fff0b8 78%,#ffffff 100%);
+    box-shadow:0 0 16px rgba(90,208,255,.58),0 0 30px rgba(255,197,98,.72);
+    transition:width .28s cubic-bezier(.2,.7,.2,1);overflow:hidden;}
+  #loading .fill::after{content:'';position:absolute;inset:0;width:70%;
+    background:linear-gradient(105deg,transparent 0%,rgba(255,255,255,.75) 45%,transparent 78%);
+    transform:translateX(-100%);animation:loaderShine 1.55s ease-in-out infinite;}
+  @keyframes loaderShine{0%{transform:translateX(-120%);}58%,100%{transform:translateX(170%);}}
+  #loadPct{position:relative;min-width:48px;text-align:right;font-size:13px;letter-spacing:1px;color:#ffe7ad;
+    font-variant-numeric:tabular-nums;text-shadow:0 0 16px rgba(255,195,95,.70);}
+  #loading .tip{position:relative;margin-top:14px;font-size:12px;letter-spacing:2.5px;color:#9eb7d4;text-align:center;}
+  #loading .tip.error{color:#ff8174;text-shadow:0 0 18px rgba(255,74,66,.55);}
+  .loadSteps{position:relative;margin-top:18px;display:flex;justify-content:center;gap:9px;}
+  .loadSteps i{width:7px;height:7px;border-radius:50%;background:rgba(135,170,205,.28);box-shadow:0 0 0 rgba(255,210,135,0);animation:stepPulse 1.8s ease-in-out infinite;}
+  .loadSteps i:nth-child(2){animation-delay:.18s}.loadSteps i:nth-child(3){animation-delay:.36s}.loadSteps i:nth-child(4){animation-delay:.54s}
+  @keyframes stepPulse{0%,100%{background:rgba(135,170,205,.25);transform:scale(.9);}45%{background:#ffe0a2;box-shadow:0 0 18px rgba(255,210,135,.75);transform:scale(1.22);}}
 
   #storyLayer{position:absolute;left:0;top:0;width:100%;height:100%;
     pointer-events:none;overflow:hidden;z-index:5;}
@@ -112,10 +147,19 @@
   <div id="storyLayer"></div>
   <div id="hint">按 W A S D 移动　·　↑ ↓ ← → 转动身体</div>
   <button id="skipBtn">跳 过 ▸</button>
-  <div id="loading">
-    <div class="name">雨 夜 归 途</div>
-    <div class="bar"><div class="fill" id="loadFill"></div></div>
-    <div class="tip" id="loadTip">正在准备……</div>
+  <div id="loading" aria-live="polite">
+    <div class="loaderCard">
+      <div class="name">雨 夜 归 途</div>
+      <div class="sub">LOADING THE RAINY WAY HOME</div>
+      <div class="progressWrap">
+        <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="fill" id="loadFill"></div>
+        </div>
+        <div id="loadPct">0%</div>
+      </div>
+      <div class="tip" id="loadTip">正在准备雨夜……</div>
+      <div class="loadSteps" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    </div>
   </div>
   <div id="endScreen"><div class="w">—— 雨 夜 归 途 ——</div></div>
 </div>
@@ -131,6 +175,8 @@ const ctx = cv.getContext('2d');
 const loading = document.getElementById('loading');
 const loadFill = document.getElementById('loadFill');
 const loadTip = document.getElementById('loadTip');
+const loadPct = document.getElementById('loadPct');
+const loadBar = loading.querySelector('.bar');
 const storyLayer = document.getElementById('storyLayer');
 const hintEl = document.getElementById('hint');
 const endScreen = document.getElementById('endScreen');
@@ -259,21 +305,30 @@ function loadSprite(){
 /* 假进度条（图片加载无进度事件，做个视觉增长） */
 let fakeProgress = 0;
 let fakeTimer = null;
+function setLoadProgress(value, text){
+  fakeProgress = Math.max(0, Math.min(100, value));
+  const shown = Math.round(fakeProgress);
+  loadFill.style.width = fakeProgress.toFixed(1) + '%';
+  loadPct.textContent = shown + '%';
+  if(loadBar) loadBar.setAttribute('aria-valuenow', String(shown));
+  if(text) loadTip.textContent = text;
+}
 function startFakeProgress(){
-  loadFill.style.width = '8%';
-  loadTip.textContent = '正在加载浣熊……';
+  setLoadProgress(6, '正在收集雨声……');
+  const steps = ['正在点亮屋檐灯……','正在展开红屋顶的路……','正在加载灰豆的脚步……','正在校准雨夜方向……'];
+  let stepIndex = 0;
   fakeTimer = setInterval(function(){
     if(fakeProgress < 88){
-      fakeProgress += Math.random() * 5 + 2;
-      if(fakeProgress > 88) fakeProgress = 88;
-      loadFill.style.width = fakeProgress.toFixed(1) + '%';
+      const ease = Math.max(1.1, (92 - fakeProgress) / 18);
+      const inc = Math.random() * 2.8 + ease;
+      setLoadProgress(Math.min(88, fakeProgress + inc), steps[stepIndex % steps.length]);
+      stepIndex++;
     }
-  }, 160);
+  }, 220);
 }
 function stopFakeProgress(ok){
   if(fakeTimer){ clearInterval(fakeTimer); fakeTimer = null; }
-  loadFill.style.width = '100%';
-  loadTip.textContent = ok ? '完成' : '完成（占位）';
+  setLoadProgress(100, ok ? '加载完成，雨夜开启。' : '加载异常，正在进入备用演出。');
 }
 
 /* =========================================================
