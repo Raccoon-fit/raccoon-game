@@ -69,18 +69,19 @@ const FRAG_SRC = [
 '  vec3 V = normalize(uCamPos - vWorldPos);',
 '  vec3 lit = uAmbient;',
 '  {vec3 tL=uLP0-vWorldPos; float d=length(tL); vec3 L=tL/max(d,0.001);',
-'   float df=max(dot(N,L),0.0); float at=1.0/(1.0+0.20*d+0.08*d*d);',
+'   float df=max(dot(N,L),0.0); float at=1.0/(1.0+0.105*d+0.030*d*d);',
 '   vec3 H=normalize(L+V); float sp=pow(max(dot(N,H),0.0),32.0)*0.12;',
 '   lit += uLC0*(df*at*6.0+sp*at);}',
 '  {vec3 tL=uLP1-vWorldPos; float d=length(tL); vec3 L=tL/max(d,0.001);',
-'   float df=max(dot(N,L),0.0); float at=1.0/(1.0+0.20*d+0.08*d*d);',
+'   float df=max(dot(N,L),0.0); float at=1.0/(1.0+0.105*d+0.030*d*d);',
 '   vec3 H=normalize(L+V); float sp=pow(max(dot(N,H),0.0),32.0)*0.12;',
 '   lit += uLC1*(df*at*6.0+sp*at);}',
 '  {vec3 tL=uLP2-vWorldPos; float d=length(tL); vec3 L=tL/max(d,0.001);',
-'   float df=max(dot(N,L),0.0); float at=1.0/(1.0+0.20*d+0.08*d*d);',
+'   float df=max(dot(N,L),0.0); float at=1.0/(1.0+0.105*d+0.030*d*d);',
 '   vec3 H=normalize(L+V); float sp=pow(max(dot(N,H),0.0),32.0)*0.12;',
 '   lit += uLC2*(df*at*6.0+sp*at);}',
 '  vec3 color = base.rgb * lit;',
+'  color = color * 1.12 + vec3(0.008, 0.010, 0.014);',
 '  float fogF = clamp((vDist - uFogNear) / max(uFogFar - uFogNear, 0.01), 0.0, 1.0);',
 '  color = mix(color, uFogColor, fogF);',
 '  gl_FragColor = vec4(color, base.a);',
@@ -452,8 +453,8 @@ function Renderer(canvas){
     { x:0,y:-100,z:0,color:[0,0,0] },
     { x:0,y:-100,z:0,color:[0,0,0] }
   ];
-  this.ambient = [0.12, 0.14, 0.18];
-  this.fog = { r:0.04, g:0.05, b:0.08, near:6, far:22 };
+  this.ambient = [0.22, 0.235, 0.28];
+  this.fog = { r:0.04, g:0.05, b:0.08, near:7, far:32 };
 
   this.wallMesh=null; this.wallTex=null; this.wallHasTex=false;
   this.floorMesh=null; this.floorTex=null; this.floorHasTex=false;
