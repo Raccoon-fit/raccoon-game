@@ -258,8 +258,8 @@ function updateAchvUnread(){
 function sceneURL(name){
   if(!name){ devErr('sceneURL: name 为空', 'sceneURL'); return null; }
   if(S && S.flags && S.flags.bloodMode){
-    /* 暗夜线：同一套 2D 引擎，血色雨 / 余烬 / 暗角 */
-    return 'assets/scene_blood.html?id=' + name;
+    /* 暗夜线迁移到真 3D；状态仍由父页面唯一持有。 */
+    return 'assets3d/scene.html?id=' + encodeURIComponent(name) + '&blood=1';
   }
   if(SCENES[name] && SCENES[name].url) return SCENES[name].url;
   if(/^[a-z_]+_day$/.test(name) || name.indexOf('halloween_') === 0){
@@ -311,7 +311,7 @@ function setVal(key, val){
 
 function isBloodMode(){ return !!(S && S.flags && S.flags.bloodMode); }
 function isDayScene(name){ return /^[a-z_]+_day$/.test(name || (S && S.scene) || ''); }
-function freshState(){ return { scene:'alley', inv:[], invBlood:[], flags:{}, ended:false }; }
+function freshState(){ return { scene:'alley', worldPosition:null, inv:[], invBlood:[], flags:{}, ended:false }; }
 function save(){ if(S) { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch(e){} } }
 
 function loadSave(){
@@ -2347,6 +2347,8 @@ function changeScene(name, label){
   if(!SCENES[name]){ devErr('changeScene: 未知场景 "' + name + '"', 'changeScene'); return; }
   if(isDayScene(name) && isBloodMode()){ devErr('changeScene: 血模式下不能进入白天场景', 'changeScene'); return; }
   S.scene = name;
+  /* 强制切换使用目标场景旧出生点；普通跨区由3D世界步行处理。 */
+  S.worldPosition = null;
   if(!S.flags.seenScenes) S.flags.seenScenes = [];
   if(S.flags.seenScenes.indexOf(name) < 0) S.flags.seenScenes.push(name);
   save();
@@ -2359,6 +2361,9 @@ function changeScene(name, label){
 window.addEventListener('message', function(e){
   var d = e.data;
   if(!d || !d.type) return;
+  /* 同源校验 + 当前 iframe 来源校验，拒绝陈旧或外部窗口注入。 */
+  if(e.origin !== location.origin && e.origin !== 'null') return;
+  if(!gameFrame || !gameFrame.contentWindow || e.source !== gameFrame.contentWindow) return;
   if(d.type === 'devError'){ devErr(d.message || '?', d.source || 'IFRAME'); return; }
   if(d.type === 'devWarn'){ devWarn(d.message || '?', d.source || 'IFRAME'); return; }
   if(d.type === 'engineError'){
@@ -2368,8 +2373,26 @@ window.addEventListener('message', function(e){
     devErr(d.message || '引擎错误', 'engine');
     return;
   }
-  if(!gameFrame || !gameFrame.contentWindow) return;
-  if(e.source !== gameFrame.contentWindow) return;
+  if(d.type === 'worldPosition' || d.type === 'worldRegion'){
+    if(!S || !d.position) return;
+    if(d.scene && SCENES[d.scene]){
+      S.scene=d.scene;
+      if(!S.flags.seenScenes) S.flags.seenScenes=[];
+      if(S.flags.seenScenes.indexOf(d.scene)<0) S.flags.seenScenes.push(d.scene);
+      try{ if(window.RaccoonMap) RaccoonMap.setCurrentScene(d.scene); }catch(_e){}
+    }
+    S.worldPosition={x:Number(d.position.x),y:Number.isFinite(Number(d.position.y))?Number(d.position.y):null,z:Number(d.position.z),yaw:Number(d.position.yaw)||0};
+    save();
+    if(d.type === 'worldRegion' && d.label) showSceneTitle(d.label);
+    return;
+  }
+  if(d.type === 'bloodAcknowledge'){
+    if(!S || !S.flags) return;
+    var ack = String(d.id || '');
+    if(!/^[a-z0-9_-]{1,40}$/i.test(ack)) return;
+    ackBlood(ack, '那一夜');
+    return;
+  }
   if(d.type === 'ready'){
     if(!S) return;
     syncState();
@@ -2384,8 +2407,16 @@ window.addEventListener('message', function(e){
     var sc = SCENES[S.scene];
     if(!sc){ devErr('hit 时 SCENES["' + S.scene + '"] 未定义', 'msg:hit'); return; }
     if(!sc.acts){ devErr('hit 时 SCENES["' + S.scene + '"].acts 缺失', 'msg:hit'); return; }
+    var activeScene = d.scene && SCENES[d.scene] ? d.scene : S.scene;
+    if(activeScene !== S.scene){
+      S.scene = activeScene;
+      if(!S.flags.seenScenes) S.flags.seenScenes=[];
+      if(S.flags.seenScenes.indexOf(activeScene)<0) S.flags.seenScenes.push(activeScene);
+      try{ if(window.RaccoonMap) RaccoonMap.setCurrentScene(activeScene); }catch(_e){}
+      sc = SCENES[activeScene]; save();
+    }
     var act = sc.acts[d.spotId];
-    if(!act){ devWarn('hit: 场景 "' + S.scene + '" 没有 act "' + d.spotId + '"', 'msg:hit'); return; }
+    if(!act){ devWarn('hit: 场景 "' + activeScene + '" 没有 act "' + d.spotId + '"', 'msg:hit'); return; }
     try { act(); } catch(err){ devErr('act 执行异常: ' + (err && err.message ? err.message : err), 'msg:hit'); }
   }
 });
@@ -2394,7 +2425,8 @@ function syncState(){
   if(!S || !gameFrame || !gameFrame.contentWindow) return;
   try {
     gameFrame.contentWindow.postMessage({ type: 'setState', state: S }, '*');
-    gameFrame.contentWindow.postMessage({ type: 'setEnding', value: endingShown }, '*');
+    gameFrame.contentWindow.postMessage({ type: 'setEnding', value: endingShown }, location.origin);
+    gameFrame.contentWindow.postMessage({ type: 'setQuality', value: settings.quality || 'medium' }, location.origin);
   } catch(e){}
 }
 
@@ -2782,7 +2814,7 @@ function beginGame(state, isNew){
     try {
       if(window.RaccoonMap){
         RaccoonMap.init(); RaccoonMap.setCurrentScene(state.scene || 'alley');
-        RaccoonMap.setTravelCallback(function(sceneKey){ if(SCENES[sceneKey]){ RaccoonMap.close(); changeScene(sceneKey, SCENES[sceneKey].label); } });
+        RaccoonMap.setTravelCallback(function(sceneKey){ if(SCENES[sceneKey]){ toast('地图仅供查看，请在三维世界中步行前往'); } });
       }
     } catch(e){}
     beginGame(state, isNew); save();
