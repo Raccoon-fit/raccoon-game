@@ -1251,6 +1251,147 @@ body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;bac
 .card .cart{height:98px!important}.card .chead{top:110px!important}.card .ctext{top:139px!important}
 }
 
+
+
+/* ===== 攻击剑痕特效 + 左下角遗物图标 ===== */
+.slash-fx{position:fixed;z-index:120;pointer-events:none;width:190px;height:90px;transform:translate(-50%,-50%) rotate(-18deg)}
+.slash-fx::before,.slash-fx::after{content:"";position:absolute;left:5px;top:42px;width:180px;height:4px;border-radius:100%;transform-origin:center;background:linear-gradient(90deg,transparent 0%,#fff7d8 22%,#ffd27a 50%,#fff 70%,transparent 100%);box-shadow:0 0 5px #fff,0 0 13px #e5a449,0 0 25px rgba(221,102,38,.68);animation:swordSlash .34s cubic-bezier(.2,.75,.2,1) forwards}
+.slash-fx::after{top:52px;transform:rotate(11deg);opacity:.62;animation-delay:.045s}
+.slash-fx.cleave{width:225px;height:115px;transform:translate(-50%,-50%) rotate(-35deg)}
+.slash-fx.cleave::before{width:215px;height:6px}
+.slash-fx.cleave::after{width:200px;top:62px;transform:rotate(24deg)}
+@keyframes swordSlash{0%{clip-path:inset(0 100% 0 0);opacity:0;filter:blur(3px)}25%{opacity:1}72%{clip-path:inset(0 0 0 0);opacity:1;filter:blur(0)}100%{clip-path:inset(0 0 0 100%);opacity:0;filter:blur(2px)}}
+.slash-spark{position:fixed;z-index:121;pointer-events:none;width:7px;height:7px;border-radius:50%;background:#fff5c9;box-shadow:0 0 9px #ffc75e,0 0 17px #dc6b2d;animation:slashSpark .42s ease-out forwards}
+@keyframes slashSpark{to{transform:translate(var(--sx),var(--sy)) scale(.15);opacity:0}}
+.relic-dock{position:fixed;left:22px;bottom:68px;z-index:28;display:flex;align-items:center;gap:7px;max-width:300px;flex-wrap:wrap}
+.relic-icon{position:relative;width:38px;height:38px;padding:0;border-radius:8px;border:1px solid rgba(220,176,98,.38);background:radial-gradient(circle at 50% 36%,#55412a,#1b1611 72%);color:#f0c879;box-shadow:inset 0 0 0 1px rgba(255,231,175,.06),0 8px 18px rgba(0,0,0,.48);display:flex;align-items:center;justify-content:center;font:22px/1 Georgia,serif;cursor:help}
+.relic-icon:hover,.relic-icon:focus{border-color:#e4b568;transform:translateY(-2px);box-shadow:0 0 18px rgba(221,165,77,.27),0 10px 20px rgba(0,0,0,.5);outline:none}
+.relic-tip{position:absolute;left:0;bottom:calc(100% + 9px);width:230px;padding:10px 12px;border:1px solid rgba(225,181,105,.34);border-radius:9px;background:rgba(12,10,8,.97);box-shadow:0 14px 35px rgba(0,0,0,.62);text-align:left;opacity:0;visibility:hidden;transform:translateY(5px);transition:.15s ease;pointer-events:none}
+.relic-icon:hover .relic-tip,.relic-icon:focus .relic-tip{opacity:1;visibility:visible;transform:none}
+.relic-tip b{display:block;margin-bottom:5px;color:#f1d39a;font-size:12px;letter-spacing:.08em}
+.relic-tip span{display:block;color:#b9a58a;font-size:11px;line-height:1.55}
+.relic-empty{padding:7px 10px;border:1px dashed rgba(208,167,98,.22);border-radius:8px;color:#84725b;background:rgba(12,10,8,.5);font-size:10px}
+@media (max-height:700px){.relic-dock{bottom:62px}.relic-icon{width:34px;height:34px;font-size:19px}}
+
+
+
+/* ===== 遗物图标：纯 CSS 绘制，禁用 emoji / 字符图标 ===== */
+.relic-icon{font:inherit!important;overflow:visible!important}
+.relic-icon>i{display:none!important}
+.relic-art{position:relative;display:block;width:27px;height:27px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.55))}
+.relic-art i,.relic-art em,.relic-art strong{position:absolute;display:block;content:"";font-style:normal}
+/* 烛台余烬：蜡烛 + 火焰 */
+.relic-ember strong{left:5px;right:5px;bottom:2px;height:6px;border-radius:50%;background:radial-gradient(ellipse,#b77a34 0%,rgba(183,122,52,.38) 48%,transparent 72%);box-shadow:0 0 10px rgba(226,153,62,.55)}
+.relic-ember i{left:11px;bottom:4px;width:6px;height:14px;border-radius:3px 3px 2px 2px;background:linear-gradient(90deg,#80684c,#f0d7a5 42%,#8a6e49);box-shadow:inset -1px 0 0 rgba(0,0,0,.25)}
+.relic-ember em{left:9px;top:1px;width:10px;height:14px;border-radius:70% 30% 65% 35%;transform:rotate(12deg);background:radial-gradient(circle at 52% 68%,#fff4b8 0 18%,#ffd46a 25%,#e36d2e 62%,rgba(135,38,21,.2) 76%,transparent 78%);box-shadow:0 0 10px #e69b43,0 0 18px rgba(218,91,36,.55)}
+/* 铁誓护符：金属盾徽 */
+.relic-oath i{left:5px;top:3px;width:17px;height:21px;clip-path:polygon(50% 0,88% 13%,80% 67%,50% 100%,20% 67%,12% 13%);background:linear-gradient(135deg,#fff0be 0%,#b9853e 42%,#4b3824 100%);box-shadow:inset 0 0 0 1px rgba(255,244,200,.35),0 0 9px rgba(213,162,78,.35)}
+.relic-oath em{left:12px;top:6px;width:3px;height:14px;background:#332417;border-radius:2px;box-shadow:0 0 0 1px rgba(255,220,145,.16)}
+.relic-oath strong{left:8px;top:11px;width:11px;height:3px;background:#332417;border-radius:2px;box-shadow:0 0 0 1px rgba(255,220,145,.12)}
+/* 深渊之胃：深渊眼 / 吞噬核心 */
+.relic-maw i{left:3px;top:6px;width:21px;height:15px;border-radius:50%;background:radial-gradient(circle at 50% 50%,#f3c56a 0 10%,#7b221e 12% 28%,#16110f 30% 56%,#80582e 58% 70%,transparent 72%);box-shadow:inset 0 0 0 1px rgba(244,192,99,.36),0 0 11px rgba(130,39,31,.75)}
+.relic-maw em{left:11px;top:9px;width:5px;height:8px;border-radius:50%;background:#050403;box-shadow:0 0 0 1px rgba(255,211,116,.32)}
+.relic-maw strong{left:6px;top:18px;width:15px;height:4px;border-radius:0 0 12px 12px;background:linear-gradient(90deg,transparent,#d8bd88 18%,#261914 20% 30%,#d8bd88 32% 50%,#261914 52% 62%,#d8bd88 64%,transparent);opacity:.72}
+/* 静默香炉：香炉 + 烟 */
+.relic-censer i{left:5px;bottom:5px;width:17px;height:9px;border-radius:3px 3px 9px 9px;background:linear-gradient(#d7ae67,#614421);box-shadow:inset 0 1px 0 rgba(255,235,173,.38),0 0 8px rgba(204,151,75,.28)}
+.relic-censer i::before{content:"";position:absolute;left:3px;right:3px;top:-4px;height:5px;border-radius:50%;border:1px solid rgba(241,203,132,.55);border-bottom:0;background:rgba(30,22,14,.55)}
+.relic-censer em{left:9px;top:0;width:5px;height:15px;border-radius:50%;border-left:2px solid rgba(198,187,166,.72);transform:rotate(18deg);filter:blur(.1px)}
+.relic-censer strong{left:15px;top:2px;width:5px;height:13px;border-radius:50%;border-left:2px solid rgba(198,187,166,.48);transform:rotate(-18deg)}
+/* 连锁之环：双链扣 */
+.relic-chain i{left:3px;top:8px;width:14px;height:9px;border:3px solid #c89a55;border-radius:9px;transform:rotate(-35deg);box-shadow:inset 0 0 0 1px rgba(255,232,174,.12),0 0 7px rgba(205,151,72,.3)}
+.relic-chain em{right:3px;top:10px;width:14px;height:9px;border:3px solid #8f6733;border-radius:9px;transform:rotate(-35deg);box-shadow:inset 0 0 0 1px rgba(255,232,174,.08)}
+.relic-chain strong{left:11px;top:12px;width:6px;height:3px;border-radius:2px;background:#edd39a;transform:rotate(-35deg);box-shadow:0 0 6px rgba(237,190,104,.45)}
+
+
+
+/* ===== 精修挥砍：实体刀弧 + 动态残影 + 延迟伤害弹窗 ===== */
+.slash-fx{position:fixed;z-index:120;pointer-events:none;width:260px;height:180px;transform:translate(-50%,-50%) rotate(-18deg);overflow:visible;opacity:1}
+.slash-fx::before{content:"";position:absolute;left:12px;top:75px;width:230px;height:46px;border-radius:50%;background:conic-gradient(from 205deg at 50% 50%,transparent 0deg,transparent 18deg,rgba(255,255,255,.95) 31deg,#ffe2a0 39deg,#e78b34 47deg,rgba(255,255,255,.78) 55deg,transparent 72deg,transparent 360deg);filter:drop-shadow(0 0 6px #fff1c6) drop-shadow(0 0 18px rgba(230,138,44,.75));clip-path:ellipse(50% 42% at 50% 50%);transform:scaleX(.25) rotate(-8deg);opacity:0;animation:slashArc .58s cubic-bezier(.13,.8,.2,1) forwards}
+.slash-fx::after{content:"";position:absolute;left:35px;top:86px;width:190px;height:5px;border-radius:999px;background:linear-gradient(90deg,transparent,#fff 12%,#ffe1a3 36%,#d87830 58%,transparent 100%);box-shadow:0 0 10px #fff0bc,0 0 24px rgba(223,108,38,.8);transform-origin:50% 50%;opacity:0;animation:slashEdge .48s cubic-bezier(.16,.78,.22,1) forwards}
+.slash-fx .blade{position:absolute;left:35px;top:28px;width:172px;height:18px;border-radius:14px 70% 70% 14px;transform-origin:18px 50%;transform:rotate(-34deg) translateX(-40px);opacity:0;background:linear-gradient(180deg,#fffef1 0%,#cfd5d5 35%,#7a8382 58%,#f7e5b8 100%);clip-path:polygon(0 18%,82% 0,100% 50%,82% 100%,0 82%,9% 50%);box-shadow:inset 0 1px 0 #fff,0 0 14px rgba(255,235,180,.65);animation:bladeCut .42s cubic-bezier(.14,.82,.2,1) forwards}
+.slash-fx .blade::before{content:"";position:absolute;left:8px;top:7px;width:126px;height:2px;background:linear-gradient(90deg,rgba(255,255,255,.9),rgba(255,255,255,.1));border-radius:2px}
+.slash-fx .handle{position:absolute;left:23px;top:42px;width:44px;height:12px;border-radius:6px;transform:rotate(-34deg) translateX(-36px);opacity:0;background:linear-gradient(180deg,#d7a354,#5d3b1e);box-shadow:inset 0 1px 0 rgba(255,230,170,.45),0 0 8px rgba(0,0,0,.6);animation:bladeCut .42s cubic-bezier(.14,.82,.2,1) forwards}
+.slash-fx .handle::after{content:"";position:absolute;right:-3px;top:-5px;width:7px;height:22px;border-radius:5px;background:linear-gradient(90deg,#f3c76e,#7a4d22);box-shadow:0 0 5px rgba(0,0,0,.55)}
+.slash-fx.cleave{width:310px;height:215px;transform:translate(-50%,-50%) rotate(-32deg)}
+.slash-fx.cleave::before{left:4px;top:78px;width:298px;height:68px;animation-duration:.66s;filter:drop-shadow(0 0 8px #fff3c8) drop-shadow(0 0 26px rgba(230,100,35,.9))}
+.slash-fx.cleave::after{left:30px;top:106px;width:250px;height:7px;animation-duration:.58s}
+.slash-fx.cleave .blade{width:218px;height:22px;top:28px;animation-duration:.48s}
+.slash-fx.cleave .handle{top:45px;animation-duration:.48s}
+@keyframes bladeCut{0%{opacity:0;transform:rotate(-34deg) translateX(-95px) translateY(28px) scale(.72)}18%{opacity:1}58%{opacity:1;transform:rotate(-12deg) translateX(35px) translateY(14px) scale(1.04)}100%{opacity:0;transform:rotate(12deg) translateX(132px) translateY(0) scale(.9)}}
+@keyframes slashArc{0%{opacity:0;transform:scaleX(.05) rotate(-20deg);filter:blur(6px) drop-shadow(0 0 5px #fff)}18%{opacity:1}62%{opacity:1;transform:scaleX(1) rotate(2deg);filter:blur(0) drop-shadow(0 0 9px #fff0bc) drop-shadow(0 0 24px rgba(230,138,44,.82))}100%{opacity:0;transform:scaleX(1.08) rotate(8deg);filter:blur(4px) drop-shadow(0 0 3px #fff)}}
+@keyframes slashEdge{0%{opacity:0;transform:translateX(-80px) rotate(-12deg) scaleX(.1)}24%{opacity:1}70%{opacity:.95;transform:translateX(28px) rotate(3deg) scaleX(1)}100%{opacity:0;transform:translateX(96px) rotate(8deg) scaleX(.45)}}
+.slash-spark{position:fixed;z-index:121;pointer-events:none;width:8px;height:8px;border-radius:50%;background:#fff8d6;box-shadow:0 0 10px #ffd36b,0 0 22px #db6930;animation:slashSpark .62s cubic-bezier(.12,.72,.2,1) forwards}
+.slash-spark::after{content:"";position:absolute;left:-8px;top:3px;width:18px;height:2px;border-radius:3px;background:linear-gradient(90deg,transparent,#ffe19a,transparent);transform:rotate(var(--sr,0deg))}
+@keyframes slashSpark{0%{opacity:0;transform:translate(0,0) scale(.4)}18%{opacity:1}100%{transform:translate(var(--sx),var(--sy)) scale(.08);opacity:0}}
+.impact-pop{position:fixed;z-index:119;pointer-events:none;width:90px;height:90px;border-radius:50%;border:1px solid rgba(255,226,150,.75);box-shadow:0 0 22px rgba(255,190,80,.45),inset 0 0 18px rgba(255,240,180,.2);transform:translate(-50%,-50%) scale(.25);opacity:0;animation:impactPop .36s ease-out forwards}
+@keyframes impactPop{35%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.45)}}
+
+
+
+/* ===== 性能修正版挥砍：减少滤镜/粒子，刀身真实位移动画 ===== */
+.slash-fx{
+  position:fixed!important;z-index:120!important;pointer-events:none!important;
+  width:240px!important;height:150px!important;overflow:visible!important;
+  transform:translate(-50%,-50%)!important;contain:layout style paint!important;
+  will-change:transform,opacity!important;
+}
+.slash-fx.cleave{width:280px!important;height:180px!important;transform:translate(-50%,-50%)!important}
+.slash-fx::before,.slash-fx::after{content:none!important;display:none!important}
+.slash-fx .sword-body{
+  position:absolute;left:18px;top:46px;width:190px;height:34px;
+  transform-origin:24px 50%;will-change:transform,opacity;
+  animation:swordBodySweep .34s cubic-bezier(.18,.78,.24,1) forwards;
+}
+.slash-fx.cleave .sword-body{left:8px;top:58px;width:230px;height:38px;animation-duration:.40s}
+.slash-fx .blade{
+  position:absolute!important;left:42px!important;top:8px!important;width:135px!important;height:16px!important;
+  border-radius:14px 80% 80% 14px!important;
+  clip-path:polygon(0 18%,83% 0,100% 50%,83% 100%,0 82%,8% 50%)!important;
+  background:linear-gradient(180deg,#fffbe8 0%,#d4d9d5 40%,#69716e 62%,#fff1be 100%)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 0 6px rgba(255,222,145,.58)!important;
+  transform:none!important;animation:none!important;opacity:1!important;
+}
+.slash-fx.cleave .blade{width:168px!important;height:19px!important;top:7px!important}
+.slash-fx .blade::before{content:"";position:absolute;left:10px;top:5px;width:92px;height:2px;border-radius:3px;background:linear-gradient(90deg,rgba(255,255,255,.95),rgba(255,255,255,.08))}
+.slash-fx .guard{
+  position:absolute;left:35px;top:1px;width:8px;height:30px;border-radius:5px;
+  background:linear-gradient(90deg,#f0c56c,#71461d);box-shadow:0 0 4px rgba(0,0,0,.55)
+}
+.slash-fx .handle{
+  position:absolute!important;left:0!important;top:11px!important;width:42px!important;height:10px!important;border-radius:8px!important;
+  background:linear-gradient(180deg,#d59c4e,#54331a)!important;box-shadow:inset 0 1px 0 rgba(255,230,170,.42),0 0 5px rgba(0,0,0,.55)!important;
+  transform:none!important;animation:none!important;opacity:1!important;
+}
+.slash-fx .slash-line{
+  position:absolute;left:28px;top:78px;width:178px;height:5px;border-radius:999px;
+  background:linear-gradient(90deg,transparent,#fff8d6 14%,#ffd074 42%,#e77b32 68%,transparent);
+  box-shadow:0 0 8px rgba(255,232,165,.8),0 0 14px rgba(221,103,38,.42);
+  transform-origin:center;will-change:transform,opacity;
+  animation:slashLineFast .36s ease-out forwards;
+}
+.slash-fx.cleave .slash-line{left:22px;top:98px;width:228px;height:7px;animation-duration:.42s}
+@keyframes swordBodySweep{
+  0%{opacity:0;transform:translate3d(-82px,34px,0) rotate(-58deg) scale(.88)}
+  12%{opacity:1}
+  56%{opacity:1;transform:translate3d(38px,8px,0) rotate(-14deg) scale(1)}
+  100%{opacity:0;transform:translate3d(138px,-14px,0) rotate(22deg) scale(.96)}
+}
+@keyframes slashLineFast{
+  0%{opacity:0;transform:translate3d(-70px,20px,0) rotate(-28deg) scaleX(.18)}
+  24%{opacity:1}
+  68%{opacity:.95;transform:translate3d(12px,0,0) rotate(-12deg) scaleX(1)}
+  100%{opacity:0;transform:translate3d(76px,-15px,0) rotate(6deg) scaleX(.48)}
+}
+.slash-spark{
+  position:fixed!important;z-index:121!important;pointer-events:none!important;width:6px!important;height:6px!important;border-radius:50%!important;
+  background:#ffe4a0!important;box-shadow:0 0 8px rgba(255,196,88,.8)!important;
+  will-change:transform,opacity!important;animation:slashSparkLite .38s ease-out forwards!important;
+}
+.slash-spark::after{display:none!important}
+@keyframes slashSparkLite{0%{opacity:1;transform:translate3d(0,0,0) scale(1)}100%{opacity:0;transform:translate3d(var(--sx),var(--sy),0) scale(.15)}}
+.impact-pop{width:62px!important;height:62px!important;box-shadow:0 0 12px rgba(255,190,80,.36)!important;animation:impactPopLite .26s ease-out forwards!important}
+@keyframes impactPopLite{0%{opacity:0;transform:translate(-50%,-50%) scale(.35)}45%{opacity:.8;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.25)}}
+
 </style>
 </head>
 <body>
@@ -1321,11 +1462,11 @@ body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;bac
   ];
 
   var RELICS = {
-    ember:{name:"烛台余烬",text:"每回合开始能量 +1。"},
-    oath:{name:"铁誓护符",text:"战斗开始时召唤一名 2/6 守护。"},
-    maw:{name:"深渊之胃",text:"回合开始自损 1 点生命，全体攻击 +1。"},
-    censer:{name:"静默香炉",text:"每回合多抽 1 张牌。"},
-    chain:{name:"连锁之环",text:"战斗开始时全体己方攻击 +1。"}
+    ember:{name:"烛台余烬",cls:"ember",text:"每回合开始能量 +1。"},
+    oath:{name:"铁誓护符",cls:"oath",text:"战斗开始时召唤一名 2/6 守护。"},
+    maw:{name:"深渊之胃",cls:"maw",text:"回合开始自损 1 点生命，全体攻击 +1。"},
+    censer:{name:"静默香炉",cls:"censer",text:"每回合多抽 1 张牌。"},
+    chain:{name:"连锁之环",cls:"chain",text:"战斗开始时全体己方攻击 +1。"}
   };
   var DIFFS = {
     ember:{name:"烛火",desc:"标准强度，适合先摸清机制",hp:32,atk:0,mul:1},
@@ -1880,6 +2021,37 @@ body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;bac
     node.classList.add("shake");
     setTimeout(function(){ node.classList.remove("shake"); },380);
   }
+  function swordSlash(node,kind,after){
+    if(!node||reduceMotion()){
+      if(after) setTimeout(after,300);
+      return;
+    }
+    var r=node.getBoundingClientRect();
+    var x=r.left+r.width/2, y=r.top+r.height/2;
+    var slash=document.createElement("div");
+    slash.className="slash-fx "+(kind==="cleave"?"cleave":"");
+    slash.style.left=x+"px"; slash.style.top=y+"px";
+    slash.innerHTML='<span class="sword-body"><i class="blade"></i><i class="guard"></i><i class="handle"></i></span><i class="slash-line"></i>';
+    fxLayer().appendChild(slash);
+    setTimeout(function(){
+      var pop=document.createElement("div");
+      pop.className="impact-pop";
+      pop.style.left=x+"px"; pop.style.top=y+"px";
+      fxLayer().appendChild(pop);
+      setTimeout(function(){ if(pop.parentNode) pop.parentNode.removeChild(pop); },300);
+    },190);
+    for(var i=0;i<5;i++){
+      var sp=document.createElement("i"); sp.className="slash-spark";
+      sp.style.left=(x-3+(Math.random()-.5)*34)+"px";
+      sp.style.top=(y-3+(Math.random()-.5)*24)+"px";
+      sp.style.setProperty("--sx",((Math.random()-.5)*(kind==="cleave"?112:82)).toFixed(0)+"px");
+      sp.style.setProperty("--sy",((Math.random()-.5)*(kind==="cleave"?76:54)).toFixed(0)+"px");
+      fxLayer().appendChild(sp);
+      (function(n){ setTimeout(function(){ if(n.parentNode)n.parentNode.removeChild(n); },420); })(sp);
+    }
+    setTimeout(function(){ if(slash.parentNode)slash.parentNode.removeChild(slash); },460);
+    if(after) setTimeout(after,300);
+  }
   function showBanner(text){
     if(reduceMotion()) return;
     var d=document.createElement("div");
@@ -1950,7 +2122,11 @@ body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;bac
           var foe=document.querySelector("#enemy-row .unit");
           if(foe) lungeEl(foe);
         }
-        if(item.dmg>0) floatAt(node,"-"+item.dmg,item.dmg>=10?"dmg big":"dmg");
+        if(item.dmg>0){
+          swordSlash(node,item.dmg>=10?"cleave":"slash",function(){
+            floatAt(node,"-"+item.dmg,item.dmg>=10?"dmg big":"dmg");
+          });
+        }
         if(item.kill){ floatAt(node,"击杀","gold"); shatter(node); }
         if(node){ node.classList.add("hurt"); setTimeout(function(){ node.classList.remove("hurt"); },450); }
         shakeEl(node);
@@ -2249,6 +2425,14 @@ body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;bac
       '</div>';
   }
 
+  function relicDockHTML(){
+    if(!S.relics||!S.relics.length) return '<div class="relic-dock"><span class="relic-empty">暂无遗物</span></div>';
+    return '<div class="relic-dock" aria-label="遗物">'+S.relics.map(function(id){
+      var r=RELICS[id]; if(!r) return "";
+      return '<button class="relic-icon" type="button" tabindex="0" aria-label="'+r.name+'：'+r.text+'"><span class="relic-art relic-'+(r.cls||id)+'" aria-hidden="true"><i></i><em></em><strong></strong></span><span class="relic-tip"><b>'+r.name+'</b><span>'+r.text+'</span></span></button>';
+    }).join("")+'</div>';
+  }
+
   function renderBattle(){
     var b=S.battle;
     var wave=WAVES[Math.min(S.wave,WAVES.length-1)];
@@ -2300,10 +2484,10 @@ body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;bac
           '<div class="tools">'+
             '<button class="tool" data-act="rules">规则</button>'+
             '<button class="tool" data-act="deck">牌堆</button>'+
-            '<button class="tool" data-act="relics">遗物</button>'+
           '</div>'+
           '<div class="hand'+(ui.sel!==null?' focus':'')+'" id="hand">'+hand+'</div>'+
         '</div>'+
+        relicDockHTML()+
         '<div class="actionbar"><button class="btn primary" data-act="end">结束回合</button></div>'+
         '<div class="firsthand torch-hand"><i class="flame"></i></div>'+
         '<div class="firsthand sword-hand"></div>'+
