@@ -2,8 +2,16 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="screen-orientation" content="landscape">
+<meta name="x5-orientation" content="landscape">
+<meta name="x5-fullscreen" content="true">
+<meta name="full-screen" content="yes">
 <meta name="theme-color" content="#0b0a0d">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>残烛纪年</title>
 <style>
 :root{
@@ -1143,12 +1151,33 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
   .archk{opacity:.45}
 }
 
+
+
+/* 横屏启动策略：不旋转页面坐标系，避免全面屏手势方向错乱；仅在手机竖屏时提示旋转设备 */
+.rotate-device-tip{display:none;position:fixed;inset:0;z-index:10000;background:#08070a;color:#f1e9dd;
+  align-items:center;justify-content:center;text-align:center;padding:24px}
+.rotate-device-tip .rotate-box{display:flex;flex-direction:column;align-items:center;gap:12px;max-width:320px}
+.rotate-device-tip .rotate-icon{width:70px;height:44px;border:2px solid #e6b263;border-radius:8px;position:relative;
+  box-shadow:0 0 24px rgba(230,178,99,.18)}
+.rotate-device-tip .rotate-icon::after{content:"";position:absolute;right:5px;top:50%;width:4px;height:10px;
+  border-radius:3px;background:#e6b263;transform:translateY(-50%)}
+.rotate-device-tip b{font-size:18px;color:#ffd79a;letter-spacing:.12em}
+.rotate-device-tip span{font-size:12px;color:#9c9188;line-height:1.7}
+/* 只拦截窄屏触控手机；平板和电脑保持浏览器原生布局，避免误旋转/错位 */
+@media (orientation:portrait) and (max-width:600px) and (hover:none) and (pointer:coarse){
+  html.need-real-landscape .rotate-device-tip{display:flex}
+}
+
 </style>
 </head>
 <body>
 <div class="embers" id="embers" aria-hidden="true"></div>
 <div class="scene-fixed" aria-hidden="true"><div class="scene"><i class="backwall"></i><i class="wall-l"></i><i class="wall-r"></i><i class="archk a1"></i><i class="archk a2"></i><i class="archk a3"></i><i class="arch"></i><i class="gate"></i><i class="statue l"></i><i class="statue r"></i><i class="plinth l"></i><i class="plinth r"></i><i class="candle c1"></i><i class="candle c2"></i><i class="candle c3"></i><i class="candle c4"></i><i class="pillar l"></i><i class="pillar r"></i><i class="cage l"></i><i class="cage r"></i><i class="torch"></i><i class="floor"></i><i class="fog"></i><i class="dust"></i><i class="vig"></i></div></div>
 <div id="app"></div>
+<div class="rotate-device-tip" id="rotate-device-tip" aria-live="polite">
+  <div class="rotate-box"><i class="rotate-icon" aria-hidden="true"></i><b>请横置设备</b>
+  <span>游戏采用真实横屏显示。横置后，底部全面屏手势方向也会同步恢复正常。</span></div>
+</div>
 <div id="ghost"></div>
 <div id="fx"></div>
 <div id="hint" class="hint hidden"></div>
@@ -1239,13 +1268,14 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
   var SAVE_KEY="advent_realm_html_save_v1";
   var HISTORY_KEY="advent_realm_history_v1";
   var DISPLAY_KEY="advent_realm_display_v1";
+  var ORIENT_KEY="advent_realm_orient_v1";
   var S = {
     screen:"start", clan:"order", diff:"apostle", deck:[], relics:[], wave:0,
     battle:null, reward:null, event:null, uid:1, hasSave:false,
     runTurns:0, recorded:false, prevScreen:"title"
   };
 
-  var ui = { sel:null, dragging:false, dragId:null, dragCard:null, startX:0, startY:0, moved:false, confirmClear:false, ddOpen:false };
+  var ui = { sel:null, dragging:false, dragId:null, dragCard:null, startX:0, startY:0, moved:false, confirmClear:false, ddOpen:"" };
 
   function el(id){ return document.getElementById(id); }
   function rnd(n){ return Math.floor(Math.random()*n); }
@@ -1951,6 +1981,12 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
   function getDisplay(){
     try{ return localStorage.getItem(DISPLAY_KEY)==="window"?"window":"fullscreen"; }catch(e){ return "fullscreen"; }
   }
+  function getOrient(){
+    try{ return localStorage.getItem(ORIENT_KEY)==="portrait"?"portrait":"landscape"; }catch(e){ return "landscape"; }
+  }
+  function setOrient(dir){
+    try{ localStorage.setItem(ORIENT_KEY,dir==="portrait"?"portrait":"landscape"); }catch(e){}
+  }
   function setDisplay(mode){
     try{ localStorage.setItem(DISPLAY_KEY,mode==="window"?"window":"fullscreen"); }catch(e){}
   }
@@ -1966,12 +2002,49 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
   function orientationLockable(){
     try{ return !!(screen.orientation&&screen.orientation.lock); }catch(e){ return false; }
   }
-  function lockLandscape(){
+  function lockOrientation(dir){
+    dir=dir||getOrient();
     try{
-      if(!orientationLockable()) return;
-      var pr=screen.orientation.lock("landscape");
-      if(pr&&pr.catch) pr.catch(function(){});
+      if(!orientationLockable()) return Promise.resolve(false);
+      var pr=screen.orientation.lock(dir);
+      return pr&&pr.then?pr.then(function(){ return true; }).catch(function(){ return false; }):Promise.resolve(true);
+    }catch(e){ return Promise.resolve(false); }
+  }
+  function isPhoneLike(){
+    try{
+      return window.matchMedia("(hover:none) and (pointer:coarse) and (max-width:600px)").matches;
+    }catch(e){ return Math.min(screen.width,screen.height)<=600; }
+  }
+  function isStandalonePwa(){
+    try{ return window.matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches || window.navigator.standalone===true; }catch(e){ return false; }
+  }
+  function syncRealLandscape(){
+    var portrait=window.innerHeight>window.innerWidth;
+    /* 安装为 PWA 后，manifest 会由系统层处理 fullscreen + landscape，不再用提示层干扰 */
+    document.documentElement.classList.toggle("need-real-landscape",getOrient()==="landscape"&&portrait&&isPhoneLike()&&!isStandalonePwa());
+  }
+  var FULLSCREEN_GUARD_ACTIVE=false;
+  var WAKE_LOCK=null;
+  function lockKeyboard(){
+    try{ if(navigator.keyboard&&navigator.keyboard.lock) navigator.keyboard.lock(["Escape"]).catch(function(){}); }catch(e){}
+  }
+  function requestWakeLock(){
+    try{
+      if(!(navigator.wakeLock&&navigator.wakeLock.request)) return;
+      navigator.wakeLock.request("screen").then(function(wl){
+        WAKE_LOCK=wl;
+        wl.addEventListener("release",function(){ if(WAKE_LOCK===wl) WAKE_LOCK=null; });
+      }).catch(function(){});
     }catch(e){}
+  }
+  function releaseWakeLock(){
+    try{ if(WAKE_LOCK&&WAKE_LOCK.release) WAKE_LOCK.release().catch(function(){}); }catch(e){}
+    WAKE_LOCK=null;
+  }
+  function setupFullscreenGuard(){
+    document.addEventListener("visibilitychange",function(){
+      if(document.visibilityState==="visible"&&getDisplay()==="fullscreen") requestWakeLock();
+    });
   }
   function unlockOrientation(){
     try{ if(screen.orientation&&screen.orientation.unlock) screen.orientation.unlock(); }catch(e){}
@@ -1984,6 +2057,13 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
   function applyDisplay(mode){
     try{
       var el=document.documentElement;
+      syncRealLandscape();
+      /* 必须在用户点击的同步调用栈中申请方向锁定 */
+      if(mode==="fullscreen"){
+        FULLSCREEN_GUARD_ACTIVE=true;
+        lockOrientation(getOrient());
+        requestWakeLock();
+      }
       if(mode==="fullscreen"){
         if(fsElement()) return;
         if(fsSupported()){
@@ -1992,31 +2072,54 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
           else if(el.webkitRequestFullscreen) r=el.webkitRequestFullscreen();
           else if(el.mozRequestFullScreen) r=el.mozRequestFullScreen();
           else if(el.msRequestFullscreen) r=el.msRequestFullscreen();
-          if(r&&r.then) r.then(function(){ lockLandscape(); }).catch(function(){
+          if(r&&r.then) r.then(function(){ lockOrientation(getOrient()); syncRealLandscape(); }).catch(function(){
             pseudoFull(true);
-            msg("系统全屏被浏览器拦截，已按页面内全屏显示");
+            syncRealLandscape();
+            msg("系统全屏被浏览器拦截，请手动横置设备");
           });
-          else lockLandscape();
+          else { lockOrientation(getOrient()); syncRealLandscape(); }
           return;
         }
         pseudoFull(true);
-        lockLandscape();
+        lockOrientation(getOrient());
+        syncRealLandscape();
         msg("当前浏览器不支持系统全屏，已按页面内全屏显示");
       }else{
         if(document.exitFullscreen) document.exitFullscreen().catch(function(){});
         else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
         else if(document.mozCancelFullScreen) document.mozCancelFullScreen();
         else if(document.msExitFullscreen) document.msExitFullscreen();
+        FULLSCREEN_GUARD_ACTIVE=false;
         unlockOrientation();
+        releaseWakeLock();
         pseudoFull(false);
       }
-    }catch(e){ pseudoFull(mode==="fullscreen"); }
+    }catch(e){ pseudoFull(mode==="fullscreen"); syncRealLandscape(); }
   }
   document.addEventListener("fullscreenchange",function(){
-    if(fsElement()){ pseudoFull(false); lockLandscape(); }
-    else unlockOrientation();
+    if(fsElement()){
+      FULLSCREEN_GUARD_ACTIVE=true;
+      pseudoFull(false);
+      lockKeyboard();
+      lockOrientation(getOrient());
+      requestWakeLock();
+      syncRealLandscape();
+    }else{
+      unlockOrientation();
+      syncRealLandscape();
+      /* 参考你给的版本：用户已进入全屏后，误退出时尝试拉回全屏；失败则保持页面内全屏 */
+      if(FULLSCREEN_GUARD_ACTIVE&&getDisplay()==="fullscreen"){
+        setTimeout(function(){
+          try{
+            if(!fsElement()&&document.documentElement.requestFullscreen){
+              document.documentElement.requestFullscreen({keyboardLock:"browser"}).catch(function(){ pseudoFull(true); });
+            }
+          }catch(e){ pseudoFull(true); }
+        },80);
+      }else releaseWakeLock();
+    }
   });
-  document.addEventListener("webkitfullscreenchange",function(){ if(fsElement()) pseudoFull(false); });
+  document.addEventListener("webkitfullscreenchange",function(){ if(fsElement()){ pseudoFull(false); requestWakeLock(); syncRealLandscape(); } });
 
   function loadHistory(){
     try{
@@ -2106,7 +2209,7 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
       '<div class="start-rule"></div>'+
       '<p class="start-desc">牌组构筑 · 回合制战斗<br>在熄灭前走到最后一层</p>'+
       '<button class="btn primary enter-btn" data-act="enter">进入游戏</button>'+
-      '<div class="start-hint">显示模式：'+(mode==="window"?"窗口":(fsSupported()?"全屏":"全屏（页面内）"))+' · 可在右上角设置中修改</div>'+
+      '<div class="start-hint">'+(mode==="window"?"窗口":"全屏")+' · '+(getOrient()==="portrait"?"竖屏":"横屏")+' · 可在设置中修改</div>'+
       '<div class="version">v0.4</div>'+
       '</div>';
   }
@@ -2233,17 +2336,28 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
       '</div>';
     }).join("");
     var mode=getDisplay();
+    var dir=getOrient();
+    var dirLabel=dir==="portrait"?"竖屏":"横屏";
     var dd='<div class="set-row"><span class="set-label">显示模式</span>'+
-      '<div class="dd'+(ui.ddOpen?" open":"")+'">'+
-        '<button class="dd-btn" data-act="dd-toggle" aria-haspopup="listbox" aria-expanded="'+(ui.ddOpen?"true":"false")+'">'+
+      '<div class="dd'+(ui.ddOpen==="display"?" open":"")+'">'+
+        '<button class="dd-btn" data-act="dd-toggle" data-dd="display" aria-haspopup="listbox" aria-expanded="'+(ui.ddOpen==="display")+'">'+
           (mode==="window"?"窗口":"全屏")+'<i>▾</i></button>'+
-        (ui.ddOpen?'<div class="dd-menu" role="listbox">'+
+        (ui.ddOpen==="display"?'<div class="dd-menu" role="listbox">'+
           '<button class="dd-item'+(mode==="fullscreen"?" on":"")+'" data-display="fullscreen" role="option">全屏</button>'+
           '<button class="dd-item'+(mode==="window"?" on":"")+'" data-display="window" role="option">窗口</button>'+
         '</div>':'')+
       '</div></div>'+
+      '<div class="set-row"><span class="set-label">游戏方向</span>'+
+      '<div class="dd'+(ui.ddOpen==="orient"?" open":"")+'">'+
+        '<button class="dd-btn" data-act="dd-toggle" data-dd="orient" aria-haspopup="listbox" aria-expanded="'+(ui.ddOpen==="orient")+'">'+
+          dirLabel+'<i>▾</i></button>'+
+        (ui.ddOpen==="orient"?'<div class="dd-menu" role="listbox">'+
+          '<button class="dd-item'+(dir==="landscape"?" on":"")+'" data-orient="landscape" role="option">横屏</button>'+
+          '<button class="dd-item'+(dir==="portrait"?" on":"")+'" data-orient="portrait" role="option">竖屏</button>'+
+        '</div>':'')+
+      '</div></div>'+
       (fsSupported()?"":'<div class="set-note">当前浏览器不支持系统全屏，将铺满页面显示</div>')+
-      (orientationLockable()?"":'<div class="set-note">当前环境不支持锁定屏幕方向，横屏需手动旋转设备</div>');
+      (orientationLockable()?"":'<div class="set-note">当前环境不支持锁定屏幕方向，将随设备自动旋转</div>');
     return '<div class="panel-wrap settings">'+
       '<h2>设置</h2>'+
       dd+
@@ -2266,7 +2380,7 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
   var app=el("app");
 
   app.addEventListener("click",function(ev){
-    var t=ev.target.closest("[data-clan],[data-diff],[data-reward],[data-event],[data-act],[data-display],[data-hand],[data-slot]");
+    var t=ev.target.closest("[data-clan],[data-diff],[data-reward],[data-event],[data-act],[data-display],[data-orient],[data-hand],[data-slot]");
     if(!t) return;
     if(t.dataset.diff){ S.diff=t.dataset.diff; render(); return; }
     if(t.dataset.clan){ startRun(t.dataset.clan,S.diff); return; }
@@ -2274,7 +2388,13 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
     if(t.dataset.event!==undefined){ eventChoice(parseInt(t.dataset.event,10)); return; }
     if(t.dataset.display){
       var dm=t.dataset.display==="window"?"window":"fullscreen";
-      setDisplay(dm); applyDisplay(dm); ui.ddOpen=false; render(); return;
+      setDisplay(dm); applyDisplay(dm); ui.ddOpen=""; render(); return;
+    }
+    if(t.dataset.orient){
+      setOrient(t.dataset.orient);
+      lockOrientation(t.dataset.orient);
+      syncRealLandscape();
+      ui.ddOpen=""; render(); return;
     }
     if(t.dataset.act){
       if(t.dataset.act==="end"){ endTurn(); }
@@ -2283,12 +2403,20 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
       else if(t.dataset.act==="resume"){ loadGame(); }
       else if(t.dataset.act==="rules"){ showRules(); }
       else if(t.dataset.act==="enter"){
+        setOrient("landscape");
+        lockOrientation("landscape");
+        requestWakeLock();
+        lockKeyboard();
         applyDisplay(getDisplay());
         S.screen="title"; render();
       }
-      else if(t.dataset.act==="settings"){ S.prevScreen=S.screen; ui.confirmClear=false; S.screen="settings"; render(); }
-      else if(t.dataset.act==="back"){ ui.ddOpen=false; S.screen=S.prevScreen||"title"; render(); }
-      else if(t.dataset.act==="dd-toggle"){ ui.ddOpen=!ui.ddOpen; render(); }
+      else if(t.dataset.act==="settings"){ S.prevScreen=S.screen; ui.confirmClear=false; ui.ddOpen=""; S.screen="settings"; render(); }
+      else if(t.dataset.act==="back"){ ui.ddOpen=""; S.screen=S.prevScreen||"title"; render(); }
+      else if(t.dataset.act==="dd-toggle"){
+        var key=t.dataset.dd||"display";
+        ui.ddOpen=(ui.ddOpen===key?"":key);
+        render();
+      }
       else if(t.dataset.act==="clear-history"){
         if(!ui.confirmClear){ ui.confirmClear=true; render(); }
         else { clearHistory(); ui.confirmClear=false; render(); }
@@ -2419,6 +2547,12 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
   },true);
 
   try{ S.hasSave=!!localStorage.getItem(SAVE_KEY); }catch(e){}
+  /* 默认横屏，但绝不通过 CSS 旋转页面：保证系统手势、点击坐标和平板/桌面布局一致。 */
+  try{ if(localStorage.getItem(ORIENT_KEY)!=="portrait") setOrient("landscape"); }catch(e){}
+  syncRealLandscape();
+  setupFullscreenGuard();
+  window.addEventListener("resize",syncRealLandscape);
+  window.addEventListener("orientationchange",function(){ setTimeout(syncRealLandscape,120); });
   render();
 })();
 </script>
