@@ -1392,6 +1392,23 @@ body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;bac
 .impact-pop{width:62px!important;height:62px!important;box-shadow:0 0 12px rgba(255,190,80,.36)!important;animation:impactPopLite .26s ease-out forwards!important}
 @keyframes impactPopLite{0%{opacity:0;transform:translate(-50%,-50%) scale(.35)}45%{opacity:.8;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.25)}}
 
+
+
+/* ===== 过关商店：复古羊皮纸/木柜风格 ===== */
+.shop-wrap{position:relative;z-index:3;width:min(980px,92vw);max-height:92dvh;margin:auto;padding:22px 26px 20px;border:1px solid rgba(219,174,94,.32);border-radius:18px;background:linear-gradient(180deg,rgba(52,38,24,.92),rgba(20,15,11,.95));box-shadow:0 28px 80px rgba(0,0,0,.62),inset 0 0 0 1px rgba(255,236,180,.06);overflow:auto;text-align:center}
+.shop-wrap::before{content:"";position:absolute;inset:8px;border:1px solid rgba(236,196,113,.13);border-radius:13px;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,236,190,.025) 0 1px,transparent 1px 5px)}
+.shop-head{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px;border-bottom:1px solid rgba(222,178,96,.2);padding-bottom:12px}
+.shop-title{text-align:left}.shop-title h2{margin:0;color:#f2d7a0;font:600 26px/1.1 Georgia,"Noto Serif SC",serif;letter-spacing:.22em;text-shadow:0 2px 12px #000}.shop-title p{margin:6px 0 0;color:#a99678;font-size:12px;letter-spacing:.08em}
+.shop-coin{min-width:120px;padding:9px 14px;border-radius:999px;border:1px solid rgba(231,185,96,.32);background:rgba(12,9,7,.62);color:#f3cd79;font-weight:700;box-shadow:inset 0 1px 0 rgba(255,240,180,.08)}
+.shop-section{position:relative;z-index:1;margin:14px 0 18px}.shop-section-title{display:flex;align-items:center;gap:12px;margin:0 0 10px;color:#d7ba82;font-size:13px;letter-spacing:.22em}.shop-section-title::before,.shop-section-title::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,transparent,rgba(223,178,95,.32),transparent)}
+.shop-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.shop-item{position:relative;min-height:142px;padding:13px 13px 12px;border:1px solid rgba(214,169,91,.24);border-radius:12px;background:linear-gradient(160deg,rgba(40,31,22,.9),rgba(14,11,8,.92));box-shadow:inset 0 1px 0 rgba(255,238,186,.05),0 10px 24px rgba(0,0,0,.32);text-align:left;overflow:hidden}.shop-item::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,transparent,#c9974d,transparent);opacity:.65}.shop-item.sold{opacity:.45;filter:grayscale(.6)}
+.shop-card-mini{display:flex;gap:10px;align-items:flex-start}.shop-card-glyph{flex:0 0 48px;height:62px;border-radius:8px;border:1px solid rgba(225,184,105,.38);background:linear-gradient(180deg,#c8bb99,#514b40);display:flex;align-items:center;justify-content:center;color:#2b251e;font-size:28px;box-shadow:inset 0 0 0 1px rgba(255,244,208,.15)}
+.shop-name{color:#f0dfc1;font-size:15px;font-weight:600;letter-spacing:.08em}.shop-desc{margin-top:5px;color:#ad9a7d;font-size:11px;line-height:1.5}.shop-price{margin-top:9px;color:#f1c46c;font-size:12px;font-weight:700}.shop-buy{margin-top:10px;width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(224,177,91,.42);background:linear-gradient(180deg,#65431e,#2d1d0e);color:#ffe0a3;letter-spacing:.12em}.shop-buy:disabled{opacity:.42;cursor:not-allowed;filter:grayscale(.8)}
+.shop-relic-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.shop-relic .shop-card-glyph{border-radius:50%;height:48px;background:radial-gradient(circle at 50% 35%,#6a4e2b,#17120d 72%)}
+.shop-destroy{position:relative;z-index:1;margin-top:4px;padding:13px;border:1px dashed rgba(229,181,93,.27);border-radius:12px;background:rgba(11,8,6,.36)}.shop-destroy-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.shop-destroy-title{text-align:left;color:#d8bd86;font-size:13px;letter-spacing:.16em}.shop-destroy-title span{display:block;margin-top:4px;color:#917e63;font-size:11px;letter-spacing:.04em}.destroy-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}.destroy-card{padding:8px 7px;border:1px solid rgba(211,164,87,.24);border-radius:8px;background:rgba(21,16,12,.78);color:#d8c5a5;text-align:left}.destroy-card b{display:block;font-size:12px;color:#ecd4a8}.destroy-card span{font-size:10px;color:#95846b}.destroy-card:disabled{opacity:.45;cursor:not-allowed}
+.shop-foot{position:relative;z-index:1;display:flex;justify-content:flex-end;margin-top:14px}.shop-next{min-width:180px}
+@media (max-width:900px){.shop-grid,.shop-relic-row{grid-template-columns:1fr}.destroy-list{grid-template-columns:repeat(2,1fr)}.shop-head{align-items:flex-start;flex-direction:column}.shop-coin{align-self:flex-end}}
+
 </style>
 </head>
 <body>
@@ -1491,7 +1508,7 @@ body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;bac
   var ORIENT_KEY="advent_realm_orient_v1";
   var S = {
     screen:"start", clan:"order", diff:"apostle", deck:[], relics:[], wave:0,
-    battle:null, reward:null, event:null, uid:1, hasSave:false,
+    battle:null, reward:null, event:null, shop:null, gold:0, uid:1, hasSave:false,
     runTurns:0, recorded:false, prevScreen:"title"
   };
 
@@ -1510,7 +1527,7 @@ body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;bac
   /* ---------------- 开局 ---------------- */
   function startRun(clan,diff){
     S.clan=clan; S.diff=diff||S.diff; S.deck=STARTERS[clan].slice();
-    S.relics=[clan==="order"?"oath":"maw"]; S.wave=0; S.battle=null; S.event=null;
+    S.relics=[clan==="order"?"oath":"maw"]; S.wave=0; S.battle=null; S.event=null; S.shop=null; S.gold=0;
     S.runTurns=0; S.recorded=false;
     startBattle();
   }
@@ -1726,7 +1743,13 @@ body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;bac
 
   function damageEnemy(e,v){
     if(!e||!e.alive) return;
+    var before=e.hp;
+    var overflow=Math.max(0,v-before);
     e.hp-=v;
+    if(overflow>0){
+      S.gold=(S.gold||0)+overflow;
+      log("溢出伤害奖励：+"+overflow+" 烛币");
+    }
     if(e.hp<=0){ e.hp=0; e.alive=false; log("击杀 "+e.name); }
   }
   function damagePlayer(v){
@@ -1854,10 +1877,52 @@ body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;bac
   function winBattle(){
     S.battle.outcome="win";
     S.wave++;
-    if(S.wave>=WAVES.length){ recordRun("win"); clearSave(); S.screen="win"; render(); return; }
-    S.reward=rollRewards();
-    S.screen="reward"; render();
+    if(S.wave>=WAVES.length){ S.gold=0; recordRun("win"); clearSave(); S.screen="win"; render(); return; }
+    var gain=70+(S.wave-1)*25;
+    S.gold=(S.gold||0)+gain;
+    log("战利品：获得 "+gain+" 烛币");
+    prepareShop();
+    S.screen="shop"; render();
   }
+  function cardPrice(id){
+    var d=CARDS[id]||{};
+    return 45+(d.cost||0)*18+(d.type==="unit"?12:0);
+  }
+  function relicPrice(id){ return {ember:115,oath:125,maw:105,censer:135,chain:120}[id]||120; }
+  function destroyPrice(){ return 150+Math.max(0,(S.deck||[]).length-10)*6; }
+  function prepareShop(){
+    var cardPool=[];
+    Object.keys(CARDS).forEach(function(id){
+      var d=CARDS[id];
+      if(d.type!=="passive"&&(d.clan===S.clan||d.clan==="neutral")) cardPool.push(id);
+    });
+    var relicPool=["ember","oath","maw","censer","chain"].filter(function(r){ return S.relics.indexOf(r)<0; });
+    S.shop={cards:shuffle(cardPool).slice(0,3),relics:shuffle(relicPool).slice(0,3),boughtCards:{},boughtRelics:{},destroyed:false,showDestroy:false};
+  }
+  function buyShopCard(id){
+    if(!S.shop||S.shop.boughtCards[id]) return;
+    var price=cardPrice(id);
+    if((S.gold||0)<price){ msg("烛币不足"); return; }
+    S.gold-=price; S.deck.push(id); S.shop.boughtCards[id]=true; msg("购买："+CARDS[id].name); saveGame(); render();
+  }
+  function buyShopRelic(id){
+    if(!S.shop||S.shop.boughtRelics[id]||S.relics.indexOf(id)>=0) return;
+    var price=relicPrice(id);
+    if((S.gold||0)<price){ msg("烛币不足"); return; }
+    S.gold-=price; S.relics.push(id); S.shop.boughtRelics[id]=true; msg("购买遗物："+RELICS[id].name); saveGame(); render();
+  }
+  function destroyDeckCard(idx){
+    if(!S.shop||S.shop.destroyed) return;
+    var price=destroyPrice();
+    if((S.gold||0)<price){ msg("烛币不足"); return; }
+    if(S.deck.length<=6){ msg("牌组太薄，不能再销毁"); return; }
+    idx=parseInt(idx,10);
+    if(isNaN(idx)||idx<0||idx>=S.deck.length) return;
+    var id=S.deck[idx];
+    S.gold-=price; S.deck.splice(idx,1); S.shop.destroyed=true; S.shop.showDestroy=false; msg("已销毁："+CARDS[id].name); saveGame(); render();
+  }
+  function leaveShop(){ S.shop=null; S.screen="battle"; startBattle(); }
+
   function startEvent(){
     S.event=EVENTS[rnd(EVENTS.length)];
     S.screen="event"; render();
@@ -2340,7 +2405,7 @@ body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;bac
 
   function saveGame(){
     try{
-      localStorage.setItem(SAVE_KEY,JSON.stringify({clan:S.clan,diff:S.diff,deck:S.deck,relics:S.relics,wave:S.wave,battle:S.battle}));
+      localStorage.setItem(SAVE_KEY,JSON.stringify({clan:S.clan,diff:S.diff,deck:S.deck,relics:S.relics,wave:S.wave,battle:S.battle,gold:S.gold,shop:S.shop}));
       S.hasSave=true;
     }catch(e){}
   }
@@ -2350,8 +2415,8 @@ body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;bac
       var raw=localStorage.getItem(SAVE_KEY);
       if(!raw) return false;
       var d=JSON.parse(raw);
-      S.clan=d.clan; S.diff=d.diff; S.deck=d.deck; S.relics=d.relics||[]; S.wave=d.wave;
-      S.battle=d.battle; S.screen="battle"; S.hasSave=true;
+      S.clan=d.clan; S.diff=d.diff; S.deck=d.deck; S.relics=d.relics||[]; S.wave=d.wave; S.gold=d.gold||0; S.shop=d.shop||null;
+      S.battle=d.battle; S.screen=(S.shop?"shop":"battle"); S.hasSave=true;
       render(); return true;
     }catch(e){ return false; }
   }
@@ -2369,6 +2434,7 @@ body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;bac
     else if(S.screen==="title") app.innerHTML=renderTitle();
     else if(S.screen==="battle") app.innerHTML=renderBattle();
     else if(S.screen==="reward") app.innerHTML=renderReward();
+    else if(S.screen==="shop") app.innerHTML=renderShop();
     else if(S.screen==="event") app.innerHTML=renderEvent();
     else if(S.screen==="over") app.innerHTML=renderEnd(false);
     else if(S.screen==="win") app.innerHTML=renderEnd(true);
@@ -2494,6 +2560,32 @@ body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;bac
       '</div>';
   }
 
+  function renderShop(){
+    if(!S.shop) prepareShop();
+    var coin='<div class="shop-coin">烛币 '+(S.gold||0)+'</div>';
+    var cards=S.shop.cards.map(function(id){
+      var d=CARDS[id], price=cardPrice(id), sold=!!S.shop.boughtCards[id];
+      var glyph={unit:"⚔",spell:"✦",passive:"❖"}[d.type]||"✦";
+      return '<div class="shop-item '+(sold?'sold':'')+'"><div class="shop-card-mini"><div class="shop-card-glyph">'+glyph+'</div><div><div class="shop-name">'+d.name+'</div><div class="shop-desc">'+d.text+'</div><div class="shop-price">'+price+' 烛币</div></div></div><button class="shop-buy" data-shop-card="'+id+'" '+(sold?'disabled':'')+'>'+(sold?'已购买':'购买卡片')+'</button></div>';
+    }).join("");
+    var relics=S.shop.relics.length?S.shop.relics.map(function(id){
+      var r=RELICS[id], price=relicPrice(id), sold=!!S.shop.boughtRelics[id]||S.relics.indexOf(id)>=0;
+      return '<div class="shop-item shop-relic '+(sold?'sold':'')+'"><div class="shop-card-mini"><div class="shop-card-glyph"><span class="relic-art relic-'+(r.cls||id)+'" aria-hidden="true"><i></i><em></em><strong></strong></span></div><div><div class="shop-name">'+r.name+'</div><div class="shop-desc">'+r.text+'</div><div class="shop-price">'+price+' 烛币</div></div></div><button class="shop-buy" data-shop-relic="'+id+'" '+(sold?'disabled':'')+'>'+(sold?'已拥有':'购买遗物')+'</button></div>';
+    }).join(""):'<div class="shop-item"><div class="shop-name">遗物售罄</div><div class="shop-desc">你已经拿走了此轮可见的遗物。</div></div>';
+    var price=destroyPrice();
+    var list="";
+    if(S.shop.showDestroy){
+      list='<div class="destroy-list">'+S.deck.map(function(id,i){ var d=CARDS[id]; return '<button class="destroy-card" data-destroy-card="'+i+'" '+(S.shop.destroyed?'disabled':'')+'><b>'+d.name+'</b><span>'+d.text+'</span></button>'; }).join("")+'</div>';
+    }
+    return '<div class="shop-wrap">'+
+      '<div class="shop-head"><div class="shop-title"><h2>过关商店</h2><p>旧木柜上摆满战利品。只在过关后开放，可什么都不买直接前往下一关。</p></div>'+coin+'</div>'+ 
+      '<div class="shop-section"><div class="shop-section-title">购买卡片</div><div class="shop-grid">'+cards+'</div></div>'+ 
+      '<div class="shop-section"><div class="shop-section-title">购买遗物</div><div class="shop-relic-row">'+relics+'</div></div>'+ 
+      '<div class="shop-destroy"><div class="shop-destroy-head"><div class="shop-destroy-title">销毁卡片<span>昂贵服务，每次进店只能销毁一张。当前价格：'+price+' 烛币</span></div><button class="btn ghost" data-act="toggle-destroy" '+(S.shop.destroyed?'disabled':'')+'>'+(S.shop.destroyed?'本次已销毁':(S.shop.showDestroy?'收起牌组':'选择要销毁的牌'))+'</button></div>'+list+'</div>'+ 
+      '<div class="shop-foot"><button class="btn primary shop-next" data-act="leave-shop">直接下一关</button></div>'+ 
+      '</div>';
+  }
+
   function renderReward(){
     var opts=S.reward.map(function(id){
       var d=CARDS[id];
@@ -2576,12 +2668,15 @@ body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;bac
   var app=el("app");
 
   app.addEventListener("click",function(ev){
-    var t=ev.target.closest("[data-clan],[data-diff],[data-reward],[data-event],[data-act],[data-display],[data-orient],[data-hand],[data-slot]");
+    var t=ev.target.closest("[data-clan],[data-diff],[data-reward],[data-event],[data-shop-card],[data-shop-relic],[data-destroy-card],[data-act],[data-display],[data-orient],[data-hand],[data-slot]");
     if(!t) return;
     if(t.dataset.diff){ S.diff=t.dataset.diff; render(); return; }
     if(t.dataset.clan){ startRun(t.dataset.clan,S.diff); return; }
     if(t.dataset.reward){ chooseReward(t.dataset.reward); return; }
     if(t.dataset.event!==undefined){ eventChoice(parseInt(t.dataset.event,10)); return; }
+    if(t.dataset.shopCard){ buyShopCard(t.dataset.shopCard); return; }
+    if(t.dataset.shopRelic){ buyShopRelic(t.dataset.shopRelic); return; }
+    if(t.dataset.destroyCard!==undefined){ destroyDeckCard(t.dataset.destroyCard); return; }
     if(t.dataset.display){
       var dm=t.dataset.display==="window"?"window":"fullscreen";
       setDisplay(dm); applyDisplay(dm); ui.ddOpen=""; render(); return;
@@ -2594,6 +2689,8 @@ body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;bac
     if(t.dataset.act){
       if(t.dataset.act==="end"){ endTurn(); }
       else if(t.dataset.act==="skip"){ nextBattleSkip(); }
+      else if(t.dataset.act==="leave-shop"){ leaveShop(); }
+      else if(t.dataset.act==="toggle-destroy"){ if(S.shop&&!S.shop.destroyed){ S.shop.showDestroy=!S.shop.showDestroy; render(); } }
       else if(t.dataset.act==="restart"){ S.screen="title"; S.battle=null; S.event=null; render(); }
       else if(t.dataset.act==="resume"){ loadGame(); }
       else if(t.dataset.act==="rules"){ showRules(); }
