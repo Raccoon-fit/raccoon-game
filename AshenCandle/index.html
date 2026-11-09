@@ -1056,6 +1056,93 @@ html.pseudo-full,html.pseudo-full body{height:100dvh;overflow:hidden;overscroll-
 html.pseudo-full .scene-fixed{position:fixed;inset:0}
 .set-note{width:100%;font-size:10px;color:#8a7a63;letter-spacing:.04em;margin:-2px 0 2px}
 
+
+/* ===== 横屏全屏布局 ===== */
+@media (orientation:landscape) and (max-height:560px){
+  :root{--card-w:74px;--card-h:112px}
+  #app{height:100dvh;min-height:0;overflow:hidden}
+  .dungeon{display:grid;grid-template-columns:minmax(0,1fr) 200px;
+    grid-template-rows:auto minmax(0,1fr) auto;
+    grid-template-areas:"top top" "field hand" "field act";height:100dvh}
+  .field,.hand-zone{min-height:0}
+  .hand{min-height:0}
+  .topbar{grid-area:top;padding:5px 10px 3px}
+  .tl{gap:1px}
+  .tl b{font-size:12px}
+  .tl span{font-size:9px}
+  .steps{margin:1px 0}
+  .steps i{width:18px;height:18px;font-size:9px}
+  .gear{top:4px;right:8px;width:28px;height:28px;font-size:13px}
+  .leftbars{top:13%;left:4px;gap:9px}
+  .vbar{height:76px;width:10px}
+  .vbar b{font-size:9px;bottom:-13px}
+  .orbs-vert{display:none}
+  .hud{left:46px;right:auto;top:5px;font-size:9px}
+  .field{grid-area:field;padding:2px 8px 2px 40px}
+  .enemy-wrap{gap:2px}
+  .side-label{font-size:8.5px;letter-spacing:.18em}
+  #enemy-row .unit{width:150px;gap:2px}
+  #enemy-row .unit .uname{font-size:15px;letter-spacing:.12em}
+  #enemy-row .unit .hpbar{width:150px;height:7px}
+  #enemy-row .unit .ustat{font-size:10px}
+  .beast{width:170px;height:108px;top:52%}
+  .unit-wrap{height:88px}
+  #unit-row .slot{width:calc(var(--card-w) + 6px);height:calc(var(--card-h) + 2px)}
+  .log{display:none}
+  .hand-zone{grid-area:hand;display:flex;flex-direction:column;padding:6px;
+    border-left:1px solid rgba(200,170,120,.18);
+    background:linear-gradient(180deg,rgba(10,8,6,.7),rgba(8,6,5,.92))}
+  .hand-zone::before{display:none}
+  .tools{padding:0 0 4px;justify-content:center}
+  .tool{width:32px;height:22px;font-size:9px}
+  .hand{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+    gap:8px;overflow-y:auto;overflow-x:hidden;padding:4px 2px 6px;
+    -webkit-mask-image:none;mask-image:none}
+  .handcard{transform:none!important;flex:0 0 auto}
+  .handcard.selwrap{transform:scale(1.02)!important}
+  .card{width:var(--card-w);height:var(--card-h)}
+  .actionbar{grid-area:act;padding:4px 8px calc(4px + env(safe-area-inset-bottom))}
+  .actionbar .btn{width:100%;min-width:0;padding:9px 12px;font-size:13px}
+  .panel-wrap{width:100%;max-width:560px;align-self:center;padding:12px 16px;gap:8px;
+    max-height:100dvh;overflow-y:auto;justify-content:flex-start}
+  .panel-wrap.settings h2{font-size:18px}
+  .hist-list{max-height:44vh}
+  .start-wrap{padding:16px 18px;gap:7px}
+  .start-title{font-size:26px}
+  .start-crest{width:42px;height:42px;margin:0}
+  .start-desc{display:none}
+  .start-hint{font-size:9px}
+  .enter-btn{margin-top:8px;padding:10px 22px;font-size:14px}
+}
+
+
+/* 横屏卡面与场景微调 */
+@media (orientation:landscape) and (max-height:560px){
+  .card{width:84px;height:118px}
+  .card .chead{height:24px;padding-left:20px;padding-right:4px}
+  .card .cname{font-size:10.5px;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card .cost{width:17px;height:17px;font-size:9.5px;top:4px;left:4px}
+  .card .cart .glyph{font-size:26px}
+  .card .ctext{font-size:8.5px;line-height:1.28;min-height:22px;padding:2px 6px}
+  .card .cfoot{height:17px;font-size:8px;padding:0 6px 2px}
+  .card .cstat i{width:14px;height:14px;font-size:8px}
+  .torch{width:180px;height:180px;top:24%;left:5%;opacity:.8}
+  .cage{display:none}
+  .statue{opacity:.32}
+  .archk{width:22%;height:34%;bottom:30%;opacity:.6}
+  .gate{top:20%;height:36%;width:22%;opacity:.32}
+  .beast{width:148px;height:94px;top:56%}
+  .floor{height:34%}
+}
+
+
+@media (orientation:landscape) and (max-height:560px){
+  .torch{width:150px;height:150px;left:3%;top:26%;opacity:.55;
+    background:radial-gradient(circle,rgba(255,168,84,.26),rgba(255,120,40,.08) 42%,transparent 66%)}
+  .tool{width:auto;min-width:34px;padding:0 6px;white-space:nowrap;font-size:9px}
+  .archk{opacity:.45}
+}
+
 </style>
 </head>
 <body>
@@ -1876,6 +1963,19 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
     var enabled=(document.fullscreenEnabled!==false)&&(document.webkitFullscreenEnabled!==false);
     return api&&enabled;
   }
+  function orientationLockable(){
+    try{ return !!(screen.orientation&&screen.orientation.lock); }catch(e){ return false; }
+  }
+  function lockLandscape(){
+    try{
+      if(!orientationLockable()) return;
+      var pr=screen.orientation.lock("landscape");
+      if(pr&&pr.catch) pr.catch(function(){});
+    }catch(e){}
+  }
+  function unlockOrientation(){
+    try{ if(screen.orientation&&screen.orientation.unlock) screen.orientation.unlock(); }catch(e){}
+  }
   function pseudoFull(on){
     var root=document.documentElement, body=document.body;
     if(on){ root.classList.add("pseudo-full"); body.classList.add("pseudo-full"); }
@@ -1892,24 +1992,30 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
           else if(el.webkitRequestFullscreen) r=el.webkitRequestFullscreen();
           else if(el.mozRequestFullScreen) r=el.mozRequestFullScreen();
           else if(el.msRequestFullscreen) r=el.msRequestFullscreen();
-          if(r&&r.catch) r.catch(function(){
+          if(r&&r.then) r.then(function(){ lockLandscape(); }).catch(function(){
             pseudoFull(true);
             msg("系统全屏被浏览器拦截，已按页面内全屏显示");
           });
+          else lockLandscape();
           return;
         }
         pseudoFull(true);
+        lockLandscape();
         msg("当前浏览器不支持系统全屏，已按页面内全屏显示");
       }else{
         if(document.exitFullscreen) document.exitFullscreen().catch(function(){});
         else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
         else if(document.mozCancelFullScreen) document.mozCancelFullScreen();
         else if(document.msExitFullscreen) document.msExitFullscreen();
+        unlockOrientation();
         pseudoFull(false);
       }
     }catch(e){ pseudoFull(mode==="fullscreen"); }
   }
-  document.addEventListener("fullscreenchange",function(){ if(fsElement()) pseudoFull(false); });
+  document.addEventListener("fullscreenchange",function(){
+    if(fsElement()){ pseudoFull(false); lockLandscape(); }
+    else unlockOrientation();
+  });
   document.addEventListener("webkitfullscreenchange",function(){ if(fsElement()) pseudoFull(false); });
 
   function loadHistory(){
@@ -2135,7 +2241,9 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
           '<button class="dd-item'+(mode==="fullscreen"?" on":"")+'" data-display="fullscreen" role="option">全屏</button>'+
           '<button class="dd-item'+(mode==="window"?" on":"")+'" data-display="window" role="option">窗口</button>'+
         '</div>':'')+
-      '</div></div>'+(fsSupported()?"":'<div class="set-note">当前浏览器不支持系统全屏，将铺满页面显示</div>');
+      '</div></div>'+
+      (fsSupported()?"":'<div class="set-note">当前浏览器不支持系统全屏，将铺满页面显示</div>')+
+      (orientationLockable()?"":'<div class="set-note">当前环境不支持锁定屏幕方向，横屏需手动旋转设备</div>');
     return '<div class="panel-wrap settings">'+
       '<h2>设置</h2>'+
       dd+
