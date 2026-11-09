@@ -2,16 +2,8 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
-<meta name="screen-orientation" content="landscape">
-<meta name="x5-orientation" content="landscape">
-<meta name="x5-fullscreen" content="true">
-<meta name="full-screen" content="yes">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="theme-color" content="#0b0a0d">
-<link rel="manifest" href="manifest.webmanifest">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>残烛纪年</title>
 <style>
 :root{
@@ -1153,19 +1145,110 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
 
 
 
-/* 横屏启动策略：不旋转页面坐标系，避免全面屏手势方向错乱；仅在手机竖屏时提示旋转设备 */
-.rotate-device-tip{display:none;position:fixed;inset:0;z-index:10000;background:#08070a;color:#f1e9dd;
-  align-items:center;justify-content:center;text-align:center;padding:24px}
-.rotate-device-tip .rotate-box{display:flex;flex-direction:column;align-items:center;gap:12px;max-width:320px}
-.rotate-device-tip .rotate-icon{width:70px;height:44px;border:2px solid #e6b263;border-radius:8px;position:relative;
-  box-shadow:0 0 24px rgba(230,178,99,.18)}
-.rotate-device-tip .rotate-icon::after{content:"";position:absolute;right:5px;top:50%;width:4px;height:10px;
-  border-radius:3px;background:#e6b263;transform:translateY(-50%)}
-.rotate-device-tip b{font-size:18px;color:#ffd79a;letter-spacing:.12em}
-.rotate-device-tip span{font-size:12px;color:#9c9188;line-height:1.7}
-/* 只拦截窄屏触控手机；平板和电脑保持浏览器原生布局，避免误旋转/错位 */
-@media (orientation:portrait) and (max-width:600px) and (hover:none) and (pointer:coarse){
-  html.need-real-landscape .rotate-device-tip{display:flex}
+/* ===== C2 平板电脑横屏：参考图重构版（直接覆盖原布局） ===== */
+@media (min-width:700px){
+:root{--card-w:128px;--card-h:184px;--gold:#cf9c53;--gold-dim:#75562e;--text:#e9ddc9;--muted:#968773}
+html,body{width:100%;height:100%;overflow:hidden;background:#080706}
+body{background:radial-gradient(ellipse at 51% 34%,rgba(101,75,45,.28),transparent 42%),linear-gradient(180deg,#211b16 0,#0b0907 66%,#050404 100%)}
+body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,.72) 100%),repeating-linear-gradient(0deg,rgba(255,235,190,.018) 0 1px,transparent 1px 4px)}
+#app{width:100%;height:100%;min-height:0;overflow:hidden;padding:0}
+.scene-fixed{filter:saturate(.6) sepia(.18) contrast(1.08);opacity:.92}
+.dungeon{position:relative!important;width:100%;height:100dvh!important;display:block!important;overflow:hidden!important;background:transparent!important}
+
+/* 顶部中央：地点、层数、进度 */
+.topbar{position:absolute!important;left:50%!important;top:13px!important;transform:translateX(-50%)!important;width:560px!important;height:62px!important;padding:0!important;z-index:20!important;background:transparent!important;display:flex!important;justify-content:center!important}
+.tl{display:flex!important;align-items:center!important;gap:4px!important;text-align:center!important;text-shadow:0 2px 10px #000}
+.tl b{font:600 17px/1.2 Georgia,"Noto Serif SC",serif!important;letter-spacing:.18em!important;color:#f0e3cf!important}
+.tl span{font-size:10px!important;color:#a79476!important;letter-spacing:.15em!important}
+.steps{display:flex!important;gap:6px!important;margin:2px 0!important}
+.steps i{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:25px!important;height:19px!important;border-radius:4px!important;font-size:9px!important;color:#8f816e!important;background:#1a1713!important;border:1px solid #504532!important}
+.steps i.on{color:#17110a!important;background:linear-gradient(#dfb76f,#8e642f)!important;border-color:#e1bd79!important;box-shadow:0 0 16px rgba(215,164,80,.3)!important}
+.gear{position:fixed!important;right:24px!important;top:19px!important;width:38px!important;height:38px!important;z-index:30!important;border:1px solid rgba(211,173,107,.28)!important;border-radius:8px!important;background:rgba(12,10,8,.58)!important;color:#ddcaab!important;backdrop-filter:blur(6px)}
+
+/* 左侧纵向玩家生命/能量 */
+.leftbars{position:absolute!important;left:18px!important;top:122px!important;bottom:86px!important;width:68px!important;height:auto!important;z-index:18!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;gap:16px!important;padding:12px 9px!important;border-radius:14px!important;background:rgba(11,9,7,.64)!important;border:1px solid rgba(201,159,91,.18)!important;box-shadow:0 12px 30px rgba(0,0,0,.42)!important}
+.vwrap{display:flex!important;flex-direction:column!important;align-items:center!important;gap:7px!important}
+.vbar{width:13px!important;height:122px!important;border-radius:8px!important;background:#100d0a!important;border:1px solid rgba(221,185,120,.2)!important;overflow:visible!important}
+.vbar i{border-radius:7px!important;background:linear-gradient(#dc6453,#6b1715)!important;box-shadow:0 0 10px rgba(181,48,40,.32)!important}
+.mp-b i{background:linear-gradient(#e4b362,#6f4b1d)!important}
+.vbar b{font-size:9px!important;color:#ead9bd!important;bottom:-15px!important}
+.vlab{font-size:9px!important;letter-spacing:.16em!important;color:#a18d6f!important}
+.orbs-vert{display:flex!important;flex-direction:column!important;gap:4px!important}
+.orb{width:10px!important;height:10px!important;border-radius:50%!important;background:#18120c!important;border:1px solid #6d522b!important}
+.orb.on{background:radial-gradient(circle,#ffe29b,#b77a2e 65%,#4a2d11)!important;box-shadow:0 0 9px #bc792d!important}
+.hud{position:absolute!important;left:102px!important;right:auto!important;top:22px!important;z-index:18!important;font-size:10px!important;color:#b19b78!important;background:rgba(10,8,7,.45)!important;border:1px solid rgba(200,158,89,.13)!important;border-radius:20px!important;padding:6px 11px!important}
+
+/* 中央战斗舞台 */
+.field{position:absolute!important;left:94px!important;right:32px!important;top:76px!important;bottom:207px!important;width:auto!important;height:auto!important;min-height:0!important;padding:0!important;display:flex!important;flex-direction:column!important;justify-content:space-between!important;gap:0!important;z-index:6!important;overflow:visible!important}
+.field::before,.field::after{display:none!important}
+.enemy-wrap{position:relative!important;flex:1!important;display:flex!important;flex-direction:column!important;justify-content:center!important;gap:7px!important;min-height:0!important}
+.enemy-wrap::before,.enemy-wrap::after{display:none!important}
+.enemy-wrap .side-label{order:-2!important;position:relative!important;align-self:center!important;font-size:9px!important;letter-spacing:.24em!important;color:#938064!important;background:rgba(11,9,7,.46)!important;border:1px solid rgba(207,166,96,.12)!important;border-radius:20px!important;padding:3px 12px!important}
+#enemy-row{display:flex!important;justify-content:center!important;align-items:center!important;gap:30px!important;min-height:175px!important}
+#enemy-row .slot{width:230px!important;height:auto!important;border:0!important;background:none!important;box-shadow:none!important;display:flex!important;justify-content:center!important}
+#enemy-row .unit{position:relative!important;width:230px!important;height:auto!important;min-height:154px!important;padding:102px 8px 4px!important;border:0!important;background:none!important;box-shadow:none!important;overflow:visible!important;filter:drop-shadow(0 18px 18px rgba(0,0,0,.55))}
+#enemy-row .unit::before{content:""!important;position:absolute!important;left:50%!important;top:0!important;transform:translateX(-50%)!important;width:152px!important;height:122px!important;background:radial-gradient(circle at 44% 32%,#ddd1b6 0 4px,transparent 5px),radial-gradient(circle at 56% 32%,#ddd1b6 0 4px,transparent 5px),linear-gradient(145deg,transparent 0 29%,#756958 30% 43%,transparent 44%),linear-gradient(-145deg,transparent 0 29%,#756958 30% 43%,transparent 44%),linear-gradient(180deg,#4a443b,#171613)!important;clip-path:polygon(49% 0,60% 20%,92% 6%,72% 43%,89% 82%,60% 65%,50% 100%,39% 65%,11% 82%,28% 43%,7% 6%,39% 20%)!important;opacity:.85!important}
+#enemy-row .unit .uname{font:600 17px/1.2 Georgia,"Noto Serif SC",serif!important;color:#eadcc3!important;letter-spacing:.17em!important;text-shadow:0 2px 8px #000!important}
+#enemy-row .unit .kw,#enemy-row .unit .buffrow,#enemy-row .unit .intent{font-size:9px!important;color:#9f8c71!important;margin-top:2px!important}
+#enemy-row .unit .hpbar{width:216px!important;height:9px!important;margin:5px auto 2px!important;border-radius:8px!important;background:#17100e!important;border:1px solid rgba(218,188,139,.14)!important;overflow:hidden!important}
+#enemy-row .unit .hpbar i{background:linear-gradient(90deg,#6e1615,#ba3831,#e06b59)!important;box-shadow:0 0 10px rgba(190,50,42,.45)!important}
+#enemy-row .unit .ustat{display:flex!important;justify-content:center!important;gap:18px!important;font-size:10px!important;color:#c6b391!important}
+.mid{height:15px!important;min-height:15px!important;font-size:8px!important;color:#6f614e!important;opacity:.45!important}
+.unit-wrap{height:112px!important;display:flex!important;flex-direction:column!important;justify-content:flex-end!important;gap:4px!important}
+.unit-wrap .side-label{font-size:9px!important;color:#817059!important;letter-spacing:.22em!important}
+#unit-row{display:flex!important;justify-content:center!important;align-items:flex-end!important;gap:10px!important}
+#unit-row .slot{width:89px!important;height:108px!important;border-radius:10px!important;border:1px dashed rgba(202,160,90,.22)!important;background:rgba(15,12,9,.39)!important;box-shadow:inset 0 0 20px rgba(0,0,0,.28)!important}
+#unit-row .unit{background:rgba(19,16,12,.76)!important;border-color:rgba(204,163,95,.24)!important}
+
+/* 手牌改成参考图底部居中的大卡牌 */
+.hand-zone{position:absolute!important;left:50%!important;bottom:8px!important;transform:translateX(-50%)!important;width:min(780px,68vw)!important;height:195px!important;z-index:21!important;padding:0!important;background:transparent!important;border:0!important;display:block!important;overflow:visible!important}
+.hand-zone::before{display:none!important}
+.hand{height:195px!important;min-height:0!important;display:flex!important;flex-direction:row!important;align-items:flex-end!important;justify-content:center!important;gap:15px!important;padding:0 10px 7px!important;overflow:visible!important;-webkit-mask-image:none!important;mask-image:none!important}
+.handcard{flex:0 0 auto!important;transform:translateY(calc(var(--lift,0px) * .15)) rotate(calc(var(--rot,0deg) * .25))!important;filter:drop-shadow(0 18px 18px rgba(0,0,0,.5))!important;transition:transform .18s ease,filter .18s ease!important}
+.handcard:hover,.handcard.selwrap{transform:translateY(-15px) scale(1.045)!important;z-index:12!important;filter:drop-shadow(0 24px 26px rgba(0,0,0,.62))!important}
+.tools{position:fixed!important;left:22px!important;bottom:22px!important;z-index:25!important;display:flex!important;gap:7px!important;padding:0!important}
+.tool{width:44px!important;height:36px!important;border-radius:8px!important;font-size:10px!important;color:#c7ac7f!important;background:rgba(11,9,7,.68)!important;border:1px solid rgba(208,164,94,.2)!important;box-shadow:0 8px 20px rgba(0,0,0,.38)!important}
+.actionbar{position:absolute!important;right:26px!important;bottom:24px!important;z-index:25!important;padding:0!important;background:none!important}
+.actionbar .btn{min-width:142px!important;padding:12px 19px!important;border-radius:10px!important;font-size:13px!important}
+.log{position:absolute!important;right:25px!important;bottom:196px!important;width:242px!important;max-height:68px!important;overflow:hidden!important;z-index:15!important;padding:7px 9px!important;border-radius:8px!important;background:rgba(10,8,7,.44)!important;border:1px solid rgba(204,161,91,.12)!important;color:#968268!important;font-size:9px!important;opacity:.7!important}
+
+/* 参考图卡牌结构 */
+.card{position:relative!important;width:var(--card-w)!important;height:var(--card-h)!important;border-radius:12px!important;overflow:hidden!important;background:linear-gradient(180deg,#536058 0,#344039 55%,#1a1815 100%)!important;border:1px solid rgba(222,177,91,.72)!important;color:#f1e4cc!important;box-shadow:inset 0 0 0 1px rgba(255,231,176,.08),0 13px 26px rgba(0,0,0,.45)!important}
+.card::before{content:""!important;position:absolute!important;inset:5px!important;border:1px solid rgba(232,191,112,.2)!important;border-radius:8px!important;z-index:3!important;pointer-events:none!important}
+.card::after{content:""!important;position:absolute!important;inset:0!important;z-index:2!important;pointer-events:none!important;background:repeating-linear-gradient(0deg,rgba(255,245,216,.028) 0 1px,transparent 1px 5px)!important}
+.cost{position:absolute!important;left:50%!important;top:4px!important;transform:translateX(-50%)!important;width:25px!important;height:25px!important;border-radius:50%!important;z-index:5!important;background:linear-gradient(#e1ba73,#81582a)!important;border:1px solid #e8c98d!important;color:#1b130b!important;box-shadow:0 3px 9px #000!important}
+.cart{position:absolute!important;left:8px!important;right:8px!important;top:9px!important;height:91px!important;border-radius:7px!important;background:linear-gradient(180deg,#d5c9a9,#9b9178)!important;border:1px solid rgba(255,239,197,.34)!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:hidden!important}
+.cart::before{content:""!important;position:absolute!important;inset:0!important;background:radial-gradient(circle,rgba(255,255,230,.24),transparent 52%),repeating-linear-gradient(135deg,rgba(20,14,8,.04) 0 2px,transparent 2px 7px)!important}
+.glyph{position:relative!important;z-index:1!important;font-size:44px!important;color:#3a342b!important;text-shadow:1px 1px rgba(255,245,210,.2)!important;filter:sepia(.8) contrast(1.15)!important}
+.chead{position:absolute!important;left:8px!important;right:8px!important;top:103px!important;height:24px!important;padding:0!important;display:flex!important;justify-content:center!important;background:none!important;border:0!important;z-index:4!important}
+.cname{font-size:14px!important;font-weight:600!important;letter-spacing:.12em!important;color:#fff0d3!important;text-shadow:0 2px 7px #000!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.ctext{position:absolute!important;left:11px!important;right:11px!important;top:130px!important;min-height:31px!important;padding:0!important;background:none!important;border:0!important;color:#d5c5a9!important;font-size:9.5px!important;line-height:1.35!important;text-align:center!important;z-index:4!important}
+.cfoot{position:absolute!important;left:9px!important;right:9px!important;bottom:6px!important;height:17px!important;padding:1px 3px 0!important;border-top:1px solid rgba(224,177,91,.22)!important;color:#a99471!important;font-size:8.5px!important;z-index:4!important}
+.cstat i{width:16px!important;height:16px!important;font-size:8px!important}
+.card.no{filter:grayscale(.72) brightness(.68)!important;opacity:.75!important}
+.card.sel{box-shadow:0 0 0 1px #f7cf82,0 0 26px rgba(220,164,78,.42),0 18px 30px rgba(0,0,0,.55)!important}
+
+/* 前景手与武器作为画面框景 */
+.firsthand{display:block!important;z-index:8!important;opacity:.8!important;filter:saturate(.72) sepia(.14) drop-shadow(0 17px 18px rgba(0,0,0,.58))!important}
+.torch-hand{left:-12px!important;bottom:-56px!important;transform:rotate(7deg) scale(1.08)!important}
+.sword-hand{right:-8px!important;bottom:-67px!important;transform:rotate(-14deg) scale(1.08)!important}
+
+/* 非战斗页面维持同一视觉语言 */
+.start-wrap,.title-wrap,.panel-wrap{max-width:760px!important;margin:0 auto!important;text-shadow:0 2px 12px #000}
+.start-wrap{min-height:100dvh!important;padding:28px!important;gap:10px!important}
+.start-title{font-size:42px!important}
+.title-wrap{padding:24px!important;gap:11px!important}
+.title-wrap h1{font-size:38px!important}
+.clan-list{max-width:680px!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important}
+.clan-card{min-height:108px!important;background:linear-gradient(145deg,rgba(40,31,24,.9),rgba(15,12,10,.86))!important;border-color:rgba(208,163,90,.2)!important}
+.panel-wrap{width:min(760px,74vw)!important;max-height:92dvh!important;padding:22px 28px!important;border:1px solid rgba(208,164,93,.18)!important;border-radius:17px!important;background:rgba(14,11,9,.74)!important;box-shadow:0 24px 60px rgba(0,0,0,.52)!important}
+}
+
+@media (min-width:1180px){
+:root{--card-w:138px;--card-h:196px}
+.hand-zone{height:208px!important;width:min(900px,66vw)!important}.hand{height:208px!important;gap:17px!important}
+.field{bottom:222px!important}.log{bottom:214px!important}
+.card .cart{height:98px!important}.card .chead{top:110px!important}.card .ctext{top:139px!important}
 }
 
 </style>
@@ -1174,10 +1257,6 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
 <div class="embers" id="embers" aria-hidden="true"></div>
 <div class="scene-fixed" aria-hidden="true"><div class="scene"><i class="backwall"></i><i class="wall-l"></i><i class="wall-r"></i><i class="archk a1"></i><i class="archk a2"></i><i class="archk a3"></i><i class="arch"></i><i class="gate"></i><i class="statue l"></i><i class="statue r"></i><i class="plinth l"></i><i class="plinth r"></i><i class="candle c1"></i><i class="candle c2"></i><i class="candle c3"></i><i class="candle c4"></i><i class="pillar l"></i><i class="pillar r"></i><i class="cage l"></i><i class="cage r"></i><i class="torch"></i><i class="floor"></i><i class="fog"></i><i class="dust"></i><i class="vig"></i></div></div>
 <div id="app"></div>
-<div class="rotate-device-tip" id="rotate-device-tip" aria-live="polite">
-  <div class="rotate-box"><i class="rotate-icon" aria-hidden="true"></i><b>请横置设备</b>
-  <span>游戏采用真实横屏显示。横置后，底部全面屏手势方向也会同步恢复正常。</span></div>
-</div>
 <div id="ghost"></div>
 <div id="fx"></div>
 <div id="hint" class="hint hidden"></div>
@@ -2002,49 +2081,12 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
   function orientationLockable(){
     try{ return !!(screen.orientation&&screen.orientation.lock); }catch(e){ return false; }
   }
-  function lockOrientation(dir){
-    dir=dir||getOrient();
+  function lockOrientation(){
     try{
-      if(!orientationLockable()) return Promise.resolve(false);
-      var pr=screen.orientation.lock(dir);
-      return pr&&pr.then?pr.then(function(){ return true; }).catch(function(){ return false; }):Promise.resolve(true);
-    }catch(e){ return Promise.resolve(false); }
-  }
-  function isPhoneLike(){
-    try{
-      return window.matchMedia("(hover:none) and (pointer:coarse) and (max-width:600px)").matches;
-    }catch(e){ return Math.min(screen.width,screen.height)<=600; }
-  }
-  function isStandalonePwa(){
-    try{ return window.matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches || window.navigator.standalone===true; }catch(e){ return false; }
-  }
-  function syncRealLandscape(){
-    var portrait=window.innerHeight>window.innerWidth;
-    /* 安装为 PWA 后，manifest 会由系统层处理 fullscreen + landscape，不再用提示层干扰 */
-    document.documentElement.classList.toggle("need-real-landscape",getOrient()==="landscape"&&portrait&&isPhoneLike()&&!isStandalonePwa());
-  }
-  var FULLSCREEN_GUARD_ACTIVE=false;
-  var WAKE_LOCK=null;
-  function lockKeyboard(){
-    try{ if(navigator.keyboard&&navigator.keyboard.lock) navigator.keyboard.lock(["Escape"]).catch(function(){}); }catch(e){}
-  }
-  function requestWakeLock(){
-    try{
-      if(!(navigator.wakeLock&&navigator.wakeLock.request)) return;
-      navigator.wakeLock.request("screen").then(function(wl){
-        WAKE_LOCK=wl;
-        wl.addEventListener("release",function(){ if(WAKE_LOCK===wl) WAKE_LOCK=null; });
-      }).catch(function(){});
+      if(!orientationLockable()) return;
+      var pr=screen.orientation.lock(getOrient());
+      if(pr&&pr.catch) pr.catch(function(){});
     }catch(e){}
-  }
-  function releaseWakeLock(){
-    try{ if(WAKE_LOCK&&WAKE_LOCK.release) WAKE_LOCK.release().catch(function(){}); }catch(e){}
-    WAKE_LOCK=null;
-  }
-  function setupFullscreenGuard(){
-    document.addEventListener("visibilitychange",function(){
-      if(document.visibilityState==="visible"&&getDisplay()==="fullscreen") requestWakeLock();
-    });
   }
   function unlockOrientation(){
     try{ if(screen.orientation&&screen.orientation.unlock) screen.orientation.unlock(); }catch(e){}
@@ -2057,13 +2099,6 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
   function applyDisplay(mode){
     try{
       var el=document.documentElement;
-      syncRealLandscape();
-      /* 必须在用户点击的同步调用栈中申请方向锁定 */
-      if(mode==="fullscreen"){
-        FULLSCREEN_GUARD_ACTIVE=true;
-        lockOrientation(getOrient());
-        requestWakeLock();
-      }
       if(mode==="fullscreen"){
         if(fsElement()) return;
         if(fsSupported()){
@@ -2072,54 +2107,31 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
           else if(el.webkitRequestFullscreen) r=el.webkitRequestFullscreen();
           else if(el.mozRequestFullScreen) r=el.mozRequestFullScreen();
           else if(el.msRequestFullscreen) r=el.msRequestFullscreen();
-          if(r&&r.then) r.then(function(){ lockOrientation(getOrient()); syncRealLandscape(); }).catch(function(){
+          if(r&&r.then) r.then(function(){ lockOrientation(); }).catch(function(){
             pseudoFull(true);
-            syncRealLandscape();
-            msg("系统全屏被浏览器拦截，请手动横置设备");
+            msg("系统全屏被浏览器拦截，已按页面内全屏显示");
           });
-          else { lockOrientation(getOrient()); syncRealLandscape(); }
+          else lockOrientation();
           return;
         }
         pseudoFull(true);
-        lockOrientation(getOrient());
-        syncRealLandscape();
+        lockOrientation();
         msg("当前浏览器不支持系统全屏，已按页面内全屏显示");
       }else{
         if(document.exitFullscreen) document.exitFullscreen().catch(function(){});
         else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
         else if(document.mozCancelFullScreen) document.mozCancelFullScreen();
         else if(document.msExitFullscreen) document.msExitFullscreen();
-        FULLSCREEN_GUARD_ACTIVE=false;
         unlockOrientation();
-        releaseWakeLock();
         pseudoFull(false);
       }
-    }catch(e){ pseudoFull(mode==="fullscreen"); syncRealLandscape(); }
+    }catch(e){ pseudoFull(mode==="fullscreen"); }
   }
   document.addEventListener("fullscreenchange",function(){
-    if(fsElement()){
-      FULLSCREEN_GUARD_ACTIVE=true;
-      pseudoFull(false);
-      lockKeyboard();
-      lockOrientation(getOrient());
-      requestWakeLock();
-      syncRealLandscape();
-    }else{
-      unlockOrientation();
-      syncRealLandscape();
-      /* 参考你给的版本：用户已进入全屏后，误退出时尝试拉回全屏；失败则保持页面内全屏 */
-      if(FULLSCREEN_GUARD_ACTIVE&&getDisplay()==="fullscreen"){
-        setTimeout(function(){
-          try{
-            if(!fsElement()&&document.documentElement.requestFullscreen){
-              document.documentElement.requestFullscreen({keyboardLock:"browser"}).catch(function(){ pseudoFull(true); });
-            }
-          }catch(e){ pseudoFull(true); }
-        },80);
-      }else releaseWakeLock();
-    }
+    if(fsElement()){ pseudoFull(false); lockOrientation(); }
+    else unlockOrientation();
   });
-  document.addEventListener("webkitfullscreenchange",function(){ if(fsElement()){ pseudoFull(false); requestWakeLock(); syncRealLandscape(); } });
+  document.addEventListener("webkitfullscreenchange",function(){ if(fsElement()) pseudoFull(false); });
 
   function loadHistory(){
     try{
@@ -2392,8 +2404,7 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
     }
     if(t.dataset.orient){
       setOrient(t.dataset.orient);
-      lockOrientation(t.dataset.orient);
-      syncRealLandscape();
+      if(fsElement()) lockOrientation();
       ui.ddOpen=""; render(); return;
     }
     if(t.dataset.act){
@@ -2403,10 +2414,6 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
       else if(t.dataset.act==="resume"){ loadGame(); }
       else if(t.dataset.act==="rules"){ showRules(); }
       else if(t.dataset.act==="enter"){
-        setOrient("landscape");
-        lockOrientation("landscape");
-        requestWakeLock();
-        lockKeyboard();
         applyDisplay(getDisplay());
         S.screen="title"; render();
       }
@@ -2547,12 +2554,6 @@ html.pseudo-full .scene-fixed{position:fixed;inset:0}
   },true);
 
   try{ S.hasSave=!!localStorage.getItem(SAVE_KEY); }catch(e){}
-  /* 默认横屏，但绝不通过 CSS 旋转页面：保证系统手势、点击坐标和平板/桌面布局一致。 */
-  try{ if(localStorage.getItem(ORIENT_KEY)!=="portrait") setOrient("landscape"); }catch(e){}
-  syncRealLandscape();
-  setupFullscreenGuard();
-  window.addEventListener("resize",syncRealLandscape);
-  window.addEventListener("orientationchange",function(){ setTimeout(syncRealLandscape,120); });
   render();
 })();
 </script>
