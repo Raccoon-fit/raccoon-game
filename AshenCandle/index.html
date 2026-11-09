@@ -1409,6 +1409,74 @@ body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;bac
 .shop-foot{position:relative;z-index:1;display:flex;justify-content:flex-end;margin-top:14px}.shop-next{min-width:180px}
 @media (max-width:900px){.shop-grid,.shop-relic-row{grid-template-columns:1fr}.destroy-list{grid-template-columns:repeat(2,1fr)}.shop-head{align-items:flex-start;flex-direction:column}.shop-coin{align-self:flex-end}}
 
+
+
+/* ===== 平板横屏定位修正：角落控件 / 小卡牌 / 左侧红蓝条 ===== */
+@media (orientation:landscape) and (min-width:700px){
+  :root{--card-w:104px!important;--card-h:150px!important}
+  /* 设置严格固定在右上安全区角落 */
+  .gear{
+    position:fixed!important;top:max(10px,env(safe-area-inset-top))!important;
+    right:max(12px,env(safe-area-inset-right))!important;left:auto!important;bottom:auto!important;
+    transform:none!important;margin:0!important;width:36px!important;height:36px!important;z-index:90!important
+  }
+  /* 红蓝资源条固定贴左边，红在上、蓝在下 */
+  .leftbars{
+    position:fixed!important;left:max(8px,env(safe-area-inset-left))!important;
+    top:76px!important;bottom:auto!important;width:48px!important;height:auto!important;
+    padding:8px 5px!important;gap:19px!important;border-radius:11px!important;z-index:60!important
+  }
+  .leftbars .vwrap{width:100%!important;gap:5px!important}
+  .leftbars .vbar{width:11px!important;height:82px!important}
+  .leftbars .hp-b i{background:linear-gradient(180deg,#f06b5a,#831b18)!important}
+  .leftbars .mp-b i{background:linear-gradient(180deg,#69b9e9,#24517f)!important;box-shadow:0 0 9px rgba(72,154,215,.34)!important}
+  .leftbars .vlab{font-size:8px!important;letter-spacing:.05em!important}
+  .leftbars .orbs-vert{display:none!important}
+  .hud{left:67px!important}
+  .field{left:64px!important;bottom:174px!important}
+  /* 手牌整体缩小，避免横屏占据过大 */
+  .hand-zone{width:min(680px,62vw)!important;height:163px!important;bottom:4px!important}
+  .hand{height:163px!important;gap:11px!important;padding-bottom:5px!important}
+  .handcard{transform:translateY(calc(var(--lift,0px) * .1)) rotate(calc(var(--rot,0deg) * .18))!important}
+  .handcard:hover,.handcard.selwrap{transform:translateY(-10px) scale(1.035)!important}
+  .card{width:104px!important;height:150px!important;border-radius:10px!important}
+  .card .cart{left:7px!important;right:7px!important;top:8px!important;height:71px!important}
+  .card .glyph{font-size:34px!important}
+  .card .cost{width:21px!important;height:21px!important;font-size:10px!important;top:3px!important}
+  .card .chead{top:81px!important;height:20px!important}
+  .card .cname{font-size:11px!important}
+  .card .ctext{top:103px!important;left:8px!important;right:8px!important;min-height:25px!important;font-size:8px!important;line-height:1.25!important}
+  .card .cfoot{left:7px!important;right:7px!important;bottom:4px!important;height:15px!important;font-size:7.5px!important}
+  .card .cstat i{width:13px!important;height:13px!important;font-size:7px!important}
+  .log{bottom:164px!important}
+  /* 遗物从屏幕左下角开始，工具按钮排到其右侧 */
+  .relic-dock{
+    position:fixed!important;left:max(8px,env(safe-area-inset-left))!important;
+    bottom:max(8px,env(safe-area-inset-bottom))!important;right:auto!important;top:auto!important;
+    max-width:260px!important;gap:5px!important;z-index:80!important
+  }
+  .relic-icon{width:34px!important;height:34px!important;border-radius:7px!important}
+  .relic-art{transform:scale(.88)}
+  .tools{
+    position:fixed!important;left:calc(max(8px,env(safe-area-inset-left)) + 0px)!important;
+    bottom:calc(max(8px,env(safe-area-inset-bottom)) + 42px)!important;right:auto!important;top:auto!important;
+    z-index:79!important;gap:5px!important
+  }
+  .tool{width:39px!important;height:31px!important;font-size:9px!important}
+  .actionbar{right:max(14px,env(safe-area-inset-right))!important;bottom:max(12px,env(safe-area-inset-bottom))!important}
+}
+@media (orientation:landscape) and (min-width:1180px){
+  :root{--card-w:112px!important;--card-h:160px!important}
+  .hand-zone{height:173px!important;width:min(760px,60vw)!important}
+  .hand{height:173px!important;gap:13px!important}
+  .card{width:112px!important;height:160px!important}
+  .card .cart{height:77px!important}
+  .card .chead{top:87px!important}
+  .card .ctext{top:109px!important}
+  .field{bottom:184px!important}
+  .log{bottom:174px!important}
+}
+
 </style>
 </head>
 <body>
