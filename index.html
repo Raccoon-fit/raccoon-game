@@ -8,493 +8,229 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* ============================================================
-           软软的游戏库 · Neo-Brutalism / 印刷风重制版
-           ============================================================ */
-
-        /* ---------- 基础重置 ---------- */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        :root {
-            --paper:     #f2eee3;
-            --paper-2:   #fffdf7;
-            --ink:       #17140f;
-            --ink-2:     #3b362e;
-            --muted:     #857e70;
-            --accent:    #ff4d00;
-            --accent-2:  #1652f0;
-            --accent-3:  #ffd400;
-            --green:     #00a86b;
-            --sidebar-width: 288px;
-            --sh:    6px 6px 0 var(--ink);
-            --sh-sm: 3px 3px 0 var(--ink);
-        }
-
-        button,
-        input,
-        select {
-            font: inherit;
-        }
-
-        a {
-            color: inherit;
-            text-decoration: none;
-        }
-
-        body {
-            font-family: "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
-            font-size: 15px;
-            line-height: 1.55;
-            color: var(--ink);
-            background-color: var(--paper);
-            background-image:
-                linear-gradient(rgba(23, 20, 15, .055) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(23, 20, 15, .055) 1px, transparent 1px);
-            background-size: 30px 30px;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        /* 粒子层在新风格中完全弃用，改用网格纸背景 */
-        .bg-particles {
-            display: none;
-        }
-
-        .particle {
-            display: none;
-        }
-
-        ::selection {
-            background: var(--accent-3);
-            color: var(--ink);
-        }
-
-        /* ---------- 应用骨架 ---------- */
-        .app-container {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        /* ---------- 侧边栏 ---------- */
-        .sidebar {
-            width: var(--sidebar-width);
-            position: fixed;
-            inset: 0 auto 0 0;
-            background: var(--paper-2);
-            border-right: 3px solid var(--ink);
-            display: flex;
-            flex-direction: column;
-            z-index: 20;
-            transition: transform .25s ease;
-        }
-
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 22px 18px 18px;
-            border-bottom: 3px solid var(--ink);
-        }
-
-        .logo-icon {
-            width: 46px;
-            height: 46px;
-            flex: 0 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--ink);
-            color: var(--accent-3);
-            font-size: 20px;
-            border: 2px solid var(--ink);
-            box-shadow: 4px 4px 0 var(--accent-3);
-        }
-
-        .logo-text {
-            font-size: 22px;
-            font-weight: 900;
-            letter-spacing: -.02em;
-            line-height: 1.15;
-        }
-
-        .logo-subtitle {
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: .12em;
-            text-transform: uppercase;
-            color: var(--muted);
-            margin-top: 4px;
-        }
-
-        /* 用户卡片 */
-        .user-profile {
-            margin: 16px 14px;
-            padding: 14px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: var(--accent-3);
-            border: 2px solid var(--ink);
-            box-shadow: var(--sh-sm);
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .avatar {
-            width: 48px;
-            height: 48px;
-            flex: 0 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 900;
-            font-size: 20px;
-            background: var(--ink);
-            color: var(--accent-3);
-            border: 2px solid var(--ink);
-        }
-
-        .user-info h3 {
-            font-size: 16px;
-            font-weight: 900;
-            line-height: 1.2;
-        }
-
-        .user-info p {
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: .04em;
-            color: #5a5348;
-            margin-top: 3px;
-        }
-
-        .user-tip {
-            margin-top: 6px;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: .06em;
-            text-transform: uppercase;
-            color: #6d6559;
-        }
-
-        /* 导航 */
-        .nav-menu {
-            flex: 1;
-            padding: 0 14px 18px;
-            overflow-y: auto;
-        }
-
-        .nav-section-title {
-            padding: 16px 4px 8px;
-            font-size: 10px;
-            font-weight: 900;
-            letter-spacing: .18em;
-            text-transform: uppercase;
-            color: var(--muted);
-            border-bottom: 2px dashed rgba(23, 20, 15, .18);
-            margin-bottom: 10px;
-        }
-
-        .nav-item {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 14px;
-            margin-bottom: 6px;
-            border: 2px solid transparent;
-            background: transparent;
-            color: var(--ink);
-            font-weight: 800;
-            text-align: left;
-            cursor: pointer;
-            transition: transform .12s ease, background .12s ease, border-color .12s ease;
-        }
-
-        .nav-item:hover {
-            background: var(--accent-3);
-            border-color: var(--ink);
-            transform: translateX(3px);
-        }
-
-        .nav-item.active {
-            background: var(--ink);
-            border-color: var(--ink);
-            color: var(--paper-2);
-            box-shadow: var(--sh-sm);
-        }
-
-        .nav-icon {
-            width: 20px;
-            text-align: center;
-            font-size: 14px;
-        }
-
-        .nav-text {
-            font-size: 14px;
-            font-weight: 800;
-        }
-
-        .nav-badge {
-            margin-left: auto;
-            min-width: 28px;
-            padding: 2px 7px;
-            text-align: center;
-            font-size: 11px;
-            font-weight: 900;
-            background: var(--paper-2);
-            color: var(--ink);
-            border: 2px solid var(--ink);
-        }
-
-        .nav-item.active .nav-badge {
-            background: var(--accent-3);
-        }
-
-        .sidebar-footer {
-            padding: 16px 18px 22px;
-            border-top: 3px solid var(--ink);
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: .04em;
-            color: var(--muted);
-            line-height: 1.7;
-        }
-
-        /* ---------- 主内容区 ---------- */
-        .main-content {
-            flex: 1;
-            margin-left: var(--sidebar-width);
-            padding: 22px;
-        }
-
-        /* ---------- 顶部条 ---------- */
-        .top-bar {
-            background: var(--paper-2);
-            border: 2px solid var(--ink);
-            box-shadow: var(--sh);
-            padding: 18px 22px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            margin-bottom: 22px;
-        }
-
-        .page-title h1 {
-            display: inline-block;
-            font-size: 30px;
-            font-weight: 900;
-            letter-spacing: -.03em;
-            line-height: 1.1;
-            border-bottom: 7px solid var(--accent-3);
-            padding-bottom: 2px;
-        }
-
-        .page-title p {
-            color: var(--muted);
-            font-size: 13px;
-            font-weight: 600;
-            margin-top: 10px;
-            max-width: 46ch;
-        }
-
-        .top-actions {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-            width: 100%;
-        }
-
-        /* 搜索 / 排序 */
-        .search-box,
-        .sort-box {
-            position: relative;
-        }
-
-        .search-box i,
-        .sort-box i {
-            position: absolute;
-            left: 13px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--ink);
-            font-size: 13px;
-            pointer-events: none;
-        }
-
-        .search-box input,
-        .sort-box select {
-            min-width: 220px;
-            width: 100%;
-            border: 2px solid var(--ink);
-            background: var(--paper);
-            color: var(--ink);
-            font-weight: 700;
-            padding: 11px 12px 11px 38px;
-            outline: none;
-            transition: box-shadow .15s ease, background .15s ease;
-        }
-
-        .search-box input::placeholder {
-            color: var(--muted);
-            font-weight: 600;
-        }
-
-        .search-box input:focus,
-        .sort-box select:focus {
-            background: #fff;
-            box-shadow: var(--sh-sm);
-        }
-
-        .sort-box select option {
-            color: #111;
-            background: #fff;
-        }
-
-        /* ---------- 按钮系统 ---------- */
-        .mobile-menu-btn,
-        .ghost-btn,
-        .primary-btn,
-        .secondary-btn {
-            border: 2px solid var(--ink);
-            cursor: pointer;
-            font-weight: 800;
-            letter-spacing: .04em;
-            transition: transform .12s ease, box-shadow .12s ease,
-                        background .12s ease, color .12s ease;
-        }
-
-        .primary-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 11px 16px;
-            background: var(--ink);
-            color: var(--paper-2);
-            font-size: 13px;
-            text-transform: uppercase;
-        }
-
-        .primary-btn:hover {
-            background: var(--accent);
-            color: #fff;
-            transform: translate(-2px, -2px);
-            box-shadow: var(--sh-sm);
-        }
-
-        .secondary-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 11px 16px;
-            background: var(--paper-2);
-            color: var(--ink);
-            font-size: 13px;
-            text-transform: uppercase;
-        }
-
-        .secondary-btn:hover {
-            background: var(--accent-3);
-            transform: translate(-2px, -2px);
-            box-shadow: var(--sh-sm);
-        }
-
-        .ghost-btn {
-            padding: 11px 16px;
-            background: transparent;
-            color: var(--ink);
-            font-size: 13px;
-            text-transform: uppercase;
-        }
-
-        .ghost-btn:hover {
-            background: var(--ink);
-            color: var(--paper-2);
-        }
-
-        .mobile-menu-btn {
-            display: none;
-            width: 46px;
-            height: 46px;
-            align-items: center;
-            justify-content: center;
-            background: var(--accent-3);
-            color: var(--ink);
-        }
-
-        /* ---------- 欢迎横幅 ---------- */
-        .welcome-banner {
-            background: var(--ink);
-            color: var(--paper);
-            border: 2px solid var(--ink);
-            box-shadow: var(--sh);
-            padding: 26px 28px;
-            margin-bottom: 22px;
-            display: grid;
-            grid-template-columns: 1.8fr 1fr;
-            gap: 22px;
-        }
-
-        .welcome-content h2 {
-            font-size: 30px;
-            font-weight: 900;
-            letter-spacing: -.03em;
-            color: #fff;
-            line-height: 1.15;
-        }
-
-        .welcome-content h2::after {
-            content: "";
-            display: block;
-            width: 72px;
-            height: 7px;
-            margin-top: 12px;
-            background: var(--accent-3);
-        }
-
-        .welcome-stats {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
-        }
-
-        .stat-card {
-            background: #262119;
-            border: 2px solid #4b453b;
-            padding: 14px 16px;
-        }
-
-        .stat-label {
-            font-size: 10px;
-            font-weight: 800;
-            letter-spacing: .14em;
-            text-transform: uppercase;
-            color: #b3aa99;
-            margin-bottom: 8px;
-        }
-
-        .stat-value {
-            font-family: "Courier New", "SFMono-Regular", monospace;
-            font-size: 24px;
-            font-weight: 900;
-            letter-spacing: -.02em;
-            color: var(--accent-3);
-            line-height: 1.1;
-            word-break: break-all;
-        }
-
-        /* ---------- 面板 ---------- */
-        .panel {
-            background: var(--paper-2);
-            border: 2px solid var(--ink);
-            box-shadow: var(--sh);
+*{margin:0;padding:0;box-sizing:border-box; -webkit-tap-highlight-color:transparent;}:root{ --paper:#f2eee3; --paper-2:#fffdf7; --ink:#17140f; --ink-2:#3b362e; --muted:#857e70; --accent:#ff4d00; --accent-2:#1652f0; --accent-3:#ffd400; --green:#00a86b; --sidebar-width:288px; --sh:6px 6px 0 var(--ink); --sh-sm:3px 3px 0 var(--ink);}button,input,select{font:inherit;}a{color:inherit;text-decoration:none;}
+body{font-family:"Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif;font-size:15px;line-height:1.55;color:var(--ink);background-color:var(--paper);background-image:linear-gradient(rgba(23,20,15,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(23,20,15,.055) 1px,transparent 1px);background-size:30px 30px;min-height:100vh;overflow-x:hidden;}.bg-particles{display:none;}
+.particle{display:none;}::selection{background:var(--accent-3);color:var(--ink);}.app-container{display:flex;min-height:100vh;}.sidebar{width:var(--sidebar-width);position:fixed;inset:0 auto 0 0;background:var(--paper-2);border-right:3px solid var(--ink);display:flex;flex-direction:column;z-index:20;transition:transform .25s ease;}.logo{display:flex;align-items:center;gap:12px;padding:22px 18px 18px;border-bottom:3px solid var(--ink);}
+.logo-icon{width:46px;height:46px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;background:var(--ink);color:var(--accent-3);font-size:20px;border:2px solid var(--ink);box-shadow:4px 4px 0 var(--accent-3);}.logo-text{font-size:22px;font-weight:900;letter-spacing: -.02em;line-height:1.15;}.logo-subtitle{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:4px;}
+.user-profile{margin:16px 14px;padding:14px;display:flex;align-items:center;gap:12px;background:var(--accent-3);border:2px solid var(--ink);box-shadow:var(--sh-sm);cursor:pointer;user-select:none;}.avatar{width:48px;height:48px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;background:var(--ink);color:var(--accent-3);border:2px solid var(--ink);}
+.user-info h3{font-size:16px;font-weight:900;line-height:1.2;}.user-info p{font-size:11px;font-weight:700;letter-spacing:.04em;color:#5a5348;margin-top:3px;}.user-tip{margin-top:6px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6d6559;}.nav-menu{flex:1;padding:0 14px 18px;overflow-y:auto;}.nav-section-title{padding:16px 4px 8px;font-size:10px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);border-bottom:2px dashed rgba(23,20,15,.18);margin-bottom:10px;}
+.nav-item{width:100%;display:flex;align-items:center;gap:12px;padding:12px 14px;margin-bottom:6px;border:2px solid transparent;background:transparent;color:var(--ink);font-weight:800;text-align:left;cursor:pointer;transition:transform .12s ease,background .12s ease,border-color .12s ease;}.nav-item:hover{background:var(--accent-3);border-color:var(--ink);transform:translateX(3px);}
+.nav-item.active{background:var(--ink);border-color:var(--ink);color:var(--paper-2);box-shadow:var(--sh-sm);}.nav-icon{width:20px;text-align:center;font-size:14px;}.nav-text{font-size:14px;font-weight:800;}.nav-badge{margin-left:auto;min-width:28px;padding:2px 7px;text-align:center;font-size:11px;font-weight:900;background:var(--paper-2);color:var(--ink);border:2px solid var(--ink);}
+.nav-item.active .nav-badge{background:var(--accent-3);}.sidebar-footer{padding:16px 18px 22px;border-top:3px solid var(--ink);font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--muted);line-height:1.7;}.main-content{flex:1;margin-left:var(--sidebar-width);padding:22px;}.top-bar{background:var(--paper-2);border:2px solid var(--ink);box-shadow:var(--sh);padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px;}
+.page-title h1{display:inline-block;font-size:30px;font-weight:900;letter-spacing: -.03em;line-height:1.1;border-bottom:7px solid var(--accent-3);padding-bottom:2px;}.page-title p{color:var(--muted);font-size:13px;font-weight:600;margin-top:10px;max-width:46ch;}.top-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;width:100%;}.search-box,.sort-box{position:relative;}
+.search-box i,.sort-box i{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--ink);font-size:13px;pointer-events:none;}.search-box input,.sort-box select{min-width:220px;width:100%;border:2px solid var(--ink);background:var(--paper);color:var(--ink);font-weight:700;padding:11px 12px 11px 38px;outline:none;transition:box-shadow .15s ease,background .15s ease;}
+.search-box input::placeholder{color:var(--muted);font-weight:600;}.search-box input:focus,.sort-box select:focus{background:#fff;box-shadow:var(--sh-sm);}.sort-box select option{color:#111;background:#fff;}.mobile-menu-btn,.ghost-btn,.primary-btn,.secondary-btn{border:2px solid var(--ink);cursor:pointer;font-weight:800;letter-spacing:.04em;transition:transform .12s ease,box-shadow .12s ease,background .12s ease,color .12s ease;}
+.primary-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;background:var(--ink);color:var(--paper-2);font-size:13px;text-transform:uppercase;}.primary-btn:hover{background:var(--accent);color:#fff;transform:translate(-2px, -2px);box-shadow:var(--sh-sm);}.secondary-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;background:var(--paper-2);color:var(--ink);font-size:13px;text-transform:uppercase;}
+.secondary-btn:hover{background:var(--accent-3);transform:translate(-2px, -2px);box-shadow:var(--sh-sm);}.ghost-btn{padding:11px 16px;background:transparent;color:var(--ink);font-size:13px;text-transform:uppercase;}.ghost-btn:hover{background:var(--ink);color:var(--paper-2);}.mobile-menu-btn{display:none;width:46px;height:46px;align-items:center;justify-content:center;background:var(--accent-3);color:var(--ink);}
+.welcome-banner{background:var(--ink);color:var(--paper);border:2px solid var(--ink);box-shadow:var(--sh);padding:26px 28px;margin-bottom:22px;display:grid;grid-template-columns:1.8fr 1fr;gap:22px;}.welcome-content h2{font-size:30px;font-weight:900;letter-spacing: -.03em;color:#fff;line-height:1.15;}.welcome-content h2::after{content:"";display:block;width:72px;height:7px;margin-top:12px;background:var(--accent-3);}
+.welcome-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}.stat-card{background:#262119;border:2px solid #4b453b;padding:14px 16px;}.stat-label{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#b3aa99;margin-bottom:8px;}.stat-value{font-family:"Courier New","SFMono-Regular",monospace;font-size:24px;font-weight:900;letter-spacing: -.02em;color:var(--accent-3);line-height:1.1;word-break:break-all;}
+.panel{background:var(--paper-2);border:2px solid var(--ink);box-shadow:var(--sh);padding:18px 20px;margin-bottom:20px;}.panel-header{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:16px;padding-bottom:14px;border-bottom:2px dashed rgba(23,20,15,.22);}.panel-header h2{font-size:22px;font-weight:900;letter-spacing: -.02em;}.panel-header p{color:var(--muted);font-size:13px;font-weight:600;margin-top:4px;}
+.panel-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}.status-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px;}.status-chip-row,.recent-row{display:flex;flex-wrap:wrap;gap:8px;}.chip{display:inline-flex;align-items:center;padding:6px 11px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--paper-2);color:var(--ink);border:2px solid var(--ink);}
+.chip:nth-child(3n+1){background:var(--accent-3);}.recent-chip{display:inline-flex;align-items:center;padding:6px 11px;font-size:11px;font-weight:800;letter-spacing:.04em;background:var(--paper-2);color:var(--ink);border:2px solid var(--ink);transition:background .12s ease,transform .12s ease;}.recent-chip:hover{background:var(--accent-2);color:#fff;transform:translate(-2px, -2px);box-shadow:var(--sh-sm);}
+.recent-chip button{border:0;background:transparent;color:inherit;font-weight:800;cursor:pointer;padding:0;text-align:left;}.games-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:20px;}.game-card{display:flex;flex-direction:column;background:var(--paper-2);border:2px solid var(--ink);box-shadow:var(--sh);overflow:hidden;transition:transform .15s ease,box-shadow .15s ease;}
+.game-card:hover{transform:translate(-4px, -4px);box-shadow:10px 10px 0 var(--ink);}.game-top{min-height:170px;padding:16px 18px 18px;display:flex;flex-direction:column;justify-content:space-between;gap:14px;background:var(--paper);border-top:9px solid var(--ink);border-bottom:2px solid var(--ink);}.game-card:nth-child(4n+1) .game-top{border-top-color:var(--accent);}.game-card:nth-child(4n+2) .game-top{border-top-color:var(--accent-2);}
+.game-card:nth-child(4n+3) .game-top{border-top-color:var(--accent-3);}.game-card:nth-child(4n+4) .game-top{border-top-color:var(--green);}.game-flags{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}.game-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;background:var(--ink);color:var(--paper-2);font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;}
+.game-icon{width:54px;height:54px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--ink);background:var(--paper-2);border:2px solid var(--ink);}.game-summary h3{font-size:20px;font-weight:900;letter-spacing: -.02em;line-height:1.2;margin-bottom:7px;}.game-summary p{font-size:13px;font-weight:500;line-height:1.6;color:var(--ink-2);}.game-body{flex:1;display:flex;flex-direction:column;padding:16px 18px 18px;}
+.game-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}.game-rating{color:var(--accent);font-weight:900;}.game-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;}.game-tag{padding:4px 9px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--paper-2);color:var(--ink);border:1.5px solid var(--ink);}
+.game-tag:first-child{background:var(--accent-3);}.game-actions{display:flex;gap:10px;margin-top:auto;}.game-actions a,.game-actions button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;width:100%;}.empty-state{display:none;padding:32px 18px;text-align:center;font-weight:700;color:var(--muted);background:var(--paper);border:2px dashed var(--ink);}
+.loading-placeholder{grid-column:1 / -1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:64px 20px;color:var(--muted);font-weight:800;letter-spacing:.06em;text-transform:uppercase;font-size:12px;}.loading-spinner{width:34px;height:34px;background:var(--accent-3);border:2px solid var(--ink);animation:spin .9s steps(8,end) infinite;}@keyframes spin{to{transform:rotate(360deg);}
+}.footer{margin-top:20px;padding:22px;text-align:center;font-weight:700;font-size:12px;letter-spacing:.04em;color:var(--ink-2);background:var(--paper-2);border:2px solid var(--ink);box-shadow:var(--sh);}.footer-links{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 18px;margin-top:14px;padding-top:14px;border-top:2px dashed rgba(23,20,15,.22);}.footer-links button{border:0;background:transparent;color:inherit;font-weight:800;letter-spacing:.06em;text-transform:uppercase;font-size:11px;cursor:pointer;padding:2px 0;border-bottom:2px solid transparent;transition:border-color .12s ease,color .12s ease;}
+.footer-links button:hover{color:var(--accent);border-bottom-color:var(--accent);}.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(23,20,15,.72);padding:20px;z-index:40;}.modal.open{display:flex;}.modal-card{width:min(720px,100%);max-height:88vh;overflow-y:auto;background:var(--paper-2);border:3px solid var(--ink);box-shadow:10px 10px 0 var(--accent);padding:26px;animation:modalIn .18s ease;}
+@keyframes modalIn{from{transform:translate(-6px, -6px);opacity:0;}to{transform:translate(0,0);opacity:1;}}.modal-header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:16px;padding-bottom:14px;border-bottom:3px solid var(--ink);}.modal-title{font-size:24px;font-weight:900;letter-spacing: -.02em;line-height:1.15;}.modal-body{color:var(--ink-2);font-size:14px;line-height:1.8;}
+.modal-body p + p{margin-top:10px;}.modal-body ul{padding-left:20px;margin-top:12px;}.modal-body li{margin-bottom:8px;}.modal-body li::marker{color:var(--accent);font-weight:900;}.modal-actions{margin-top:20px;padding-top:16px;border-top:2px dashed rgba(23,20,15,.22);display:flex;justify-content:flex-end;gap:10px;}.backdrop{position:fixed;inset:0;background:rgba(23,20,15,.55);z-index:10;display:none;}
+.backdrop.open{display:block;}.bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:25;padding:10px 10px calc(10px + env(safe-area-inset-bottom));gap:8px;background:var(--paper-2);border-top:3px solid var(--ink);}.bottom-nav button{flex:1;min-height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:var(--paper-2);color:var(--ink);border:2px solid var(--ink);font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:background .12s ease,color .12s ease;}
+.bottom-nav button.active{background:var(--ink);color:var(--accent-3);}.bottom-nav i{font-size:15px;}.taptap-wrapper{margin-top:14px;padding-top:14px;border-top:2px dashed rgba(23,20,15,.22);text-align:center;width:100%;}.taptap-wrapper iframe{width:100%;max-width:470px;height:76px;border:none;}@media (max-width:1024px){.sidebar{transform:translateX(-100%);width:min(84vw,320px);box-shadow:8px 0 0 rgba(23,20,15,.18);}
+.sidebar.open{transform:translateX(0);}.main-content{margin-left:0;padding:16px;}.mobile-menu-btn{display:inline-flex;}.welcome-banner{grid-template-columns:1fr;}}@media (max-width:768px){.top-bar{flex-direction:column;align-items:stretch;padding:16px;gap:14px;}.page-title h1{font-size:24px;border-bottom-width:6px;}.top-actions{justify-content:stretch;}.search-box,.sort-box{width:100%;}
+.search-box input,.sort-box select{width:100%;min-width:0;}.panel,.welcome-banner,.footer,.modal-card{padding:16px;}.panel-header,.status-row{flex-direction:column;align-items:flex-start;}.panel-actions{width:100%;}.panel-actions button{flex:1;}.game-actions{flex-direction:column;}.games-grid{grid-template-columns:1fr;gap:16px;}.welcome-stats{grid-template-columns:1fr 1fr;}.status-chip-row,.recent-row{width:100%;}
+.taptap-wrapper iframe{max-width:100%;}}@media (max-width:520px){.main-content{padding:12px 12px 96px;}.welcome-content h2{font-size:22px;}.welcome-stats{grid-template-columns:1fr;}.stat-value{font-size:20px;}.game-top{min-height:150px;padding:14px 16px 16px;}.game-body{padding:16px;}.game-summary h3{font-size:18px;}.game-meta{flex-direction:column;align-items:flex-start;gap:4px;}
+.chip,.recent-chip{width:100%;}.recent-chip button{width:100%;text-align:left;}.footer{margin-bottom:8px;}.bottom-nav{display:flex;}.taptap-wrapper iframe{height:auto;min-height:76px;}}@media (prefers-reduced-motion:reduce){*{animation-duration:.001ms !important;transition-duration:.001ms !important;}}
+</style>
+</head>
+<body>
+    <div class="bg-particles" id="bgParticles"></div>
+    <div class="backdrop" id="sidebarBackdrop"></div>
+    <div class="app-container">
+        <aside class="sidebar" id="sidebar">
+            <div class="logo">
+                <div class="logo-icon"><i class="fas fa-gamepad"></i></div>
+                <div>
+                    <div class="logo-text">软软游戏库</div>
+                    <div class="logo-subtitle">纯玩无图版 · 数据驱动重构</div>
+                </div>
+            </div>
+            <div class="user-profile" id="profileCard">
+                <div class="avatar" id="profileAvatar">玩</div>
+                <div class="user-info">
+                    <h3 id="playerName">网站玩家</h3>
+                    <p id="playerMode">在线游戏库 · 无图极速版</p>
+                    <div class="user-tip">双击此卡片可修改昵称</div>
+                </div>
+            </div>
+            <nav class="nav-menu">
+                <div class="nav-section-title">浏览</div>
+                <button class="nav-item active" data-filter="all">
+                    <span class="nav-icon"><i class="fas fa-home"></i></span>
+                    <span class="nav-text">全部游戏</span>
+                    <span class="nav-badge" id="gameCount">0</span>
+                </button>
+                <button class="nav-item" data-filter="featured">
+                    <span class="nav-icon"><i class="fas fa-star"></i></span>
+                    <span class="nav-text">精选游戏</span>
+                </button>
+                <button class="nav-item" data-filter="latest">
+                    <span class="nav-icon"><i class="fas fa-sparkles"></i></span>
+                    <span class="nav-text">最新上架</span>
+                </button>
+                <button class="nav-item" data-filter="casual">
+                    <span class="nav-icon"><i class="fas fa-cloud"></i></span>
+                    <span class="nav-text">休闲轻松</span>
+                </button>
+                <button class="nav-item" data-filter="strategy">
+                    <span class="nav-icon"><i class="fas fa-chess"></i></span>
+                    <span class="nav-text">策略益智</span>
+                </button>
+                <button class="nav-item" data-filter="space">
+                    <span class="nav-icon"><i class="fas fa-rocket"></i></span>
+                    <span class="nav-text">太空冒险</span>
+                </button>
+                <div class="nav-section-title">工具</div>
+                <button class="nav-item" id="openAboutSidebar">
+                    <span class="nav-icon"><i class="fas fa-circle-info"></i></span>
+                    <span class="nav-text">关于网站</span>
+                </button>
+                <button class="nav-item" id="clearRecentSidebar">
+                    <span class="nav-icon"><i class="fas fa-clock-rotate-left"></i></span>
+                    <span class="nav-text">清空最近游玩</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <div>© 2025-2026 软软的游戏库</div>
+                <div>纯享游戏 · 无图打扰</div>
+                <div>新版逻辑可直接扩展游戏数据</div>
+            </div>
+        </aside>
+        <main class="main-content">
+            <div class="top-bar">
+                <div class="page-title">
+                    <h1>软软的游戏库</h1>
+                    <p>在线游戏集合，点击即玩，无图极速体验，支持搜索、筛选、排序和最近游玩。</p>
+                </div>
+                <div class="top-actions">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input id="searchInput" type="text" placeholder="搜索游戏名称、描述、标签...">
+                    </div>
+                    <div class="sort-box">
+                        <i class="fas fa-arrow-down-wide-short"></i>
+                        <select id="sortSelect" aria-label="排序方式">
+                            <option value="featured">按推荐排序</option>
+                            <option value="rating">按评分排序</option>
+                            <option value="name">按名称排序</option>
+                            <option value="version">按版本排序</option>
+                        </select>
+                    </div>
+                    <button class="ghost-btn" id="resetFiltersBtn">重置筛选</button>
+                    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="打开菜单"><i class="fas fa-bars"></i></button>
+                </div>
+            </div>
+            <section class="welcome-banner">
+                <div class="welcome-content">
+                    <h2>欢迎来到软软的游戏库</h2>
+                </div>
+                <div class="welcome-stats">
+                    <div class="stat-card">
+                        <div class="stat-label">当前筛选</div>
+                        <div class="stat-value" id="activeFilterLabel">全部</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">展示数量</div>
+                        <div class="stat-value" id="visibleCount">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">总游戏数</div>
+                        <div class="stat-value" id="totalCount">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">最近游玩</div>
+                        <div class="stat-value" id="recentCount">0</div>
+                    </div>
+                </div>
+            </section>
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h2>游戏大厅</h2>
+                        <p>支持按分类、标签和关键词快速定位。</p>
+                    </div>
+                    <div class="panel-actions">
+                        <button class="secondary-btn" id="showFeaturedBtn"><i class="fas fa-star"></i><span>只看精选</span></button>
+                        <button class="primary-btn" id="showLatestBtn"><i class="fas fa-bolt"></i><span>只看最新</span></button>
+                    </div>
+                </div>
+                <div class="status-row">
+                    <div class="status-chip-row" id="statusChips"></div>
+                    <div class="recent-row" id="recentRow"></div>
+                </div>
+                <div class="games-grid" id="gamesGrid">
+                    <div class="loading-placeholder" id="loadingPlaceholder">
+                        <div class="loading-spinner"></div>
+                        <span>加载游戏列表中...</span>
+                    </div>
+                </div>
+                <div class="empty-state" id="emptyState">当前条件下没有匹配的游戏，请调整搜索词或筛选条件。</div>
+            </section>
+            <footer class="footer">
+                <div>© 2025-2026 软软的游戏库 - 纯享游戏，无图极速版</div>
+                <div class="footer-links">
+                    <button id="aboutBtn">关于网站</button>
+                    <button id="contactBtn">联系我们</button>
+                    <button id="privacyBtn">隐私政策</button>
+                    <button id="termsBtn">使用条款</button>
+                </div>
+            </footer>
+        </main>
+    </div>
+    <nav class="bottom-nav" id="bottomNav" aria-label="移动端底部导航">
+        <button type="button" data-bottom-action="all" class="active">
+            <i class="fas fa-house"></i>
+            <span>全部</span>
+        </button>
+        <button type="button" data-bottom-action="featured">
+            <i class="fas fa-star"></i>
+            <span>精选</span>
+        </button>
+        <button type="button" data-bottom-action="latest">
+            <i class="fas fa-bolt"></i>
+            <span>最新</span>
+        </button>
+        <button type="button" data-bottom-action="recent">
+            <i class="fas fa-clock"></i>
+            <span>最近</span>
+        </button>
+        <button type="button" data-bottom-action="menu">
+            <i class="fas fa-bars"></i>
+            <span>菜单</span>
+        </button>
+    </nav>
+    <div class="modal" id="infoModal" aria-hidden="true">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title" id="modalTitle">关于网站</div>
+                </div>
+                <button class="ghost-btn" id="closeModalBtn">关闭</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-actions">
+                <button class="primary-btn" id="confirmModalBtn">我知道了</button>
+            </div>
+        </div>
+    </div>
+    <script>
+const games=[{id:"taofeng",title:"黄小仙讨封",rating:5,version:"1.5",badge:"讨封",icon:"fa-crown",description:"五百年道行，一夜讨封。成仙或成仁，在你一念之间。",tags:["传统","讨封","黄仙"],categories:["featured","strategy"],href:"https://game.raccoon.fit/黄小仙讨封.html",external:!0,featuredOrder:1,latestOrder:9},{id:"yuyeguitu",title:"雨夜归途",rating:4.8,version:"1.0",badge:"剧情",icon:"fa-umbrella",description:"雨夜漫漫，归途未明。循着零散的线索拼凑真相，走出这场大雨。",tags:["剧情","解谜","悬疑"],categories:["featured","strategy","latest"],href:"https://game.raccoon.fit/雨夜归途/",external:!0,featuredOrder:1.2,latestOrder:.5},{id:"tangguoxiaoxiaole",title:"糖果消消乐",rating:4.8,version:"1.0",badge:"新游",icon:"fa-candy-cane",description:"甜蜜糖果碰撞消除，连消越多得分越高，随手一局就很解压。",tags:["消除","糖果","休闲"],categories:["casual","latest"],href:"https://game.raccoon.fit/糖果消消乐/index.html",external:!0,featuredOrder:1.3,latestOrder:.6},{id:"lingdao",title:"菱岛",rating:4.6,version:"1.0",badge:"新游",icon:"fa-gem",description:"登上菱形小岛，在轻松节奏里探索、经营属于你的岛屿。",tags:["岛屿","休闲","探索"],categories:["casual","latest"],href:"https://game.raccoon.fit/菱岛/index.html",external:!0,featuredOrder:1.4,latestOrder:.7},{id:"canzhujinian",title:"残烛纪年",rating:4.2,version:"1.0.4",badge:"剧情",icon:"fa-umbrella",description:"",tags:["卡牌","解谜","回合制"],categories:["featured","strategy","latest"],href:"https://game.raccoon.fit/AshenCandle",external:!0,featuredOrder:1.1,latestOrder:.5},{id:"huangjingyuanye",title:"浣境原野",rating:4.6,version:"1.2",badge:"RPG",icon:"fa-leaf",description:"在神秘的原野中探索，完成任务，发现隐藏的秘密。",tags:["RPG","开放世界","探索"],categories:["featured","strategy"],href:"https://game.raccoon.fit/浣境原野/index.html",external:!0,featuredOrder:1.5,latestOrder:10.5},{id:"yunhaizhijing",title:"云海之境",rating:4.7,version:"2.9.2",badge:"RPG",icon:"fa-yunhai",description:"在大世界探索，完成任务吧",tags:["RPG","开放世界","探索"],categories:["featured","strategy"],href:"https://game.raccoon.fit/云海之境/index.html",external:!0,featuredOrder:2,latestOrder:11},{id:"ruanque",title:"软软雀",rating:4.9,version:"1.0",badge:"火爆",icon:"fa-table-cells-large",description:"软萌雀神降临。趣味麻将消除，轻松合成赢高分，治愈画风停不下来。",tags:["消除","休闲","卡牌"],categories:["featured","casual","strategy"],href:"https://raccoon.fit/game/软软雀/",external:!0,featuredOrder:3,latestOrder:8},{id:"ruanpoker",title:"软软扑克",rating:4.8,version:"1.0",badge:"全新",icon:"fa-club",description:"经典扑克玩法融合软萌画风，策略与运气的双重较量，随时来一局。",tags:["扑克","策略","休闲"],categories:["featured","casual","strategy","latest"],href:"https://raccoon.fit/game/软软扑克/",external:!0,featuredOrder:4,latestOrder:2},{id:"side-scroll-raccoon",title:"小浣熊横版闯关",rating:4.3,version:"1.0",badge:"全新",icon:"fa-person-running",description:"横版闯关新作，快速起跳、轻松闯关，适合碎片时间游玩。",tags:["横版","闯关","休闲"],categories:["featured","casual","latest"],href:"https://game.raccoon.fit/小浣熊横版闯关/index.html",external:!0,featuredOrder:5,latestOrder:1},{id:"flying-raccoon",title:"飞翔的浣熊",rating:4.9,version:"1.3",badge:"新游",icon:"fa-feather",description:"帮助可爱的灰色浣熊穿越森林，操作直观，适合轻松游玩。",tags:["飞翔","浣熊","休闲"],categories:["featured","casual","latest"],href:"https://raccoon.fit/game/TheFlyingRaccoon.html",external:!0,featuredOrder:6,latestOrder:5},{id:"meteor-defense",title:"星际陨石防御者",rating:4.8,version:"2.0",badge:"热门",icon:"fa-meteor",description:"在太空中抵御陨石雨，保护你的太空站，支持键盘和触控操作。",tags:["射击","太空","街机"],categories:["featured","space"],href:"https://raccoon.fit/game/space_game.html",external:!0,featuredOrder:7,latestOrder:6},{id:"space-explorer",title:"太空探险家",rating:4.5,version:"2.0",badge:"新游",icon:"fa-rocket",description:"探索未知星系，发现新星球，收集稀有资源，建立你的太空基地。",tags:["冒险","探索","建造"],categories:["featured","space","latest"],href:"https://raccoon.fit/game/space_Sky_Exploration.html",external:!0,featuredOrder:8,latestOrder:4},{id:"xiuxian",title:"修仙问道",rating:3.8,version:"1.6",badge:"轻量",icon:"fa-yin-yang",description:"3D 修仙小游戏，轻量体验，适合快速尝试。",tags:["3D","修仙","休闲"],categories:["casual"],href:"https://raccoon.fit/game/3D_Xiuxian_Complete.html",external:!0,featuredOrder:9,latestOrder:7},{id:"mosquito",title:"打蚊子",rating:4,version:"1.0",badge:"免费",icon:"fa-bug",description:"玩家需要拿起苍蝇拍打蚊子，规则直接，上手很快。",tags:["策略","攻击"],categories:["strategy","latest"],href:"https://raccoon.fit/game/打蚊子/index.html",external:!0,featuredOrder:10,latestOrder:3},{id:"block-merge",title:"方块消消",rating:4,version:"1.3",badge:"益智",icon:"fa-cubes",description:"点击发射方块，合成更大数字，最高 64，三个 64 可消除。",tags:["消除","休闲","益智"],categories:["casual","strategy"],href:"https://raccoon.fit/game/方块消消/",external:!0,featuredOrder:11,latestOrder:10},{id:"raccoon-day",title:"浣熊之日",rating:8,version:"1.0",badge:"恐怖",icon:"fa-crown",description:"你是最后一只浣熊。明天总会到来。而明天，总比今天更糟。",tags:["恐怖","翌日"],categories:["terror","the-next-day"],href:"https://game.raccoon.fit/浣熊之日/健康游戏忠告.html",external:!0,featuredOrder:12,latestOrder:5}],modalContentMap={about:{title:"关于软软的游戏库",body:"\n                    <p>软软的游戏库是一个在线网页游戏平台，提供多款无需下载、点击即玩的 HTML5 游戏。</p>\n                    <ul>\n                        <li>完全基于浏览器，无需安装任何插件</li>\n                        <li>响应式设计，支持电脑和手机访问</li>\n                        <li>所有游戏卡片已去除图片，加载更快</li>\n                        <li>所有游戏数据统一由页面数据数组渲染，方便维护</li>\n                    </ul>\n                    <p>网站版本：4.0 重构版 | 最后更新：2026 年 7 月</p>\n                "},contact:{title:"联系我们",body:"\n                    <p>联系邮箱：softgame@gamelibrary.com</p>\n                    <p>欢迎反馈游戏体验、链接问题和新游戏建议。</p>\n                "},privacy:{title:"隐私政策",body:"\n                    <p>本页面仅使用浏览器本地存储保存昵称和最近游玩记录，用于提升你的浏览体验。</p>\n                    <ul>\n                        <li>昵称保存在当前浏览器的 LocalStorage</li>\n                        <li>最近游玩记录保存在当前浏览器的 LocalStorage</li>\n                        <li>页面不主动采集个人身份信息</li>\n                    </ul>\n                "},terms:{title:"使用条款",body:"\n                    <ul>\n                        <li>所有游戏均为在线试玩内容</li>\n                        <li>请在合适设备与网络环境下访问</li>\n                        <li>外部游戏链接由对应页面提供，若失效可反馈维护</li>\n                    </ul>\n                "}},state={filter:"all",search:"",sort:"featured",recent:JSON.parse(localStorage.getItem("rr_game_recent")||"[]"),nickname:localStorage.getItem("rr_game_nickname")||"网站玩家"},dom={bgParticles:document.getElementById("bgParticles"),sidebar:document.getElementById("sidebar"),sidebarBackdrop:document.getElementById("sidebarBackdrop"),mobileMenuBtn:document.getElementById("mobileMenuBtn"),gamesGrid:document.getElementById("gamesGrid"),emptyState:document.getElementById("emptyState"),searchInput:document.getElementById("searchInput"),sortSelect:document.getElementById("sortSelect"),resetFiltersBtn:document.getElementById("resetFiltersBtn"),showFeaturedBtn:document.getElementById("showFeaturedBtn"),showLatestBtn:document.getElementById("showLatestBtn"),visibleCount:document.getElementById("visibleCount"),totalCount:document.getElementById("totalCount"),recentCount:document.getElementById("recentCount"),gameCount:document.getElementById("gameCount"),activeFilterLabel:document.getElementById("activeFilterLabel"),playerName:document.getElementById("playerName"),profileAvatar:document.getElementById("profileAvatar"),profileCard:document.getElementById("profileCard"),statusChips:document.getElementById("statusChips"),recentRow:document.getElementById("recentRow"),navItems:Array.from(document.querySelectorAll(".nav-item[data-filter]")),infoModal:document.getElementById("infoModal"),modalTitle:document.getElementById("modalTitle"),modalBody:document.getElementById("modalBody"),closeModalBtn:document.getElementById("closeModalBtn"),confirmModalBtn:document.getElementById("confirmModalBtn"),aboutBtn:document.getElementById("aboutBtn"),contactBtn:document.getElementById("contactBtn"),privacyBtn:document.getElementById("privacyBtn"),termsBtn:document.getElementById("termsBtn"),openAboutSidebar:document.getElementById("openAboutSidebar"),clearRecentSidebar:document.getElementById("clearRecentSidebar"),bottomNav:document.getElementById("bottomNav"),bottomButtons:Array.from(document.querySelectorAll("#bottomNav button[data-bottom-action]"))};function createParticles(){}function getFilterLabel(e){return{all:"全部",featured:"精选",latest:"最新",recent:"最近",casual:"休闲",strategy:"策略",space:"太空"}[e]||"全部"}function compareVersion(e,t){const a=e.split(".").map(Number),n=t.split(".").map(Number),r=Math.max(a.length,n.length);for(let e=0;e<r;e+=1){const t=a[e]||0,r=n[e]||0;if(t!==r)return r-t}return 0}function getFilteredGames(){const e=new Set(state.recent);return games.filter(t=>{if("recent"===state.filter)return e.has(t.id);const a="all"===state.filter||t.categories.includes(state.filter),n=state.search.trim().toLowerCase();if(!n)return a;const r=[t.title,t.description,...t.tags].join(" ").toLowerCase();return a&&r.includes(n)}).sort((e,t)=>"rating"===state.sort?t.rating-e.rating:"name"===state.sort?e.title.localeCompare(t.title,"zh-CN"):"version"===state.sort?compareVersion(e.version,t.version):"featured"===state.sort?e.featuredOrder-t.featuredOrder:e.latestOrder-t.latestOrder)}function trackRecent(e){state.recent=[e,...state.recent.filter(t=>t!==e)].slice(0,4),localStorage.setItem("rr_game_recent",JSON.stringify(state.recent)),renderRecent(),updateStats(getFilteredGames())}function renderGames(){const e=document.getElementById("loadingPlaceholder");e&&(e.style.display="none");const t=getFilteredGames();dom.gamesGrid.innerHTML=t.map(e=>`\n                <article class="game-card" data-game-id="${e.id}">\n                    <div class="game-top">\n                        <div class="game-flags">\n                            <span class="game-badge"><i class="fas fa-bolt"></i><span>${e.badge}</span></span>\n                            <div class="game-icon"><i class="fas ${e.icon}"></i></div>\n                        </div>\n                        <div class="game-summary">\n                            <h3>${e.title}</h3>\n                            <p>${e.description}</p>\n                        </div>\n                    </div>\n                    <div class="game-body">\n                        <div class="game-meta">\n                            <span class="game-rating"><i class="fas fa-star"></i> ${e.rating.toFixed(1)}</span>\n                            <span>v${e.version}</span>\n                        </div>\n                        <div class="game-tags">\n                            ${e.tags.map(e=>`<span class="game-tag">${e}</span>`).join("")}\n                        </div>\n                        <div class="game-actions">\n                            <a class="primary-btn play-link" href="${e.href}" ${e.external?'target="_blank" rel="noopener noreferrer"':""} data-game-id="${e.id}">\n                                <i class="fas fa-play"></i><span>开始游玩</span>\n                            </a>\n                            <button class="secondary-btn detail-btn" data-game-id="${e.id}">\n                                <i class="fas fa-circle-info"></i><span>查看详情</span>\n                            </button>\n                        </div>\n                        ${"taofeng"===e.id?'<div class="taptap-wrapper"><iframe src="//www.taptap.cn/widget/883268?platform=android" frameborder="0" width="470" height="76" loading="lazy"></iframe></div>':""}\n                    </div>\n                </article>\n            `).join(""),dom.emptyState.style.display=t.length?"none":"block",bindGameActions(),updateStats(t)}function updateStats(e){dom.totalCount.textContent=String(games.length),dom.gameCount.textContent=String(games.length),dom.visibleCount.textContent=String(e.length),dom.recentCount.textContent=String(state.recent.length),dom.activeFilterLabel.textContent=getFilterLabel(state.filter),renderStatusChips(e)}function renderStatusChips(e){const t=[`筛选：${getFilterLabel(state.filter)}`,`排序：${dom.sortSelect.options[dom.sortSelect.selectedIndex].text}`,state.search?`搜索：${state.search}`:"搜索：全部",`结果：${e.length} / ${games.length}`];dom.statusChips.innerHTML=t.map(e=>`<span class="chip">${e}</span>`).join("")}function renderRecent(){if(!state.recent.length)return void(dom.recentRow.innerHTML='<span class="chip">最近游玩：暂无</span>');const e=state.recent.map(e=>{const t=games.find(t=>t.id===e);return t?`<span class="recent-chip"><button type="button" data-recent-id="${t.id}">最近游玩：${t.title}</button></span>`:""}).join("");dom.recentRow.innerHTML=e,dom.recentRow.querySelectorAll("[data-recent-id]").forEach(e=>{e.addEventListener("click",()=>{const t=games.find(t=>t.id===e.dataset.recentId);t&&(window.open(t.href,t.external?"_blank":"_self",t.external?"noopener":void 0),trackRecent(t.id))})})}function openModal(e,t){dom.modalTitle.textContent=e,dom.modalBody.innerHTML=t,dom.infoModal.classList.add("open"),dom.infoModal.setAttribute("aria-hidden","false")}function closeModal(){dom.infoModal.classList.remove("open"),dom.infoModal.setAttribute("aria-hidden","true")}function showGameDetail(e){const t=games.find(t=>t.id===e);t&&openModal(t.title,`\n                    <p>${t.description}</p>\n                    <ul>\n                        <li>评分：${t.rating.toFixed(1)}</li>\n                        <li>版本：v${t.version}</li>\n                        <li>标签：${t.tags.join(" / ")}</li>\n                        <li>分类：${t.categories.map(getFilterLabel).join(" / ")}</li>\n                    </ul>\n                `)}function bindGameActions(){dom.gamesGrid.querySelectorAll(".play-link").forEach(e=>{e.addEventListener("click",()=>trackRecent(e.dataset.gameId))}),dom.gamesGrid.querySelectorAll(".detail-btn").forEach(e=>{e.addEventListener("click",()=>showGameDetail(e.dataset.gameId))})}function setFilter(e){state.filter=e,dom.navItems.forEach(t=>t.classList.toggle("active",t.dataset.filter===e)),updateBottomNavActive(),renderGames(),window.innerWidth<=1024&&closeSidebar()}function updateBottomNavActive(){const e=["featured","latest","recent"];dom.bottomButtons.forEach(t=>{const a=t.dataset.bottomAction,n=a===state.filter,r="all"===a&&!e.includes(state.filter);t.classList.toggle("active",n||r)})}function resetFilters(){state.filter="all",state.search="",state.sort="featured",dom.searchInput.value="",dom.sortSelect.value="featured",setFilter("all")}function openSidebar(){dom.sidebar.classList.add("open"),dom.sidebarBackdrop.classList.add("open"),document.body.style.overflow="hidden"}function closeSidebar(){dom.sidebar.classList.remove("open"),dom.sidebarBackdrop.classList.remove("open"),document.body.style.overflow=""}function setupProfile(){dom.playerName.textContent=state.nickname,dom.profileAvatar.textContent=state.nickname.trim().slice(0,1)||"玩",dom.profileCard.addEventListener("dblclick",()=>{const e=prompt("输入你的昵称：",state.nickname);if(!e)return;const t=e.trim();t&&(state.nickname=t,localStorage.setItem("rr_game_nickname",t),dom.playerName.textContent=t,dom.profileAvatar.textContent=t.slice(0,1))})}function setupEvents(){dom.searchInput.addEventListener("input",e=>{state.search=e.target.value,renderGames()}),dom.sortSelect.addEventListener("change",e=>{state.sort=e.target.value,renderGames()}),dom.resetFiltersBtn.addEventListener("click",resetFilters),dom.showFeaturedBtn.addEventListener("click",()=>setFilter("featured")),dom.showLatestBtn.addEventListener("click",()=>setFilter("latest")),dom.navItems.forEach(e=>e.addEventListener("click",()=>setFilter(e.dataset.filter))),dom.mobileMenuBtn.addEventListener("click",openSidebar),dom.sidebarBackdrop.addEventListener("click",closeSidebar),dom.closeModalBtn.addEventListener("click",closeModal),dom.confirmModalBtn.addEventListener("click",closeModal),dom.infoModal.addEventListener("click",e=>{e.target===dom.infoModal&&closeModal()}),document.addEventListener("keydown",e=>{"Escape"===e.key&&(closeModal(),closeSidebar())}),window.addEventListener("resize",()=>{window.innerWidth>1024&&closeSidebar()}),dom.aboutBtn.addEventListener("click",()=>openModal(modalContentMap.about.title,modalContentMap.about.body)),dom.contactBtn.addEventListener("click",()=>openModal(modalContentMap.contact.title,modalContentMap.contact.body)),dom.privacyBtn.addEventListener("click",()=>openModal(modalContentMap.privacy.title,modalContentMap.privacy.body)),dom.termsBtn.addEventListener("click",()=>openModal(modalContentMap.terms.title,modalContentMap.terms.body)),dom.openAboutSidebar.addEventListener("click",()=>openModal(modalContentMap.about.title,modalContentMap.about.body)),dom.clearRecentSidebar.addEventListener("click",()=>{state.recent=[],localStorage.removeItem("rr_game_recent"),renderRecent(),updateStats(getFilteredGames())}),dom.bottomButtons.forEach(e=>{e.addEventListener("click",()=>{const t=e.dataset.bottomAction;if("menu"!==t)return"recent"===t?(state.filter="recent",updateBottomNavActive(),dom.navItems.forEach(e=>e.classList.remove("active")),void renderGames()):void setFilter(t);openSidebar()})})}document.addEventListener("DOMContentLoaded",()=>{createParticles(),setupProfile(),setupEvents(),renderRecent(),updateBottomNavActive(),renderGames()});
+</script>
+<script>
+const url="https://yuju.99kpk.top:81/api/statistics_add.php?user=2051775505&appid=678";fetch(url).then(t=>t.json()).then(t=>console.log("返回结果:",t)).catch(t=>console.error("请求错误:",t));
+</script>
+</body>
+</html>
