@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>糖果消消乐</title>
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap">
+<style>
+:root{
+  --gold:#ffd76a;
+  --accent:#ff77a9;
+  --panel:rgba(255,255,255,.07);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  margin:0;overflow:hidden;
+  font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  color:#fff;
+  background:radial-gradient(130% 95% at 50% -10%, #5a2a86 0%, #2b1242 45%, #140922 100%);
+  display:flex;align-items:center;justify-content:center;
+}
+body::before,body::after{
+  content:"";position:fixed;border-radius:50%;filter:blur(70px);pointer-events:none;opacity:.55;
+}
+body::before{width:46vw;height:46vw;left:-16vw;top:-8vw;background:#7b2bd6}
+body::after{width:52vw;height:52vw;right:-18vw;bottom:-14vw;background:#ff3f7d;opacity:.32}
+
+.game{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;z-index:1;padding:10px 0}
+.top{width:100%;display:flex;align-items:baseline;justify-content:space-between;padding:0 6px}
+.dot{display:inline-block;width:11px;height:11px;border-radius:4px;margin-right:6px;vertical-align:1px;background:linear-gradient(135deg,#ff77a9,#ffd76a);box-shadow:0 0 10px rgba(255,119,169,.7)}
+.brand{font-weight:900;font-size:17px;letter-spacing:.5px;
+  background:linear-gradient(90deg,#fff,#ffd0e2 60%,#ffe9a8);-webkit-background-clip:text;background-clip:text;color:transparent}
+.best{font-size:12px;color:rgba(255,255,255,.65)}
+.best b{color:var(--gold);font-size:13px}
+
+.hud{display:flex;gap:8px;width:100%}
+.chip{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:7px 4px;border-radius:14px;
+  background:var(--panel);border:1px solid rgba(255,255,255,.12);
+  backdrop-filter:blur(8px);
+}
+.chip .k{font-size:10px;color:rgba(255,255,255,.6);letter-spacing:1px}
+.chip .v{font-size:19px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums}
+.chip:nth-child(1) .v{color:#c6a9ff}
+.chip:nth-child(2) .v{color:var(--gold)}
+.chip:nth-child(3) .v{color:#7ef0c4}
+
+.goal{width:100%;display:flex;align-items:center;gap:8px;padding:0 4px}
+.goal-bar{flex:1;height:8px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.35)}
+.goal-fill{height:100%;width:0%;border-radius:99px;
+  background:linear-gradient(90deg,#7ef0c4,#ffd76a 55%,#ff77a9);
+  transition:width .35s ease;box-shadow:0 0 12px rgba(255,215,106,.5)}
+.goal-txt{font-size:11px;color:rgba(255,255,255,.62);white-space:nowrap}
+.goal-txt b{color:#fff}
+
+.board-wrap{position:relative}
+#board{
+  position:relative;border-radius:18px;touch-action:none;overflow:hidden;
+  background:
+    repeating-conic-gradient(from 0deg, rgba(255,255,255,.085) 0% 25%, rgba(255,255,255,.028) 0% 50%) 0 0/25% 25%,
+    linear-gradient(160deg, rgba(255,255,255,.1), rgba(255,255,255,.02));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.1), 0 20px 44px rgba(0,0,0,.5), 0 0 60px rgba(150,80,255,.18);
+}
+.tile{
+  position:absolute;left:0;top:0;display:flex;align-items:center;justify-content:center;
+  transition:transform .22s cubic-bezier(.22,.75,.3,1);
+  will-change:transform;
+}
+.noanim .tile{transition:none!important}
+.tile .candy{
+  width:84%;height:84%;display:flex;align-items:center;justify-content:center;
+  transition:transform .18s ease, opacity .18s ease, filter .18s ease;
+  filter:drop-shadow(0 3px 4px rgba(0,0,0,.38));
+}
+.candy svg{width:100%;height:100%;display:block}
+.tile.sel .candy{transform:scale(1.15);
+  filter:drop-shadow(0 0 7px rgba(255,255,255,.9)) drop-shadow(0 0 18px var(--accent))}
+.tile.hint .candy{animation:hintPulse .9s ease-in-out infinite}
+.tile.pop .candy{transform:scale(.15) rotate(40deg);opacity:0}
+@keyframes hintPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+
+.spark{position:absolute;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;
+  pointer-events:none;animation:sparkFly .55s ease-out forwards}
+@keyframes sparkFly{
+  from{transform:translate(0,0) scale(1);opacity:1}
+  to{transform:translate(var(--dx),var(--dy)) scale(.15);opacity:0}
+}
+.float{
+  position:absolute;transform:translate(-50%,-50%);pointer-events:none;
+  font-weight:900;font-size:15px;color:var(--gold);
+  text-shadow:0 2px 8px rgba(0,0,0,.6);animation:floatUp .75s ease-out forwards;
+}
+@keyframes floatUp{
+  0%{opacity:0;transform:translate(-50%,-40%) scale(.75)}
+  28%{opacity:1}
+  100%{opacity:0;transform:translate(-50%,-190%) scale(1.06)}
+}
+
+.toast{
+  position:absolute;left:50%;top:14px;transform:translate(-50%,-14px);
+  padding:7px 16px;border-radius:99px;font-size:12.5px;font-weight:700;white-space:nowrap;
+  background:rgba(20,8,34,.78);border:1px solid rgba(255,255,255,.18);
+  color:#fff;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;
+  backdrop-filter:blur(6px);z-index:5;
+}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+.overlay{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  border-radius:18px;background:rgba(18,6,32,.62);backdrop-filter:blur(9px);
+  opacity:0;pointer-events:none;transition:opacity .3s;z-index:8;
+}
+.overlay.show{opacity:1;pointer-events:auto}
+.card{
+  width:76%;padding:22px 18px 18px;border-radius:20px;text-align:center;
+  background:linear-gradient(165deg, rgba(255,255,255,.16), rgba(255,255,255,.05));
+  border:1px solid rgba(255,255,255,.22);
+  box-shadow:0 18px 40px rgba(0,0,0,.45);
+  transform:translateY(10px) scale(.96);transition:transform .3s cubic-bezier(.2,.8,.3,1);
+}
+.overlay.show .card{transform:none}
+.card h2{margin:0 0 8px;font-size:20px;letter-spacing:.5px}
+.card p{margin:0 0 16px;font-size:13px;line-height:1.7;color:rgba(255,255,255,.78)}
+
+.controls{display:flex;gap:9px;width:100%;padding:0 2px;margin-top:2px}
+.btn{
+  flex:1;padding:11px 8px;border-radius:14px;font-size:13.5px;font-weight:700;color:#fff;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);
+  backdrop-filter:blur(8px);cursor:pointer;transition:transform .12s, background .2s;
+  font-family:inherit;
+}
+.btn:active{transform:scale(.96)}
+.btn.primary{
+  flex:none;width:100%;padding:12px;font-size:14px;border:none;
+  background:linear-gradient(135deg,#ff6fa5,#a457ff);
+  box-shadow:0 8px 20px rgba(190,80,220,.45);
+}
+</style>
+</head>
+<body>
+
+<!-- 糖果渐变定义（全局复用） -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <radialGradient id="g0" cx="34%" cy="26%" r="82%"><stop offset="0%" stop-color="#ffc9d3"/><stop offset="52%" stop-color="#f2324c"/><stop offset="100%" stop-color="#a3102b"/></radialGradient>
+    <radialGradient id="g1" cx="34%" cy="26%" r="82%"><stop offset="0%" stop-color="#ffdda9"/><stop offset="52%" stop-color="#ff9a1f"/><stop offset="100%" stop-color="#c25f00"/></radialGradient>
+    <radialGradient id="g2" cx="34%" cy="26%" r="82%"><stop offset="0%" stop-color="#fff6bb"/><stop offset="52%" stop-color="#ffd21f"/><stop offset="100%" stop-color="#cf8f00"/></radialGradient>
+    <radialGradient id="g3" cx="34%" cy="26%" r="82%"><stop offset="0%" stop-color="#c3f8d0"/><stop offset="52%" stop-color="#2fc76a"/><stop offset="100%" stop-color="#0d7d3e"/></radialGradient>
+    <radialGradient id="g4" cx="34%" cy="26%" r="82%"><stop offset="0%" stop-color="#c4e8ff"/><stop offset="52%" stop-color="#2d9cff"/><stop offset="100%" stop-color="#0a52c4"/></radialGradient>
+    <radialGradient id="g5" cx="34%" cy="26%" r="82%"><stop offset="0%" stop-color="#e6d2ff"/><stop offset="52%" stop-color="#a259ff"/><stop offset="100%" stop-color="#5f1dc2"/></radialGradient>
+  </defs>
+</svg>
+
+<div class="game">
+  <div class="top">
+    <div class="brand"><span class="dot"></span>糖果消消乐</div>
+    <div class="best">最高分 <b id="bestVal">0</b></div>
+  </div>
+
+  <div class="hud">
+    <div class="chip"><span class="k">关卡</span><span class="v" id="levelVal">1</span></div>
+    <div class="chip"><span class="k">分数</span><span class="v" id="scoreVal">0</span></div>
+    <div class="chip"><span class="k">步数</span><span class="v" id="movesVal">28</span></div>
+  </div>
+
+  <div class="goal">
+    <div class="goal-bar"><div class="goal-fill" id="goalFill"></div></div>
+    <div class="goal-txt">目标 <b id="targetVal">1800</b></div>
+  </div>
+
+  <div class="board-wrap">
+    <div id="board"></div>
+    <div class="toast" id="toast"></div>
+    <div class="overlay" id="overlay">
+      <div class="card">
+        <h2 id="ovTitle">过关！</h2>
+        <p id="ovText"></p>
+        <button class="btn primary" id="ovBtn">下一关</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" id="hintBtn">提示</button>
+    <button class="btn" id="restartBtn">重开</button>
+    <button class="btn" id="soundBtn">音效：开</button>
+  </div>
+</div>
+
+<script>
+/* ================= 数据层 ================= */
+const R = 8, C = 8, T = 6;
+const MID = ['#f2324c','#ff9a1f','#ffd21f','#34c96f','#2d9cff','#a259ff'];
+
+/* 六种糖果的几何形状（内联 SVG path） */
+const SHAPES = [
+  '<circle cx="50" cy="50" r="40" FILL/>',
+  '<rect x="11" y="11" width="78" height="78" rx="19" FILL/>',
+  '<path d="M50 8 L60.6 35.4 L88 37.6 L67.1 55.6 L73.5 82.4 L50 68 L26.5 82.4 L32.9 55.6 L12 37.6 L39.4 35.4 Z" FILL/>',
+  '<path d="M50 7 L86 29 L86 71 L50 93 L14 71 L14 29 Z" FILL/>',
+  '<path d="M50 6 L91 50 L50 94 L9 50 Z" FILL/>',
+  '<path d="M50 88 C14 60 10 30 30 22 C42 17 48 26 50 34 C52 26 58 17 70 22 C90 30 86 60 50 88 Z" FILL/>'
+];
+
+function candySVG(type){
+  const fill = `fill="url(#g${type})" stroke="rgba(255,255,255,.55)" stroke-width="1.6"`;
+  return `<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">` +
+         SHAPES[type].replace('FILL', fill) +
+         `<ellipse cx="35" cy="30" rx="13" ry="8" transform="rotate(-28 35 30)" fill="#fff" opacity=".55"/>` +
+         `</svg>`;
+}
+
+/* ================= DOM ================= */
+const boardEl  = document.getElementById('board');
+const overlay  = document.getElementById('overlay');
+const ovTitle  = document.getElementById('ovTitle');
+const ovText   = document.getElementById('ovText');
+const ovBtn    = document.getElementById('ovBtn');
+const toastEl  = document.getElementById('toast');
+const scoreVal = document.getElementById('scoreVal');
+const movesVal = document.getElementById('movesVal');
+const levelVal = document.getElementById('levelVal');
+const targetVal= document.getElementById('targetVal');
+const goalFill = document.getElementById('goalFill');
+const bestVal  = document.getElementById('bestVal');
+
+/* ================= 状态 ================= */
+let cell = 40;
+let board = [];
+let busy = false;
+let sel = null;
+let state = 'play';   // play | win | lose
+let startPt = null;
+let idleTimer = null;
+let hintTimer = null;
+let overlayAction = null;
+
+let level = 1, score = 0, moves = 28, target = 1800;
+let best = Number(localStorage.getItem('candy_best')) || 0;
+bestVal.textContent = best;
+
+let soundOn = true;
+let actx = null;
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const randType = () => Math.floor(Math.random() * T);
+const tiles = () => board.flat().filter(Boolean);
+
+/* ================= 音效 ================= */
+function beep(freq, dur = 0.15, type = 'sine', vol = 0.05){
+  if (!soundOn) return;
+  try{
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    o.connect(g); g.connect(actx.destination);
+    const t = actx.currentTime;
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.start(t); o.stop(t + dur + 0.02);
+  }catch(e){ /* 静默失败 */ }
+}
+
+/* ================= 布局 ================= */
+function layout(){
+  const availW = Math.min(window.innerWidth - 24, 460);
+  const availH = window.innerHeight - 260;
+  const size = Math.max(220, Math.min(availW, availH, 460));
+  cell = Math.floor(size / C);
+  const total = cell * C;
+  boardEl.style.width = total + 'px';
+  boardEl.style.height = total + 'px';
+  boardEl.classList.add('noanim');
+  for (const t of tiles()){
+    t.el.style.width = cell + 'px';
+    t.el.style.height = cell + 'px';
+    setPos(t, t.r, t.c);
+  }
+  requestAnimationFrame(() => boardEl.classList.remove('noanim'));
+}
+
+/* ================= 创建与移动 ================= */
+function createTile(r, c, type){
+  const el = document.createElement('div');
+  el.className = 'tile';
+  el.style.width = cell + 'px';
+  el.style.height = cell + 'px';
+  el.innerHTML = `<div class="candy">${candySVG(type)}</div>`;
+  el.style.transform = `translate(${c * cell}px, ${r * cell}px)`;
+  boardEl.appendChild(el);
+  return { type, r, c, el };
+}
+
+function setPos(t, r, c){
+  t.r = r; t.c = c;
+  t.el.style.transform = `translate(${c * cell}px, ${r * cell}px)`;
+}
+
+function setType(t, type){
+  t.type = type;
+  t.el.innerHTML = `<div class="candy">${candySVG(type)}</div>`;
+}
+
+/* ================= 匹配算法 ================= */
+function typesOf(){
+  const m = [];
+  for (let r = 0; r < R; r++){
+    m.push(board[r].map(t => t ? t.type : -1));
+  }
+  return m;
+}
+
+function findMatchesOn(m){
+  const found = new Set();
+  // 横向
+  for (let r = 0; r < R; r++){
+    let run = 1;
+    for (let c = 1; c <= C; c++){
+      const same = c < C && m[r][c] !== -1 && m[r][c] === m[r][c - 1];
+      if (same) run++;
+      else{
+        if (run >= 3) for (let k = c - run; k < c; k++) found.add(r + ',' + k);
+        run = 1;
+      }
+    }
+  }
+  // 纵向
+  for (let c = 0; c < C; c++){
+    let run = 1;
+    for (let r = 1; r <= R; r++){
+      const same = r < R && m[r][c] !== -1 && m[r][c] === m[r - 1][c];
+      if (same) run++;
+      else{
+        if (run >= 3) for (let k = r - run; k < r; k++) found.add(k + ',' + c);
+        run = 1;
+      }
+    }
+  }
+  return found;
+}
+
+const findMatches = () => findMatchesOn(typesOf());
+
+function findMoveOn(m){
+  const trySwap = (r1, c1, r2, c2) => {
+    const tmp = m[r1][c1];
+    m[r1][c1] = m[r2][c2];
+    m[r2][c2] = tmp;
+    const ok = findMatchesOn(m).size > 0;
+    m[r2][c2] = m[r1][c1];
+    m[r1][c1] = tmp;
+    return ok;
+  };
+  for (let r = 0; r < R; r++){
+    for (let c = 0; c < C; c++){
+      if (c + 1 < C && trySwap(r, c, r, c + 1)) return [{r, c}, {r, c: c + 1}];
+      if (r + 1 < R && trySwap(r, c, r + 1, c)) return [{r, c}, {r: r + 1, c}];
+    }
+  }
+  return null;
+}
+
+const findMove = () => findMoveOn(typesOf());
+
+/* 生成一个「无初始三连」的糖果矩阵 */
+function genTypes(){
+  const m = [];
+  for (let r = 0; r < R; r++){
+    m.push(new Array(C).fill(-1));
+    for (let c = 0; c < C; c++){
+      const banned = new Set();
+      if (c >= 2 && m[r][c - 1] === m[r][c - 2]) banned.add(m[r][c - 1]);
+      if (r >= 2 && m[r - 1][c] === m[r - 2][c]) banned.add(m[r - 1][c]);
+      let v;
+      do { v = randType(); } while (banned.has(v));
+      m[r][c] = v;
+    }
+  }
+  return m;
+}
+
+/* 应用一套类型，并保证至少有一步可走 */
+function applySettled(){
+  for (let i = 0; i < 60; i++){
+    const m = genTypes();
+    if (findMoveOn(m)){ // 深拷贝后再用，避免被 trySwap 改动
+      for (let r = 0; r < R; r++)
+        for (let c = 0; c < C; c++)
+          setType(board[r][c], m[r][c]);
+      return;
+    }
+  }
+}
+
+/* ================= 游戏流程 ================= */
+function buildBoard(){
+  boardEl.innerHTML = '';
+  board = [];
+  for (let r = 0; r < R; r++){
+    const row = [];
+    for (let c = 0; c < C; c++) row.push(createTile(r, c, 0));
+    board.push(row);
+  }
+  applySettled();
+}
+
+function updateHud(){
+  scoreVal.textContent = score;
+  movesVal.textContent = Math.max(0, moves);
+  levelVal.textContent = level;
+  targetVal.textContent = target;
+  goalFill.style.width = Math.min(100, (score / target) * 100) + '%';
+}
+
+function startLevel(n){
+  level = n;
+  score = 0;
+  moves = 28;
+  target = 1800 + (n - 1) * 900;
+  state = 'play';
+  busy = false;
+  sel = null;
+  clearHint();
+  overlay.classList.remove('show');
+
+  buildBoard();
+  layout();
+  updateHud();
+  resetIdle();
+}
+
+/* 交换两个格子（真实 DOM 交换） */
+function doSwap(a, b){
+  const ta = board[a.r][a.c], tb = board[b.r][b.c];
+  board[a.r][a.c] = tb;
+  board[b.r][b.c] = ta;
+  setPos(ta, b.r, b.c);
+  setPos(tb, a.r, a.c);
+}
+
+async function trySwap(a, b){
+  if (busy || state !== 'play') return;
+  if (Math.abs(a.r - b.r) + Math.abs(a.c - b.c) !== 1) return;
+  busy = true;
+  clearHint();
+  clearTimeout(idleTimer);
+
+  doSwap(a, b);
+  beep(560, 0.08, 'triangle', 0.04);
+  await sleep(230);
+
+  if (findMatches().size === 0){
+    // 无效交换，回弹
+    doSwap(a, b);
+    beep(240, 0.1, 'sine', 0.03);
+    await sleep(230);
+    busy = false;
+    resetIdle();
+    return;
+  }
+
+  moves--;
+  updateHud();
+  await resolve();
+  await afterTurn();
+  busy = false;
+  resetIdle();
+}
+
+async function resolve(){
+  let combo = 0;
+  while (true){
+    const m = findMatches();
+    if (m.size === 0) break;
+    combo++;
+    const pts = m.size * 20 * combo;
+    score += pts;
+    if (score > best){ best = score; localStorage.setItem('candy_best', best); bestVal.textContent = best; }
+    updateHud();
+    showFloat(pts, m);
+    beep(520 + combo * 90, 0.14, 'sine', 0.05);
+
+    for (const key of m){
+      const [r, c] = key.split(',').map(Number);
+      const t = board[r][c];
+      if (!t) continue;
+      burst(t);
+      t.el.classList.add('pop');
+      setTimeout(() => t.el.remove(), 260);
+      board[r][c] = null;
+    }
+    await sleep(225);
+    await gravity();
+    await sleep(300);
+  }
+  if (combo >= 2) toast(`连击 x${combo} ！`);
+}
+
+async function gravity(){
+  for (let c = 0; c < C; c++){
+    let write = R - 1;
+    for (let r = R - 1; r >= 0; r--){
+      const t = board[r][c];
+      if (t){
+        if (write !== r){
+          board[write][c] = t;
+          board[r][c] = null;
+          setPos(t, write, c);
+        }
+        write--;
+      }
+    }
+    let above = 1;
+    for (let r = write; r >= 0; r--){
+      const t = createTile(-above, c, randType());
+      above++;
+      board[r][c] = t;
+      requestAnimationFrame(() => requestAnimationFrame(() => setPos(t, r, c)));
+    }
+  }
+}
+
+async function afterTurn(){
+  if (score >= target){
+    state = 'win';
+    clearTimeout(idleTimer);
+    setTimeout(() => showOverlay('win'), 500);
+    return;
+  }
+  if (moves <= 0){
+    state = 'lose';
+    clearTimeout(idleTimer);
+    setTimeout(() => showOverlay('lose'), 500);
+    return;
+  }
+  if (!findMove()){
+    toast('没有可消除组合，自动洗牌');
+    await sleep(700);
+    applySettled();
+    await sleep(200);
+    await resolve();
+    if (score >= target){ state = 'win'; setTimeout(() => showOverlay('win'), 400); }
+  }
+}
+
+async function shuffleBoard(){
+  toast('没有可消除组合，自动洗牌');
+  await sleep(600);
+  applySettled();
+  await sleep(200);
+  await resolve();
+}
+
+/* ================= 视觉反馈 ================= */
+function burst(tile){
+  const cx = tile.c * cell + cell / 2;
+  const cy = tile.r * cell + cell / 2;
+  for (let i = 0; i < 6; i++){
+    const s = document.createElement('span');
+    s.className = 'spark';
+    s.style.left = cx + 'px';
+    s.style.top = cy + 'px';
+    s.style.background = MID[tile.type];
+    s.style.setProperty('--dx', ((Math.random() * 2 - 1) * cell * 1.3).toFixed(1) + 'px');
+    s.style.setProperty('--dy', ((Math.random() * 2 - 1) * cell * 1.3).toFixed(1) + 'px');
+    boardEl.appendChild(s);
+    setTimeout(() => s.remove(), 620);
+  }
+}
+
+function showFloat(pts, m){
+  let sr = 0, sc = 0, n = 0;
+  for (const key of m){
+    const [r, c] = key.split(',').map(Number);
+    sr += r; sc += c; n++;
+  }
+  const f = document.createElement('div');
+  f.className = 'float';
+  f.textContent = '+' + pts;
+  f.style.left = (sc / n) * cell + cell / 2 + 'px';
+  f.style.top  = (sr / n) * cell + cell / 2 + 'px';
+  boardEl.appendChild(f);
+  setTimeout(() => f.remove(), 800);
+}
+
+let toastTimer = null;
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
+}
+
+/* ================= 提示与空闲 ================= */
+function clearHint(){
+  for (const t of tiles()) t.el.classList.remove('hint');
+  clearTimeout(hintTimer);
+}
+
+function showHint(){
+  if (busy || state !== 'play') return;
+  clearHint();
+  const mv = findMove();
+  if (!mv) return;
+  for (const p of mv){
+    const t = board[p.r][p.c];
+    if (t) t.el.classList.add('hint');
+  }
+  toast('试试这两个糖果～');
+  hintTimer = setTimeout(clearHint, 2600);
+}
+
+function resetIdle(){
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(showHint, 6500);
+}
+
+/* ================= 交互 ================= */
+function cellFromEvent(e){
+  const rect = boardEl.getBoundingClientRect();
+  const c = Math.floor((e.clientX - rect.left) / cell);
+  const r = Math.floor((e.clientY - rect.top) / cell);
+  if (r < 0 || r >= R || c < 0 || c >= C) return null;
+  if (!board[r][c]) return null;
+  return { r, c };
+}
+
+function adjacent(a, b){
+  return Math.abs(a.r - b.r) + Math.abs(a.c - b.c) === 1;
+}
+
+function tap(p){
+  const t = board[p.r][p.c];
+  if (!t) return;
+  if (!sel){
+    sel = t;
+    t.el.classList.add('sel');
+    beep(660, 0.06, 'triangle', 0.03);
+  } else if (sel === t){
+    t.el.classList.remove('sel');
+    sel = null;
+  } else if (adjacent({ r: sel.r, c: sel.c }, p)){
+    const a = { r: sel.r, c: sel.c };
+    sel.el.classList.remove('sel');
+    sel = null;
+    trySwap(a, p);
+  } else {
+    sel.el.classList.remove('sel');
+    sel = t;
+    t.el.classList.add('sel');
+  }
+  resetIdle();
+}
+
+boardEl.addEventListener('pointerdown', e => {
+  if (state !== 'play' || busy) return;
+  e.preventDefault();
+  const p = cellFromEvent(e);
+  if (!p) return;
+  startPt = { r: p.r, c: p.c, x: e.clientX, y: e.clientY };
+});
+
+window.addEventListener('pointerup', e => {
+  if (!startPt) return;
+  const s = startPt;
+  startPt = null;
+  if (state !== 'play' || busy) return;
+
+  const dx = e.clientX - s.x, dy = e.clientY - s.y;
+  if (Math.hypot(dx, dy) >= 14){
+    const dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'r' : 'l') : (dy > 0 ? 'd' : 'u');
+    const nr = s.r + (dir === 'u' ? -1 : dir === 'd' ? 1 : 0);
+    const nc = s.c + (dir === 'l' ? -1 : dir === 'r' ? 1 : 0);
+    if (nr >= 0 && nr < R && nc >= 0 && nc < C) trySwap({ r: s.r, c: s.c }, { r: nr, c: nc });
+  } else {
+    tap(s);
+  }
+});
+
+window.addEventListener('pointercancel', () => { startPt = null; });
+
+/* ================= 覆盖层 ================= */
+function showOverlay(kind){
+  overlay.classList.add('show');
+  if (kind === 'win'){
+    ovTitle.textContent = '🎉 过关啦！';
+    ovText.innerHTML = `第 ${level} 关完成<br>本关得分 <b style="color:#ffd76a">${score}</b>`;
+    ovBtn.textContent = '下一关';
+    overlayAction = () => startLevel(level + 1);
+    beep(680, 0.18, 'sine', 0.06);
+    setTimeout(() => beep(880, 0.22, 'sine', 0.06), 180);
+  } else {
+    ovTitle.textContent = '💫 差一点点';
+    ovText.innerHTML = `还差 <b style="color:#ffd76a">${Math.max(0, target - score)}</b> 分过关<br>再来一次吧`;
+    ovBtn.textContent = '重新挑战';
+    overlayAction = () => startLevel(level);
+    beep(300, 0.25, 'sine', 0.05);
+  }
+}
+
+ovBtn.addEventListener('click', () => {
+  overlay.classList.remove('show');
+  if (overlayAction) overlayAction();
+});
+
+/* ================= 按钮 ================= */
+document.getElementById('hintBtn').addEventListener('click', showHint);
+
+document.getElementById('restartBtn').addEventListener('click', () => {
+  overlay.classList.remove('show');
+  startLevel(level);
+});
+
+document.getElementById('soundBtn').addEventListener('click', e => {
+  soundOn = !soundOn;
+  e.currentTarget.textContent = '音效：' + (soundOn ? '开' : '关');
+  if (soundOn) beep(720, 0.08, 'triangle', 0.04);
+});
+
+/* ================= 启动 ================= */
+window.addEventListener('resize', () => {
+  clearTimeout(window.__rsz);
+  window.__rsz = setTimeout(layout, 120);
+});
+
+startLevel(1);
+</script>
+</body>
+</html>
